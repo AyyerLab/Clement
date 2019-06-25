@@ -38,10 +38,10 @@ class GUI(QtGui.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        cbox = QtWidgets.QComboBox()
-        cbox.addItems(self.flist)
-        cbox.currentIndexChanged.connect(self._file_changed)
-        line.addWidget(cbox)
+        self.fselector = QtWidgets.QComboBox()
+        self.fselector.addItems(self.flist)
+        self.fselector.currentIndexChanged.connect(self._file_changed)
+        line.addWidget(self.fselector)
         
         self.define_btn = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn.setCheckable(True)
@@ -87,7 +87,30 @@ class GUI(QtGui.QMainWindow):
             self.clicked_points = []
 
     def _file_changed(self, index):
+        vr = self.imview.getImageItem().getViewBox().targetRect()
         self.imview.setImage(self.data[index], levels=(self.data[index].min(), self.data[index].mean()*5))
+        self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    def _next_file(self):
+        ind = (self.fselector.currentIndex() + 1) % self.fselector.count()
+        self.fselector.setCurrentIndex(ind)
+
+    def _prev_file(self):
+        ind = (self.fselector.currentIndex() - 1 + self.fselector.count()) % self.fselector.count()
+        self.fselector.setCurrentIndex(ind)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        mod = int(event.modifiers())
+
+        if QtGui.QKeySequence(mod+key) == QtGui.QKeySequence('Ctrl+P'):
+            self._prev_file()
+        elif QtGui.QKeySequence(mod+key) == QtGui.QKeySequence('Ctrl+N'):
+            self._next_file()
+        elif QtGui.QKeySequence(mod+key) == QtGui.QKeySequence('Ctrl+W'):
+            self.close()
+        else:
+            event.ignore()
 
 if __name__ == '__main__':
     import argparse
