@@ -6,6 +6,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 from PIL import Image
 import pyqtgraph as pg
+import assemble
+import align_fm
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -19,11 +21,12 @@ class GUI(QtGui.QMainWindow):
         self._init_ui()
 
     def _init_ui(self):
-        self.resize(800,600)
+        self.resize(1000,400)
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
-        layout = QtWidgets.QHBoxLayout()
-        widget.setLayout(layout)
+        hbox = QtWidgets.QHBoxLayout()
+        vbox1 = QtWidgets.QVBoxLayout()
+        vbox2 = QtWidgets.QVBoxLayout()
 
         #self.imview = pg.ImageView(view=pg.PlotItem())
         self.imview = pg.ImageView()
@@ -31,31 +34,41 @@ class GUI(QtGui.QMainWindow):
         self.imview.ui.menuBtn.hide()
         self.imview.setImage(self.data[0])
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
-        layout.addWidget(self.imview, stretch=1)
+        vbox1.addWidget(self.imview,stretch=1)
         
-        vbox = QtWidgets.QVBoxLayout()
-        layout.addLayout(vbox)
-
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        self.imview2 = pg.ImageView()
+        self.imview2.ui.roiBtn.hide()
+        self.imview2.ui.menuBtn.hide()
+        vbox2.addWidget(self.imview2,stretch=1)
+        	
         self.fselector = QtWidgets.QComboBox()
         self.fselector.addItems(self.flist)
         self.fselector.currentIndexChanged.connect(self._file_changed)
-        line.addWidget(self.fselector)
+        vbox1.addWidget(self.fselector)
         
         self.define_btn = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(self._define_toggled)
-        vbox.addWidget(self.define_btn)
-
-        vbox.addStretch(1)
+        vbox1.addWidget(self.define_btn)
         
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        self.align_btn = QtWidgets.QPushButton('Align color channels', self)
+        self.align_btn.clicked.connect(self._calc_shift)
+        vbox1.addWidget(self.align_btn)
+        
+        self.assemble_btn = QtWidgets.QPushButton('Assemble EM grid', self)
+        self.assemble_btn.clicked.connect(self._load_assemble)
+        #self.assemble_btn.toggled.connect(self._assemble_toggled)
+        vbox2.addWidget(self.assemble_btn)
+     
+        #vbox2.addStretch(1)
         button = QtWidgets.QPushButton('Quit', self)
         button.clicked.connect(self.close)
-        line.addWidget(button)
-        line.addStretch(1)
+        vbox2.addWidget(button)
+        #vbox2.addStretch(1)
+        
+        hbox.addLayout(vbox1)
+        hbox.addLayout(vbox2)
+        widget.setLayout(hbox)
 
         self.show()
 
@@ -111,7 +124,31 @@ class GUI(QtGui.QMainWindow):
             self.close()
         else:
             event.ignore()
+    
+    def _load_assemble(self):
+        print('Assemble .mrc file')
+        img = assemble.assemble()
+        print('Done')
+        #self.imview.setImage(img)[::10,::10]
+       
+        self.imview2.setImage(img[::10,::10], levels=(img.min(), img.mean()*5))
+        #vr2 = self.imview2.getImageItem().getViewBox().targetRect()
+        #self.imview2.getImageItem().getViewBox().setRange(vr2, padding=0)
 
+        if img is not None:
+            self.assemble_btn.setEnabled(False)
+        #    self.assemble_btn = QtWidgets.QPushButton('Show assembled EM image', self)
+        #    self.assemble_btn.setCheckable(False)
+        #    self.assemble_btn.clicked.connect(self._file_changed)
+        #    #self.assemble_btn.toggled.connect(self._assemble_toggled)
+        #    vbox.addWidget(self.assemble_btn) 
+
+
+    def _calc_shift(self):
+        print('Align color channels')
+        #ref,shift1,shift2,coordinates = align_fm.calc_shift(data)
+    
+        
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='CLEM GUI')
