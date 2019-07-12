@@ -11,21 +11,21 @@ from PIL import Image
 import pyqtgraph as pg
 matplotlib.use('QT5Agg')
 
-def assemble():
+def assemble(my_path):
     #constants 
     step = 10
 
     #main
-    f = mrc.open('../gs.mrc','r',permissive=True)
+    f = mrc.open(my_path,'r',permissive=True)
     h = f.header
-    data = f.data
+    data = f.data[:,::10,::10]
     dimensions=data.shape
 
     eh = np.frombuffer(f.extended_header,dtype='i2')
     #pg.show(data)
 
-    pos_x = eh[1:step*dimensions[0]:step]
-    pos_y = eh[2:step*dimensions[0]:step] 
+    pos_x = eh[1:step*dimensions[0]:step]//10
+    pos_y = eh[2:step*dimensions[0]:step]//10
     pos_z = eh[3:step*dimensions[0]:step]
 
     #step_x = pos_x[0]
@@ -79,8 +79,8 @@ def assemble():
 
     merged = np.zeros((np.max(pos_x)+dimensions[2],np.max(pos_y)+dimensions[1]))
     counts = np.zeros_like(merged)
-    #for i in range(dimensions[0]):
-    for i in range(5):
+    for i in range(dimensions[0]):
+    #for i in range(5):
         print('Merge for image {}'.format(i))
         np.add.at(counts,(cx+pos_x[i],cy+pos_y[i]),1)
         np.add.at(merged,(cx+pos_x[i],cy+pos_y[i]),data[i])
@@ -108,10 +108,11 @@ def assemble():
     return merged
 
 if __name__=='__main__':
-    merged = assemble()
-    img = Image.fromarray(merged)
-    img.save('assembled.tif')
-    pg.show(merged[::4,::4].T)
+    path = '../gs.mrc'
+    merged = assemble(path)
+    #img = Image.fromarray(merged)
+    #img.save('assembled.tif')
+    pg.show(merged.T)
 
 
 

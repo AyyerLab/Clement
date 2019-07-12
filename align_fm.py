@@ -7,8 +7,23 @@ from matplotlib import pyplot as plt
 from PIL import Image
 import os
 import scipy.ndimage as ndi
+import os
 
-def calc_shift(data):
+def calc_shift(flist):
+    
+    print('flist: ',flist)
+    flist.sort()
+    names = [x for x in os.listdir('../pascale') if x.endswith('.tif')]
+    my_order = [2,1,3,0]
+    my_order2 = [0,3,2,1]
+    flist_order = [flist[i] for i in my_order]
+    names_order = [names[i] for i in my_order2]
+    print('flist_order: ',flist_order)
+    print('names: ',names)
+    print('names_order: ', names_order)
+    data = [np.array(Image.open(i)) for i in flist_order]
+    #pg.show(data)
+    [print(image.shape) for image in data]
     plt.ion()
     coordinates = []
     for i in range(1,len(data)):
@@ -28,15 +43,6 @@ def calc_shift(data):
         print('Number of peaks found in channel {}: '.format(flist_order[i]),len(c_i))
 
     coordinates = [np.array(k).astype(np.int16) for k in coordinates]
-    #coordinates_unsorted = np.copy(coordinates)
-    #coordinates.sort(key=len)
-    
-    #minimum_counts = len(coordinates[0]) 
-    #min_pos = 0
-    #for i in range(1,len(coordinates)):
-    #    if len(coordinates[i]) < minimum_counts:
-    #        minimum_counts = len(coordinates[i])
-    #        min_pos = i
 
     matches = []
     counter = 0
@@ -68,7 +74,33 @@ def calc_shift(data):
         shift2 = (np.median(shift2_arr[:,0],axis=0),np.median(shift2_arr[:,1],axis=0))
     else:
         shift2 = np.zeros((2))
-    return data[1],ndi.shift(data[2],shift1), ndi.shift(data[2],shift2), coordinates
+    
+    print(shift1)
+    print(shift2)
+    data_shifted = np.zeros_like(data[1:])
+    data_shifted[0] = data[1]
+    data_shifted[1] = ndi.shift(data[2],shift1)
+    data_shifted[2] = ndi.shift(data[3],shift2)
+    
+    if not os.path.isdir('../pascale/shifted_data'):
+        os.mkdir('../pascale/shifted_data')
+
+    name_list = []
+    for i in range(data_shifted.shape[0]):
+        if os.path.isfile('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif'):
+            os.remove('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif')
+        print(i)
+        img = Image.fromarray(data_shifted[i])
+        img.save('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif')
+        name_list.append('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif')
+        
+    print('Done')
+    
+    for i in range(data_shifted.shape[0]):
+        print(data_shifted[i].shape)
+
+    return name_list
+    #return data[1],ndi.shift(data[2],shift1), ndi.shift(data[2],shift2), coordinates
 
 
 if __name__=='__main__':
@@ -77,16 +109,7 @@ if __name__=='__main__':
     if len(flist) == 0:
          flist = glob.glob('/home/wittetam/maxwell_mount/clem/pascale/c06*.tif')
 
-    flist.sort()
-    my_order = [2,1,3,0]
-    flist_order = [flist[i] for i in my_order]
-    print(flist_order)
-
-    my_data = [np.array(Image.open(i)) for i in flist_order]
-    #pg.show(data)
-    [print(image.shape) for image in my_data]
-    
-    ref,shifted_img1, shifted_img2, coor = calc_shift(my_data)
+    ref,shifted_img1, shifted_img2, coor = calc_shift(flist)
 
     for i in range(1,len(my_data)):
         img = my_data[i]

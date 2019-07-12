@@ -8,6 +8,7 @@ from PIL import Image
 import pyqtgraph as pg
 import assemble
 import align_fm
+import os
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -24,23 +25,30 @@ class GUI(QtGui.QMainWindow):
         self.resize(1000,400)
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
+           
+        splitter_images = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         hbox = QtWidgets.QHBoxLayout()
         vbox1 = QtWidgets.QVBoxLayout()
         vbox2 = QtWidgets.QVBoxLayout()
         hbox2 = QtWidgets.QHBoxLayout()
-        #self.imview = pg.ImageView(view=pg.PlotItem())
+        hbox_lower = QtWidgets.QHBoxLayout()
+
         self.imview = pg.ImageView()
         self.imview.ui.roiBtn.hide()
         self.imview.ui.menuBtn.hide()
         self.imview.setImage(self.data[0])
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
-        vbox1.addWidget(self.imview,stretch=1)
-        
+        splitter_images.addWidget(self.imview)
+      
         self.imview2 = pg.ImageView()
         self.imview2.ui.roiBtn.hide()
         self.imview2.ui.menuBtn.hide()
-        vbox2.addWidget(self.imview2,stretch=1)
-            
+        splitter_images.addWidget(self.imview2)
+        
+        splitter_im_text = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        splitter_im_text.setSizes([100,200])
+        splitter_im_text.addWidget(splitter_images)
+        
         self.fselector = QtWidgets.QComboBox()
         self.fselector.addItems(self.flist)
         self.fselector.currentIndexChanged.connect(self._file_changed)
@@ -70,19 +78,22 @@ class GUI(QtGui.QMainWindow):
     
         vbox1.addLayout(hbox2)       
     
-        self.assemble_btn = QtWidgets.QPushButton('Assemble EM grid', self)
+        self.assemble_btn = QtWidgets.QPushButton('Select and assemble .mrc file', self)
         self.assemble_btn.clicked.connect(self._load_assemble)
-        #self.assemble_btn.toggled.connect(self._assemble_toggled)
+        
         vbox2.addWidget(self.assemble_btn)
-         
-        #vbox2.addStretch(1)
+        
         button = QtWidgets.QPushButton('Quit', self)
         button.clicked.connect(self.close)
-        vbox2.addWidget(button)
-        #vbox2.addStretch(1)
+        vbox2.addWidget(button)     
         
-        hbox.addLayout(vbox1)
-        hbox.addLayout(vbox2)
+        hbox_lower.addLayout(vbox1)
+        hbox_lower.addLayout(vbox2)
+        lower_widget = QtWidgets.QWidget()
+        lower_widget.setLayout(hbox_lower) 
+
+        splitter_im_text.addWidget(lower_widget)
+        hbox.addWidget(splitter_im_text)
         widget.setLayout(hbox)
 
         self.show()
@@ -177,29 +188,27 @@ class GUI(QtGui.QMainWindow):
         self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
     
     def _load_assemble(self):
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', os.getcwd() , '*.mrc')
+        print(fileName)
         print('Assemble .mrc file')
-        img = assemble.assemble()
+        img = assemble.assemble(fileName)
         print('Done')
-        #self.imview.setImage(img)[::10,::10]
-       
-        self.imview2.setImage(img[::10,::10], levels=(img.min(), img.mean()*5))
-        #vr2 = self.imview2.getImageItem().getViewBox().targetRect()
-        #self.imview2.getImageItem().getViewBox().setRange(vr2, padding=0)
+        self.imview2.setImage(img, levels=(img.min(), img.mean()*5))
 
         if img is not None:
             self.assemble_btn.setEnabled(False)
-        #    self.assemble_btn = QtWidgets.QPushButton('Show assembled EM image', self)
-        #    self.assemble_btn.setCheckable(False)
-        #    self.assemble_btn.clicked.connect(self._file_changed)
-        #    #self.assemble_btn.toggled.connect(self._assemble_toggled)
-        #    vbox.addWidget(self.assemble_btn) 
-
 
     def _calc_shift(self):
         print('Align color channels')
-        #ref,shift1,shift2,coordinates = align_fm.calc_shift(data)
-    
+        new_list = align_fm.calc_shift(self.flist)
         
+        self.fselector.addItems(new_list)
+        self.fselector.currentIndexChanged.connect(self._file_changed)
+        
+        data_shifted = [np.array(Image.open(fname)) for fname in new_list]
+        self.data = np.concatenate((self.data,data_shifted),axis=0)
+    
+        self.align_btn.setEnabled(False)
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='CLEM GUI')
