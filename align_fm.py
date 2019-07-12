@@ -25,7 +25,7 @@ def calc_shift(data):
         c_i = np.array(ndi.center_of_mass(img,labeled,range(1,num_objects+1)))
         coordinates.append(c_i)
 
-        print('Number of peaks found in channel {}: '.format(flist[i]),len(c_i))
+        print('Number of peaks found in channel {}: '.format(flist_order[i]),len(c_i))
 
     coordinates = [np.array(k).astype(np.int16) for k in coordinates]
     #coordinates_unsorted = np.copy(coordinates)
@@ -52,26 +52,41 @@ def calc_shift(data):
                 if diff_norm < max_shift and diff_norm != 0:
                     tmp_list_diff.append(coordinates[0][k]-coordinates[i][l])
                     tmp_list_match.append(coordinates[0][k])
+        print(tmp_list_diff)   
         matches.append(tmp_list_match)
         diff_list.append(tmp_list_diff)
-
-    shift1_arr = np.array(diff_list[0])
-    shift2_arr = np.array(diff_list[1])
-    shift1 = (np.median(shift2_arr[:,0],axis=0),np.median(shift2_arr[:,1],axis=0))
-    shift2 = (np.median(shift2_arr[:,0],axis=0),np.median(shift2_arr[:,1],axis=0))
-
-    return ref,ndi.shift(data[2],shift1), ndi.shift(data[2],shift2), coordinates
+    
+    print(len(diff_list))
+    print(diff_list)
+    if len(diff_list[0]) != 0: 
+        shift1_arr = np.array(diff_list[0])
+        shift1 = (np.median(shift1_arr[:,0],axis=0),np.median(shift1_arr[:,1],axis=0))
+    else:
+        shift1 = np.zeros((2))
+    if len(diff_list[1]) != 0:
+        shift2_arr = np.array(diff_list[1])
+        shift2 = (np.median(shift2_arr[:,0],axis=0),np.median(shift2_arr[:,1],axis=0))
+    else:
+        shift2 = np.zeros((2))
+    return data[1],ndi.shift(data[2],shift1), ndi.shift(data[2],shift2), coordinates
 
 
 if __name__=='__main__':
     
     flist = glob.glob('/home/wittetam/mount/clem/pascale/c06*.tif')
-    print(flist)
-    my_data = [np.array(Image.open(i)) for i in flist]
+    if len(flist) == 0:
+         flist = glob.glob('/home/wittetam/maxwell_mount/clem/pascale/c06*.tif')
+
+    flist.sort()
+    my_order = [2,1,3,0]
+    flist_order = [flist[i] for i in my_order]
+    print(flist_order)
+
+    my_data = [np.array(Image.open(i)) for i in flist_order]
     #pg.show(data)
     [print(image.shape) for image in my_data]
     
-    shifted_img1, shifted_img2, coor = calc_shift(my_data)
+    ref,shifted_img1, shifted_img2, coor = calc_shift(my_data)
 
     for i in range(1,len(my_data)):
         img = my_data[i]

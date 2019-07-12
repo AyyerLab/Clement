@@ -27,7 +27,7 @@ class GUI(QtGui.QMainWindow):
         hbox = QtWidgets.QHBoxLayout()
         vbox1 = QtWidgets.QVBoxLayout()
         vbox2 = QtWidgets.QVBoxLayout()
-
+        hbox2 = QtWidgets.QHBoxLayout()
         #self.imview = pg.ImageView(view=pg.PlotItem())
         self.imview = pg.ImageView()
         self.imview.ui.roiBtn.hide()
@@ -40,7 +40,7 @@ class GUI(QtGui.QMainWindow):
         self.imview2.ui.roiBtn.hide()
         self.imview2.ui.menuBtn.hide()
         vbox2.addWidget(self.imview2,stretch=1)
-        	
+            
         self.fselector = QtWidgets.QComboBox()
         self.fselector.addItems(self.flist)
         self.fselector.currentIndexChanged.connect(self._file_changed)
@@ -55,11 +55,26 @@ class GUI(QtGui.QMainWindow):
         self.align_btn.clicked.connect(self._calc_shift)
         vbox1.addWidget(self.align_btn)
         
+        self.fliph = QtWidgets.QCheckBox('Flip horizontally', self)
+        self.fliph.stateChanged.connect(self._fliph)
+        hbox2.addWidget(self.fliph) 
+        self.flipv = QtWidgets.QCheckBox('Flip vertically', self)
+        self.flipv.stateChanged.connect(self._flipv)
+        hbox2.addWidget(self.flipv)
+        self.transpose = QtWidgets.QCheckBox('Transpose',self)
+        self.transpose.stateChanged.connect(self._transpose)
+        hbox2.addWidget(self.transpose)
+        self.rotate = QtWidgets.QCheckBox('Rotate 90°',self)
+        self.rotate.stateChanged.connect(self._rotate)
+        hbox2.addWidget(self.rotate)
+    
+        vbox1.addLayout(hbox2)       
+    
         self.assemble_btn = QtWidgets.QPushButton('Assemble EM grid', self)
         self.assemble_btn.clicked.connect(self._load_assemble)
         #self.assemble_btn.toggled.connect(self._assemble_toggled)
         vbox2.addWidget(self.assemble_btn)
-     
+         
         #vbox2.addStretch(1)
         button = QtWidgets.QPushButton('Quit', self)
         button.clicked.connect(self.close)
@@ -124,6 +139,42 @@ class GUI(QtGui.QMainWindow):
             self.close()
         else:
             event.ignore()
+    
+    def _fliph(self,state):
+        vr = self.imview.getImageItem().getViewBox().targetRect()
+        img = self.imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.imview.setImage(np.flipud(img),levels=(img.min(),img.mean()*5))
+        else:
+            self.imview.setImage(np.flipud(img),levels=(img.min(),img.mean()*5))
+        self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+ 
+    def _flipv(self,state):
+        vr = self.imview.getImageItem().getViewBox().targetRect()
+        img = self.imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.imview.setImage(np.fliplr(img),levels=(img.min(),img.mean()*5))
+        else:
+            self.imview.setImage(np.fliplr(img),levels=(img.min(),img.mean()*5))       
+        self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+    
+    def _transpose(self,state):
+        vr = self.imview.getImageItem().getViewBox().targetRect()
+        img = self.imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.imview.setImage(img.T,levels=(img.min(),img.mean()*5))
+        else:
+            self.imview.setImage(img.T,levels=(img.min(),img.mean()*5))
+        self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+    
+    def _rotate(self,state):
+        vr = self.imview.getImageItem().getViewBox().targetRect()
+        img = self.imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.imview.setImage(np.rot90(img,k=1,axes=(0,1)),levels=(img.min(),img.mean()*5))
+        else:
+            self.imview.setImage(np.rot90(img,k=1,axes=(1,0)),levels=(img.min(),img.mean()*5))    
+        self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
     
     def _load_assemble(self):
         print('Assemble .mrc file')
