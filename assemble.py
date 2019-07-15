@@ -81,9 +81,10 @@ def assemble(my_path):
     counts = np.zeros_like(merged)
     for i in range(dimensions[0]):
     #for i in range(5):
-        print('Merge for image {}'.format(i))
+        sys.stderr.write('\rMerge for image {}'.format(i))
         np.add.at(counts,(cx+pos_x[i],cy+pos_y[i]),1)
         np.add.at(merged,(cx+pos_x[i],cy+pos_y[i]),data[i])
+    sys.stderr.write('\n')
 
     merged[counts>0] /= counts[counts>0]
 
