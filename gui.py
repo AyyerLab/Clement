@@ -30,6 +30,25 @@ class GUI(QtGui.QMainWindow):
         layout = QtWidgets.QVBoxLayout()
         widget.setLayout(layout)
 
+        # Menu bar
+        menubar = self.menuBar()
+        menubar.setNativeMenuBar(False)
+
+        # -- File menu
+        filemenu = menubar.addMenu('&File')
+        action = QtWidgets.QAction('Load &FM image(s)', self)
+        action.triggered.connect(self._load_fm_images)
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('Load &EM montage', self)
+        action.triggered.connect(self._load_mrc)
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('&Save binned montage', self)
+        action.triggered.connect(self._save_mrc_montage)
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('&Quit', self)
+        action.triggered.connect(self.close)
+        filemenu.addAction(action)
+
         # Image views
         splitter_images = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         layout.addWidget(splitter_images, stretch=1)
@@ -104,12 +123,8 @@ class GUI(QtGui.QMainWindow):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('EM Montage:', self)
         line.addWidget(label)
-        self.mrc_fname = QtWidgets.QLineEdit(self)
-        self.mrc_fname.returnPressed.connect(self._assemble_mrc)
+        self.mrc_fname = QtWidgets.QLabel(self)
         line.addWidget(self.mrc_fname, stretch=1)
-        button = QtWidgets.QPushButton('Browse', self)
-        button.clicked.connect(self._browse_mrc)
-        line.addWidget(button)
         button = QtWidgets.QPushButton('Assemble', self)
         button.clicked.connect(self._assemble_mrc)
         line.addWidget(button)
@@ -216,7 +231,10 @@ class GUI(QtGui.QMainWindow):
             self.fm_imview.setImage(np.rot90(img,k=1,axes=(1,0)),levels=(img.min(),img.mean()*5))
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-    def _browse_mrc(self):
+    def _load_fm_images(self):
+        pass
+
+    def _load_mrc(self):
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', self.curr_mrc_folder , '*.mrc')
@@ -231,6 +249,9 @@ class GUI(QtGui.QMainWindow):
         img = self.assembler.assemble()
         print('Done')
         self.em_imview.setImage(img, levels=(img.min(), img.mean()*5))
+
+    def _save_mrc_montage(self):
+        pass
 
     def _calc_shift(self):
         print('Align color channels')
