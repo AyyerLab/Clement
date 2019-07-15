@@ -20,6 +20,7 @@ class GUI(QtGui.QMainWindow):
         self.data = [np.array(Image.open(fname)) for fname in flist]
         self.clicked_points = []
         self.grid_box = None
+        self.curr_mrc_folder = None
         self._init_ui()
 
     def _init_ui(self):
@@ -216,10 +217,14 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _browse_mrc(self):
-        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', os.getcwd() , '*.mrc')
-        print(fileName)
-        if fileName is not '':
-            self.mrc_fname.setText(fileName)
+        if self.curr_mrc_folder is None:
+            self.curr_mrc_folder = os.getcwd()
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', self.curr_mrc_folder , '*.mrc')
+        self.curr_mrc_folder = os.path.dirname(file_name)
+
+        if file_name is not '':
+            self.mrc_fname.setText(file_name)
+            self._assemble_mrc()
 
     def _assemble_mrc(self):
         self.assembler = assemble.Assembler(self.mrc_fname.text(), step=10)
