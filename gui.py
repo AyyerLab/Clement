@@ -222,7 +222,8 @@ class GUI(QtGui.QMainWindow):
             self.mrc_fname.setText(fileName)
 
     def _assemble_mrc(self):
-        img = assemble.assemble(self.mrc_fname.text())
+        self.assembler = assemble.Assembler(self.mrc_fname.text(), step=10)
+        img = self.assembler.assemble()
         print('Done')
         self.em_imview.setImage(img, levels=(img.min(), img.mean()*5))
 
