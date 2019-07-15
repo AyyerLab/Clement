@@ -8,6 +8,7 @@ from PIL import Image
 import pyqtgraph as pg
 import assemble
 import align_fm
+import affine_transform
 import os
 
 warnings.simplefilter('ignore', category=FutureWarning)
@@ -54,10 +55,15 @@ class GUI(QtGui.QMainWindow):
         self.fselector.currentIndexChanged.connect(self._file_changed)
         vbox1.addWidget(self.fselector)
         
+        define_line = QtWidgets.QHBoxLayout()
         self.define_btn = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(self._define_toggled)
-        vbox1.addWidget(self.define_btn)
+        self.transform_btn = QtWidgets.QPushButton('Transform image', self)
+        self.transform_btn.clicked.connect(self._affine_transform)
+        define_line.addWidget(self.define_btn)
+        define_line.addWidget(self.transform_btn)
+        vbox1.addLayout(define_line)
         
         self.align_btn = QtWidgets.QPushButton('Align color channels', self)
         self.align_btn.clicked.connect(self._calc_shift)
@@ -122,6 +128,7 @@ class GUI(QtGui.QMainWindow):
             print('Done defining grid: Manually adjust fine positions')
             self.grid_box = pg.PolyLineROI([c.pos() for c in self.clicked_points], closed=True, movable=False)
             self.imview.addItem(self.grid_box)
+            print(self.grid_box)
             [self.imview.removeItem(roi) for roi in self.clicked_points]
             self.clicked_points = []
 
@@ -209,6 +216,21 @@ class GUI(QtGui.QMainWindow):
         self.data = np.concatenate((self.data,data_shifted),axis=0)
     
         self.align_btn.setEnabled(False)
+
+
+    def _affine_transform(self):
+        if self.grid_box is not None:
+            print('Perform affine transformation')
+            print(self.grid_box.getState())
+            points = self.grid_box.getState()['points']
+            my_points = [list((point[0],point[1])) for point in points]
+            transformed_img = affine_transform.calc_transform(my_points)
+
+        else:
+            print('Define grid box first!')
+
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='CLEM GUI')
