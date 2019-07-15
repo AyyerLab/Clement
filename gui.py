@@ -8,7 +8,7 @@ from PIL import Image
 import pyqtgraph as pg
 import assemble
 import align_fm
-#import affine_transform
+import affine_transform
 import os
 
 warnings.simplefilter('ignore', category=FutureWarning)
@@ -125,6 +125,9 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(label)
         self.mrc_fname = QtWidgets.QLabel(self)
         line.addWidget(self.mrc_fname, stretch=1)
+        button = QtWidgets.QPushButton('Browse',self)
+        button.clicked.connect(self._load_mrc)
+        line.addWidget(button)
         button = QtWidgets.QPushButton('Assemble', self)
         button.clicked.connect(self._assemble_mrc)
         line.addWidget(button)
@@ -264,13 +267,14 @@ class GUI(QtGui.QMainWindow):
 
     def _calc_shift(self):
         print('Align color channels')
-        new_list = align_fm.calc_shift(self.flist)
+        new_list = align_fm.calc_shift(self.flist,self.data)
 
         self.fselector.addItems(new_list)
         self.fselector.currentIndexChanged.connect(self._file_changed)
 
         data_shifted = [np.array(Image.open(fname)) for fname in new_list]
-        self.data = np.concatenate((self.data,data_shifted),axis=0)
+        for i in range(len(data_shifted)):
+            self.data.append(data_shifted[i])
 
         self.align_btn.setEnabled(False)
 
@@ -278,10 +282,19 @@ class GUI(QtGui.QMainWindow):
         if self.grid_box is not None:
             print('Perform affine transformation')
             print(self.grid_box.getState())
-            points = self.grid_box.getState()['points']
-            my_points = [list((point[0],point[1])) for point in points]
-            transformed_img = affine_transform.calc_transform(my_points)
+            points_obj = self.grid_box.getState()['points']
+            points = np.array([list((point[0],point[1])) for point in points_obj])
+            dest_points = affine_transform.calc_dest_points(points)
+            transform = affine_transform.calc_affine_transform(points,dest_points)
+            ind = self.fselector.currentIndex()
 
+            for i in range(len(self.data)):
+                self.data[i] = affine_transform.perform_affine_transform(points,transform,self.data[i])
+
+            self.fm_imview.setImage(self.data[ind])
+            self.fm_imview.removeItem(self.grid_box)
+            self.grid_box = None
+            
         else:
             print('Define grid box first!')
 

@@ -9,7 +9,7 @@ import os
 import scipy.ndimage as ndi
 import os
 
-def calc_shift(flist):
+def calc_shift(flist,data):
     
     print('flist: ',flist)
     flist.sort()
@@ -21,7 +21,7 @@ def calc_shift(flist):
     print('flist_order: ',flist_order)
     print('names: ',names)
     print('names_order: ', names_order)
-    data = [np.array(Image.open(i)) for i in flist_order]
+    data = [data[i] for i in my_order]
     #pg.show(data)
     [print(image.shape) for image in data]
     plt.ion()
