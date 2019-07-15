@@ -245,13 +245,22 @@ class GUI(QtGui.QMainWindow):
             self._assemble_mrc()
 
     def _assemble_mrc(self):
-        self.assembler = assemble.Assembler(self.mrc_fname.text(), step=10)
+        self.assembler = assemble.Assembler(step=10)
+        self.assembler.parse(self.mrc_fname.text())
         img = self.assembler.assemble()
         print('Done')
-        self.em_imview.setImage(img, levels=(img.min(), img.mean()*5))
+        self.em_imview.setImage(img, levels=(img.min(), img[img!=0].mean()*5))
 
     def _save_mrc_montage(self):
-        pass
+        if self.assembler is None:
+            print('No montage to save')
+        else:
+            if self.curr_mrc_folder is None:
+                self.curr_mrc_folder = os.getcwd()
+            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder , '*.mrc')
+            self.curr_mrc_folder = os.path.dirname(file_name)
+            if file_name is not '':
+                self.assembler.save_merge(file_name)
 
     def _calc_shift(self):
         print('Align color channels')
