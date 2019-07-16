@@ -19,6 +19,8 @@ class GUI(QtGui.QMainWindow):
         super(GUI, self).__init__()
         #self.flist = flist
         #self.data = [np.array(Image.open(fname)) for fname in flist]
+        self.data = None
+        self.data_backup = None
         self.fm = None
         self.ind = 0
         self.clicked_points = []
@@ -103,11 +105,19 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn = QtWidgets.QPushButton('Transform image', self)
         self.transform_btn.clicked.connect(self._affine_transform)
         line.addWidget(self.transform_btn)
-
+        self.show_btn = QtWidgets.QCheckBox('Show original data',self)
+        self.show_btn.stateChanged.connect(self._show_original)
+        line.addWidget(self.show_btn)
+        
         # ---- Align colors
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        self.peak_btn = QtWidgets.QPushButton('Peak finding',self)
+        self.peak_btn.clicked.connect(self._find_peaks)
         self.align_btn = QtWidgets.QPushButton('Align color channels', self)
         self.align_btn.clicked.connect(self._calc_shift)
-        vbox.addWidget(self.align_btn)
+        line.addWidget(self.peak_btn)
+        line.addWidget(self.align_btn)
 
         # ---- Flips and rotates
         line = QtWidgets.QHBoxLayout()
@@ -191,18 +201,24 @@ class GUI(QtGui.QMainWindow):
             [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
             self.clicked_points = []
 
-    def _file_changed(self, index):
+    def _file_changed(self):
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        self.fm_imview.setImage(self.data[index], levels=(self.data[index].min(), self.data[index].mean()*5))
+        self.fm_imview.setImage(self.data[self.ind], levels=(self.data[self.ind].min(), self.data[self.ind].mean()*5))
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _next_file(self):
-        ind = (self.fselector.currentIndex() + 1) % self.fselector.count()
-        self.fselector.setCurrentIndex(ind)
+        if self.ind < self.data.shape[0]-1:
+            self.ind = self.ind + 1
+        else:
+            pass
+        self._file_changed()
 
     def _prev_file(self):
-        ind = (self.fselector.currentIndex() - 1 + self.fselector.count()) % self.fselector.count()
-        self.fselector.setCurrentIndex(ind)
+        if self.ind > 0:
+            self.ind = self.ind - 1
+        else:
+            pass
+        self._file_changed()
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -232,7 +248,21 @@ class GUI(QtGui.QMainWindow):
         
         self.fm = fm_operations.FM_ops()
         self.fm.parse(self.fm_fname.text())
+        self.data = self.fm.data
+        
         self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+
+    def _show_original(self,state):
+        if self.fm is not None:
+            if self.fm.transformed_data is not None:
+                self.data_backup = self.data
+                if state == QtCore.Qt.Checked:
+                    self.data = self.data_backup
+                else:
+                    self.data = self.fm.transformed_data
+            else:
+                self.data = self.data_backup
+                print('Tranformed data is None')
 
     def _fliph(self,state):
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
@@ -273,6 +303,12 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.setImage(self.fm.data,levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
+    def _find_peaks(self):
+        if self.fm is not None:
+            self.fm.peak_finding()
+        #print(self.fm.diff_list)
+        else:
+            print('You have to select the data first!')
     def _calc_shift(self):
         print('Align color channels')
         new_list = align_fm.calc_shift(self.flist,self.data)
@@ -287,22 +323,16 @@ class GUI(QtGui.QMainWindow):
         self.align_btn.setEnabled(False)
 
     def _affine_transform(self):
+        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         if self.grid_box is not None:
             print('Perform affine transformation')
-            print(self.grid_box.getState())
             points_obj = self.grid_box.getState()['points']
             points = np.array([list((point[0],point[1])) for point in points_obj])
-            dest_points = affine_transform.calc_dest_points(points)
-            transform = affine_transform.calc_affine_transform(points,dest_points)
-            ind = self.fselector.currentIndex()
-
-            for i in range(len(self.data)):
-                self.data[i] = affine_transform.perform_affine_transform(points,transform,self.data[i])
-
-            self.fm_imview.setImage(self.data[ind])
+            self.fm.affine_transform(points)
+            self.fm_imview.setImage(self.fm.transformed_data,levels=(self.fm.transformed_data[self.ind].min(),self.fm.transformed_data[self.ind].mean()*5))
+            self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
             self.fm_imview.removeItem(self.grid_box)
             self.grid_box = None
-            
         else:
             print('Define grid box first!')
 
