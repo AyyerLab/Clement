@@ -10,14 +10,17 @@ import assemble
 import align_fm
 import affine_transform
 import os
+import fm_operations
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
 class GUI(QtGui.QMainWindow):
-    def __init__(self, flist):
+    def __init__(self):#, flist):
         super(GUI, self).__init__()
-        self.flist = flist
-        self.data = [np.array(Image.open(fname)) for fname in flist]
+        #self.flist = flist
+        #self.data = [np.array(Image.open(fname)) for fname in flist]
+        self.fm = None
+        self.ind = 0
         self.clicked_points = []
         self.grid_box = None
         self.curr_mrc_folder = None
@@ -58,7 +61,7 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview = pg.ImageView()
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
-        self.fm_imview.setImage(self.data[0])
+        #self.fm_imview.setImage(self.data[0])
         self.fm_imview.scene.sigMouseClicked.connect(self._imview_clicked)
         splitter_images.addWidget(self.fm_imview)
 
@@ -116,10 +119,10 @@ class GUI(QtGui.QMainWindow):
         self.flipv.stateChanged.connect(self._flipv)
         line.addWidget(self.flipv)
         self.transpose = QtWidgets.QCheckBox('Transpose',self)
-        self.transpose.stateChanged.connect(self._transpose)
+        self.transpose.stateChanged.connect(self._trans)
         line.addWidget(self.transpose)
         self.rotate = QtWidgets.QCheckBox('Rotate 90°',self)
-        self.rotate.stateChanged.connect(self._rotate)
+        self.rotate.stateChanged.connect(self._rot)
         line.addWidget(self.rotate)
         vbox.addStretch(1)
 
@@ -140,6 +143,7 @@ class GUI(QtGui.QMainWindow):
         step_label = QtWidgets.QLabel(self)
         step_label.setText('Downsampling factor:')
         self.step_box = QtWidgets.QLineEdit(self)
+        self.step_box.setText('100')
         line.addWidget(step_label)
         line.addWidget(self.step_box)
         line.addStretch(1)
@@ -213,79 +217,61 @@ class GUI(QtGui.QMainWindow):
         else:
             event.ignore()
 
-    def _fliph(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        img = self.fm_imview.getImageItem().image
-        if state == QtCore.Qt.Checked:
-            self.fm_imview.setImage(np.flipud(img),levels=(img.min(),img.mean()*5))
-        else:
-            self.fm_imview.setImage(np.flipud(img),levels=(img.min(),img.mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _flipv(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        img = self.fm_imview.getImageItem().image
-        if state == QtCore.Qt.Checked:
-            self.fm_imview.setImage(np.fliplr(img),levels=(img.min(),img.mean()*5))
-        else:
-            self.fm_imview.setImage(np.fliplr(img),levels=(img.min(),img.mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _transpose(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        img = self.fm_imview.getImageItem().image
-        if state == QtCore.Qt.Checked:
-            self.fm_imview.setImage(img.T,levels=(img.min(),img.mean()*5))
-        else:
-            self.fm_imview.setImage(img.T,levels=(img.min(),img.mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _rotate(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        img = self.fm_imview.getImageItem().image
-        if state == QtCore.Qt.Checked:
-            self.fm_imview.setImage(np.rot90(img,k=1,axes=(0,1)),levels=(img.min(),img.mean()*5))
-        else:
-            self.fm_imview.setImage(np.rot90(img,k=1,axes=(1,0)),levels=(img.min(),img.mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
+    # ---- FM functions
+    
     def _load_fm_images(self):
         if self.curr_fm_folder is None:
-            self.curr_fm_folder = os.getcwd()
+            #self.curr_fm_folder = os.getcwd()
+            self.curr_fm_folder = '/beegfs/cssb/user/kaufmanr/cryoCLEM-software/clem_dataset/'
+
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select FM file', self.curr_fm_folder , '*.lif')
         self.curr_fm_folder = os.path.dirname(file_name)
 
         if file_name is not '':
             self.fm_fname.setText(file_name)
+        
+        self.fm = fm_operations.FM_ops()
+        self.fm.parse(self.fm_fname.text())
+        self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
 
-    def _load_mrc(self):
-        if self.curr_mrc_folder is None:
-            self.curr_mrc_folder = os.getcwd()
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', self.curr_mrc_folder , '*.mrc')
-        self.curr_mrc_folder = os.path.dirname(file_name)
-
-        if file_name is not '':
-            self.mrc_fname.setText(file_name)
-            #self._assemble_mrc()
-
-    def _assemble_mrc(self):
-        step = self.step_box.text()
-        self.assembler = assemble.Assembler(step=int(step))
-        self.assembler.parse(self.mrc_fname.text())
-        img = self.assembler.assemble()
-        print('Done')
-        self.em_imview.setImage(img, levels=(img.min(), img[img!=0].mean()*5))
-
-    def _save_mrc_montage(self):
-        if self.assembler is None:
-            print('No montage to save')
+    def _fliph(self,state):
+        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+        if state == QtCore.Qt.Checked:
+            self.fm.flip_horizontal()
         else:
-            if self.curr_mrc_folder is None:
-                self.curr_mrc_folder = os.getcwd()
-            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder , '*.mrc')
-            self.curr_mrc_folder = os.path.dirname(file_name)
-            if file_name is not '':
-                self.assembler.save_merge(file_name)
+            self.fm.flip_horizontal()
+        self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    def _flipv(self,state):
+        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+        #img = self.fm_imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.fm.flip_vertical()
+        else:
+            self.fm.flip_vertical()
+        self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    def _trans(self,state):
+        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+        #img = self.fm_imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.fm.transpose()
+        else:
+            self.fm.transpose()
+        self.fm_imview.setImage(self.fm.data,levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    def _rot(self,state):
+        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+        #img = self.fm_imview.getImageItem().image
+        if state == QtCore.Qt.Checked:
+            self.fm.rotate_clockwise()
+        else:
+            self.fm.rotate_counterclock()
+        self.fm_imview.setImage(self.fm.data,levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _calc_shift(self):
         print('Align color channels')
@@ -320,13 +306,53 @@ class GUI(QtGui.QMainWindow):
         else:
             print('Define grid box first!')
 
+   
+   # ---- EM functions
+   
+    def _load_mrc(self):
+        if self.curr_mrc_folder is None:
+            self.curr_mrc_folder = os.getcwd()
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', self.curr_mrc_folder , '*.mrc')
+        self.curr_mrc_folder = os.path.dirname(file_name)
+
+        if file_name is not '':
+            self.mrc_fname.setText(file_name)
+            #self._assemble_mrc()
+
+    def _assemble_mrc(self):
+        if self.step_box.text() is '':
+            step = 100
+        else:
+            step = self.step_box.text()
+        
+        if self.mrc_fname.text() is not '':
+            self.assembler = assemble.Assembler(step=int(step))
+            self.assembler.parse(self.mrc_fname.text())
+            img = self.assembler.assemble()
+            print('Done')
+            self.em_imview.setImage(img, levels=(img.min(), img[img!=0].mean()*5))
+        else:
+            print('You have to choose .mrc file first!')
+        
+    def _save_mrc_montage(self):
+        if self.assembler is None:
+            print('No montage to save')
+        else:
+            if self.curr_mrc_folder is None:
+                self.curr_mrc_folder = os.getcwd()
+            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder , '*.mrc')
+            self.curr_mrc_folder = os.path.dirname(file_name)
+            if file_name is not '':
+                self.assembler.save_merge(file_name)
+
+
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='CLEM GUI')
-    parser.add_argument('files', help='List of files to process', nargs='+')
-    args = parser.parse_args()
-    print(args.files)
+    #import argparse
+    #parser = argparse.ArgumentParser(description='CLEM GUI')
+    #parser.add_argument('files', help='List of files to process', nargs='+')
+    #args = parser.parse_args()
+    #print(args.files)
 
     app = QtWidgets.QApplication([])
-    gui = GUI(args.files)
+    gui = GUI() #GUI(args.files)
     sys.exit(app.exec_())

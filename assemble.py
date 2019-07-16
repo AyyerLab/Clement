@@ -8,7 +8,6 @@ import pyqtgraph as pg
 import matplotlib
 from matplotlib import pyplot as plt
 from PIL import Image
-import pyqtgraph as pg
 matplotlib.use('QT5Agg')
 
 class Assembler():
