@@ -12,8 +12,8 @@ import pyqtgraph as pg
 matplotlib.use('QT5Agg')
 
 class Assembler():
-    def __init__(self, step=12):
-        self.step = step
+    def __init__(self, step=100):
+        self.step = int(np.sqrt(step))
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:

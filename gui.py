@@ -21,6 +21,7 @@ class GUI(QtGui.QMainWindow):
         self.clicked_points = []
         self.grid_box = None
         self.curr_mrc_folder = None
+        self.curr_fm_folder = None
         self._init_ui()
 
     def _init_ui(self):
@@ -76,10 +77,18 @@ class GUI(QtGui.QMainWindow):
         options.addLayout(vbox)
 
         # ---- Select file
-        self.fselector = QtWidgets.QComboBox()
-        self.fselector.addItems(self.flist)
-        self.fselector.currentIndexChanged.connect(self._file_changed)
-        vbox.addWidget(self.fselector)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('FM image:', self)
+        line.addWidget(label)
+        self.fm_fname = QtWidgets.QLabel(self)
+        line.addWidget(self.fm_fname, stretch=1)
+        
+        #self.fselector = QtWidgets.QComboBox()
+        #self.fselector.addItems(self.flist)
+        #self.fselector.currentIndexChanged.connect(self._file_changed)
+        #vbox.addWidget(self.fselector)
 
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
@@ -125,9 +134,15 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(label)
         self.mrc_fname = QtWidgets.QLabel(self)
         line.addWidget(self.mrc_fname, stretch=1)
-        button = QtWidgets.QPushButton('Browse',self)
-        button.clicked.connect(self._load_mrc)
-        line.addWidget(button)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        step_label = QtWidgets.QLabel(self)
+        step_label.setText('Downsampling factor:')
+        self.step_box = QtWidgets.QLineEdit(self)
+        line.addWidget(step_label)
+        line.addWidget(self.step_box)
+        line.addStretch(1)
         button = QtWidgets.QPushButton('Assemble', self)
         button.clicked.connect(self._assemble_mrc)
         line.addWidget(button)
@@ -235,7 +250,13 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
-        pass
+        if self.curr_fm_folder is None:
+            self.curr_fm_folder = os.getcwd()
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select FM file', self.curr_fm_folder , '*.lif')
+        self.curr_fm_folder = os.path.dirname(file_name)
+
+        if file_name is not '':
+            self.fm_fname.setText(file_name)
 
     def _load_mrc(self):
         if self.curr_mrc_folder is None:
@@ -245,10 +266,11 @@ class GUI(QtGui.QMainWindow):
 
         if file_name is not '':
             self.mrc_fname.setText(file_name)
-            self._assemble_mrc()
+            #self._assemble_mrc()
 
     def _assemble_mrc(self):
-        self.assembler = assemble.Assembler(step=10)
+        step = self.step_box.text()
+        self.assembler = assemble.Assembler(step=int(step))
         self.assembler.parse(self.mrc_fname.text())
         img = self.assembler.assemble()
         print('Done')
