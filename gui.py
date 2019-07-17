@@ -17,9 +17,12 @@ class GUI(QtGui.QMainWindow):
     def __init__(self):
         super(GUI, self).__init__()
         self.fm = None
+        self.assembler = None
         self.ind = 0
         self.clicked_points = []
+        self.clicked_points_em = []
         self.grid_box = None
+        self.grid_box_em = None
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
         self._init_ui()
@@ -65,6 +68,7 @@ class GUI(QtGui.QMainWindow):
         self.em_imview = pg.ImageView()
         self.em_imview.ui.roiBtn.hide()
         self.em_imview.ui.menuBtn.hide()
+        self.em_imview.scene.sigMouseClicked.connect(self._imview_clicked_em)
         splitter_images.addWidget(self.em_imview)
 
         # Options
@@ -123,7 +127,7 @@ class GUI(QtGui.QMainWindow):
         self.transpose = QtWidgets.QCheckBox('Transpose',self)
         self.transpose.stateChanged.connect(self._trans)
         line.addWidget(self.transpose)
-        self.rotate = QtWidgets.QCheckBox('Rotate 90°',self)
+        self.rotate = QtWidgets.QCheckBox('Rotate 90 deg',self)
         self.rotate.stateChanged.connect(self._rot)
         line.addWidget(self.rotate)
         vbox.addStretch(1)
@@ -153,7 +157,22 @@ class GUI(QtGui.QMainWindow):
         button = QtWidgets.QPushButton('Assemble', self)
         button.clicked.connect(self._assemble_mrc)
         line.addWidget(button)
-
+        
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        self.define_btn_em = QtWidgets.QPushButton('Define EM Grid', self)
+        self.define_btn_em.setCheckable(True)
+        self.define_btn_em.toggled.connect(self._define_toggled_em)
+        line.addWidget(self.define_btn_em)
+        self.transform_btn_em = QtWidgets.QPushButton('Transform EM image', self)
+        self.transform_btn_em.clicked.connect(self._affine_transform_em)
+        line.addWidget(self.transform_btn_em)
+        self.show_btn_em = QtWidgets.QCheckBox('Show original EM data',self)
+        self.show_btn_em.stateChanged.connect(self._show_original_em)
+        self.show_btn_em.setEnabled(False)
+        self.show_btn_em.setChecked(True)
+        line.addWidget(self.show_btn_em)
+        
         # ---- Quit button
         vbox.addStretch(1)
 
@@ -177,6 +196,20 @@ class GUI(QtGui.QMainWindow):
             roi.removeHandle(0)
             self.fm_imview.addItem(roi)
             self.clicked_points.append(roi)
+        else:
+            pass
+
+    def _imview_clicked_em(self, event):
+        if event.button() == QtCore.Qt.RightButton:
+            event.ignore()
+        if self.define_btn_em.isChecked():
+            roi = pg.CircleROI(self.em_imview.getImageItem().mapFromScene(event.pos()),
+                               5,
+                               parent=self.em_imview.getImageItem(),
+                               movable=False)
+            roi.removeHandle(0)
+            self.em_imview.addItem(roi)
+            self.clicked_points_em.append(roi)
         else:
             pass
 
@@ -331,6 +364,32 @@ class GUI(QtGui.QMainWindow):
             self.mrc_fname.setText(file_name)
             #self._assemble_mrc()
 
+    def _update_em_imview(self):
+        vr = self.em_imview.getImageItem().getViewBox().targetRect()
+        levels = self.em_imview.getHistogramWidget().item.getLevels()
+
+        self.em_imview.setImage(self.assembler.data, levels=levels)
+        self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+ 
+    def _define_toggled_em(self, checked):
+        if checked:
+            print('Defining grid: Click on corners')
+            if self.grid_box_em is not None:
+                self.em_imview.removeItem(self.grid_box_em)
+                self.grid_box_em = None
+        else:
+            print('Done defining grid: Manually adjust fine positions')
+            self.grid_box_em = pg.PolyLineROI([c.pos() for c in self.clicked_points_em], closed=True, movable=False)
+            self.em_imview.addItem(self.grid_box_em)
+            print(self.grid_box_em)
+            [self.em_imview.removeItem(roi) for roi in self.clicked_points_em]
+            self.clicked_points_em = []
+
+    def _show_original_em(self, state):
+        if self.assembler is not None:
+            self.assembler.toggle_original(state==0)
+            self._update_em_imview()
+  
     def _assemble_mrc(self):
         if self.step_box.text() is '':
             step = 100
@@ -340,9 +399,9 @@ class GUI(QtGui.QMainWindow):
         if self.mrc_fname.text() is not '':
             self.assembler = assemble.Assembler(step=int(step))
             self.assembler.parse(self.mrc_fname.text())
-            img = self.assembler.assemble()
+            self.assembler.assemble()
             print('Done')
-            self.em_imview.setImage(img, levels=(img.min(), img[img!=0].mean()*5))
+            self.em_imview.setImage(self.assembler.data)
         else:
             print('You have to choose .mrc file first!')
         
@@ -356,6 +415,23 @@ class GUI(QtGui.QMainWindow):
             self.curr_mrc_folder = os.path.dirname(file_name)
             if file_name is not '':
                 self.assembler.save_merge(file_name)
+
+    def _affine_transform_em(self):
+        if self.grid_box_em is not None:
+            print('Perform affine transformation')
+            points_obj = self.grid_box_em.getState()['points']
+            points = np.array([list((point[0],point[1])) for point in points_obj])
+
+            self.assembler.affine_transform(points)
+            self.assembler.toggle_original()
+            self._update_em_imview()
+
+            self.em_imview.removeItem(self.grid_box_em)
+            self.grid_box_em = None
+            self.show_btn_em.setEnabled(True)
+            self.show_btn_em.setChecked(False)
+        else:
+            print('Define grid box first!')
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
