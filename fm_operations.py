@@ -13,7 +13,6 @@ import scipy.ndimage as ndi
 from skimage import transform as tf
 matplotlib.use('QT5Agg')
 
-
 class FM_ops():
     def __init__(self):
         self.data = None
@@ -32,7 +31,9 @@ class FM_ops():
     
     def parse(self, fname):
         javabridge.start_vm(class_path=bioformats.JARS)
-        self.data = np.transpose(bioformats.load_image(fname),(2,1,0))
+        self.data = bioformats.load_image(fname)
+        self.data /= self.data.mean((0,1))
+        self.data = np.transpose(self.data)
         javabridge.kill_vm()
 
     def flip_horizontal(self):
@@ -131,7 +132,6 @@ class FM_ops():
         return name_list
         #return data[1],ndi.shift(data[2],shift1), ndi.shift(data[2],shift2), coordinates
       
-    
     def affine_transform(self,my_points):
         print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
@@ -158,15 +158,8 @@ class FM_ops():
         
         self.transformed_data = [] 
         for i in range(self.data.shape[0]):
-            print(i)
+            sys.stderr.write('\r%d'%i)
             self.transformed_data.append(ndi.affine_transform(self.data[i], np.linalg.inv(matrix), order=1, output_shape=output_shape))
         self.transformed_data = np.array(self.transformed_data)
-        print(self.transformed_data.shape)
+        print('\r', self.transformed_data.shape)
         self.transform_shift = -tr_corners.min(1)[:2]
-        
-
-
-
-
-
-
