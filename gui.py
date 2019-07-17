@@ -16,8 +16,6 @@ warnings.simplefilter('ignore', category=FutureWarning)
 class GUI(QtGui.QMainWindow):
     def __init__(self):
         super(GUI, self).__init__()
-        self.data = None
-        self.data_backup = None
         self.fm = None
         self.ind = 0
         self.clicked_points = []
@@ -60,7 +58,6 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview = pg.ImageView()
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
-        #self.fm_imview.setImage(self.data[0])
         self.fm_imview.scene.sigMouseClicked.connect(self._imview_clicked)
         splitter_images.addWidget(self.fm_imview)
 
@@ -100,6 +97,8 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(self.transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data',self)
         self.show_btn.stateChanged.connect(self._show_original)
+        self.show_btn.setEnabled(False)
+        self.show_btn.setChecked(True)
         line.addWidget(self.show_btn)
         
         # ---- Align colors
@@ -209,17 +208,15 @@ class GUI(QtGui.QMainWindow):
         
         self.fm = fm_operations.FM_ops()
         self.fm.parse(self.fm_fname.text())
-        self.data = self.fm.data
         
-        self.fm_imview.setImage(self.data[self.ind],
-                                levels=(self.data[self.ind].min(), self.data[self.ind].mean()*5))
+        self.fm_imview.setImage(self.fm.data[self.ind],
+                                levels=(self.fm.data[self.ind].min(), self.fm.data[self.ind].mean()*5))
 
     def _update_fm_imview(self):
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         levels = self.fm_imview.getHistogramWidget().item.getLevels()
 
-        #self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
-        self.fm_imview.setImage(self.data[self.ind], levels=levels)
+        self.fm_imview.setImage(self.fm.data[self.ind], levels=levels)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _define_toggled(self, checked):
@@ -236,17 +233,9 @@ class GUI(QtGui.QMainWindow):
             [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
             self.clicked_points = []
 
-    def _show_original(self,state):
+    def _show_original(self, state):
         if self.fm is not None:
-            if self.fm.transformed_data is not None:
-                self.data_backup = self.data
-                if state == QtCore.Qt.Checked:
-                    self.data = self.data_backup
-                else:
-                    self.data = self.fm.transformed_data
-            else:
-                self.data = self.data_backup
-                print('Tranformed data is None')
+            self.fm.toggle_original(state==0)
             self._update_fm_imview()
 
     def _fliph(self,state):
@@ -278,7 +267,7 @@ class GUI(QtGui.QMainWindow):
         self._update_fm_imview()
 
     def _next_file(self):
-        if self.ind < self.data.shape[0]-1:
+        if self.ind < self.fm.data.shape[0]-1:
             self.ind = self.ind + 1
         else:
             pass
@@ -300,28 +289,33 @@ class GUI(QtGui.QMainWindow):
 
     def _calc_shift(self):
         print('Align color channels')
-        new_list = align_fm.calc_shift(self.flist, self.data)
+        return
+        # TODO fix this
+        new_list = align_fm.calc_shift(self.flist, self.fm.data)
 
         self.fselector.addItems(new_list)
         self.fselector.currentIndexChanged.connect(self._file_changed)
 
         data_shifted = [np.array(Image.open(fname)) for fname in new_list]
         for i in range(len(data_shifted)):
-            self.data.append(data_shifted[i])
+            self.fm.data.append(data_shifted[i])
 
         self.align_btn.setEnabled(False)
 
     def _affine_transform(self):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         if self.grid_box is not None:
             print('Perform affine transformation')
             points_obj = self.grid_box.getState()['points']
             points = np.array([list((point[0],point[1])) for point in points_obj])
+
             self.fm.affine_transform(points)
-            self.fm_imview.setImage(self.fm.transformed_data,levels=(self.fm.transformed_data[self.ind].min(),self.fm.transformed_data[self.ind].mean()*5))
-            self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+            self.fm.toggle_original()
+            self._update_fm_imview()
+
             self.fm_imview.removeItem(self.grid_box)
             self.grid_box = None
+            self.show_btn.setEnabled(True)
+            self.show_btn.setChecked(False)
         else:
             print('Define grid box first!')
 
