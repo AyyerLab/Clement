@@ -21,6 +21,8 @@ class GUI(QtGui.QMainWindow):
         self.ind = 0
         self.clicked_points = []
         self.clicked_points_em = []
+        self.points_corr = []
+        self.points_corr_em = []
         self.grid_box = None
         self.grid_box_em = None
         self.curr_mrc_folder = None
@@ -132,6 +134,13 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(self.rotate)
         vbox.addStretch(1)
 
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        self.select_points = QtWidgets.QPushButton('Select points of interest',self)
+        self.select_points.setCheckable(True)
+        self.select_points.toggled.connect(self._define_toggeled_corr)
+        line.addWidget(self.select_points)
+        
         # -- EM options
         vbox = QtWidgets.QVBoxLayout()
         options.addLayout(vbox)
@@ -173,6 +182,14 @@ class GUI(QtGui.QMainWindow):
         self.show_btn_em.setChecked(True)
         line.addWidget(self.show_btn_em)
         
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        self.select_points_em = QtWidgets.QPushButton('Select points of interest',self)
+        self.select_points_em.setCheckable(True)
+        self.select_points_em.toggled.connect(self._define_toggeled_corr_em)
+        line.addWidget(self.select_points_em)
+
         # ---- Quit button
         vbox.addStretch(1)
 
@@ -196,8 +213,16 @@ class GUI(QtGui.QMainWindow):
             roi.removeHandle(0)
             self.fm_imview.addItem(roi)
             self.clicked_points.append(roi)
+        elif self.select_points.isChecked():
+            point = pg.CircleROI(self.fm_imview.getImageItem().mapFromScene(event.pos()),
+                               100,
+                               parent=self.fm_imview.getImageItem(),
+                               movable=True)
+            point.removeHandle(0)
+            self.fm_imview.addItem(point)
+            self.points_corr.append(point)
         else:
-            pass
+            pass             
 
     def _imview_clicked_em(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -210,6 +235,14 @@ class GUI(QtGui.QMainWindow):
             roi.removeHandle(0)
             self.em_imview.addItem(roi)
             self.clicked_points_em.append(roi)
+        elif self.select_points_em.isChecked():
+            point = pg.CircleROI(self.em_imview.getImageItem().mapFromScene(event.pos()),
+                               100,
+                               parent=self.em_imview.getImageItem(),
+                               movable=True)
+            point.removeHandle(0)
+            self.em_imview.addItem(point)
+            self.points_corr_em.append(point)
         else:
             pass
 
@@ -266,6 +299,23 @@ class GUI(QtGui.QMainWindow):
             [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
             self.clicked_points = []
 
+    def _define_toggeled_corr(self, checked):
+        if checked:
+            print('Select points of interest')
+            if len(self.points_corr) != 0:
+                [self.fm_imview.removeItem(point) for point in self.points_corr]
+                [self.em_imview.removeItem(point) for point in self.points_corr]
+                self.points_corr = []            
+            if len(self.points_corr_em) != 0:
+                [self.em_imview.removeItem(point) for point in self.points_corr_em]
+                [self.em_imview.removeItem(point) for point in self.points_corr_em]
+                self.points_corr_em = []
+        else:
+            print('Done selecting points of interest')          
+            if self.assembler is not None:
+                [self.em_imview.addItem(point) for point in self.points_corr] 
+                [self.fm_imview.addItem(point) for point in self.points_corr]
+ 
     def _show_original(self, state):
         if self.fm is not None:
             self.fm.toggle_original(state==0)
@@ -384,6 +434,22 @@ class GUI(QtGui.QMainWindow):
             print(self.grid_box_em)
             [self.em_imview.removeItem(roi) for roi in self.clicked_points_em]
             self.clicked_points_em = []
+
+    def _define_toggeled_corr_em(self, checked):
+        if checked:
+            print('Select points of interest')
+            if len(self.points_corr_em) != 0:
+                [self.em_imview.removeItem(point) for point in self.points_corr_em]
+                [self.fm_imview.removeItem(point) for point in self.points_corr_em]
+                self.points_corr_em = []
+            if len(self.points_corr) != 0:
+                [self.fm_imview.removeItem(point) for point in self.points_corr]
+                [self.em_imview.removeItem(point) for point in self.points_corr]
+                self.points_corr = []              
+        else:
+            print('Done selecting points of interest')          
+            if self.assembler is not None:
+                [self.fm_imview.addItem(i) for i in self.points_corr_em] 
 
     def _show_original_em(self, state):
         if self.assembler is not None:
