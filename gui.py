@@ -4,7 +4,6 @@ import sys
 import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
-from PIL import Image
 import pyqtgraph as pg
 import assemble
 import align_fm
@@ -15,10 +14,8 @@ import fm_operations
 warnings.simplefilter('ignore', category=FutureWarning)
 
 class GUI(QtGui.QMainWindow):
-    def __init__(self):#, flist):
+    def __init__(self):
         super(GUI, self).__init__()
-        #self.flist = flist
-        #self.data = [np.array(Image.open(fname)) for fname in flist]
         self.data = None
         self.data_backup = None
         self.fm = None
@@ -85,16 +82,12 @@ class GUI(QtGui.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('FM image:', self)
-        line.addWidget(label)
+        button = QtWidgets.QPushButton('FM image:', self)
+        button.clicked.connect(self._load_fm_images)
+        line.addWidget(button)
         self.fm_fname = QtWidgets.QLabel(self)
         line.addWidget(self.fm_fname, stretch=1)
         
-        #self.fselector = QtWidgets.QComboBox()
-        #self.fselector.addItems(self.flist)
-        #self.fselector.currentIndexChanged.connect(self._file_changed)
-        #vbox.addWidget(self.fselector)
-
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -143,8 +136,9 @@ class GUI(QtGui.QMainWindow):
         # ---- Assemble montage
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('EM Montage:', self)
-        line.addWidget(label)
+        button = QtWidgets.QPushButton('EM Montage:', self)
+        button.clicked.connect(self._load_mrc)
+        line.addWidget(button)
         self.mrc_fname = QtWidgets.QLabel(self)
         line.addWidget(self.mrc_fname, stretch=1)
 
@@ -187,39 +181,6 @@ class GUI(QtGui.QMainWindow):
         else:
             pass
 
-    def _define_toggled(self, checked):
-        if checked:
-            print('Defining grid: Click on corners')
-            if self.grid_box is not None:
-                self.fm_imview.removeItem(self.grid_box)
-                self.grid_box = None
-        else:
-            print('Done defining grid: Manually adjust fine positions')
-            self.grid_box = pg.PolyLineROI([c.pos() for c in self.clicked_points], closed=True, movable=False)
-            self.fm_imview.addItem(self.grid_box)
-            print(self.grid_box)
-            [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
-            self.clicked_points = []
-
-    def _file_changed(self):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        self.fm_imview.setImage(self.data[self.ind], levels=(self.data[self.ind].min(), self.data[self.ind].mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _next_file(self):
-        if self.ind < self.data.shape[0]-1:
-            self.ind = self.ind + 1
-        else:
-            pass
-        self._file_changed()
-
-    def _prev_file(self):
-        if self.ind > 0:
-            self.ind = self.ind - 1
-        else:
-            pass
-        self._file_changed()
-
     def keyPressEvent(self, event):
         key = event.key()
         mod = int(event.modifiers())
@@ -250,7 +211,30 @@ class GUI(QtGui.QMainWindow):
         self.fm.parse(self.fm_fname.text())
         self.data = self.fm.data
         
-        self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+        self.fm_imview.setImage(self.data[self.ind],
+                                levels=(self.data[self.ind].min(), self.data[self.ind].mean()*5))
+
+    def _update_fm_imview(self):
+        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+        levels = self.fm_imview.getHistogramWidget().item.getLevels()
+
+        #self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
+        self.fm_imview.setImage(self.data[self.ind], levels=levels)
+        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    def _define_toggled(self, checked):
+        if checked:
+            print('Defining grid: Click on corners')
+            if self.grid_box is not None:
+                self.fm_imview.removeItem(self.grid_box)
+                self.grid_box = None
+        else:
+            print('Done defining grid: Manually adjust fine positions')
+            self.grid_box = pg.PolyLineROI([c.pos() for c in self.clicked_points], closed=True, movable=False)
+            self.fm_imview.addItem(self.grid_box)
+            print(self.grid_box)
+            [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
+            self.clicked_points = []
 
     def _show_original(self,state):
         if self.fm is not None:
@@ -263,45 +247,49 @@ class GUI(QtGui.QMainWindow):
             else:
                 self.data = self.data_backup
                 print('Tranformed data is None')
+            self._update_fm_imview()
 
     def _fliph(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         if state == QtCore.Qt.Checked:
             self.fm.flip_horizontal()
         else:
             self.fm.flip_horizontal()
-        self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        self._update_fm_imview()
 
     def _flipv(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        #img = self.fm_imview.getImageItem().image
         if state == QtCore.Qt.Checked:
             self.fm.flip_vertical()
         else:
             self.fm.flip_vertical()
-        self.fm_imview.setImage(self.fm.data[self.ind],levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        self._update_fm_imview()
 
     def _trans(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        #img = self.fm_imview.getImageItem().image
         if state == QtCore.Qt.Checked:
             self.fm.transpose()
         else:
             self.fm.transpose()
-        self.fm_imview.setImage(self.fm.data,levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        self._update_fm_imview()
 
     def _rot(self,state):
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        #img = self.fm_imview.getImageItem().image
         if state == QtCore.Qt.Checked:
             self.fm.rotate_clockwise()
         else:
             self.fm.rotate_counterclock()
-        self.fm_imview.setImage(self.fm.data,levels=(self.fm.data[self.ind].min(),self.fm.data[self.ind].mean()*5))
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        self._update_fm_imview()
+
+    def _next_file(self):
+        if self.ind < self.data.shape[0]-1:
+            self.ind = self.ind + 1
+        else:
+            pass
+        self._update_fm_imview()
+
+    def _prev_file(self):
+        if self.ind > 0:
+            self.ind = self.ind - 1
+        else:
+            pass
+        self._update_fm_imview()
 
     def _find_peaks(self):
         if self.fm is not None:
@@ -309,9 +297,10 @@ class GUI(QtGui.QMainWindow):
         #print(self.fm.diff_list)
         else:
             print('You have to select the data first!')
+
     def _calc_shift(self):
         print('Align color channels')
-        new_list = align_fm.calc_shift(self.flist,self.data)
+        new_list = align_fm.calc_shift(self.flist, self.data)
 
         self.fselector.addItems(new_list)
         self.fselector.currentIndexChanged.connect(self._file_changed)
@@ -336,9 +325,8 @@ class GUI(QtGui.QMainWindow):
         else:
             print('Define grid box first!')
 
-   
-   # ---- EM functions
-   
+    # ---- EM functions
+
     def _load_mrc(self):
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
@@ -375,14 +363,7 @@ class GUI(QtGui.QMainWindow):
             if file_name is not '':
                 self.assembler.save_merge(file_name)
 
-
 if __name__ == '__main__':
-    #import argparse
-    #parser = argparse.ArgumentParser(description='CLEM GUI')
-    #parser.add_argument('files', help='List of files to process', nargs='+')
-    #args = parser.parse_args()
-    #print(args.files)
-
     app = QtWidgets.QApplication([])
-    gui = GUI() #GUI(args.files)
+    gui = GUI()
     sys.exit(app.exec_())
