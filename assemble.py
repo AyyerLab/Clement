@@ -7,7 +7,6 @@ import mrcfile as mrc
 import pyqtgraph as pg
 import matplotlib
 from matplotlib import pyplot as plt
-from PIL import Image
 matplotlib.use('QT5Agg')
 
 class Assembler():
@@ -36,10 +35,10 @@ class Assembler():
             self.merged = np.zeros((np.max(pos_x)+dimensions[2],np.max(pos_y)+dimensions[1]), dtype='f4')
             self.mcounts = np.zeros_like(self.merged)
             for i in range(dimensions[0]):
-            #for i in range(5):
-                print('Merge for image {}'.format(i))
+                sys.stderr.write('\rMerge for image {}'.format(i))
                 np.add.at(self.mcounts, (cx+pos_x[i], cy+pos_y[i]), 1)
                 np.add.at(self.merged, (cx+pos_x[i], cy+pos_y[i]), self.data[i])
+            sys.stderr.write('\n')
 
             self.merged[self.mcounts>0] /= self.mcounts[self.mcounts>0]
 
@@ -47,7 +46,6 @@ class Assembler():
 
         else:
             return self.data
-           
 
     def save_merge(self, fname):
         with mrc.new(fname, overwrite=True) as f:
