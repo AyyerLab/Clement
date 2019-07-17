@@ -29,6 +29,7 @@ class GUI(QtGui.QMainWindow):
         self.curr_fm_folder = None
         self._init_ui()
 
+
     def _init_ui(self):
         self.resize(1000,800)
         widget = QtWidgets.QWidget()
