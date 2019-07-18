@@ -360,7 +360,7 @@ class GUI(QtGui.QMainWindow):
             if len(self.points_corr[index]) != 0:
                 [parent.removeItem(point) for point in self.points_corr[index]]
                 self.points_corr[index] = []
-            self.tr_matrices[index] = obj.get_transform(obj.new_points, other_obj.new_points)
+            self.tr_matrices[index] = obj.get_transform(obj.points, other_obj.points)
         else:
             print('Done selecting points of interest on %s image'%tag)
 
@@ -444,22 +444,24 @@ class GUI(QtGui.QMainWindow):
         if parent == self.fm_imview:
             index = 0
             obj = self.fm
-            show_btn = self.show_btn
-            show_grid_btn = self.show_grid_btn
+            orig_btn = self.show_btn
+            grid_btn = self.show_grid_btn
         else:
             index = 1
             obj = self.assembler
-            show_btn = self.show_btn_em
-            show_grid_btn = self.show_grid_btn_em
+            orig_btn = self.show_btn_em
+            grid_btn = self.show_grid_btn_em
 
-        if show_btn.isChecked():
-            if show_grid_btn.isChecked():
+        if orig_btn.isChecked():
+            if grid_btn.isChecked():
+                self._recalc_grid(orig_btn.isChecked())
                 parent.addItem(self.grid_box[index])
             else:
                 parent.removeItem(self.grid_box[index])
         else:
             if obj is not None:
-                if show_grid_btn.isChecked():
+                if grid_btn.isChecked():
+                    self._recalc_grid(orig_btn.isChecked())
                     parent.addItem(self.tr_grid_box[index])
                 else:
                     parent.removeItem(self.tr_grid_box[index])
@@ -528,6 +530,22 @@ class GUI(QtGui.QMainWindow):
     def _rot(self, state):
         self.fm.rotate_clockwise(state == QtCore.Qt.Checked)
         self._update_fm_imview()
+
+    def _recalc_grid(self, orig=True):
+        if self.fm.orig_points is None:
+            return
+        if orig:
+            print('Recalc orig')
+            self.fm._update_data()
+            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
+            self.grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            print(pos[0].x(), pos[0].y())
+        else:
+            print('Recalc transf')
+            self.fm._update_data()
+            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
+            self.tr_grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            print(pos[0].x(), pos[0].y())
 
     def _next_file(self):
         if self.fm is None:
