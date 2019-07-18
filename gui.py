@@ -292,11 +292,6 @@ class GUI(QtGui.QMainWindow):
             point.setPen(0,255,0)
             point.removeHandle(0)
             parent.addItem(point)
-
-            corr.append(point)
-        elif my_box.isChecked():
-            self.box_coordinate = pos
-
             self.points_corr[index].append(point)
 
             # Coordinates in clicked image
@@ -312,7 +307,8 @@ class GUI(QtGui.QMainWindow):
             point.removeHandle(0)
             other.addItem(point)
             self.points_corr[1-index].append(point)
-
+        elif my_box.isChecked():
+            self.box_coordinate = pos
 
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
