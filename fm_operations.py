@@ -28,6 +28,7 @@ class FM_ops():
         self.diff_list = []
         self._tf_data = None
         self.old_fname = None
+        self.new_points = None
         self.shift = []
         self.transform_shift = 0
         javabridge.start_vm(class_path=bioformats.JARS)
@@ -180,13 +181,13 @@ class FM_ops():
         print('ROI side length:', side_length, '\xb1', side_list.std())
 
         cen = my_points.mean(0) - np.ones(2)*side_length/2.
-        new_points = np.zeros_like(my_points)
-        new_points[0] = cen + (0, 0)
-        new_points[1] = cen + (side_length, 0)
-        new_points[2] = cen + (side_length, side_length)
-        new_points[3] = cen + (0, side_length)
+        self.new_points = np.zeros_like(my_points)
+        self.new_points[0] = cen + (0, 0)
+        self.new_points[1] = cen + (side_length, 0)
+        self.new_points[2] = cen + (side_length, side_length)
+        self.new_points[3] = cen + (0, side_length)
 
-        self.tf_matrix = tf.estimate_transform('affine', my_points[:4], new_points).params
+        self.tf_matrix = tf.estimate_transform('affine', my_points[:4], self.new_points).params
 
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
