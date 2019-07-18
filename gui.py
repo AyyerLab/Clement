@@ -95,6 +95,14 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(button)
         self.fm_fname = QtWidgets.QLabel(self)
         line.addWidget(self.fm_fname, stretch=1)
+        button = QtWidgets.QPushButton('\u2190', self)
+        button.setFixedWidth(16)
+        button.clicked.connect(self._prev_file)
+        line.addWidget(button)
+        button = QtWidgets.QPushButton('\u2192', self)
+        button.setFixedWidth(16)
+        button.clicked.connect(self._next_file)
+        line.addWidget(button)
 
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
@@ -345,11 +353,17 @@ class GUI(QtGui.QMainWindow):
         self._update_fm_imview()
 
     def _next_file(self):
+        if self.fm is None:
+            print('Pick FM image first')
+            return
         self.ind = (self.ind + 1 + self.num_channels) % self.num_channels
         self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
 
     def _prev_file(self):
+        if self.fm is None:
+            print('Pick FM image first')
+            return
         self.ind = (self.ind - 1 + self.num_channels) % self.num_channels
         self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
