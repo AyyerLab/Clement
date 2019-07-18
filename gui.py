@@ -20,17 +20,19 @@ class GUI(QtGui.QMainWindow):
         self.fm = None
         self.assembler = None
         self.ind = 0
-        self.clicked_points = []
-        self.clicked_points_em = []
-        self.points_corr = []
-        self.points_corr_em = []
-        self.grid_box = None
-        self.grid_box_em = None
-        self.grid_box_transformed = None
-        self.grid_box_transformed_list = []
+
+        # In each of the following lists, first is for FM image and second for EM image
+        self.clicked_points = [[], []]
+        self.points_corr = [[], []]
+        self.grid_box = [None, None]
+        self.tr_grid_box = [None, None]
+        self.tr_grid_box_list = [[], []]
+
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
         self._init_ui()
+
+    # ---- UI functions
 
     def _init_ui(self):
         self.resize(1000, 800)
@@ -66,14 +68,14 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview = pg.ImageView()
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
-        self.fm_imview.scene.sigMouseClicked.connect(self._imview_clicked)
+        self.fm_imview.scene.sigMouseClicked.connect(lambda evt, par=self.fm_imview: self._imview_clicked(evt, par))
         splitter_images.addWidget(self.fm_imview)
 
         # -- EM Image view
         self.em_imview = pg.ImageView()
         self.em_imview.ui.roiBtn.hide()
         self.em_imview.ui.menuBtn.hide()
-        self.em_imview.scene.sigMouseClicked.connect(self._imview_clicked_em)
+        self.em_imview.scene.sigMouseClicked.connect(lambda evt, par=self.em_imview: self._imview_clicked(evt, par))
         splitter_images.addWidget(self.em_imview)
 
         # Options
@@ -111,17 +113,17 @@ class GUI(QtGui.QMainWindow):
         vbox.addLayout(line)
         self.define_btn = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn.setCheckable(True)
-        self.define_btn.toggled.connect(self._define_toggled)
+        self.define_btn.toggled.connect(lambda state, par=self.fm_imview: self._define_grid_toggled(state, par))
         line.addWidget(self.define_btn)
         self.transform_btn = QtWidgets.QPushButton('Transform image', self)
-        self.transform_btn.clicked.connect(self._affine_transform)
+        self.transform_btn.clicked.connect(lambda: self._affine_transform(self.fm_imview))
         line.addWidget(self.transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn.stateChanged.connect(self._show_original)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
         self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
-        self.show_grid_btn.stateChanged.connect(self._show_grid)
+        self.show_grid_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._show_grid(state, par))
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         line.addWidget(self.show_btn)
@@ -156,10 +158,10 @@ class GUI(QtGui.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.select_points = QtWidgets.QPushButton('Select points of interest', self)
-        self.select_points.setCheckable(True)
-        self.select_points.toggled.connect(self._define_toggled_corr)
-        line.addWidget(self.select_points)
+        self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
+        self.select_btn.setCheckable(True)
+        self.select_btn.toggled.connect(lambda state, par=self.fm_imview: self._define_corr_toggled(state, par))
+        line.addWidget(self.select_btn)
 
     def _init_em_options(self, parent_layout):
         vbox = QtWidgets.QVBoxLayout()
@@ -191,10 +193,10 @@ class GUI(QtGui.QMainWindow):
         vbox.addLayout(line)
         self.define_btn_em = QtWidgets.QPushButton('Define EM Grid', self)
         self.define_btn_em.setCheckable(True)
-        self.define_btn_em.toggled.connect(self._define_toggled_em)
+        self.define_btn_em.toggled.connect(lambda state, par=self.em_imview: self._define_grid_toggled(state, par))
         line.addWidget(self.define_btn_em)
         self.transform_btn_em = QtWidgets.QPushButton('Transform EM image', self)
-        self.transform_btn_em.clicked.connect(self._affine_transform_em)
+        self.transform_btn_em.clicked.connect(lambda: self._affine_transform(self.em_imview))
         line.addWidget(self.transform_btn_em)
         self.show_btn_em = QtWidgets.QCheckBox('Show original EM data', self)
         self.show_btn_em.stateChanged.connect(self._show_original_em)
@@ -205,10 +207,10 @@ class GUI(QtGui.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.select_points_em = QtWidgets.QPushButton('Select points of interest', self)
-        self.select_points_em.setCheckable(True)
-        self.select_points_em.toggled.connect(self._define_toggeled_corr_em)
-        line.addWidget(self.select_points_em)
+        self.select_btn_em = QtWidgets.QPushButton('Select points of interest', self)
+        self.select_btn_em.setCheckable(True)
+        self.select_btn_em.toggled.connect(lambda state, par=self.em_imview: self._define_corr_toggled(state, par))
+        line.addWidget(self.select_btn_em)
 
         # ---- Quit button
         vbox.addStretch(1)
@@ -220,49 +222,130 @@ class GUI(QtGui.QMainWindow):
         button.clicked.connect(self.close)
         line.addWidget(button)
 
-    def _imview_clicked(self, event):
+    def _imview_clicked(self, event, parent):
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
-        if self.define_btn.isChecked():
-            roi = pg.CircleROI(self.fm_imview.getImageItem().mapFromScene(event.pos()),
-                               5,
-                               parent=self.fm_imview.getImageItem(),
-                               movable=False)
-            roi.removeHandle(0)
-            self.fm_imview.addItem(roi)
-            self.clicked_points.append(roi)
-        elif self.select_points.isChecked():
-            point = pg.CircleROI(self.fm_imview.getImageItem().mapFromScene(event.pos()),
-                                 100,
-                                 parent=self.fm_imview.getImageItem(),
-                                 movable=True)
-            point.removeHandle(0)
-            self.fm_imview.addItem(point)
-            self.points_corr.append(point)
-        else:
-            pass
 
-    def _imview_clicked_em(self, event):
-        if event.button() == QtCore.Qt.RightButton:
-            event.ignore()
-        if self.define_btn_em.isChecked():
-            roi = pg.CircleROI(self.em_imview.getImageItem().mapFromScene(event.pos()),
-                               5,
-                               parent=self.em_imview.getImageItem(),
-                               movable=False)
+        if parent == self.fm_imview:
+            if self.fm is None:
+                return
+            else:
+                index = 0
+                dbtn = self.define_btn
+                selbtn = self.select_btn
+                size = 0.01 * self.fm.data.shape[0]
+                corr = self.points_corr[index]
+                clicked_points = self.clicked_points[index]
+
+        if parent == self.em_imview:
+            if self.assembler is None:
+                return
+            else:
+                index = 1
+                dbtn = self.define_btn_em
+                selbtn = self.select_btn_em
+                size = 0.004 * self.assembler.data.shape[0]
+                corr = self.points_corr[index]
+                clicked_points = self.clicked_points[index]
+
+        pos = parent.getImageItem().mapFromScene(event.pos())
+        pos.setX(pos.x() - size/2)
+        pos.setY(pos.y() - size/2)
+        item = parent.getImageItem()
+
+        if dbtn.isChecked():
+            roi = pg.CircleROI(pos, size, parent=item, movable=False)
+            roi.setPen(255,0,0)
             roi.removeHandle(0)
-            self.em_imview.addItem(roi)
-            self.clicked_points_em.append(roi)
-        elif self.select_points_em.isChecked():
-            point = pg.CircleROI(self.em_imview.getImageItem().mapFromScene(event.pos()),
-                                 100,
-                                 parent=self.em_imview.getImageItem(),
-                                 movable=True)
+            parent.addItem(roi)
+            clicked_points.append(roi)
+        elif selbtn.isChecked():
+            point = pg.CircleROI(pos, size, parent=item, movable=True)
+            point.setPen(0,255,0)
             point.removeHandle(0)
-            self.em_imview.addItem(point)
-            self.points_corr_em.append(point)
+            parent.addItem(point)
+            corr.append(point)
+
+    def _define_grid_toggled(self, checked, parent):
+        if parent == self.fm_imview:
+            tag = 'FM'
+            index = 0
         else:
-            pass
+            tag = 'EM'
+            index = 1
+
+        if checked:
+            print('Defining grid on %s image: Click on corners'%tag)
+            if self.grid_box[index] is not None:
+                parent.removeItem(self.grid_box[index])
+                self.grid_box[index] = None
+        else:
+            print('Done defining grid on %s image: Manually adjust fine positions'%tag)
+            self.grid_box[index] = pg.PolyLineROI([c.pos() for c in self.clicked_points[index]], closed=True, movable=False)
+            parent.addItem(self.grid_box[index])
+            [parent.removeItem(roi) for roi in self.clicked_points[index]]
+            self.clicked_points[index] = []
+            self.show_grid_btn.setEnabled(True)
+            self.show_grid_btn.setChecked(True)
+
+    def _define_corr_toggled(self, checked, parent):
+        if parent == self.fm_imview:
+            tag = 'FM'
+            index = 0
+        else:
+            tag = 'EM'
+            index = 1
+
+        if checked:
+            print('Select points of interest on %s image'%tag)
+            if len(self.points_corr[index]) != 0:
+                [parent.removeItem(point) for point in self.points_corr[index]]
+                self.points_corr[index] = []
+        else:
+            print('Done selecting points of interest on %s image'%tag)
+
+    def _affine_transform(self, parent):
+        if parent == self.fm_imview:
+            tag = 'FM'
+            index = 0
+            obj = self.fm
+            show_btn = self.show_btn
+        else:
+            tag = 'EM'
+            index = 1
+            obj = self.assembler
+            show_btn = self.show_btn_em
+
+        if self.grid_box[index] is not None:
+            print('Performing affine transformation on %s image'%tag)
+            if self.tr_grid_box[index] is not None:
+                points_obj = self.tr_grid_box[index].getState()['points']
+            else:
+                points_obj = self.grid_box[index].getState()['points']
+            points = np.array([list((point[0], point[1])) for point in points_obj])
+
+            obj.calc_transform(points)
+            obj.toggle_original()
+            self._update_fm_imview() if index == 0 else self._update_em_imview()
+
+            parent.removeItem(self.grid_box[index])
+            if self.tr_grid_box[index] is not None:
+                parent.removeItem(self.tr_grid_box[index])
+            show_btn.setEnabled(True)
+            show_btn.setChecked(False)
+
+            for i in range(obj.new_points.shape[0]):
+                roi = pg.CircleROI(obj.new_points[i], 5, parent=parent.getImageItem(), movable=False)
+                roi.removeHandle(0)
+                parent.addItem(roi)
+                self.tr_grid_box_list[index].append(roi)
+            
+            self.tr_grid_box[index] = pg.PolyLineROI([c.pos() for c in self.tr_grid_box_list[index]], closed=True, movable=False)
+            parent.addItem(self.tr_grid_box[index])
+            [parent.removeItem(roi) for roi in self.tr_grid_box_list[index]]
+            self.tr_grid_box_list[index] = []
+        else:
+            print('Define grid box on %s image first!'%tag)
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -294,12 +377,12 @@ class GUI(QtGui.QMainWindow):
                                                              '*.lif')
         self.curr_fm_folder = os.path.dirname(file_name)
 
-        if file_name is not '':
-            self.fm_fname.setText(file_name)
-
         self.fm = fm_operations.FM_ops()
-        self.fm.parse(self.fm_fname.text(), z=0)
+        self.fm.parse(file_name, z=0)
         self.num_channels = self.fm.num_channels
+
+        if file_name is not '':
+            self.fm_fname.setText(file_name + ' [0/%d]'%self.fm.num_channels)
 
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
 
@@ -310,66 +393,33 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.setImage(self.fm.data, levels=levels)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-    def _define_toggled(self, checked):
-        if checked:
-            print('Defining grid: Click on corners')
-            if self.grid_box is not None:
-                self.fm_imview.removeItem(self.grid_box)
-                self.grid_box = None
-                if self.fm is not None:
-                    self.fm_imview.removeItem(self.grid_box_transformed)
-        else:
-            print('Done defining grid: Manually adjust fine positions')
-            self.grid_box = pg.PolyLineROI([c.pos() for c in self.clicked_points], closed=True, movable=False)
-            self.fm_imview.addItem(self.grid_box)
-            print(self.grid_box)
-            [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
-            self.clicked_points = []
-            self.show_grid_btn.setEnabled(True)
-            self.show_grid_btn.setChecked(True)
-
-    def _define_toggeled_corr(self, checked):
-        if checked:
-            print('Select points of interest')
-            if len(self.points_corr) != 0:
-                [self.fm_imview.removeItem(point) for point in self.points_corr]
-                [self.em_imview.removeItem(point) for point in self.points_corr]
-                self.points_corr = []
-            if len(self.points_corr_em) != 0:
-                [self.em_imview.removeItem(point) for point in self.points_corr_em]
-                [self.em_imview.removeItem(point) for point in self.points_corr_em]
-                self.points_corr_em = []
-        else:
-            print('Done selecting points of interest')
-            if self.assembler is not None:
-                [self.em_imview.addItem(point) for point in self.points_corr]
-                [self.fm_imview.addItem(point) for point in self.points_corr]
-
     def _show_original(self, state):
         if self.fm is not None:
             self.fm.toggle_original(state==0)
             self._update_fm_imview() 
             if self.show_btn.isChecked():
-                self.fm_imview.removeItem(self.grid_box_transformed)
+                self.fm_imview.removeItem(self.tr_grid_box[0])
                 if self.show_grid_btn.isChecked():
-                    self.fm_imview.addItem(self.grid_box)
+                    self.fm_imview.addItem(self.grid_box[0])
             else:
-                self.fm_imview.removeItem(self.grid_box)
-                if self.grid_box_transformed is not None:
-                    self.fm_imview.addItem(self.grid_box_transformed)
+                self.fm_imview.removeItem(self.grid_box[0])
+                if self.tr_grid_box[0] is not None:
+                    self.fm_imview.addItem(self.tr_grid_box[0])
             
-    def _show_grid(self,state):
+    def _show_grid(self, state, parent):
+        index = 0 if parent == self.fm_imview else 1
+
         if self.show_btn.isChecked():
             if self.show_grid_btn.isChecked():
-                self.fm_imview.addItem(self.grid_box)
+                self.fm_imview.addItem(self.grid_box[index])
             else:
-                self.fm_imview.removeItem(self.grid_box)
+                self.fm_imview.removeItem(self.grid_box[index])
         else:
             if self.fm is not None:
                 if self.show_grid_btn.isChecked():
-                    self.fm_imview.addItem(self.grid_box_transformed)
+                    self.fm_imview.addItem(self.tr_grid_box[index])
                 else:
-                    self.fm_imview.removeItem(self.grid_box_transformed)
+                    self.fm_imview.removeItem(self.tr_grid_box[index])
 
     def _fliph(self, state):
         self.fm.flip_horizontal(state == QtCore.Qt.Checked)
@@ -394,6 +444,8 @@ class GUI(QtGui.QMainWindow):
         self.ind = (self.ind + 1 + self.num_channels) % self.num_channels
         self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
+        fname, indstr = self.fm_fname.text().split()
+        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
 
     def _prev_file(self):
         if self.fm is None:
@@ -402,6 +454,8 @@ class GUI(QtGui.QMainWindow):
         self.ind = (self.ind - 1 + self.num_channels) % self.num_channels
         self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
+        fname, indstr = self.fm_fname.text().split()
+        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
 
     def _find_peaks(self):
         if self.fm is not None:
@@ -427,41 +481,6 @@ class GUI(QtGui.QMainWindow):
         self.align_btn.setEnabled(False)
         '''
 
-    def _affine_transform(self):
-        if self.grid_box is not None:
-            print('Perform affine transformation')
-            if self.grid_box_transformed is not None:
-                points_obj = self.grid_box_transformed.getState()['points']
-            else:
-                points_obj = self.grid_box.getState()['points']
-            points = np.array([list((point[0], point[1])) for point in points_obj])
-
-            self.fm.calc_transform(points)
-            self.fm.toggle_original()
-            self._update_fm_imview()
-
-            self.fm_imview.removeItem(self.grid_box)
-            if self.grid_box_transformed is not None:
-                self.fm_imview.removeItem(self.grid_box_transformed)
-            self.show_btn.setEnabled(True)
-            self.show_btn.setChecked(False)
-            for i in range(self.fm.new_points.shape[0]):
-                roi = pg.CircleROI(self.fm.new_points[i],
-                                    5,
-                                    parent=self.fm_imview.getImageItem(),
-                                    movable=False)
-                roi.removeHandle(0)
-                self.fm_imview.addItem(roi)
-                self.grid_box_transformed_list.append(roi)
-            
-            self.grid_box_transformed = pg.PolyLineROI([c.pos() for c in self.grid_box_transformed_list], closed=True, movable=False)
-            self.fm_imview.addItem(self.grid_box_transformed)
-            [self.fm_imview.removeItem(roi) for roi in self.grid_box_transformed_list]
-            self.grid_box_transformed_list = []
-
-        else:
-            print('Define grid box first!')
-
     # ---- EM functions
 
     def _load_mrc(self):
@@ -483,36 +502,6 @@ class GUI(QtGui.QMainWindow):
 
         self.em_imview.setImage(self.assembler.data, levels=levels)
         self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _define_toggled_em(self, checked):
-        if checked:
-            print('Defining grid: Click on corners')
-            if self.grid_box_em is not None:
-                self.em_imview.removeItem(self.grid_box_em)
-                self.grid_box_em = None
-        else:
-            print('Done defining grid: Manually adjust fine positions')
-            self.grid_box_em = pg.PolyLineROI([c.pos() for c in self.clicked_points_em], closed=True, movable=False)
-            self.em_imview.addItem(self.grid_box_em)
-            print(self.grid_box_em)
-            [self.em_imview.removeItem(roi) for roi in self.clicked_points_em]
-            self.clicked_points_em = []
-
-    def _define_toggled_corr_em(self, checked):
-        if checked:
-            print('Select points of interest')
-            if len(self.points_corr_em) != 0:
-                [self.em_imview.removeItem(point) for point in self.points_corr_em]
-                [self.fm_imview.removeItem(point) for point in self.points_corr_em]
-                self.points_corr_em = []
-            if len(self.points_corr) != 0:
-                [self.fm_imview.removeItem(point) for point in self.points_corr]
-                [self.em_imview.removeItem(point) for point in self.points_corr]
-                self.points_corr = []
-        else:
-            print('Done selecting points of interest')
-            if self.assembler is not None:
-                [self.fm_imview.addItem(i) for i in self.points_corr_em]
 
     def _show_original_em(self, state):
         if self.assembler is not None:
@@ -544,23 +533,6 @@ class GUI(QtGui.QMainWindow):
             self.curr_mrc_folder = os.path.dirname(file_name)
             if file_name is not '':
                 self.assembler.save_merge(file_name)
-
-    def _affine_transform_em(self):
-        if self.grid_box_em is not None:
-            print('Perform affine transformation')
-            points_obj = self.grid_box_em.getState()['points']
-            points = np.array([list((point[0], point[1])) for point in points_obj])
-
-            self.assembler.affine_transform(points)
-            self.assembler.toggle_original()
-            self._update_em_imview()
-
-            self.em_imview.removeItem(self.grid_box_em)
-            self.grid_box_em = None
-            self.show_btn_em.setEnabled(True)
-            self.show_btn_em.setChecked(False)
-        else:
-            print('Define grid box first!')
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])

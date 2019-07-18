@@ -54,7 +54,7 @@ class Assembler():
 
     def save_merge(self, fname):
         with mrc.new(fname, overwrite=True) as f:
-            f.set_data(self.merged)
+            f.set_data(self.data)
             f.update_header_stats()
 
     def toggle_original(self, transformed=None):
@@ -68,7 +68,7 @@ class Assembler():
             self.transformed = transformed
             self.data = np.copy(self.transformed_data if self.transformed else self.backup)
 
-    def affine_transform(self, my_points):
+    def calc_transform(self, my_points):
         print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
