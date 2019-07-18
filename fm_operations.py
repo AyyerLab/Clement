@@ -26,7 +26,7 @@ class FM_ops():
         self.max_shift = 10
         self.matches = []
         self.diff_list = []
-        self.transformed_data = None
+        self._tf_data = None
         self.old_fname = None
         self.shift = []
         self.transform_shift = 0
@@ -47,38 +47,46 @@ class FM_ops():
         self._orig_data /= self._orig_data.mean((0, 1))
         #self._orig_data = np.transpose(self._orig_data)
         self.data = np.copy(self._orig_data)
-        print('Parsed: %s z=%d'%(fname, z))
+        if self.transformed:
+            self.apply_transform()
+            self._update_data()
 
     def __del__(self):
         javabridge.kill_vm()
 
     def _update_data(self):
-        if self.transformed and self.transformed_data is not None:
-            self.data = np.copy(self.transformed_data)
+        if self.transformed and self._tf_data is not None:
+            self.data = np.copy(self._tf_data)
         else:
             self.data = np.copy(self._orig_data)
 
         if self.fliph:
-            self.data = np.flip(self.data, axis=1)
+            self.data = np.flip(self.data, axis=0)
         if self.flipv:
-            self.data = np.flip(self.data, axis=2)
+            self.data = np.flip(self.data, axis=1)
         if self.transp:
-            self.data = np.transpose(self.data, (0, 2, 1))
+            self.data = np.transpose(self.data, (1, 0, 2))
+        if self.rot:
+            self.data = np.rot90(self.data, axes=(0, 1))
 
-    def flip_horizontal(self):
-        self.fliph = not self.fliph
+    def flip_horizontal(self, do_flip):
+        self.fliph = do_flip
         self._update_data()
 
-    def flip_vertical(self):
-        self.flipv = not self.flipv
+    def flip_vertical(self, do_flip):
+        self.flipv = do_flip
         self._update_data()
 
-    def transpose(self):
-        self.transp = not self.transp
+    def transpose(self, do_transp):
+        self.transp = do_transp
+        self._update_data()
+
+    def rotate_clockwise(self, do_rot):
+        self.rot = do_rot
         self._update_data()
 
     def toggle_original(self, transformed=None):
-        if self.transformed_data is None:
+        if self._tf_data is None:
             print('Need to transform data first')
             return
         if transformed is None:
@@ -86,14 +94,6 @@ class FM_ops():
         else:
             self.transformed = transformed
         self._update_data()
-
-    def rotate_clockwise(self):
-        self.data = np.rot90(self.data, axes=(1, 2))
-        self.rot = not self.rot
-
-    def rotate_counterclock(self):
-        self.data = np.rot90(self.data, axes=(2, 1))
-        self.rot = not self.rot
 
     def peak_finding(self):
         for i in range(1, len(self.data)):
@@ -171,7 +171,7 @@ class FM_ops():
         return name_list
         #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
 
-    def affine_transform(self, my_points):
+    def calc_transform(self, my_points):
         print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
@@ -186,21 +186,25 @@ class FM_ops():
         new_points[2] = cen + (side_length, side_length)
         new_points[3] = cen + (0, side_length)
 
-        matrix = tf.estimate_transform('affine', my_points[:4], new_points).params
+        self.tf_matrix = tf.estimate_transform('affine', my_points[:4], new_points).params
 
-        nx, ny = self.data.shape[1:]
+        nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-        tr_corners = np.dot(matrix, corners)
-        output_shape = tuple([int(i) for i in (tr_corners.max(1) - tr_corners.min(1))[:2]])
-        matrix[:2, 2] -= tr_corners.min(1)[:2]
-        print('Transform matrix:\n', matrix)
+        self.tf_corners = np.dot(self.tf_matrix, corners)
+        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
+        self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+        print('Transform matrix:\n', self.tf_matrix)
+        self.apply_transform()
 
-        self.transformed_data = []
-        for i in range(self.data.shape[0]):
+    def apply_transform(self):
+        if self.tf_matrix is None:
+            print('Calculate transform matrix first')
+            return
+        self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+        for i in range(self.data.shape[-1]):
+            self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
             sys.stderr.write('\r%d'%i)
-            self.transformed_data.append(ndi.affine_transform(self.data[i], np.linalg.inv(matrix), order=1, output_shape=output_shape))
-        self.transformed_data = np.array(self.transformed_data)
-        print('\r', self.transformed_data.shape)
-        self.transform_shift = -tr_corners.min(1)[:2]
+        print('\r', self._tf_data.shape)
+        self.transform_shift = -self.tf_corners.min(1)[:2]
         self.transformed = True
-        self.data = np.copy(self.transformed_data)
+        self.data = np.copy(self._tf_data)
