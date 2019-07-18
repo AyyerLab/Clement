@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
+
 import assemble
 import align_fm
 import affine_transform
-import os
 import fm_operations
 
 warnings.simplefilter('ignore', category=FutureWarning)
@@ -28,7 +29,6 @@ class GUI(QtGui.QMainWindow):
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
         self._init_ui()
-
 
     def _init_ui(self):
         self.resize(1000,800)
@@ -78,12 +78,16 @@ class GUI(QtGui.QMainWindow):
         options = QtWidgets.QHBoxLayout()
         layout.addLayout(options)
 
-        # -- FM options
+        self._init_fm_options(options)
+        self._init_em_options(options)
+
+        self.show()
+
+    def _init_fm_options(self, parent_layout):
         vbox = QtWidgets.QVBoxLayout()
-        options.addLayout(vbox)
+        parent_layout.addLayout(vbox)
 
         # ---- Select file
-
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         button = QtWidgets.QPushButton('FM image:', self)
@@ -91,7 +95,7 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(button)
         self.fm_fname = QtWidgets.QLabel(self)
         line.addWidget(self.fm_fname, stretch=1)
-        
+
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -107,7 +111,7 @@ class GUI(QtGui.QMainWindow):
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
         line.addWidget(self.show_btn)
-        
+
         # ---- Align colors
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -141,10 +145,10 @@ class GUI(QtGui.QMainWindow):
         self.select_points.setCheckable(True)
         self.select_points.toggled.connect(self._define_toggeled_corr)
         line.addWidget(self.select_points)
-        
-        # -- EM options
+
+    def _init_em_options(self, parent_layout):
         vbox = QtWidgets.QVBoxLayout()
-        options.addLayout(vbox)
+        parent_layout.addLayout(vbox)
 
         # ---- Assemble montage
         line = QtWidgets.QHBoxLayout()
@@ -167,7 +171,7 @@ class GUI(QtGui.QMainWindow):
         button = QtWidgets.QPushButton('Assemble', self)
         button.clicked.connect(self._assemble_mrc)
         line.addWidget(button)
-        
+
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         self.define_btn_em = QtWidgets.QPushButton('Define EM Grid', self)
@@ -182,7 +186,7 @@ class GUI(QtGui.QMainWindow):
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
         line.addWidget(self.show_btn_em)
-        
+
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -200,8 +204,6 @@ class GUI(QtGui.QMainWindow):
         button = QtWidgets.QPushButton('Quit', self)
         button.clicked.connect(self.close)
         line.addWidget(button)
-
-        self.show()
 
     def _imview_clicked(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -223,7 +225,7 @@ class GUI(QtGui.QMainWindow):
             self.fm_imview.addItem(point)
             self.points_corr.append(point)
         else:
-            pass             
+            pass
 
     def _imview_clicked_em(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -265,7 +267,7 @@ class GUI(QtGui.QMainWindow):
         event.accept()
 
     # ---- FM functions
-    
+
     def _load_fm_images(self):
         if self.curr_fm_folder is None:
             #self.curr_fm_folder = os.getcwd()
@@ -276,11 +278,11 @@ class GUI(QtGui.QMainWindow):
 
         if file_name is not '':
             self.fm_fname.setText(file_name)
-        
+
         self.fm = fm_operations.FM_ops()
         self.fm.parse(self.fm_fname.text(), z=0)
         self.num_channels = self.fm.num_channels
-        
+
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
 
     def _update_fm_imview(self):
@@ -310,17 +312,17 @@ class GUI(QtGui.QMainWindow):
             if len(self.points_corr) != 0:
                 [self.fm_imview.removeItem(point) for point in self.points_corr]
                 [self.em_imview.removeItem(point) for point in self.points_corr]
-                self.points_corr = []            
+                self.points_corr = []
             if len(self.points_corr_em) != 0:
                 [self.em_imview.removeItem(point) for point in self.points_corr_em]
                 [self.em_imview.removeItem(point) for point in self.points_corr_em]
                 self.points_corr_em = []
         else:
-            print('Done selecting points of interest')          
+            print('Done selecting points of interest')
             if self.assembler is not None:
-                [self.em_imview.addItem(point) for point in self.points_corr] 
+                [self.em_imview.addItem(point) for point in self.points_corr]
                 [self.fm_imview.addItem(point) for point in self.points_corr]
- 
+
     def _show_original(self, state):
         if self.fm is not None:
             self.fm.toggle_original(state==0)
@@ -409,7 +411,7 @@ class GUI(QtGui.QMainWindow):
 
         self.em_imview.setImage(self.assembler.data, levels=levels)
         self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
- 
+
     def _define_toggled_em(self, checked):
         if checked:
             print('Defining grid: Click on corners')
@@ -434,23 +436,23 @@ class GUI(QtGui.QMainWindow):
             if len(self.points_corr) != 0:
                 [self.fm_imview.removeItem(point) for point in self.points_corr]
                 [self.em_imview.removeItem(point) for point in self.points_corr]
-                self.points_corr = []              
+                self.points_corr = []
         else:
-            print('Done selecting points of interest')          
+            print('Done selecting points of interest')
             if self.assembler is not None:
-                [self.fm_imview.addItem(i) for i in self.points_corr_em] 
+                [self.fm_imview.addItem(i) for i in self.points_corr_em]
 
     def _show_original_em(self, state):
         if self.assembler is not None:
             self.assembler.toggle_original(state==0)
             self._update_em_imview()
-  
+
     def _assemble_mrc(self):
         if self.step_box.text() is '':
             step = 100
         else:
             step = self.step_box.text()
-        
+
         if self.mrc_fname.text() is not '':
             self.assembler = assemble.Assembler(step=int(step))
             self.assembler.parse(self.mrc_fname.text())
@@ -459,7 +461,7 @@ class GUI(QtGui.QMainWindow):
             self.em_imview.setImage(self.assembler.data)
         else:
             print('You have to choose .mrc file first!')
-        
+
     def _save_mrc_montage(self):
         if self.assembler is None:
             print('No montage to save')
