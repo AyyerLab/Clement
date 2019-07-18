@@ -26,6 +26,8 @@ class GUI(QtGui.QMainWindow):
         self.points_corr_em = []
         self.grid_box = None
         self.grid_box_em = None
+        self.grid_box_transformed = None
+        self.grid_box_transformed_list = []
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
         self._init_ui()
@@ -118,7 +120,12 @@ class GUI(QtGui.QMainWindow):
         self.show_btn.stateChanged.connect(self._show_original)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
+        self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
+        self.show_grid_btn.stateChanged.connect(self._show_grid)
+        self.show_grid_btn.setEnabled(False)
+        self.show_grid_btn.setChecked(False)
         line.addWidget(self.show_btn)
+        line.addWidget(self.show_grid_btn)
 
         # ---- Align colors
         line = QtWidgets.QHBoxLayout()
@@ -309,6 +316,8 @@ class GUI(QtGui.QMainWindow):
             if self.grid_box is not None:
                 self.fm_imview.removeItem(self.grid_box)
                 self.grid_box = None
+                if self.fm is not None:
+                    self.fm_imview.removeItem(self.grid_box_transformed)
         else:
             print('Done defining grid: Manually adjust fine positions')
             self.grid_box = pg.PolyLineROI([c.pos() for c in self.clicked_points], closed=True, movable=False)
@@ -316,6 +325,8 @@ class GUI(QtGui.QMainWindow):
             print(self.grid_box)
             [self.fm_imview.removeItem(roi) for roi in self.clicked_points]
             self.clicked_points = []
+            self.show_grid_btn.setEnabled(True)
+            self.show_grid_btn.setChecked(True)
 
     def _define_toggeled_corr(self, checked):
         if checked:
@@ -336,8 +347,29 @@ class GUI(QtGui.QMainWindow):
 
     def _show_original(self, state):
         if self.fm is not None:
-            self.fm.toggle_original(state == 0)
-            self._update_fm_imview()
+            self.fm.toggle_original(state==0)
+            self._update_fm_imview() 
+            if self.show_btn.isChecked():
+                self.fm_imview.removeItem(self.grid_box_transformed)
+                if self.show_grid_btn.isChecked():
+                    self.fm_imview.addItem(self.grid_box)
+            else:
+                self.fm_imview.removeItem(self.grid_box)
+                if self.grid_box_transformed is not None:
+                    self.fm_imview.addItem(self.grid_box_transformed)
+            
+    def _show_grid(self,state):
+        if self.show_btn.isChecked():
+            if self.show_grid_btn.isChecked():
+                self.fm_imview.addItem(self.grid_box)
+            else:
+                self.fm_imview.removeItem(self.grid_box)
+        else:
+            if self.fm is not None:
+                if self.show_grid_btn.isChecked():
+                    self.fm_imview.addItem(self.grid_box_transformed)
+                else:
+                    self.fm_imview.removeItem(self.grid_box_transformed)
 
     def _fliph(self, state):
         self.fm.flip_horizontal(state == QtCore.Qt.Checked)
@@ -398,7 +430,10 @@ class GUI(QtGui.QMainWindow):
     def _affine_transform(self):
         if self.grid_box is not None:
             print('Perform affine transformation')
-            points_obj = self.grid_box.getState()['points']
+            if self.grid_box_transformed is not None:
+                points_obj = self.grid_box_transformed.getState()['points']
+            else:
+                points_obj = self.grid_box.getState()['points']
             points = np.array([list((point[0], point[1])) for point in points_obj])
 
             self.fm.calc_transform(points)
@@ -406,9 +441,24 @@ class GUI(QtGui.QMainWindow):
             self._update_fm_imview()
 
             self.fm_imview.removeItem(self.grid_box)
-            self.grid_box = None
+            if self.grid_box_transformed is not None:
+                self.fm_imview.removeItem(self.grid_box_transformed)
             self.show_btn.setEnabled(True)
             self.show_btn.setChecked(False)
+            for i in range(self.fm.new_points.shape[0]):
+                roi = pg.CircleROI(self.fm.new_points[i],
+                                    5,
+                                    parent=self.fm_imview.getImageItem(),
+                                    movable=False)
+                roi.removeHandle(0)
+                self.fm_imview.addItem(roi)
+                self.grid_box_transformed_list.append(roi)
+            
+            self.grid_box_transformed = pg.PolyLineROI([c.pos() for c in self.grid_box_transformed_list], closed=True, movable=False)
+            self.fm_imview.addItem(self.grid_box_transformed)
+            [self.fm_imview.removeItem(roi) for roi in self.grid_box_transformed_list]
+            self.grid_box_transformed_list = []
+
         else:
             print('Define grid box first!')
 
