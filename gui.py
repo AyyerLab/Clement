@@ -29,6 +29,7 @@ class GUI(QtGui.QMainWindow):
         self.grid_box = [None, None]
         self.tr_grid_box = [None, None]
         self.tr_grid_box_list = [[], []]
+        self.tr_matrices = [None, None]
 
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
@@ -255,6 +256,10 @@ class GUI(QtGui.QMainWindow):
                 obj = self.fm
                 dbtn = self.define_btn
                 selbtn = self.select_btn
+                if obj.side_length is None:
+                    size = 0.01 * obj.data.shape[0]
+                else:
+                    size = obj.side_length / 25
                 other = self.em_imview
                 other_obj = self.assembler
 
@@ -266,16 +271,14 @@ class GUI(QtGui.QMainWindow):
                 obj = self.assembler
                 dbtn = self.define_btn_em
                 selbtn = self.select_btn_em
-                size = 0.004 * self.assembler.data.shape[0]
-                corr = self.points_corr[index]
+                if obj.side_length is None:
+                    size = 0.004 * obj.data.shape[0]
+                else:
+                    size = obj.side_length / 25
                 clicked_points = self.clicked_points[index]
-                my_box = self.select_region_btn
                 other = self.fm_imview
                 other_obj = self.fm
         
-        clicked_points = self.clicked_points[index]
-        size = 10
-
         pos = parent.getImageItem().mapFromScene(event.pos())
         pos.setX(pos.x() - size/2)
         pos.setY(pos.y() - size/2)
@@ -286,7 +289,7 @@ class GUI(QtGui.QMainWindow):
             roi.setPen(255,0,0)
             roi.removeHandle(0)
             parent.addItem(roi)
-            clicked_points.append(roi)
+            self.clicked_points[index].append(roi)
         elif selbtn.isChecked():
             point = pg.CircleROI(pos, size, parent=item, movable=True)
             point.setPen(0,255,0)
@@ -295,19 +298,18 @@ class GUI(QtGui.QMainWindow):
             self.points_corr[index].append(point)
 
             # Coordinates in clicked image
+            shift = obj.transform_shift + [obj.side_length/2]*2
             init = np.array([pos.x(), pos.y(), 1])
-            # Coordinates in pixel space
-            base = np.dot(np.linalg.inv(obj.tf_matrix), init)
-            # Coordinates in other image
-            transf = np.dot(other_obj.tf_matrix, base)
+            transf = np.dot(self.tr_matrices[index], init)
 
-            pos = QtCore.QPointF(transf[0]-5, transf[1]-5)
-            point = pg.CircleROI(pos, 10, parent=other.getImageItem(), movable=False)
+            cen = other_obj.side_length / 100
+            pos = QtCore.QPointF(transf[0]-cen, transf[1]-cen)
+            point = pg.CircleROI(pos, 2*cen, parent=other.getImageItem(), movable=False)
             point.setPen(0,255,255)
             point.removeHandle(0)
             other.addItem(point)
             self.points_corr[1-index].append(point)
-        elif my_box.isChecked():
+        elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
 
     def _define_grid_toggled(self, checked, parent):
@@ -343,15 +345,22 @@ class GUI(QtGui.QMainWindow):
         if parent == self.fm_imview:
             tag = 'FM'
             index = 0
+            obj = self.fm
+            other_obj = self.assembler
         else:
             tag = 'EM'
             index = 1
+            obj = self.assembler
+            other_obj = self.fm
+        if obj is None:
+            return
 
         if checked:
             print('Select points of interest on %s image'%tag)
             if len(self.points_corr[index]) != 0:
                 [parent.removeItem(point) for point in self.points_corr[index]]
                 self.points_corr[index] = []
+            self.tr_matrices[index] = obj.get_transform(obj.new_points, other_obj.new_points)
         else:
             print('Done selecting points of interest on %s image'%tag)
 
@@ -483,8 +492,11 @@ class GUI(QtGui.QMainWindow):
                                                              'Select FM file',
                                                              self.curr_fm_folder,
                                                              '*.lif')
-        self.curr_fm_folder = os.path.dirname(file_name)
+        if file_name is not '':
+            self.curr_fm_folder = os.path.dirname(file_name)
+            self._parse_fm_images(file_name)
 
+    def _parse_fm_images(self, file_name):
         self.fm = fm_operations.FM_ops()
         self.fm.parse(file_name, z=0)
         self.num_channels = self.fm.num_channels
