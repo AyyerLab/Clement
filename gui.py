@@ -260,6 +260,10 @@ class GUI(QtGui.QMainWindow):
         else:
             event.ignore()
 
+    def closeEvent(self, event):
+        fm_operations.javabridge.kill_vm()
+        event.accept()
+
     # ---- FM functions
     
     def _load_fm_images(self):
@@ -277,7 +281,7 @@ class GUI(QtGui.QMainWindow):
         self.fm.parse(self.fm_fname.text(), z=0)
         self.num_channels = self.fm.num_channels
         
-        self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*5))
+        self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
 
     def _update_fm_imview(self):
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
@@ -323,31 +327,19 @@ class GUI(QtGui.QMainWindow):
             self._update_fm_imview()
 
     def _fliph(self,state):
-        if state == QtCore.Qt.Checked:
-            self.fm.flip_horizontal()
-        else:
-            self.fm.flip_horizontal()
+        self.fm.flip_horizontal(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
     def _flipv(self,state):
-        if state == QtCore.Qt.Checked:
-            self.fm.flip_vertical()
-        else:
-            self.fm.flip_vertical()
+        self.fm.flip_vertical(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
     def _trans(self,state):
-        if state == QtCore.Qt.Checked:
-            self.fm.transpose()
-        else:
-            self.fm.transpose()
+        self.fm.transpose(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
     def _rot(self,state):
-        if state == QtCore.Qt.Checked:
-            self.fm.rotate_clockwise()
-        else:
-            self.fm.rotate_counterclock()
+        self.fm.rotate_clockwise(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
     def _next_file(self):
@@ -388,7 +380,7 @@ class GUI(QtGui.QMainWindow):
             points_obj = self.grid_box.getState()['points']
             points = np.array([list((point[0],point[1])) for point in points_obj])
 
-            self.fm.affine_transform(points)
+            self.fm.calc_transform(points)
             self.fm.toggle_original()
             self._update_fm_imview()
 
