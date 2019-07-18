@@ -370,25 +370,28 @@ class GUI(QtGui.QMainWindow):
             index = 0
             obj = self.fm
             updater = self._update_fm_imview
-            show_btn = self.show_btn
-            show_grid_btn = self.show_grid_btn
+            orig_btn = self.show_btn
+            grid_btn = self.show_grid_btn
         else:
             index = 1
             obj = self.assembler
             updater = self._update_em_imview
-            show_btn = self.show_btn_em
-            show_grid_btn = self.show_grid_btn_em
+            orig_btn = self.show_btn_em
+            grid_btn = self.show_grid_btn_em
 
         if obj is not None:
             obj.toggle_original(state==0)
+            if grid_btn.isChecked():
+                if orig_btn.isChecked():
+                    parent.removeItem(self.tr_grid_box[index])
+                else:
+                    parent.removeItem(self.grid_box[index])
             updater()
-            if show_btn.isChecked():
-                parent.removeItem(self.tr_grid_box[index])
-                if show_grid_btn.isChecked():
+            if orig_btn.isChecked():
+                if grid_btn.isChecked():
                     parent.addItem(self.grid_box[index])
             else:
-                parent.removeItem(self.grid_box[index])
-                if self.tr_grid_box[index] is not None:
+                if grid_btn.isChecked() and self.tr_grid_box[index] is not None:
                     parent.addItem(self.tr_grid_box[index])
 
     def _show_grid(self, state, parent):
