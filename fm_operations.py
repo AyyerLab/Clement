@@ -30,6 +30,7 @@ class FM_ops():
         self.old_fname = None
         self.new_points = None
         self.side_length = None
+        self.orig_points = None
         self.shift = []
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
@@ -61,8 +62,10 @@ class FM_ops():
     def _update_data(self):
         if self.transformed and self._tf_data is not None:
             self.data = np.copy(self._tf_data)
+            self.points = np.copy(self.new_points)
         else:
             self.data = np.copy(self._orig_data)
+            self.points = np.copy(self.orig_points) if self.orig_points is not None else None
 
         if self.fliph:
             self.data = np.flip(self.data, axis=0)
@@ -72,6 +75,22 @@ class FM_ops():
             self.data = np.transpose(self.data, (1, 0, 2))
         if self.rot:
             self.data = np.rot90(self.data, axes=(0, 1))
+
+        if self.points is not None:
+            self._update_points()
+
+    def _update_points(self):
+        if self.fliph:
+            self.points[:,0] = self.data.shape[0] - self.points[:,0]
+        if self.flipv:
+            self.points[:,1] = self.data.shape[1] - self.points[:,1]
+        if self.transp:
+            self.points = self.points[:,::-1]
+        if self.rot:
+            temp = self.data.shape[1] - self.points[:,1]
+            self.points[:,1] = self.points[:,0]
+            self.points[:,0] = temp
+        print('Updating points', self.points[0])
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip
@@ -199,6 +218,7 @@ class FM_ops():
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Transform matrix:\n', self.tf_matrix)
+        self.orig_points = np.copy(np.array(my_points))
         self.apply_transform()
 
     def apply_transform(self):
