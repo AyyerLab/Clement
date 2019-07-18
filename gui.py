@@ -37,7 +37,7 @@ class GUI(QtGui.QMainWindow):
     # ---- UI functions
 
     def _init_ui(self):
-        self.resize(1000, 800)
+        self.resize(1600, 800)
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -299,7 +299,12 @@ class GUI(QtGui.QMainWindow):
                 self.grid_box[index] = None
         else:
             print('Done defining grid on %s image: Manually adjust fine positions'%tag)
-            self.grid_box[index] = pg.PolyLineROI([c.pos() for c in self.clicked_points[index]], closed=True, movable=False)
+            positions = [c.pos() for c in self.clicked_points[index]]
+            sizes = [c.size()[0] for c in self.clicked_points[index]]
+            for pos, s in zip(positions, sizes):
+                pos.setX(pos.x() + s/2)
+                pos.setY(pos.y() + s/2)
+            self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
             parent.addItem(self.grid_box[index])
             [parent.removeItem(roi) for roi in self.clicked_points[index]]
             self.clicked_points[index] = []
@@ -361,7 +366,8 @@ class GUI(QtGui.QMainWindow):
                 parent.addItem(roi)
                 self.tr_grid_box_list[index].append(roi)
             
-            self.tr_grid_box[index] = pg.PolyLineROI([c.pos() for c in self.tr_grid_box_list[index]], closed=True, movable=False)
+            positions = [c.pos() for c in self.tr_grid_box_list[index]]
+            self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
             parent.addItem(self.tr_grid_box[index])
             [parent.removeItem(roi) for roi in self.tr_grid_box_list[index]]
             self.tr_grid_box_list[index] = []
