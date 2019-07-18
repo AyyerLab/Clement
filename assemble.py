@@ -25,6 +25,7 @@ class Assembler():
         self.pos_z = None
         self._tf_data = None
         self._orig_data = None
+        self.side_length = None
         self.mcounts = None
         self.tf_matrix = np.identity(3)
 
@@ -93,15 +94,15 @@ class Assembler():
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
 
-        side_length = np.mean(side_list)
-        print('ROI side length:', side_length, '\xb1', side_list.std())
+        self.side_length = np.mean(side_list)
+        print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
-        cen = my_points.mean(0) - np.ones(2)*side_length/2.
+        cen = my_points.mean(0) - np.ones(2)*self.side_length/2.
         self.new_points = np.zeros_like(my_points)
         self.new_points[0] = cen + (0, 0)
-        self.new_points[1] = cen + (side_length, 0)
-        self.new_points[2] = cen + (side_length, side_length)
-        self.new_points[3] = cen + (0, side_length)
+        self.new_points[1] = cen + (self.side_length, 0)
+        self.new_points[2] = cen + (self.side_length, self.side_length)
+        self.new_points[3] = cen + (0, self.side_length)
 
         self.tf_matrix = tf.estimate_transform('affine', my_points[:4], self.new_points).params
 
@@ -123,7 +124,14 @@ class Assembler():
         self.transformed = True
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-    
+
+    @classmethod
+    def get_transform(self, source, dest):
+        if len(source) != len(dest):
+            print('Point length do not match')
+            return
+        return tf.estimate_transform('affine', source, dest).params
+
     def select_region(self,coordinate):
         print(self.data.shape)
         coordinate = coordinate.astype(int)
@@ -143,8 +151,7 @@ class Assembler():
             self.data = self.region
             print('pos_x: ',self.pos_x)
             print('pos_y: ',self.pos_y)
-                
-            
+
 if __name__=='__main__':
     path = '../gs.mrc'
     assembler = Assembler()
