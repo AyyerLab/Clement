@@ -274,16 +274,16 @@ class GUI(QtGui.QMainWindow):
             self.fm_fname.setText(file_name)
         
         self.fm = fm_operations.FM_ops()
-        self.fm.parse(self.fm_fname.text())
+        self.fm.parse(self.fm_fname.text(), z=0)
+        self.num_channels = self.fm.num_channels
         
-        self.fm_imview.setImage(self.fm.data[self.ind],
-                                levels=(self.fm.data[self.ind].min(), self.fm.data[self.ind].mean()*5))
+        self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*5))
 
     def _update_fm_imview(self):
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         levels = self.fm_imview.getHistogramWidget().item.getLevels()
 
-        self.fm_imview.setImage(self.fm.data[self.ind], levels=levels)
+        self.fm_imview.setImage(self.fm.data, levels=levels)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _define_toggled(self, checked):
@@ -351,17 +351,13 @@ class GUI(QtGui.QMainWindow):
         self._update_fm_imview()
 
     def _next_file(self):
-        if self.ind < self.fm.data.shape[0]-1:
-            self.ind = self.ind + 1
-        else:
-            pass
+        self.ind = (self.ind + 1 + self.num_channels) % self.num_channels
+        self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
 
     def _prev_file(self):
-        if self.ind > 0:
-            self.ind = self.ind - 1
-        else:
-            pass
+        self.ind = (self.ind - 1 + self.num_channels) % self.num_channels
+        self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
 
     def _find_peaks(self):
