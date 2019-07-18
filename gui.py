@@ -203,6 +203,14 @@ class GUI(QtGui.QMainWindow):
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
         line.addWidget(self.show_btn_em)
+        
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        self.show_boxes_btn = QtWidgets.QCheckBox('Show boxes',self)
+        self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
+        #self.select_region_btn.toggled.connect(lambda state, par=self.em_imview: self._select)
+        line.addWidget(self.show_boxes_btn)
+        line.addWidget(self.select_region_btn)
 
 
         line = QtWidgets.QHBoxLayout()
@@ -325,7 +333,10 @@ class GUI(QtGui.QMainWindow):
             points = np.array([list((point[0], point[1])) for point in points_obj])
 
             obj.calc_transform(points)
-            obj.toggle_original()
+            if obj.data is None:
+                obj.toggle_original()
+            else:
+                obj.toggle_original(True)
             self._update_fm_imview() if index == 0 else self._update_em_imview()
 
             parent.removeItem(self.grid_box[index])
