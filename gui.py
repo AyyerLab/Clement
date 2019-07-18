@@ -22,7 +22,7 @@ class GUI(QtGui.QMainWindow):
         self.ind = 0
 
         self.boxes = []
-        
+        self.box_coordinate = None
         # In each of the following lists, first is for FM image and second for EM image
         self.clicked_points = [[], []]
         self.points_corr = [[], []]
@@ -216,9 +216,14 @@ class GUI(QtGui.QMainWindow):
         self.show_boxes_btn = QtWidgets.QCheckBox('Show boxes',self)
         self.show_boxes_btn.stateChanged.connect(self._show_boxes)
         self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
-        #self.select_region_btn.toggled.connect(lambda state, par=self.em_imview: self._select)
+        self.select_region_btn.setCheckable(True)
+        self.select_region_btn.toggled.connect(lambda state, par=self.em_imview: self._select_box(state,par))
+        self.show_assembled_btn = QtWidgets.QCheckBox('Show assembled image',self)
+        self.show_assembled_btn.stateChanged.connect(self._show_assembled)
+        self.show_assembled_btn.setEnabled(False)
         line.addWidget(self.show_boxes_btn)
         line.addWidget(self.select_region_btn)
+        line.addWidget(self.show_assembled_btn) 
 
 
         line = QtWidgets.QHBoxLayout()
@@ -263,6 +268,7 @@ class GUI(QtGui.QMainWindow):
                 size = 0.004 * self.assembler.data.shape[0]
                 corr = self.points_corr[index]
                 clicked_points = self.clicked_points[index]
+                my_box = self.select_region_btn
 
         pos = parent.getImageItem().mapFromScene(event.pos())
         pos.setX(pos.x() - size/2)
@@ -281,6 +287,8 @@ class GUI(QtGui.QMainWindow):
             point.removeHandle(0)
             parent.addItem(point)
             corr.append(point)
+        elif my_box.isChecked():
+            self.box_coordinate = pos
 
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
@@ -570,16 +578,41 @@ class GUI(QtGui.QMainWindow):
                 if len(self.boxes) == 0:
                     for i in range(len(self.assembler.pos_x)):
                         roi = pg.RectROI([self.assembler.pos_x[i],self.assembler.pos_y[i]],
-                                        [self.assembler.orig_data.shape[1],self.assembler.orig_data.shape[2]],
+                                        [self.assembler.stacked_data.shape[1],self.assembler.stacked_data.shape[2]],
                                         movable=False)
                         #roi.removeHandle(0)
                         self.boxes.append(roi)
                         self.em_imview.addItem(roi)
+                else:
+                    [self.em_imview.addItem(box) for box in self.boxes]
         else:
             [self.em_imview.removeItem(box) for box in self.boxes]
 
+    def _select_box(self,state,parent):
+        if self.select_region_btn.isChecked():
+            print('Select box')
+            parent.setImage(self.assembler.data)
+        else:
+            if self.box_coordinate is not None:
+                points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
+                print(points_obj)
+                self.assembler.select_region(np.array(points_obj))
+                parent.setImage(self.assembler.data)
+                #[parent.removeItem(box) for box in self.boxes]
+                self.show_boxes_btn.setChecked(False)
+                self.box_coordinate = None
+                self.show_assembled_btn.setEnabled(True)
+                self.show_assembled_btn.setChecked(False)
 
-
+    def _show_assembled(self):
+        if self.show_assembled_btn.isChecked():
+            assembled = True
+        else:
+            assembled = False
+        if self.assembler is not None:
+            self.assembler.toggle_region(assembled)
+            self.em_imview.setImage(self.assembler.data)
+    
     def _save_mrc_montage(self):
         if self.assembler is None:
             print('No montage to save')

@@ -13,27 +13,32 @@ matplotlib.use('QT5Agg')
 
 class Assembler():
     def __init__(self, step=100):
+        self.data_highres = None
         self.step = int(np.sqrt(step))
-        self.orig_data = None
         self.data = None
-        self.backup = None
+        self.stacked_data = None
+        self.region = None
+        self.data_backup = None
         self.transformed_data = None   
         self.pos_x = None
         self.pos_y = None
         self.pos_z = None
         self._tf_data = None
+        self._orig_data = None
+        self.mcounts = None
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
             try:
-                self.orig_data = f.data[:,::self.step,::self.step]
+                self.data_highres = f.data
+                self.stacked_data = self.data_highres[:,::self.step,::self.step]
             except IndexError:
-                self.orig_data = f.data
+                self.stacked_data = f.data
             self._h = f.header
             self._eh = np.frombuffer(f.extended_header, dtype='i2')
 
     def assemble(self):
-        dimensions = self.orig_data.shape
+        dimensions = self.stacked_data.shape
         
         if len(dimensions) == 3:
             self.pos_x = self._eh[1:10*dimensions[0]:10] // self.step
@@ -49,9 +54,9 @@ class Assembler():
             for i in range(dimensions[0]):
                 sys.stderr.write('\rMerge for image {}'.format(i))
                 np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
-                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), self.orig_data[i])
+                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), self.stacked_data[i])
             sys.stderr.write('\n')
-
+            
             self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
         else:
             self.data = np.copy(self._stack_data)
@@ -73,6 +78,14 @@ class Assembler():
         else:
             self.transformed = transformed
             self.data = np.copy(self._tf_data if self.transformed else self._orig_data)
+    
+    def toggle_region(self,assembled=False):
+        if assembled:
+            self.data = self._orig_data
+        else:
+            self.data = self.region
+
+
 
     def calc_transform(self, my_points):
         print('Input points:\n', my_points)
@@ -109,7 +122,28 @@ class Assembler():
         self.transformed = True
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-
+    
+    def select_region(self,coordinate):
+        print(self.data.shape)
+        coordinate = coordinate.astype(int)
+        coordinate = np.array((coordinate[0],coordinate[1]-self._orig_data.shape[1])).astype(int)
+        coordinate[coordinate<0] = 0
+        print(coordinate)
+        if self.mcounts[coordinate[0],coordinate[1]] > 1:
+            print('Selected region ambiguous. Try again')
+        else:
+            counter = 0
+            while self.pos_x[counter] < coordinate[0] or self.pos_y[counter] < coordinate[1]:
+                print('Counter: ', counter)
+                print('pos_x,pos_y: {} {}'.format(self.pos_x[counter],self.pos_y[counter]))
+                counter += 1
+            print('Selected region: ', counter-1)
+            self.region = self.data_highres[counter-1]
+            self.data = self.region
+            print('pos_x: ',self.pos_x)
+            print('pos_y: ',self.pos_y)
+                
+            
 if __name__=='__main__':
     path = '../gs.mrc'
     assembler = Assembler()
