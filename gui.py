@@ -119,14 +119,14 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn.clicked.connect(lambda: self._affine_transform(self.fm_imview))
         line.addWidget(self.transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
-        self.show_btn.stateChanged.connect(self._show_original)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
+        self.show_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._show_original(state, par))
+        line.addWidget(self.show_btn)
         self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
-        self.show_grid_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._show_grid(state, par))
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
-        line.addWidget(self.show_btn)
+        self.show_grid_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._show_grid(state, par))
         line.addWidget(self.show_grid_btn)
 
         # ---- Align colors
@@ -199,10 +199,15 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn_em.clicked.connect(lambda: self._affine_transform(self.em_imview))
         line.addWidget(self.transform_btn_em)
         self.show_btn_em = QtWidgets.QCheckBox('Show original EM data', self)
-        self.show_btn_em.stateChanged.connect(self._show_original_em)
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
+        self.show_btn_em.stateChanged.connect(lambda state, par=self.em_imview: self._show_original(state, par))
         line.addWidget(self.show_btn_em)
+        self.show_grid_btn_em = QtWidgets.QCheckBox('Show grid box',self)
+        self.show_grid_btn_em.setEnabled(False)
+        self.show_grid_btn_em.setChecked(False)
+        self.show_grid_btn_em.stateChanged.connect(lambda state, par=self.em_imview: self._show_grid(state, par))
+        line.addWidget(self.show_grid_btn_em)
         
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -278,9 +283,11 @@ class GUI(QtGui.QMainWindow):
         if parent == self.fm_imview:
             tag = 'FM'
             index = 0
+            show_grid_btn = self.show_grid_btn
         else:
             tag = 'EM'
             index = 1
+            show_grid_btn = self.show_grid_btn_em
 
         if checked:
             print('Defining grid on %s image: Click on corners'%tag)
@@ -293,8 +300,8 @@ class GUI(QtGui.QMainWindow):
             parent.addItem(self.grid_box[index])
             [parent.removeItem(roi) for roi in self.clicked_points[index]]
             self.clicked_points[index] = []
-            self.show_grid_btn.setEnabled(True)
-            self.show_grid_btn.setChecked(True)
+            show_grid_btn.setEnabled(True)
+            show_grid_btn.setChecked(True)
 
     def _define_corr_toggled(self, checked, parent):
         if parent == self.fm_imview:
@@ -358,6 +365,56 @@ class GUI(QtGui.QMainWindow):
         else:
             print('Define grid box on %s image first!'%tag)
 
+    def _show_original(self, state, parent):
+        if parent == self.fm_imview:
+            index = 0
+            obj = self.fm
+            updater = self._update_fm_imview
+            show_btn = self.show_btn
+            show_grid_btn = self.show_grid_btn
+        else:
+            index = 1
+            obj = self.assembler
+            updater = self._update_em_imview
+            show_btn = self.show_btn_em
+            show_grid_btn = self.show_grid_btn_em
+
+        if obj is not None:
+            obj.toggle_original(state==0)
+            updater()
+            if show_btn.isChecked():
+                parent.removeItem(self.tr_grid_box[index])
+                if show_grid_btn.isChecked():
+                    parent.addItem(self.grid_box[index])
+            else:
+                parent.removeItem(self.grid_box[index])
+                if self.tr_grid_box[index] is not None:
+                    parent.addItem(self.tr_grid_box[index])
+
+    def _show_grid(self, state, parent):
+        if parent == self.fm_imview:
+            index = 0
+            obj = self.fm
+            show_btn = self.show_btn
+            show_grid_btn = self.show_grid_btn
+        else:
+            index = 1
+            obj = self.assembler
+            show_btn = self.show_btn_em
+            show_grid_btn = self.show_grid_btn_em
+
+        if show_btn.isChecked():
+            if show_grid_btn.isChecked():
+                parent.addItem(self.grid_box[index])
+            else:
+                parent.removeItem(self.grid_box[index])
+        else:
+            if obj is not None:
+                if show_grid_btn.isChecked():
+                    parent.addItem(self.tr_grid_box[index])
+                else:
+                    parent.removeItem(self.tr_grid_box[index])
+
     def keyPressEvent(self, event):
         key = event.key()
         mod = int(event.modifiers())
@@ -403,34 +460,6 @@ class GUI(QtGui.QMainWindow):
 
         self.fm_imview.setImage(self.fm.data, levels=levels)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _show_original(self, state):
-        if self.fm is not None:
-            self.fm.toggle_original(state==0)
-            self._update_fm_imview() 
-            if self.show_btn.isChecked():
-                self.fm_imview.removeItem(self.tr_grid_box[0])
-                if self.show_grid_btn.isChecked():
-                    self.fm_imview.addItem(self.grid_box[0])
-            else:
-                self.fm_imview.removeItem(self.grid_box[0])
-                if self.tr_grid_box[0] is not None:
-                    self.fm_imview.addItem(self.tr_grid_box[0])
-            
-    def _show_grid(self, state, parent):
-        index = 0 if parent == self.fm_imview else 1
-
-        if self.show_btn.isChecked():
-            if self.show_grid_btn.isChecked():
-                self.fm_imview.addItem(self.grid_box[index])
-            else:
-                self.fm_imview.removeItem(self.grid_box[index])
-        else:
-            if self.fm is not None:
-                if self.show_grid_btn.isChecked():
-                    self.fm_imview.addItem(self.tr_grid_box[index])
-                else:
-                    self.fm_imview.removeItem(self.tr_grid_box[index])
 
     def _fliph(self, state):
         self.fm.flip_horizontal(state == QtCore.Qt.Checked)
@@ -513,11 +542,6 @@ class GUI(QtGui.QMainWindow):
 
         self.em_imview.setImage(self.assembler.data, levels=levels)
         self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-
-    def _show_original_em(self, state):
-        if self.assembler is not None:
-            self.assembler.toggle_original(state == 0)
-            self._update_em_imview()
 
     def _assemble_mrc(self):
         if self.step_box.text() is '':
