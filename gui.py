@@ -31,7 +31,7 @@ class GUI(QtGui.QMainWindow):
         self._init_ui()
 
     def _init_ui(self):
-        self.resize(1000,800)
+        self.resize(1000, 800)
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -114,7 +114,7 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn = QtWidgets.QPushButton('Transform image', self)
         self.transform_btn.clicked.connect(self._affine_transform)
         line.addWidget(self.transform_btn)
-        self.show_btn = QtWidgets.QCheckBox('Show original data',self)
+        self.show_btn = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn.stateChanged.connect(self._show_original)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
@@ -123,7 +123,7 @@ class GUI(QtGui.QMainWindow):
         # ---- Align colors
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.peak_btn = QtWidgets.QPushButton('Peak finding',self)
+        self.peak_btn = QtWidgets.QPushButton('Peak finding', self)
         self.peak_btn.clicked.connect(self._find_peaks)
         self.align_btn = QtWidgets.QPushButton('Align color channels', self)
         self.align_btn.clicked.connect(self._calc_shift)
@@ -139,19 +139,19 @@ class GUI(QtGui.QMainWindow):
         self.flipv = QtWidgets.QCheckBox('Flip vertically', self)
         self.flipv.stateChanged.connect(self._flipv)
         line.addWidget(self.flipv)
-        self.transpose = QtWidgets.QCheckBox('Transpose',self)
+        self.transpose = QtWidgets.QCheckBox('Transpose', self)
         self.transpose.stateChanged.connect(self._trans)
         line.addWidget(self.transpose)
-        self.rotate = QtWidgets.QCheckBox('Rotate 90 deg',self)
+        self.rotate = QtWidgets.QCheckBox('Rotate 90 deg', self)
         self.rotate.stateChanged.connect(self._rot)
         line.addWidget(self.rotate)
         vbox.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.select_points = QtWidgets.QPushButton('Select points of interest',self)
+        self.select_points = QtWidgets.QPushButton('Select points of interest', self)
         self.select_points.setCheckable(True)
-        self.select_points.toggled.connect(self._define_toggeled_corr)
+        self.select_points.toggled.connect(self._define_toggled_corr)
         line.addWidget(self.select_points)
 
     def _init_em_options(self, parent_layout):
@@ -189,7 +189,7 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn_em = QtWidgets.QPushButton('Transform EM image', self)
         self.transform_btn_em.clicked.connect(self._affine_transform_em)
         line.addWidget(self.transform_btn_em)
-        self.show_btn_em = QtWidgets.QCheckBox('Show original EM data',self)
+        self.show_btn_em = QtWidgets.QCheckBox('Show original EM data', self)
         self.show_btn_em.stateChanged.connect(self._show_original_em)
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
@@ -198,7 +198,7 @@ class GUI(QtGui.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.select_points_em = QtWidgets.QPushButton('Select points of interest',self)
+        self.select_points_em = QtWidgets.QPushButton('Select points of interest', self)
         self.select_points_em.setCheckable(True)
         self.select_points_em.toggled.connect(self._define_toggeled_corr_em)
         line.addWidget(self.select_points_em)
@@ -226,9 +226,9 @@ class GUI(QtGui.QMainWindow):
             self.clicked_points.append(roi)
         elif self.select_points.isChecked():
             point = pg.CircleROI(self.fm_imview.getImageItem().mapFromScene(event.pos()),
-                               100,
-                               parent=self.fm_imview.getImageItem(),
-                               movable=True)
+                                 100,
+                                 parent=self.fm_imview.getImageItem(),
+                                 movable=True)
             point.removeHandle(0)
             self.fm_imview.addItem(point)
             self.points_corr.append(point)
@@ -248,9 +248,9 @@ class GUI(QtGui.QMainWindow):
             self.clicked_points_em.append(roi)
         elif self.select_points_em.isChecked():
             point = pg.CircleROI(self.em_imview.getImageItem().mapFromScene(event.pos()),
-                               100,
-                               parent=self.em_imview.getImageItem(),
-                               movable=True)
+                                 100,
+                                 parent=self.em_imview.getImageItem(),
+                                 movable=True)
             point.removeHandle(0)
             self.em_imview.addItem(point)
             self.points_corr_em.append(point)
@@ -281,7 +281,10 @@ class GUI(QtGui.QMainWindow):
             #self.curr_fm_folder = os.getcwd()
             self.curr_fm_folder = '/beegfs/cssb/user/kaufmanr/cryoCLEM-software/clem_dataset/'
 
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select FM file', self.curr_fm_folder , '*.lif')
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                             'Select FM file',
+                                                             self.curr_fm_folder,
+                                                             '*.lif')
         self.curr_fm_folder = os.path.dirname(file_name)
 
         if file_name is not '':
@@ -333,22 +336,22 @@ class GUI(QtGui.QMainWindow):
 
     def _show_original(self, state):
         if self.fm is not None:
-            self.fm.toggle_original(state==0)
+            self.fm.toggle_original(state == 0)
             self._update_fm_imview()
 
-    def _fliph(self,state):
+    def _fliph(self, state):
         self.fm.flip_horizontal(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
-    def _flipv(self,state):
+    def _flipv(self, state):
         self.fm.flip_vertical(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
-    def _trans(self,state):
+    def _trans(self, state):
         self.fm.transpose(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
-    def _rot(self,state):
+    def _rot(self, state):
         self.fm.rotate_clockwise(state == QtCore.Qt.Checked)
         self._update_fm_imview()
 
@@ -379,6 +382,7 @@ class GUI(QtGui.QMainWindow):
         print('Align color channels')
         return
         # TODO fix this
+        '''
         new_list = align_fm.calc_shift(self.flist, self.fm.data)
 
         self.fselector.addItems(new_list)
@@ -389,12 +393,13 @@ class GUI(QtGui.QMainWindow):
             self.fm.data.append(data_shifted[i])
 
         self.align_btn.setEnabled(False)
+        '''
 
     def _affine_transform(self):
         if self.grid_box is not None:
             print('Perform affine transformation')
             points_obj = self.grid_box.getState()['points']
-            points = np.array([list((point[0],point[1])) for point in points_obj])
+            points = np.array([list((point[0], point[1])) for point in points_obj])
 
             self.fm.calc_transform(points)
             self.fm.toggle_original()
@@ -412,7 +417,10 @@ class GUI(QtGui.QMainWindow):
     def _load_mrc(self):
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Select .mrc file', self.curr_mrc_folder , '*.mrc')
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                             'Select .mrc file',
+                                                             self.curr_mrc_folder,
+                                                             '*.mrc')
         self.curr_mrc_folder = os.path.dirname(file_name)
 
         if file_name is not '':
@@ -440,7 +448,7 @@ class GUI(QtGui.QMainWindow):
             [self.em_imview.removeItem(roi) for roi in self.clicked_points_em]
             self.clicked_points_em = []
 
-    def _define_toggeled_corr_em(self, checked):
+    def _define_toggled_corr_em(self, checked):
         if checked:
             print('Select points of interest')
             if len(self.points_corr_em) != 0:
@@ -458,7 +466,7 @@ class GUI(QtGui.QMainWindow):
 
     def _show_original_em(self, state):
         if self.assembler is not None:
-            self.assembler.toggle_original(state==0)
+            self.assembler.toggle_original(state == 0)
             self._update_em_imview()
 
     def _assemble_mrc(self):
@@ -482,7 +490,7 @@ class GUI(QtGui.QMainWindow):
         else:
             if self.curr_mrc_folder is None:
                 self.curr_mrc_folder = os.getcwd()
-            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder , '*.mrc')
+            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder, '*.mrc')
             self.curr_mrc_folder = os.path.dirname(file_name)
             if file_name is not '':
                 self.assembler.save_merge(file_name)
@@ -491,7 +499,7 @@ class GUI(QtGui.QMainWindow):
         if self.grid_box_em is not None:
             print('Perform affine transformation')
             points_obj = self.grid_box_em.getState()['points']
-            points = np.array([list((point[0],point[1])) for point in points_obj])
+            points = np.array([list((point[0], point[1])) for point in points_obj])
 
             self.assembler.affine_transform(points)
             self.assembler.toggle_original()
