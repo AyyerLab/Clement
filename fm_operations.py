@@ -90,6 +90,7 @@ class FM_ops():
         if self._tf_data is None:
             print('Need to transform data first')
             return
+
         if transformed is None:
             self.transformed = not self.transformed
         else:
@@ -207,5 +208,10 @@ class FM_ops():
             sys.stderr.write('\r%d'%i)
         print('\r', self._tf_data.shape)
         self.transform_shift = -self.tf_corners.min(1)[:2]
+        print(self.transform_shift)
         self.transformed = True
         self.data = np.copy(self._tf_data)
+        print(self.new_points)
+        self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+    
+        print(self.new_points)
