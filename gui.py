@@ -37,7 +37,7 @@ class GUI(QtGui.QMainWindow):
     # ---- UI functions
 
     def _init_ui(self):
-        self.resize(1000, 800)
+        self.resize(1600, 800)
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -252,23 +252,29 @@ class GUI(QtGui.QMainWindow):
                 return
             else:
                 index = 0
+                obj = self.fm
                 dbtn = self.define_btn
                 selbtn = self.select_btn
-                size = 0.01 * self.fm.data.shape[0]
-                corr = self.points_corr[index]
-                clicked_points = self.clicked_points[index]
+                other = self.em_imview
+                other_obj = self.assembler
 
         if parent == self.em_imview:
             if self.assembler is None:
                 return
             else:
                 index = 1
+                obj = self.assembler
                 dbtn = self.define_btn_em
                 selbtn = self.select_btn_em
                 size = 0.004 * self.assembler.data.shape[0]
                 corr = self.points_corr[index]
                 clicked_points = self.clicked_points[index]
                 my_box = self.select_region_btn
+                other = self.fm_imview
+                other_obj = self.fm
+        
+        clicked_points = self.clicked_points[index]
+        size = 10
 
         pos = parent.getImageItem().mapFromScene(event.pos())
         pos.setX(pos.x() - size/2)
@@ -286,9 +292,27 @@ class GUI(QtGui.QMainWindow):
             point.setPen(0,255,0)
             point.removeHandle(0)
             parent.addItem(point)
+
             corr.append(point)
         elif my_box.isChecked():
             self.box_coordinate = pos
+
+            self.points_corr[index].append(point)
+
+            # Coordinates in clicked image
+            init = np.array([pos.x(), pos.y(), 1])
+            # Coordinates in pixel space
+            base = np.dot(np.linalg.inv(obj.tf_matrix), init)
+            # Coordinates in other image
+            transf = np.dot(other_obj.tf_matrix, base)
+
+            pos = QtCore.QPointF(transf[0]-5, transf[1]-5)
+            point = pg.CircleROI(pos, 10, parent=other.getImageItem(), movable=False)
+            point.setPen(0,255,255)
+            point.removeHandle(0)
+            other.addItem(point)
+            self.points_corr[1-index].append(point)
+
 
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
@@ -307,7 +331,12 @@ class GUI(QtGui.QMainWindow):
                 self.grid_box[index] = None
         else:
             print('Done defining grid on %s image: Manually adjust fine positions'%tag)
-            self.grid_box[index] = pg.PolyLineROI([c.pos() for c in self.clicked_points[index]], closed=True, movable=False)
+            positions = [c.pos() for c in self.clicked_points[index]]
+            sizes = [c.size()[0] for c in self.clicked_points[index]]
+            for pos, s in zip(positions, sizes):
+                pos.setX(pos.x() + s/2)
+                pos.setY(pos.y() + s/2)
+            self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
             parent.addItem(self.grid_box[index])
             [parent.removeItem(roi) for roi in self.clicked_points[index]]
             self.clicked_points[index] = []
@@ -369,7 +398,8 @@ class GUI(QtGui.QMainWindow):
                 parent.addItem(roi)
                 self.tr_grid_box_list[index].append(roi)
             
-            self.tr_grid_box[index] = pg.PolyLineROI([c.pos() for c in self.tr_grid_box_list[index]], closed=True, movable=False)
+            positions = [c.pos() for c in self.tr_grid_box_list[index]]
+            self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
             parent.addItem(self.tr_grid_box[index])
             [parent.removeItem(roi) for roi in self.tr_grid_box_list[index]]
             self.tr_grid_box_list[index] = []

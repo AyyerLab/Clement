@@ -26,6 +26,7 @@ class Assembler():
         self._tf_data = None
         self._orig_data = None
         self.mcounts = None
+        self.tf_matrix = np.identity(3)
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
