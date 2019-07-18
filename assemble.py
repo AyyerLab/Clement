@@ -124,6 +124,7 @@ class Assembler():
         self.transformed = True
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+        self.points = np.copy(self.new_points)
 
     @classmethod
     def get_transform(self, source, dest):
