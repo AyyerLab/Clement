@@ -54,7 +54,7 @@ class Assembler():
 
     def save_merge(self, fname):
         with mrc.new(fname, overwrite=True) as f:
-            f.set_data(self.merged)
+            f.set_data(self.data)
             f.update_header_stats()
 
     def toggle_original(self, transformed=None):
