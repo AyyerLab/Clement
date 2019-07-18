@@ -21,6 +21,8 @@ class GUI(QtGui.QMainWindow):
         self.assembler = None
         self.ind = 0
 
+        self.boxes = []
+        
         # In each of the following lists, first is for FM image and second for EM image
         self.clicked_points = [[], []]
         self.points_corr = [[], []]
@@ -207,6 +209,7 @@ class GUI(QtGui.QMainWindow):
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         self.show_boxes_btn = QtWidgets.QCheckBox('Show boxes',self)
+        self.show_boxes_btn.stateChanged.connect(self._show_boxes)
         self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
         #self.select_region_btn.toggled.connect(lambda state, par=self.em_imview: self._select)
         line.addWidget(self.show_boxes_btn)
@@ -533,6 +536,22 @@ class GUI(QtGui.QMainWindow):
             self.em_imview.setImage(self.assembler.data)
         else:
             print('You have to choose .mrc file first!')
+    
+    def _show_boxes(self):
+        if self.show_boxes_btn.isChecked():
+            if self.assembler is not None:
+                if len(self.boxes) == 0:
+                    for i in range(len(self.assembler.pos_x)):
+                        roi = pg.RectROI([self.assembler.pos_x[i],self.assembler.pos_y[i]],
+                                        [self.assembler.orig_data.shape[1],self.assembler.orig_data.shape[2]],
+                                        movable=False)
+                        #roi.removeHandle(0)
+                        self.boxes.append(roi)
+                        self.em_imview.addItem(roi)
+        else:
+            [self.em_imview.removeItem(box) for box in self.boxes]
+
+
 
     def _save_mrc_montage(self):
         if self.assembler is None:

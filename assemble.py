@@ -14,37 +14,42 @@ matplotlib.use('QT5Agg')
 class Assembler():
     def __init__(self, step=100):
         self.step = int(np.sqrt(step))
+        self.orig_data = None
         self.data = None
         self.backup = None
         self.transformed_data = None   
-    
+        self.pos_x = None
+        self.pos_y = None
+        self.pos_z = None
+
+
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
             try:
-                self._orig_data = f.data[:,::self.step,::self.step]
+                self.orig_data = f.data[:,::self.step,::self.step]
             except IndexError:
-                self._orig_data = f.data
+                self.orig_data = f.data
             self._h = f.header
             self._eh = np.frombuffer(f.extended_header, dtype='i2')
             
     def assemble(self):
-        dimensions = self._orig_data.shape
+        dimensions = self.orig_data.shape
         
         if len(dimensions) == 3:
-            pos_x = self._eh[1:10*dimensions[0]:10] // self.step
-            pos_y = self._eh[2:10*dimensions[0]:10] // self.step
-            pos_z = self._eh[3:10*dimensions[0]:10]
+            self.pos_x = self._eh[1:10*dimensions[0]:10] // self.step
+            self.pos_y = self._eh[2:10*dimensions[0]:10] // self.step
+            self.pos_z = self._eh[3:10*dimensions[0]:10]
 
             cy, cx = np.indices(dimensions[1:3])
 
-            self.data = np.zeros((np.max(pos_x)+dimensions[2],np.max(pos_y)+dimensions[1]), dtype='f4')
+            self.data = np.zeros((np.max(self.pos_x)+dimensions[2],np.max(self.pos_y)+dimensions[1]), dtype='f4')
             #sys.stderr.write(self.data.shape)
 
             self.mcounts = np.zeros_like(self.data)
             for i in range(dimensions[0]):
                 sys.stderr.write('\rMerge for image {}'.format(i))
-                np.add.at(self.mcounts, (cx+pos_x[i], cy+pos_y[i]), 1)
-                np.add.at(self.data, (cx+pos_x[i], cy+pos_y[i]), self._orig_data[i])
+                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
+                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), self.orig_data[i])
             sys.stderr.write('\n')
 
             self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
