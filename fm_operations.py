@@ -27,46 +27,65 @@ class FM_ops():
         self.matches = []
         self.diff_list = []
         self.transformed_data = None
+        self.old_fname = None
         self.shift = []
         self.transform_shift = 0
+        javabridge.start_vm(class_path=bioformats.JARS)
 
-    def parse(self, fname):
+    def parse(self, fname, z):
         ''' Parses file
 
         Saves parsed file in self._orig_data
         self.data is the array to be displayed
         '''
-        javabridge.start_vm(class_path=bioformats.JARS)
 
-        self._orig_data = bioformats.load_image(fname)
+        if fname != self.old_fname:
+            self.reader = bioformats.ImageReader(fname)
+            self.old_fname = fname
+            self.num_channels = self.reader.rdr.getSizeZ()
+        self._orig_data = self.reader.read(z=z)
         self._orig_data /= self._orig_data.mean((0, 1))
-        self._orig_data = np.transpose(self._orig_data)
+        #self._orig_data = np.transpose(self._orig_data)
         self.data = np.copy(self._orig_data)
+        print('Parsed: %s z=%d'%(fname, z))
 
+    def __del__(self):
         javabridge.kill_vm()
 
+    def _update_data(self):
+        if self.transformed and self.transformed_data is not None:
+            self.data = np.copy(self.transformed_data)
+        else:
+            self.data = np.copy(self._orig_data)
+
+        if self.fliph:
+            self.data = np.flip(self.data, axis=1)
+        if self.flipv:
+            self.data = np.flip(self.data, axis=2)
+        if self.transp:
+            self.data = np.transpose(self.data, (0, 2, 1))
+
     def flip_horizontal(self):
-        self.data = np.flip(self.data, axis=1)
         self.fliph = not self.fliph
+        self._update_data()
 
     def flip_vertical(self):
-        self.data = np.flip(self.data, axis=2)
         self.flipv = not self.flipv
+        self._update_data()
 
     def transpose(self):
-        self.data = np.transpose(self.data, (0, 2, 1))
         self.transp = not self.transp
+        self._update_data()
 
     def toggle_original(self, transformed=None):
         if self.transformed_data is None:
             print('Need to transform data first')
             return
         if transformed is None:
-            self.data = np.copy(self.transformed_data if self.transformed else self._orig_data)
             self.transformed = not self.transformed
         else:
             self.transformed = transformed
-            self.data = np.copy(self.transformed_data if self.transformed else self._orig_data)
+        self._update_data()
 
     def rotate_clockwise(self):
         self.data = np.rot90(self.data, axes=(1, 2))
