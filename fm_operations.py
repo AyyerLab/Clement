@@ -31,6 +31,8 @@ class FM_ops():
         self.new_points = None
         self.shift = []
         self.transform_shift = 0
+        self.tf_matrix = np.identity(3)
+
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
