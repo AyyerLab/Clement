@@ -143,15 +143,24 @@ class Assembler():
             print('Selected region ambiguous. Try again')
         else:
             counter = 0
-            while (self.pos_x[counter]+self.stacked_data.shape[1] < coordinate[0]) or (self.pos_y[counter] + self.stacked_data.shape[2] < coordinate[1]):
+            my_bool = False
+            while not my_bool:
+                x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
+                y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
+           
                 print('Counter: ', counter)
-                print('pos_x,pos_y: {} {}'.format(self.pos_x[counter],self.pos_y[counter]))
+                #print('pos_x,pos_y: {} {}'.format(self.pos_x[counter],self.pos_y[counter]))
+                
                 counter += 1
-            print('Selected region: ', counter)
-            self.region = (self.data_highres[counter]).T
+                
+                if coordinate[0] in x_range and coordinate[1] in y_range:
+                    my_bool = True
+
+            print('Selected region: ', counter-1)
+            self.region = (self.data_highres[counter-1]).T
             self.data = self.region
-            print('pos_x: ',self.pos_x)
-            print('pos_y: ',self.pos_y)
+            #print('pos_x: ',self.pos_x)
+            #print('pos_y: ',self.pos_y)
 
 if __name__=='__main__':
     path = '../gs.mrc'
