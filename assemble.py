@@ -136,19 +136,19 @@ class Assembler():
     def select_region(self,coordinate):
         print(self.data.shape)
         coordinate = coordinate.astype(int)
-        coordinate = np.array((coordinate[0],coordinate[1]-self._orig_data.shape[1])).astype(int)
-        coordinate[coordinate<0] = 0
+        #coordinate = np.array((coordinate[0],coordinate[1]-self._orig_data.shape[1])).astype(int)
+        #coordinate[coordinate<0] = 0
         print(coordinate)
         if self.mcounts[coordinate[0],coordinate[1]] > 1:
             print('Selected region ambiguous. Try again')
         else:
             counter = 0
-            while self.pos_x[counter] < coordinate[0] or self.pos_y[counter] < coordinate[1]:
+            while (self.pos_x[counter]+self.stacked_data.shape[1] < coordinate[0]) or (self.pos_y[counter] + self.stacked_data.shape[2] < coordinate[1]):
                 print('Counter: ', counter)
                 print('pos_x,pos_y: {} {}'.format(self.pos_x[counter],self.pos_y[counter]))
                 counter += 1
-            print('Selected region: ', counter-1)
-            self.region = self.data_highres[counter-1]
+            print('Selected region: ', counter)
+            self.region = (self.data_highres[counter]).T
             self.data = self.region
             print('pos_x: ',self.pos_x)
             print('pos_y: ',self.pos_y)
