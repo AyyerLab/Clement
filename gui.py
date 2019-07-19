@@ -454,14 +454,16 @@ class GUI(QtGui.QMainWindow):
 
         if orig_btn.isChecked():
             if grid_btn.isChecked():
-                self._recalc_grid(orig_btn.isChecked())
+                if index == 0:
+                    self._recalc_grid(orig_btn.isChecked())
                 parent.addItem(self.grid_box[index])
             else:
                 parent.removeItem(self.grid_box[index])
         else:
             if obj is not None:
                 if grid_btn.isChecked():
-                    self._recalc_grid(orig_btn.isChecked())
+                    if index == 0:
+                        self._recalc_grid(orig_btn.isChecked())
                     parent.addItem(self.tr_grid_box[index])
                 else:
                     parent.removeItem(self.tr_grid_box[index])
