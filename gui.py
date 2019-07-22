@@ -366,7 +366,8 @@ class GUI(QtGui.QMainWindow):
             if len(self.points_corr[index]) != 0:
                 [parent.removeItem(point) for point in self.points_corr[index]]
                 self.points_corr[index] = []
-            self.tr_matrices[index] = obj.get_transform(obj.points, other_obj.points)
+            if obj is not None and other_obj is not None:
+                self.tr_matrices[index] = obj.get_transform(obj.points, other_obj.points)
         else:
             print('Done selecting points of interest on %s image'%tag)
 
@@ -658,8 +659,8 @@ class GUI(QtGui.QMainWindow):
 
     def _select_box(self,state,parent):
         if self.select_region_btn.isChecked():
-            print('Select box')
-            parent.setImage(self.em.data)
+            print('Select box!')
+            #parent.setImage(self.em.data)
         else:
             if self.box_coordinate is not None:
                 points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
@@ -679,11 +680,11 @@ class GUI(QtGui.QMainWindow):
             assembled = False
         if self.em is not None:
             self.em.toggle_region(assembled)
-            self.em_imview.setImage(self.em.data)
+            self._update_em_imview()
     
     def _save_mrc_montage(self):
         if self.em is None:
-            print('No montage to save')
+            print('No montage to save!')
         else:
             if self.curr_mrc_folder is None:
                 self.curr_mrc_folder = os.getcwd()

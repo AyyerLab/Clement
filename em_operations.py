@@ -136,31 +136,21 @@ class EM_ops():
     def select_region(self,coordinate):
         print(self.data.shape)
         coordinate = coordinate.astype(int)
-        #coordinate = np.array((coordinate[0],coordinate[1]-self._orig_data.shape[1])).astype(int)
-        #coordinate[coordinate<0] = 0
-        print(coordinate)
         if self.mcounts[coordinate[0],coordinate[1]] > 1:
-            print('Selected region ambiguous. Try again')
+            print('Selected region ambiguous. Try again!')
         else:
             counter = 0
             my_bool = False
             while not my_bool:
                 x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
                 y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
-           
-                print('Counter: ', counter)
-                #print('pos_x,pos_y: {} {}'.format(self.pos_x[counter],self.pos_y[counter]))
-                
                 counter += 1
-                
                 if coordinate[0] in x_range and coordinate[1] in y_range:
                     my_bool = True
 
             print('Selected region: ', counter-1)
             self.region = (self.data_highres[counter-1]).T
             self.data = self.region
-            #print('pos_x: ',self.pos_x)
-            #print('pos_y: ',self.pos_y)
 
 if __name__=='__main__':
     path = '../gs.mrc'
