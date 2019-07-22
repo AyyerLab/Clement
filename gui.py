@@ -7,7 +7,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
 
-import assemble
+import em_operations
 import align_fm
 import affine_transform
 import fm_operations
@@ -18,17 +18,17 @@ class GUI(QtGui.QMainWindow):
     def __init__(self):
         super(GUI, self).__init__()
         self.fm = None
-        self.assembler = None
+        self.em = None
         self.ind = 0
 
         self.boxes = []
         self.box_coordinate = None
+        
         # In each of the following lists, first is for FM image and second for EM image
         self.clicked_points = [[], []]
         self.points_corr = [[], []]
         self.grid_box = [None, None]
         self.tr_grid_box = [None, None]
-        self.tr_grid_box_list = [[], []]
         self.tr_matrices = [None, None]
 
         self.curr_mrc_folder = None
@@ -260,15 +260,17 @@ class GUI(QtGui.QMainWindow):
                     size = 0.01 * obj.data.shape[0]
                 else:
                     size = obj.side_length / 25
+                clicked_points = self.clicked_points[index]
+                points_corr = self.points_corr[index]
                 other = self.em_imview
-                other_obj = self.assembler
+                other_obj = self.em
 
         if parent == self.em_imview:
-            if self.assembler is None:
+            if self.em is None:
                 return
             else:
                 index = 1
-                obj = self.assembler
+                obj = self.em
                 dbtn = self.define_btn_em
                 selbtn = self.select_btn_em
                 if obj.side_length is None:
@@ -276,6 +278,7 @@ class GUI(QtGui.QMainWindow):
                 else:
                     size = obj.side_length / 25
                 clicked_points = self.clicked_points[index]
+                points_corr = self.points_corr[index]
                 other = self.fm_imview
                 other_obj = self.fm
         
@@ -289,13 +292,13 @@ class GUI(QtGui.QMainWindow):
             roi.setPen(255,0,0)
             roi.removeHandle(0)
             parent.addItem(roi)
-            self.clicked_points[index].append(roi)
+            clicked_points.append(roi)
         elif selbtn.isChecked():
             point = pg.CircleROI(pos, size, parent=item, movable=True)
             point.setPen(0,255,0)
             point.removeHandle(0)
             parent.addItem(point)
-            self.points_corr[index].append(point)
+            points_corr.append(point)
 
             # Coordinates in clicked image
             shift = obj.transform_shift + [obj.side_length/2]*2
@@ -308,7 +311,7 @@ class GUI(QtGui.QMainWindow):
             point.setPen(0,255,255)
             point.removeHandle(0)
             other.addItem(point)
-            self.points_corr[1-index].append(point)
+            points_corr[1-index].append(point)
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
 
@@ -317,10 +320,12 @@ class GUI(QtGui.QMainWindow):
             tag = 'FM'
             index = 0
             show_grid_btn = self.show_grid_btn
+            obj = self.fm
         else:
             tag = 'EM'
             index = 1
             show_grid_btn = self.show_grid_btn_em
+            obj = self.em
 
         if checked:
             print('Defining grid on %s image: Click on corners'%tag)
@@ -338,19 +343,20 @@ class GUI(QtGui.QMainWindow):
             parent.addItem(self.grid_box[index])
             [parent.removeItem(roi) for roi in self.clicked_points[index]]
             self.clicked_points[index] = []
-            show_grid_btn.setEnabled(True)
-            show_grid_btn.setChecked(True)
-
+            if obj is not None:
+                show_grid_btn.setEnabled(True)
+                show_grid_btn.setChecked(True)
+            
     def _define_corr_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
             index = 0
             obj = self.fm
-            other_obj = self.assembler
+            other_obj = self.em
         else:
             tag = 'EM'
             index = 1
-            obj = self.assembler
+            obj = self.em
             other_obj = self.fm
         if obj is None:
             return
@@ -373,15 +379,16 @@ class GUI(QtGui.QMainWindow):
         else:
             tag = 'EM'
             index = 1
-            obj = self.assembler
+            obj = self.em
             show_btn = self.show_btn_em
 
         if self.grid_box[index] is not None:
             print('Performing affine transformation on %s image'%tag)
-            if self.tr_grid_box[index] is not None:
-                points_obj = self.tr_grid_box[index].getState()['points']
-            else:
+            if show_btn.isChecked():
                 points_obj = self.grid_box[index].getState()['points']
+            else:
+                points_obj = self.tr_grid_box[index].getState()['points']     
+
             points = np.array([list((point[0], point[1])) for point in points_obj])
 
             obj.calc_transform(points)
@@ -389,25 +396,19 @@ class GUI(QtGui.QMainWindow):
                 obj.toggle_original()
             else:
                 obj.toggle_original(True)
+                        
             self._update_fm_imview() if index == 0 else self._update_em_imview()
 
-            parent.removeItem(self.grid_box[index])
-            if self.tr_grid_box[index] is not None:
-                parent.removeItem(self.tr_grid_box[index])
             show_btn.setEnabled(True)
             show_btn.setChecked(False)
-
-            for i in range(obj.new_points.shape[0]):
-                roi = pg.CircleROI(obj.new_points[i], 5, parent=parent.getImageItem(), movable=False)
-                roi.removeHandle(0)
-                parent.addItem(roi)
-                self.tr_grid_box_list[index].append(roi)
             
-            positions = [c.pos() for c in self.tr_grid_box_list[index]]
+            if not show_btn.isChecked() and self.tr_grid_box[index] is not None:
+                parent.removeItem(self.tr_grid_box[index])
+
+            positions = [point for point in obj.new_points]
             self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
             parent.addItem(self.tr_grid_box[index])
-            [parent.removeItem(roi) for roi in self.tr_grid_box_list[index]]
-            self.tr_grid_box_list[index] = []
+    
         else:
             print('Define grid box on %s image first!'%tag)
 
@@ -420,7 +421,7 @@ class GUI(QtGui.QMainWindow):
             grid_btn = self.show_grid_btn
         else:
             index = 1
-            obj = self.assembler
+            obj = self.em
             updater = self._update_em_imview
             orig_btn = self.show_btn_em
             grid_btn = self.show_grid_btn_em
@@ -428,17 +429,16 @@ class GUI(QtGui.QMainWindow):
         if obj is not None:
             obj.toggle_original(state==0)
             if grid_btn.isChecked():
-                if orig_btn.isChecked():
-                    parent.removeItem(self.tr_grid_box[index])
+                if state:
+                    if self.tr_grid_box[index] is not None:
+                        parent.removeItem(self.tr_grid_box[index])
+                    parent.addItem(self.grid_box[index])
                 else:
                     parent.removeItem(self.grid_box[index])
+                    if self.tr_grid_box[index] is not None:
+                        parent.addItem(self.tr_grid_box[index])
+
             updater()
-            if orig_btn.isChecked():
-                if grid_btn.isChecked():
-                    parent.addItem(self.grid_box[index])
-            else:
-                if grid_btn.isChecked() and self.tr_grid_box[index] is not None:
-                    parent.addItem(self.tr_grid_box[index])
 
     def _show_grid(self, state, parent):
         if parent == self.fm_imview:
@@ -448,25 +448,35 @@ class GUI(QtGui.QMainWindow):
             grid_btn = self.show_grid_btn
         else:
             index = 1
-            obj = self.assembler
+            obj = self.em
             orig_btn = self.show_btn_em
             grid_btn = self.show_grid_btn_em
-
+        
         if orig_btn.isChecked():
-            if grid_btn.isChecked():
-                if index == 0:
-                    self._recalc_grid(orig_btn.isChecked())
+            if state:
                 parent.addItem(self.grid_box[index])
             else:
                 parent.removeItem(self.grid_box[index])
         else:
-            if obj is not None:
-                if grid_btn.isChecked():
-                    if index == 0:
-                        self._recalc_grid(orig_btn.isChecked())
-                    parent.addItem(self.tr_grid_box[index])
-                else:
-                    parent.removeItem(self.tr_grid_box[index])
+            if state:
+                parent.addItem(self.tr_grid_box[index])
+            else:
+                parent.removeItem(self.tr_grid_box[index])
+        #if orig_btn.isChecked():
+        #    if grid_btn.isChecked():
+        #        if index == 0:
+        #            self._recalc_grid(orig_btn.isChecked())
+        #        parent.addItem(self.grid_box[index])
+        #    else:
+        #        parent.removeItem(self.grid_box[index])
+        #else:
+        #    if obj is not None:
+        #        if grid_btn.isChecked():
+        #            if index == 0:
+        #                self._recalc_grid(orig_btn.isChecked())
+        #            parent.addItem(self.tr_grid_box[index])
+        #        else:
+        #            parent.removeItem(self.tr_grid_box[index])
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -612,7 +622,7 @@ class GUI(QtGui.QMainWindow):
         vr = self.em_imview.getImageItem().getViewBox().targetRect()
         levels = self.em_imview.getHistogramWidget().item.getLevels()
 
-        self.em_imview.setImage(self.assembler.data, levels=levels)
+        self.em_imview.setImage(self.em.data, levels=levels)
         self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _assemble_mrc(self):
@@ -622,21 +632,21 @@ class GUI(QtGui.QMainWindow):
             step = self.step_box.text()
 
         if self.mrc_fname.text() is not '':
-            self.assembler = assemble.Assembler(step=int(step))
-            self.assembler.parse(self.mrc_fname.text())
-            self.assembler.assemble()
+            self.em = em_operations.EM_ops(step=int(step))
+            self.em.parse(self.mrc_fname.text())
+            self.em.assemble()
             print('Done')
-            self.em_imview.setImage(self.assembler.data)
+            self.em_imview.setImage(self.em.data)
         else:
             print('You have to choose .mrc file first!')
     
     def _show_boxes(self):
         if self.show_boxes_btn.isChecked():
-            if self.assembler is not None:
+            if self.em is not None:
                 if len(self.boxes) == 0:
-                    for i in range(len(self.assembler.pos_x)):
-                        roi = pg.RectROI([self.assembler.pos_x[i],self.assembler.pos_y[i]],
-                                        [self.assembler.stacked_data.shape[1],self.assembler.stacked_data.shape[2]],
+                    for i in range(len(self.em.pos_x)):
+                        roi = pg.RectROI([self.em.pos_x[i],self.em.pos_y[i]],
+                                        [self.em.stacked_data.shape[1],self.em.stacked_data.shape[2]],
                                         movable=False)
                         #roi.removeHandle(0)
                         self.boxes.append(roi)
@@ -649,13 +659,13 @@ class GUI(QtGui.QMainWindow):
     def _select_box(self,state,parent):
         if self.select_region_btn.isChecked():
             print('Select box')
-            parent.setImage(self.assembler.data)
+            parent.setImage(self.em.data)
         else:
             if self.box_coordinate is not None:
                 points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
                 print(points_obj)
-                self.assembler.select_region(np.array(points_obj))
-                parent.setImage(self.assembler.data)
+                self.em.select_region(np.array(points_obj))
+                parent.setImage(self.em.data)
                 #[parent.removeItem(box) for box in self.boxes]
                 self.show_boxes_btn.setChecked(False)
                 self.box_coordinate = None
@@ -667,12 +677,12 @@ class GUI(QtGui.QMainWindow):
             assembled = True
         else:
             assembled = False
-        if self.assembler is not None:
-            self.assembler.toggle_region(assembled)
-            self.em_imview.setImage(self.assembler.data)
+        if self.em is not None:
+            self.em.toggle_region(assembled)
+            self.em_imview.setImage(self.em.data)
     
     def _save_mrc_montage(self):
-        if self.assembler is None:
+        if self.em is None:
             print('No montage to save')
         else:
             if self.curr_mrc_folder is None:
@@ -680,7 +690,7 @@ class GUI(QtGui.QMainWindow):
             file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder, '*.mrc')
             self.curr_mrc_folder = os.path.dirname(file_name)
             if file_name is not '':
-                self.assembler.save_merge(file_name)
+                self.em.save_merge(file_name)
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])

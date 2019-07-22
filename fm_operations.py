@@ -50,7 +50,6 @@ class FM_ops():
             self.num_channels = self.reader.rdr.getSizeZ()
         self._orig_data = self.reader.read(z=z)
         self._orig_data /= self._orig_data.mean((0, 1))
-        #self._orig_data = np.transpose(self._orig_data)
         self.data = np.copy(self._orig_data)
         if self.transformed:
             self.apply_transform()
@@ -210,7 +209,7 @@ class FM_ops():
         self.new_points[2] = cen + (self.side_length, self.side_length)
         self.new_points[3] = cen + (0, self.side_length)
 
-        self.tf_matrix = tf.estimate_transform('affine', my_points[:4], self.new_points).params
+        self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
 
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
