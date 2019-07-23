@@ -20,7 +20,8 @@ class GUI(QtGui.QMainWindow):
         self.fm = None
         self.em = None
         self.ind = 0
-
+         
+        self.colors = [True, True, True, True] 
         self.boxes = []
         self.box_coordinate = None
         
@@ -111,6 +112,27 @@ class GUI(QtGui.QMainWindow):
         button.clicked.connect(self._next_file)
         line.addWidget(button)
 
+        # ---- Select color channels
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        self.channel1_btn = QtWidgets.QCheckBox('Channel 1')
+        self.channel2_btn = QtWidgets.QCheckBox('Channel 2')
+        self.channel3_btn = QtWidgets.QCheckBox('Channel 3')
+        self.channel4_btn = QtWidgets.QCheckBox('Channel 4')
+        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_color_channels(state,channel))
+        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_color_channels(state,channel))
+        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_color_channels(state,channel))
+        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_color_channels(state,channel))
+        self.channel1_btn.setChecked(True)
+        self.channel2_btn.setChecked(True)
+        self.channel3_btn.setChecked(True)
+        self.channel4_btn.setChecked(True)
+        line.addWidget(self.channel1_btn)
+        line.addWidget(self.channel2_btn) 
+        line.addWidget(self.channel3_btn)
+        line.addWidget(self.channel4_btn)
+
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -118,9 +140,12 @@ class GUI(QtGui.QMainWindow):
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(lambda state, par=self.fm_imview: self._define_grid_toggled(state, par))
         line.addWidget(self.define_btn)
-        self.transform_btn = QtWidgets.QPushButton('Transform image', self)
+        self.transform_btn = QtWidgets.QPushButton('Transform FM image', self)
         self.transform_btn.clicked.connect(lambda: self._affine_transform(self.fm_imview))
         line.addWidget(self.transform_btn)
+        self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
+        self.rot_transform_btn.stateChanged.connect(lambda state, par=self.fm: self._allow_rotation_only(state,par))
+        line.addWidget(self.rot_transform_btn)              
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
@@ -201,6 +226,9 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn_em = QtWidgets.QPushButton('Transform EM image', self)
         self.transform_btn_em.clicked.connect(lambda: self._affine_transform(self.em_imview))
         line.addWidget(self.transform_btn_em)
+        self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
+        self.rot_transform_btn.stateChanged.connect(lambda state, par=self.em: self._allow_rotation_only(state,par))
+        line.addWidget(self.rot_transform_btn)
         self.show_btn_em = QtWidgets.QCheckBox('Show original EM data', self)
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
@@ -315,6 +343,13 @@ class GUI(QtGui.QMainWindow):
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
 
+    def _show_color_channels(self,checked,my_channel):
+        #my_channel = 0       
+        if self.fm is not None:
+           self.colors[my_channel] = not self.colors[my_channel]
+           #self.fm.select_color_channels(checked, my_channel)          
+           self._update_fm_imview()            
+ 
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -413,6 +448,12 @@ class GUI(QtGui.QMainWindow):
         else:
             print('Define grid box on %s image first!'%tag)
 
+    def _allow_rotation_only(self,state,obj):
+        pass 
+        #if obj is not None:
+        #    obj.no_shear = not obj.no_shearf obj is not None:
+        #    obj.no_shear = not obj.no_shear
+
     def _show_original(self, state, parent):
         if parent == self.fm_imview:
             index = 0
@@ -463,21 +504,7 @@ class GUI(QtGui.QMainWindow):
                 parent.addItem(self.tr_grid_box[index])
             else:
                 parent.removeItem(self.tr_grid_box[index])
-        #if orig_btn.isChecked():
-        #    if grid_btn.isChecked():
-        #        if index == 0:
-        #            self._recalc_grid(orig_btn.isChecked())
-        #        parent.addItem(self.grid_box[index])
-        #    else:
-        #        parent.removeItem(self.grid_box[index])
-        #else:
-        #    if obj is not None:
-        #        if grid_btn.isChecked():
-        #            if index == 0:
-        #                self._recalc_grid(orig_btn.isChecked())
-        #            parent.addItem(self.tr_grid_box[index])
-        #        else:
-        #            parent.removeItem(self.tr_grid_box[index])
+ 
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -522,10 +549,17 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
 
     def _update_fm_imview(self):
+        
+        color_data = []
+        for i in range(len(self.colors)):
+            if self.colors[i]:
+                color_data.append(self.fm.data[i])
+        color_data = np.array(color_data)
+                
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         levels = self.fm_imview.getHistogramWidget().item.getLevels()
 
-        self.fm_imview.setImage(self.fm.data, levels=levels)
+        self.fm_imview.setImage(color_data, levels=levels)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _fliph(self, state):

@@ -34,6 +34,7 @@ class FM_ops():
         self.shift = []
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
+        self.no_shear = False
 
         javabridge.start_vm(class_path=bioformats.JARS)
 
@@ -51,6 +52,7 @@ class FM_ops():
         self._orig_data = self.reader.read(z=z)
         self._orig_data /= self._orig_data.mean((0, 1))
         self.data = np.copy(self._orig_data)
+        self.color_data = np.copy(self._orig_data)
         if self.transformed:
             self.apply_transform()
             self._update_data()
@@ -59,6 +61,8 @@ class FM_ops():
         javabridge.kill_vm()
 
     def _update_data(self):
+
+        
         if self.transformed and self._tf_data is not None:
             self.data = np.copy(self._tf_data)
             self.points = np.copy(self.new_points)

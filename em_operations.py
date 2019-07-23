@@ -28,6 +28,9 @@ class EM_ops():
         self.side_length = None
         self.mcounts = None
         self.tf_matrix = np.identity(3)
+        self.no_shear = False
+        self.clockwise = False
+        self.rot_angle = None
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
@@ -87,8 +90,6 @@ class EM_ops():
         else:
             self.data = self.region
 
-
-
     def calc_transform(self, my_points):
         print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
@@ -104,6 +105,32 @@ class EM_ops():
         self.new_points[2] = cen + (self.side_length, self.side_length)
         self.new_points[3] = cen + (0, self.side_length)
  
+        if self.no_shear:
+            area = []
+            angles = []
+            for i in range(1,len(my_points)):
+                area.append((my_points[i][0]-my_points[i-1][0])*(my_points[i][1]-my_points[i-1][1]))
+            if np.mean(area) < 0:
+                self.clockwise = False
+            else:
+                self.clockwise = True
+            
+            if self.clockwise:
+                for i in range(1,len(my_points)):
+                    if i%2 != 0:
+                        angles.append(90-np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
+                    else:
+                        angles.append(np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
+            else:
+                for i in range(1,len(my_points)):
+                    if i%2 != 0:
+                        angles.append(np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
+                    else:
+                        angles.append(90-np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
+                
+            print('angles: ', angles)
+            print(np.mean(angles))    
+        
         self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
 
         nx, ny = self.data.shape
