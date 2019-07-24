@@ -150,7 +150,7 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn.clicked.connect(lambda: self._affine_transform(self.fm_imview))
         line.addWidget(self.transform_btn)
         self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
-        self.rot_transform_btn.stateChanged.connect(lambda state, par=self.fm: self._allow_rotation_only(state,par))
+        self.rot_transform_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._allow_rotation_only(state, par))
         line.addWidget(self.rot_transform_btn)              
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn.setEnabled(False)
@@ -232,9 +232,9 @@ class GUI(QtGui.QMainWindow):
         self.transform_btn_em = QtWidgets.QPushButton('Transform EM image', self)
         self.transform_btn_em.clicked.connect(lambda: self._affine_transform(self.em_imview))
         line.addWidget(self.transform_btn_em)
-        self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
-        self.rot_transform_btn.stateChanged.connect(lambda state, par=self.em: self._allow_rotation_only(state,par))
-        line.addWidget(self.rot_transform_btn)
+        self.rot_transform_btn_em = QtWidgets.QCheckBox('Disable Shearing', self)
+        self.rot_transform_btn_em.stateChanged.connect(lambda state, par=self.em_imview: self._allow_rotation_only(state,par))
+        line.addWidget(self.rot_transform_btn_em)
         self.show_btn_em = QtWidgets.QCheckBox('Show original EM data', self)
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
@@ -418,7 +418,11 @@ class GUI(QtGui.QMainWindow):
             show_btn = self.show_btn_em
 
         if self.grid_box[index] is not None:
-            print('Performing affine transformation on %s image'%tag)
+            if self.rot_transform_btn.isChecked():
+                print('Performing rotation on %s image'%tag)
+            else:
+                print('Performing affine transformation on %s image'%tag)
+
             if show_btn.isChecked():
                 points_obj = self.grid_box[index].getState()['points']
             else:
@@ -447,12 +451,17 @@ class GUI(QtGui.QMainWindow):
         else:
             print('Define grid box on %s image first!'%tag)
 
-    def _allow_rotation_only(self,state,obj):
-        pass 
-        #if obj is not None:
-        #    obj.no_shear = not obj.no_shearf obj is not None:
-        #    obj.no_shear = not obj.no_shear
-
+    def _allow_rotation_only(self,checked,parent):
+        if parent == self.fm_imview:
+            obj = self.fm
+        else:
+            obj = self.em
+        if obj is not None:
+            if checked:
+                obj.no_shear = True
+            else:
+                obj.no_shear = False
+            
     def _show_original(self, state, parent):
         if parent == self.fm_imview:
             index = 0

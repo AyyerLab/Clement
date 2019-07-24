@@ -31,6 +31,7 @@ class EM_ops():
         self.no_shear = False
         self.clockwise = False
         self.rot_angle = None
+        self.first_rotation = False
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
@@ -104,35 +105,12 @@ class EM_ops():
         self.new_points[1] = cen + (self.side_length, 0)
         self.new_points[2] = cen + (self.side_length, self.side_length)
         self.new_points[3] = cen + (0, self.side_length)
- 
-        if self.no_shear:
-            area = []
-            angles = []
-            for i in range(1,len(my_points)):
-                area.append((my_points[i][0]-my_points[i-1][0])*(my_points[i][1]-my_points[i-1][1]))
-            if np.mean(area) < 0:
-                self.clockwise = False
-            else:
-                self.clockwise = True
-            
-            if self.clockwise:
-                for i in range(1,len(my_points)):
-                    if i%2 != 0:
-                        angles.append(90-np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
-                    else:
-                        angles.append(np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
-            else:
-                for i in range(1,len(my_points)):
-                    if i%2 != 0:
-                        angles.append(np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
-                    else:
-                        angles.append(90-np.arctan((my_points[i][1]-my_points[i-1][1])/(my_points[i][0]-my_points[i-1][0])))
-                
-            print('angles: ', angles)
-            print(np.mean(angles))    
         
-        self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
-
+        if self.no_shear:
+            self.tf_matrix = self.calc_rot_transform(my_points)
+        else:
+            self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
+        
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
@@ -140,6 +118,23 @@ class EM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Transform matrix:\n', self.tf_matrix)
         self.apply_transform()
+
+    def calc_rot_transform(self,pts):
+            sides = np.zeros_like(pts)
+            sides[:3] = np.diff(pts,axis=0)
+            sides[3] = pts[0]-pts[-1]
+            dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]])
+            print(sides)
+            angles = []
+            for i in range(len(pts)):
+                angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
+            angles_deg = [angle * 180/np.pi for angle in angles]
+            angles_deg = [np.abs(angle-180) if angle > 90 else angle for angle in angles_deg] 
+            print('angles_deg: ', angles_deg)
+            theta = -(np.pi/180*np.mean(angles_deg))
+            tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]) 
+
+            return tf_matrix
 
     def apply_transform(self):
         if self.tf_matrix is None:
