@@ -22,6 +22,8 @@ class GUI(QtGui.QMainWindow):
         self.ind = 0
          
         self.colors = [True, True, True, True] 
+        self.color_data = None
+        self.overlay = True
         self.boxes = []
         self.box_coordinate = None
         
@@ -116,18 +118,22 @@ class GUI(QtGui.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.channel1_btn = QtWidgets.QCheckBox('Channel 1')
-        self.channel2_btn = QtWidgets.QCheckBox('Channel 2')
-        self.channel3_btn = QtWidgets.QCheckBox('Channel 3')
-        self.channel4_btn = QtWidgets.QCheckBox('Channel 4')
+        self.overlay_btn = QtWidgets.QCheckBox('Overlay',self)
+        self.channel1_btn = QtWidgets.QCheckBox('Channel 1',self)
+        self.channel2_btn = QtWidgets.QCheckBox('Channel 2',self)
+        self.channel3_btn = QtWidgets.QCheckBox('Channel 3',self)
+        self.channel4_btn = QtWidgets.QCheckBox('Channel 4',self)
+        self.overlay_btn.stateChanged.connect(self._show_overlay)
         self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_color_channels(state,channel))
         self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_color_channels(state,channel))
         self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_color_channels(state,channel))
         self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_color_channels(state,channel))
+        self.overlay_btn.setChecked(True)
         self.channel1_btn.setChecked(True)
         self.channel2_btn.setChecked(True)
         self.channel3_btn.setChecked(True)
         self.channel4_btn.setChecked(True)
+        line.addWidget(self.overlay_btn)
         line.addWidget(self.channel1_btn)
         line.addWidget(self.channel2_btn) 
         line.addWidget(self.channel3_btn)
@@ -342,14 +348,7 @@ class GUI(QtGui.QMainWindow):
             points_corr[1-index].append(point)
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
-
-    def _show_color_channels(self,checked,my_channel):
-        #my_channel = 0       
-        if self.fm is not None:
-           self.colors[my_channel] = not self.colors[my_channel]
-           #self.fm.select_color_channels(checked, my_channel)          
-           self._update_fm_imview()            
- 
+   
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -549,19 +548,35 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
 
     def _update_fm_imview(self):
-        
-        color_data = []
+    
+        channels = []
         for i in range(len(self.colors)):
             if self.colors[i]:
-                color_data.append(self.fm.data[i])
-        color_data = np.array(color_data)
-                
+                channels.append(self.fm.data[:,:,i])
+            else:
+                channels.append(np.zeros_like(self.fm.data[:,:,i]))
+        
+        self.color_data = np.array(channels)
+        
+        if self.overlay_btn.isChecked():
+            self.color_data = np.transpose(self.color_data,(1,2,0))     
+
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         levels = self.fm_imview.getHistogramWidget().item.getLevels()
 
-        self.fm_imview.setImage(color_data, levels=levels)
+        self.fm_imview.setImage(self.color_data, levels=levels)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+    
+    def _show_overlay(self,checked):
+        if self.fm is not None:
+            self.overlay = not self.overlay
+            self._update_fm_imview()
 
+    def _show_color_channels(self,checked,my_channel):       
+        if self.fm is not None:
+           self.colors[my_channel] = not self.colors[my_channel]          
+           self._update_fm_imview()            
+   
     def _fliph(self, state):
         self.fm.flip_horizontal(state == QtCore.Qt.Checked)
         self._update_fm_imview()
@@ -613,7 +628,7 @@ class GUI(QtGui.QMainWindow):
         self._update_fm_imview()
         fname, indstr = self.fm_fname.text().split()
         self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
-
+ 
     def _find_peaks(self):
         if self.fm is not None:
             self.fm.peak_finding()
