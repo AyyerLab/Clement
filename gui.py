@@ -6,6 +6,8 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
+import matplotlib.colors as cm
+import matplotlib.pyplot as plt
 
 import em_operations
 import align_fm
@@ -21,7 +23,8 @@ class GUI(QtGui.QMainWindow):
         self.em = None
         self.ind = 0
          
-        self.colors = [True, True, True, True] 
+        self.channels = [True, True, True, True] 
+        self.colors = ['#ff0000', '#00ff00', '#0000ff', '#808080']
         self.color_data = None
         self.overlay = True
         self.boxes = []
@@ -114,30 +117,51 @@ class GUI(QtGui.QMainWindow):
         button.clicked.connect(self._next_file)
         line.addWidget(button)
 
-        # ---- Select color channels
+        # ---- Select channels
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         self.overlay_btn = QtWidgets.QCheckBox('Overlay',self)
         self.channel1_btn = QtWidgets.QCheckBox('Channel 1',self)
+
+
         self.channel2_btn = QtWidgets.QCheckBox('Channel 2',self)
         self.channel3_btn = QtWidgets.QCheckBox('Channel 3',self)
         self.channel4_btn = QtWidgets.QCheckBox('Channel 4',self)
         self.overlay_btn.stateChanged.connect(self._show_overlay)
-        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_color_channels(state,channel))
-        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_color_channels(state,channel))
-        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_color_channels(state,channel))
-        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_color_channels(state,channel))
+        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state,channel))
+        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state,channel))
+        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_channels(state,channel))
+        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_channels(state,channel))
         self.overlay_btn.setChecked(True)
         self.channel1_btn.setChecked(True)
         self.channel2_btn.setChecked(True)
         self.channel3_btn.setChecked(True)
         self.channel4_btn.setChecked(True)
+       
+
+        self.c1_btn = QtWidgets.QPushButton(' ', self)
+        self.c1_btn.clicked.connect(self._sel_color_c1)
+        self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
+        self.c2_btn = QtWidgets.QPushButton(' ', self)
+        self.c2_btn.clicked.connect(self._sel_color_c2)
+        self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
+        self.c3_btn = QtWidgets.QPushButton(' ', self)
+        self.c3_btn.clicked.connect(self._sel_color_c3)
+        self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
+        self.c4_btn = QtWidgets.QPushButton(' ', self)
+        self.c4_btn.clicked.connect(self._sel_color_c4)
+        self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
+        
         line.addWidget(self.overlay_btn)
         line.addWidget(self.channel1_btn)
+        line.addWidget(self.c1_btn)
         line.addWidget(self.channel2_btn) 
+        line.addWidget(self.c2_btn)
         line.addWidget(self.channel3_btn)
+        line.addWidget(self.c3_btn)
         line.addWidget(self.channel4_btn)
+        line.addWidget(self.c4_btn)
 
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
@@ -553,27 +577,42 @@ class GUI(QtGui.QMainWindow):
 
         if file_name is not '':
             self.fm_fname.setText(file_name + ' [0/%d]'%self.fm.num_channels)
-
+        
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
+        self._update_fm_imview()
+
+    def _calc_colors(self,my_channels):
+        my_channels = [np.repeat(channel[:,:,np.newaxis],3,axis=2) for channel in my_channels]
+        print(np.array(my_channels).shape)
+        print(self.colors)
+        for i in range(len(my_channels)):
+            my_channels[i] = my_channels[i] * cm.hex2color(self.colors[i])
+        return my_channels
 
     def _update_fm_imview(self):
-    
         channels = []
-        for i in range(len(self.colors)):
-            if self.colors[i]:
+        for i in range(len(self.channels)):
+            if self.channels[i]:
                 channels.append(self.fm.data[:,:,i])
             else:
-                channels.append(np.zeros_like(self.fm.data[:,:,i]))
+                if self.overlay_btn.isChecked():
+                    channels.append(np.zeros_like(self.fm.data[:,:,i]))
+                            
+        if len(channels) == 0:
+            channels.append(np.zeros_like(self.fm.data[:,:,0]))
         
-        self.color_data = np.array(channels)
+        color_channels = self._calc_colors(channels)
         
+        self.color_data = np.array(color_channels)  
         if self.overlay_btn.isChecked():
-            self.color_data = np.transpose(self.color_data,(1,2,0))     
+            self.color_data = np.sum(self.color_data,axis=0)
 
+        #cmap = self._calc_colors()
         vr = self.fm_imview.getImageItem().getViewBox().targetRect()
         levels = self.fm_imview.getHistogramWidget().item.getLevels()
-
         self.fm_imview.setImage(self.color_data, levels=levels)
+        #if len(channels) == 1:
+        #    self.fm_imview.setColorMap(cmap)
         self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
     
     def _show_overlay(self,checked):
@@ -581,11 +620,34 @@ class GUI(QtGui.QMainWindow):
             self.overlay = not self.overlay
             self._update_fm_imview()
 
-    def _show_color_channels(self,checked,my_channel):       
+    def _show_channels(self,checked,my_channel):       
         if self.fm is not None:
-           self.colors[my_channel] = not self.colors[my_channel]          
+           self.channels[my_channel] = not self.channels[my_channel]          
            self._update_fm_imview()            
+    
+    def _sel_color_c1(self):
+        self._sel_color(0)
+        self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
+
+    def _sel_color_c2(self):
+        self._sel_color(1)
+        self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
+
+    def _sel_color_c3(self):
+        self._sel_color(2)
+        self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
+
+    def _sel_color_c4(self):
+        self._sel_color(3)
+        self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
    
+    def _sel_color(self, my_channel):
+        color = QtWidgets.QColorDialog.getColor()
+        if color.isValid():
+            self.colors[my_channel] = color.name()
+            self._update_fm_imview()
+            print(self.colors)
+             
     def _fliph(self, state):
         self.fm.flip_horizontal(state == QtCore.Qt.Checked)
         self._update_fm_imview()
