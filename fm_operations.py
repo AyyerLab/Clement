@@ -15,6 +15,7 @@ matplotlib.use('QT5Agg')
 
 class FM_ops():
     def __init__(self):
+        self.num_channels = None
         self.data = None
         self.flipv = False
         self.fliph = False
@@ -35,6 +36,10 @@ class FM_ops():
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
         self.no_shear = False
+        self.show_max_proj = False
+        self.data_slices = []
+        self.max_proj_data = None
+        self.tf_max_proj_data = None
 
         javabridge.start_vm(class_path=bioformats.JARS)
 
@@ -44,25 +49,29 @@ class FM_ops():
         Saves parsed file in self._orig_data
         self.data is the array to be displayed
         '''
-
+        javabridge.start_vm(class_path=bioformats.JARS)
         if fname != self.old_fname:
             self.reader = bioformats.ImageReader(fname)
             self.old_fname = fname
             self.num_channels = self.reader.rdr.getSizeZ()
         self._orig_data = self.reader.read(z=z)
         self._orig_data /= self._orig_data.mean((0, 1))
-        self.data = np.copy(self._orig_data)
-        self.color_data = np.copy(self._orig_data)
+        self.data = np.copy(self._orig_data)      
+
         if self.transformed:
             self.apply_transform()
             self._update_data()
+    
+    def parse_slices(self,fname,i):
+        javabridge.start_vm(class_path=bioformats.JARS)
+        reader = bioformats.ImageReader(fname)
+        #self.data_slices.append(self.reader.read(z=i))
+        print('read slice {}, {}'.format(i,fname))
 
     def __del__(self):
         javabridge.kill_vm()
 
     def _update_data(self):
-
-        
         if self.transformed and self._tf_data is not None:
             self.data = np.copy(self._tf_data)
             self.points = np.copy(self.new_points)
@@ -122,6 +131,12 @@ class FM_ops():
             self.transformed = transformed
         self._update_data()
 
+    def calc_max_projection(self,transformed=False):
+        if self.data_slices is not None and self.max_proj_data is not None:
+            stacked_normed = np.array(self.data_slices)
+            stacked_normed /= np.mean(stacked_normed,axis=(0,1))
+            self.max_proj_data = np.max(stacked_normed,axis=0)
+                    
     def peak_finding(self):
         for i in range(1, len(self.data)):
             img = self.data[i]

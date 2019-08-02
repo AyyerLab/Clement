@@ -8,11 +8,14 @@ import numpy as np
 import pyqtgraph as pg
 import matplotlib.colors as cm
 import matplotlib.pyplot as plt
+import multiprocessing as mp
+from functools import partial
 
 import em_operations
 import align_fm
 import affine_transform
 import fm_operations
+#from gui_threading import FileReader
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -100,7 +103,8 @@ class GUI(QtGui.QMainWindow):
         vbox = QtWidgets.QVBoxLayout()
         parent_layout.addLayout(vbox)
 
-        # ---- Select file
+        # ---- Select file or show max projection
+
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         button = QtWidgets.QPushButton('FM image:', self)
@@ -108,14 +112,18 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(button)
         self.fm_fname = QtWidgets.QLabel(self)
         line.addWidget(self.fm_fname, stretch=1)
-        button = QtWidgets.QPushButton('\u2190', self)
-        button.setFixedWidth(16)
-        button.clicked.connect(self._prev_file)
-        line.addWidget(button)
-        button = QtWidgets.QPushButton('\u2192', self)
-        button.setFixedWidth(16)
-        button.clicked.connect(self._next_file)
-        line.addWidget(button)
+        self.max_proj_btn = QtWidgets.QCheckBox('Max projection')
+        self.max_proj_btn.stateChanged.connect(self._show_max_projection)
+        line.addWidget(self.max_proj_btn) 
+        self.prev_btn = QtWidgets.QPushButton('\u2190', self)
+        self.prev_btn.setFixedWidth(16)
+        self.prev_btn.clicked.connect(self._prev_file)
+        line.addWidget(self.prev_btn)
+        self.next_btn = QtWidgets.QPushButton('\u2192', self)
+        self.next_btn.setFixedWidth(16)
+        self.next_btn.clicked.connect(self._next_file)
+        line.addWidget(self.next_btn)
+        
 
         # ---- Select channels
 
@@ -123,8 +131,6 @@ class GUI(QtGui.QMainWindow):
         vbox.addLayout(line)
         self.overlay_btn = QtWidgets.QCheckBox('Overlay',self)
         self.channel1_btn = QtWidgets.QCheckBox('Channel 1',self)
-
-
         self.channel2_btn = QtWidgets.QCheckBox('Channel 2',self)
         self.channel3_btn = QtWidgets.QCheckBox('Channel 3',self)
         self.channel4_btn = QtWidgets.QCheckBox('Channel 4',self)
@@ -142,24 +148,33 @@ class GUI(QtGui.QMainWindow):
 
         self.c1_btn = QtWidgets.QPushButton(' ', self)
         self.c1_btn.clicked.connect(self._sel_color_c1)
+        width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 25
+        self.c1_btn.setMaximumWidth(width)
         self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
         self.c2_btn = QtWidgets.QPushButton(' ', self)
         self.c2_btn.clicked.connect(self._sel_color_c2)
+        self.c2_btn.setMaximumWidth(width)
         self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
         self.c3_btn = QtWidgets.QPushButton(' ', self)
+        self.c3_btn.setMaximumWidth(width)
         self.c3_btn.clicked.connect(self._sel_color_c3)
         self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
         self.c4_btn = QtWidgets.QPushButton(' ', self)
+        self.c4_btn.setMaximumWidth(width)
         self.c4_btn.clicked.connect(self._sel_color_c4)
         self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
         
         line.addWidget(self.overlay_btn)
+        line.addStretch(1)
         line.addWidget(self.channel1_btn)
         line.addWidget(self.c1_btn)
+        line.addStretch(1)
         line.addWidget(self.channel2_btn) 
         line.addWidget(self.c2_btn)
+        line.addStretch(1)
         line.addWidget(self.channel3_btn)
         line.addWidget(self.c3_btn)
+        line.addStretch(1)
         line.addWidget(self.channel4_btn)
         line.addWidget(self.c4_btn)
 
@@ -572,6 +587,10 @@ class GUI(QtGui.QMainWindow):
 
     def _parse_fm_images(self, file_name):
         self.fm = fm_operations.FM_ops()
+        func = partial(self.fm.parse_slices,file_name)
+        pool = mp.Pool(processes=22)
+        x = pool.map(func,range(22))
+        print('Done')
         self.fm.parse(file_name, z=0)
         self.num_channels = self.fm.num_channels
 
@@ -581,40 +600,57 @@ class GUI(QtGui.QMainWindow):
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
         self._update_fm_imview()
 
+
+    
+    def _show_max_projection(self):
+        if self.max_proj_btn.isChecked():
+            self.prev_btn.setEnabled(False)
+            self.next_btn.setEnabled(False)
+        else:
+            self.prev_btn.setEnabled(True)
+            self.next_btn.setEnabled(True)
+        self._update_fm_imview()
+
     def _calc_colors(self,my_channels):
         my_channels = [np.repeat(channel[:,:,np.newaxis],3,axis=2) for channel in my_channels]
-        print(np.array(my_channels).shape)
-        print(self.colors)
         for i in range(len(my_channels)):
             my_channels[i] = my_channels[i] * cm.hex2color(self.colors[i])
         return my_channels
 
     def _update_fm_imview(self):
-        channels = []
-        for i in range(len(self.channels)):
-            if self.channels[i]:
-                channels.append(self.fm.data[:,:,i])
+        if self.fm is not None:
+            if self.max_proj_btn.isChecked():
+                if self.show_btn.isChecked():
+                    self.fm.calc_max_projection(transformed=False)
+                    proj_data = self.fm.max_proj_data
+                else:
+                    self.fm.calc_max_projection(transformed=True)
+                    proj_data = self.fm.tr_max_proj_data
             else:
-                if self.overlay_btn.isChecked():
-                    channels.append(np.zeros_like(self.fm.data[:,:,i]))
-                            
-        if len(channels) == 0:
-            channels.append(np.zeros_like(self.fm.data[:,:,0]))
+                proj_data = self.fm.data
+            
+            channels = []
+            for i in range(len(self.channels)):
+                if self.channels[i]:
+                    channels.append(proj_data[:,:,i])
+                else:
+                    if self.overlay_btn.isChecked():
+                        channels.append(np.zeros_like(proj_data[:,:,i]))
+                                
+            if len(channels) == 0:
+                channels.append(np.zeros_like(proj_data[:,:,0]))
+            
+            color_channels = self._calc_colors(channels)
+            
+            self.color_data = np.array(color_channels)  
+            if self.overlay_btn.isChecked():
+                self.color_data = np.sum(self.color_data,axis=0)
+            
+            vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+            levels = self.fm_imview.getHistogramWidget().item.getLevels()
+            self.fm_imview.setImage(self.color_data, levels=levels)
+            self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
         
-        color_channels = self._calc_colors(channels)
-        
-        self.color_data = np.array(color_channels)  
-        if self.overlay_btn.isChecked():
-            self.color_data = np.sum(self.color_data,axis=0)
-
-        #cmap = self._calc_colors()
-        vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-        levels = self.fm_imview.getHistogramWidget().item.getLevels()
-        self.fm_imview.setImage(self.color_data, levels=levels)
-        #if len(channels) == 1:
-        #    self.fm_imview.setColorMap(cmap)
-        self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-    
     def _show_overlay(self,checked):
         if self.fm is not None:
             self.overlay = not self.overlay
