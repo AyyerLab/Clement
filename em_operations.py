@@ -93,6 +93,9 @@ class EM_ops():
 
     def calc_transform(self, my_points):
         print('Input points:\n', my_points)
+        my_points = self.calc_orientation(my_points)
+        print('Input points:\n', my_points)
+        
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
 
@@ -118,6 +121,22 @@ class EM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Transform matrix:\n', self.tf_matrix)
         self.apply_transform()
+
+    def calc_orientation(self,points):
+        my_list = []
+        for i in range(1,len(points)):
+            my_list.append((points[i][0]-points[i-1][0])*(points[i][1]+points[i-1][1]))
+        my_list.append((points[0][0]-points[-1][0])*(points[0][1]+points[-1][1]))
+        my_sum = np.sum(my_list)
+        print(my_list)
+        print(my_sum)
+        if my_sum > 0:
+            print('counter-clockwise')
+            return points
+        else:
+            print('clockwise --> transpose points')
+            order = [0,3,2,1]
+            return points[order]
 
     def calc_rot_transform(self,pts):
             sides = np.zeros_like(pts)

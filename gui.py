@@ -414,6 +414,9 @@ class GUI(QtGui.QMainWindow):
             self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
             parent.addItem(self.grid_box[index])
             [parent.removeItem(roi) for roi in self.clicked_points[index]]
+            points_obj = self.grid_box[index].getState()['points']
+            points = np.array([list((point[0], point[1])) for point in points_obj])
+            self.fm.orig_points = points
             self.clicked_points[index] = []
             if obj is not None:
                 show_grid_btn.setEnabled(True)
@@ -630,6 +633,7 @@ class GUI(QtGui.QMainWindow):
             if self.overlay_btn.isChecked():
                 self.color_data = np.sum(self.color_data,axis=0)
             
+            self._recalc_grid(not self.fm.transformed)
             vr = self.fm_imview.getImageItem().getViewBox().targetRect()
             levels = self.fm_imview.getHistogramWidget().item.getLevels()
             self.fm_imview.setImage(self.color_data, levels=levels)
@@ -686,18 +690,23 @@ class GUI(QtGui.QMainWindow):
 
     def _recalc_grid(self, orig=True):
         if self.fm.orig_points is None:
+            print('hello')
             return
         if orig:
             print('Recalc orig')
+            self.fm_imview.removeItem(self.grid_box[0])
             self.fm._update_data()
             pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
             self.grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            self.fm_imview.addItem(self.grid_box[0])
             print(pos[0].x(), pos[0].y())
         else:
             print('Recalc transf')
+            self.fm_imview.removeItem(self.tr_grid_box[0])
             self.fm._update_data()
             pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
             self.tr_grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            self.fm_imview.addItem(self.tr_grid_box[0])
             print(pos[0].x(), pos[0].y())
 
     def _next_file(self):
