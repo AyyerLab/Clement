@@ -8,16 +8,15 @@ import numpy as np
 import pyqtgraph as pg
 import matplotlib.colors as cm
 import matplotlib.pyplot as plt
-import multiprocessing as mp
-from functools import partial
 
 import em_operations
 import align_fm
 import affine_transform
 import fm_operations
-#from gui_threading import FileReader
-
+import gui_threading 
+import test
 warnings.simplefilter('ignore', category=FutureWarning)
+
 
 class GUI(QtGui.QMainWindow):
     def __init__(self):
@@ -42,6 +41,7 @@ class GUI(QtGui.QMainWindow):
 
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
+
         self._init_ui()
 
     # ---- UI functions
@@ -587,10 +587,6 @@ class GUI(QtGui.QMainWindow):
 
     def _parse_fm_images(self, file_name):
         self.fm = fm_operations.FM_ops()
-        func = partial(self.fm.parse_slices,file_name)
-        pool = mp.Pool(processes=22)
-        x = pool.map(func,range(22))
-        print('Done')
         self.fm.parse(file_name, z=0)
         self.num_channels = self.fm.num_channels
 
@@ -598,10 +594,8 @@ class GUI(QtGui.QMainWindow):
             self.fm_fname.setText(file_name + ' [0/%d]'%self.fm.num_channels)
         
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
-        self._update_fm_imview()
-
-
-    
+        self._update_fm_imview()  
+        
     def _show_max_projection(self):
         if self.max_proj_btn.isChecked():
             self.prev_btn.setEnabled(False)
@@ -609,6 +603,7 @@ class GUI(QtGui.QMainWindow):
         else:
             self.prev_btn.setEnabled(True)
             self.next_btn.setEnabled(True)
+        self.fm.calc_max_projection()
         self._update_fm_imview()
 
     def _calc_colors(self,my_channels):
@@ -619,26 +614,16 @@ class GUI(QtGui.QMainWindow):
 
     def _update_fm_imview(self):
         if self.fm is not None:
-            if self.max_proj_btn.isChecked():
-                if self.show_btn.isChecked():
-                    self.fm.calc_max_projection(transformed=False)
-                    proj_data = self.fm.max_proj_data
-                else:
-                    self.fm.calc_max_projection(transformed=True)
-                    proj_data = self.fm.tr_max_proj_data
-            else:
-                proj_data = self.fm.data
-            
             channels = []
             for i in range(len(self.channels)):
                 if self.channels[i]:
-                    channels.append(proj_data[:,:,i])
+                    channels.append(self.fm.data[:,:,i])
                 else:
                     if self.overlay_btn.isChecked():
-                        channels.append(np.zeros_like(proj_data[:,:,i]))
+                        channels.append(np.zeros_like(self.fm.data[:,:,i]))
                                 
             if len(channels) == 0:
-                channels.append(np.zeros_like(proj_data[:,:,0]))
+                channels.append(np.zeros_like(self.fm.data[:,:,0]))
             
             color_channels = self._calc_colors(channels)
             

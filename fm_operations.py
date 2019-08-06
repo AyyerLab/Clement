@@ -11,6 +11,9 @@ from matplotlib import pyplot as plt
 from PIL import Image
 import scipy.ndimage as ndi
 from skimage import transform as tf
+import multiprocessing as mp
+from functools import partial
+import gui_threading
 matplotlib.use('QT5Agg')
 
 class FM_ops():
@@ -37,9 +40,9 @@ class FM_ops():
         self.tf_matrix = np.identity(3)
         self.no_shear = False
         self.show_max_proj = False
-        self.data_slices = []
         self.max_proj_data = None
         self.tf_max_proj_data = None
+        self.data_slices = []
 
         javabridge.start_vm(class_path=bioformats.JARS)
 
@@ -49,34 +52,44 @@ class FM_ops():
         Saves parsed file in self._orig_data
         self.data is the array to be displayed
         '''
-        javabridge.start_vm(class_path=bioformats.JARS)
+
         if fname != self.old_fname:
             self.reader = bioformats.ImageReader(fname)
             self.old_fname = fname
             self.num_channels = self.reader.rdr.getSizeZ()
+        
+        
         self._orig_data = self.reader.read(z=z)
         self._orig_data /= self._orig_data.mean((0, 1))
-        self.data = np.copy(self._orig_data)      
+        self.data = np.copy(self._orig_data)
+        self.data_slices.append(self.data)
 
         if self.transformed:
             self.apply_transform()
-            self._update_data()
-    
-    def parse_slices(self,fname,i):
-        javabridge.start_vm(class_path=bioformats.JARS)
-        reader = bioformats.ImageReader(fname)
-        #self.data_slices.append(self.reader.read(z=i))
-        print('read slice {}, {}'.format(i,fname))
-
+            self._update_data() 
+        
+    def parse_slices(self):
+        for i in range(self.num_channels):
+            data = self.reader.read(z=i)
+            data /= data.mean((0,1))
+            self.data_slices.append(data)
+        print('Done')
+        
     def __del__(self):
         javabridge.kill_vm()
 
     def _update_data(self):
         if self.transformed and self._tf_data is not None:
-            self.data = np.copy(self._tf_data)
+            if self.show_max_proj and self.tf_max_proj_data is not None:
+                self.data = np.copy(self.tf_max_proj_data)
+            else:
+                self.data = np.copy(self._tf_data)
             self.points = np.copy(self.new_points)
         else:
-            self.data = np.copy(self._orig_data)
+            if self.show_max_proj and self.data_slices is not None:
+                self.data = np.copy(self.max_proj_data)
+            else:
+                self.data = np.copy(self._orig_data)
             self.points = np.copy(self.orig_points) if self.orig_points is not None else None
 
         if self.fliph:
@@ -131,12 +144,18 @@ class FM_ops():
             self.transformed = transformed
         self._update_data()
 
-    def calc_max_projection(self,transformed=False):
-        if self.data_slices is not None and self.max_proj_data is not None:
-            stacked_normed = np.array(self.data_slices)
-            stacked_normed /= np.mean(stacked_normed,axis=(0,1))
-            self.max_proj_data = np.max(stacked_normed,axis=0)
-                    
+    def calc_max_projection(self):
+        self.show_max_proj = not self.show_max_proj
+        print(self.show_max_proj)
+        if self.show_max_proj:
+            if self.max_proj_data is None:
+                self.parse_slices()
+                self.max_proj_data = np.max(np.array(self.data_slices),axis=0)
+                if self.transformed:
+                    self.apply_transform() 
+
+        self._update_data()
+
     def peak_finding(self):
         for i in range(1, len(self.data)):
             img = self.data[i]
@@ -263,16 +282,49 @@ class FM_ops():
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
-        self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
-        for i in range(self.data.shape[-1]):
-            self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-            sys.stderr.write('\r%d'%i)
-        print('\r', self._tf_data.shape)
+              
+        if self.max_proj_data is None:
+            self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+            for i in range(self.data.shape[-1]):
+                self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                sys.stderr.write('\r%d'%i)
+            print('\r', self._tf_data.shape)
+
+        elif self.tf_max_proj_data is None and self.transformed:
+            self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
+            for i in range(self.data.shape[-1]):
+                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                sys.stderr.write('\r%d'%i)
+            print('\r', self._tf_data.shape)
+        
+        else:
+            manager = mp.Manager()
+            dict1 = manager.dict()
+            dict2 = manager.dict()
+            p1 = mp.Process(target=self.apply_transform_mp,args=(0,self.max_proj_data,dict1))
+            p2 = mp.Process(target=self.apply_transform_mp,args=(1,self._orig_data,dict2))
+            p1.start()
+            p2.start()
+            p1.join()
+            p2.join()
+        
+            self.tf_max_proj_data = np.array(dict1[0])
+            self._tf_data = np.array(dict2[0])
+            print('\r', self._tf_data.shape)
+
         self.transform_shift = -self.tf_corners.min(1)[:2]
         print(self.transform_shift)
         self.transformed = True
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+
+    def apply_transform_mp(self,k,data,return_dict):
+        channel_list = []
+        for i in range(data.shape[-1]):
+            channel_list.append(ndi.affine_transform(data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape))
+            sys.stderr.write('\r%d'%i)
+        print('k: ', k)
+        return_dict[0] = np.transpose(np.array(channel_list),(1,2,0))
 
     @classmethod
     def get_transform(self, source, dest):
