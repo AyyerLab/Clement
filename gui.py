@@ -13,8 +13,7 @@ import em_operations
 import align_fm
 import affine_transform
 import fm_operations
-import gui_threading 
-import test
+
 warnings.simplefilter('ignore', category=FutureWarning)
 
 

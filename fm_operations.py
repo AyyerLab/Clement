@@ -12,8 +12,6 @@ from PIL import Image
 import scipy.ndimage as ndi
 from skimage import transform as tf
 import multiprocessing as mp
-from functools import partial
-import gui_threading
 matplotlib.use('QT5Agg')
 
 class FM_ops():
