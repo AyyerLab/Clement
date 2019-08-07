@@ -852,12 +852,14 @@ class GUI(QtGui.QMainWindow):
                 self.box_coordinate = None
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False)
+                self.show_grid_btn_em.setChecked(False)
 
     def _show_assembled(self):
         if self.show_assembled_btn.isChecked():
             assembled = True
         else:
             assembled = False
+            self.show_boxes_btn.isChecked(False)
         if self.show_btn_em.isChecked():
             transformed = False
         else:

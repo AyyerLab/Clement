@@ -243,8 +243,8 @@ class EM_ops():
                 counter = int(self.tr_count_map[coordinate[0],coordinate[1]])
                 print('Selected region: ', counter)
                 self.region = (self.data_highres[counter]).T
-                if transformed:
-                    self.region =  ndi.affine_transform(self.region, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                #if transformed:
+                #    self.region =  ndi.affine_transform(self.region, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
 
                 self.toggle_region(transformed=transformed,assembled=False)
 
