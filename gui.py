@@ -45,6 +45,8 @@ class GUI(QtGui.QMainWindow):
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
 
+        self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
+        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080'])
         self._init_ui()
 
     # ---- UI functions
@@ -569,7 +571,6 @@ class GUI(QtGui.QMainWindow):
             else:
                 parent.removeItem(self.tr_grid_box[index])
  
-
     def keyPressEvent(self, event):
         key = event.key()
         mod = int(event.modifiers())
@@ -585,6 +586,7 @@ class GUI(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         fm_operations.javabridge.kill_vm()
+        self.settings.setValue('channel_colors', self.colors)
         event.accept()
 
     # ---- FM functions
@@ -705,7 +707,6 @@ class GUI(QtGui.QMainWindow):
 
     def _recalc_grid(self, orig=True):
         if self.fm.orig_points is None:
-            print('hello')
             return
         if orig:
             print('Recalc orig')
