@@ -4,7 +4,7 @@ import os
 import numpy as np
 import scipy.signal as sc
 import mrcfile as mrc
-#import pyqtgraph as pg
+import multiprocessing as mp
 import matplotlib
 import scipy.ndimage as ndi
 from skimage import transform as tf
@@ -23,10 +23,15 @@ class EM_ops():
         self.pos_x = None
         self.pos_y = None
         self.pos_z = None
+        self.grid_points = []
+        self.tr_grid_points = []      
         self._tf_data = None
         self._orig_data = None
         self.side_length = None
         self.mcounts = None
+        self.tr_mcounts = None
+        self.count_map = None
+        self.tr_count_map = None
         self.tf_matrix = np.identity(3)
         self.no_shear = False
         self.clockwise = False
@@ -50,6 +55,10 @@ class EM_ops():
             self.pos_x = self._eh[1:10*dimensions[0]:10] // self.step
             self.pos_y = self._eh[2:10*dimensions[0]:10] // self.step
             self.pos_z = self._eh[3:10*dimensions[0]:10]
+            for i in range(len(self.pos_x)):
+                point = np.array((self.pos_x[i],self.pos_y[i],1))
+                box_points = [point,point+(self.stacked_data.shape[1],0,0),point+(self.stacked_data.shape[1],self.stacked_data.shape[2],0),point+(0,self.stacked_data.shape[2],0)]
+                self.grid_points.append(box_points)
 
             cy, cx = np.indices(dimensions[1:3])
 
@@ -57,13 +66,15 @@ class EM_ops():
             #sys.stderr.write(self.data.shape)
 
             self.mcounts = np.zeros_like(self.data)
+            self.count_map = np.zeros_like(self.data)
             for i in range(dimensions[0]):
                 sys.stderr.write('\rMerge for image {}'.format(i))
-                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
+                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)    
                 np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), self.stacked_data[i])
+                np.add.at(self.count_map, (cx+self.pos_x[i], cy+self.pos_y[i]), i)
             sys.stderr.write('\n')
-            
             self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
+            self.count_map[self.mcounts>1] = 0
         else:
             self.data = np.copy(self._stack_data)
 
@@ -85,11 +96,14 @@ class EM_ops():
             self.transformed = transformed
             self.data = np.copy(self._tf_data if self.transformed else self._orig_data)
     
-    def toggle_region(self,assembled=False):
+    def toggle_region(self,transformed=True,assembled=False):
         if assembled:
-            self.data = self._orig_data
+                if transformed:
+                    self.data = self._tf_data
+                else:
+                    self.data = self._orig_data
         else:
-            self.data = self.region
+            self.data = np.copy(self.region)
 
     def calc_transform(self, my_points):
         print('Input points:\n', my_points)
@@ -159,7 +173,25 @@ class EM_ops():
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
-        self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+
+        manager = mp.Manager()
+        dict1 = manager.dict()
+        dict2 = manager.dict()
+        dict3 = manager.dict()
+        p1 = mp.Process(target=self.apply_transform_mp,args=(self.data,dict1))
+        p2 = mp.Process(target=self.apply_transform_mp,args=(self.mcounts,dict2))
+        p3 = mp.Process(target=self.apply_transform_mp,args=(self.count_map,dict3))
+        p1.start()
+        p2.start()
+        p3.start()
+        p1.join()
+        p2.join()
+        p3.join()
+        self._tf_data = np.array(dict1[0])
+        self.tr_mcounts = np.array(dict2[0])
+        self.tr_count_map = np.array(dict3[0])
+        
+        #self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         self.transform_shift = -self.tf_corners.min(1)[:2]
         print(self._tf_data.shape, self.transform_shift)
         self.transformed = True
@@ -167,6 +199,17 @@ class EM_ops():
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
         self.points = np.copy(self.new_points)
 
+        for i in range(len(self.grid_points)):
+            tr_box_points = []
+            for point in self.grid_points[i]:
+                x_i, y_i, z_i = self.tf_matrix @ point
+                tr_box_points.append(np.array([x_i,y_i,z_i]))
+            self.tr_grid_points.append(tr_box_points)
+    
+
+    def apply_transform_mp(self,data,return_dict):
+        return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+        
     @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):
@@ -174,24 +217,37 @@ class EM_ops():
             return
         return tf.estimate_transform('affine', source, dest).params
 
-    def select_region(self,coordinate):
+    def select_region(self,coordinate,transformed):
         print(self.data.shape)
         coordinate = coordinate.astype(int)
-        if self.mcounts[coordinate[0],coordinate[1]] > 1:
-            print('Selected region ambiguous. Try again!')
-        else:
-            counter = 0
-            my_bool = False
-            while not my_bool:
-                x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
-                y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
-                counter += 1
-                if coordinate[0] in x_range and coordinate[1] in y_range:
-                    my_bool = True
+        if not self.transformed:
+            if self.mcounts[coordinate[0],coordinate[1]] > 1:
+                print('Selected region ambiguous. Try again!')
+            else:
+                counter = 0
+                my_bool = False
+                while not my_bool:
+                    x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
+                    y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
+                    counter += 1
+                    if coordinate[0] in x_range and coordinate[1] in y_range:
+                        my_bool = True
 
-            print('Selected region: ', counter-1)
-            self.region = (self.data_highres[counter-1]).T
-            self.data = self.region
+                print('Selected region: ', counter-1)
+                self.region = (self.data_highres[counter-1]).T
+                self.data = self.region
+        else:
+            if self.tr_count_map[coordinate[0],coordinate[1]] == 0:
+                print('Selected region ambiguous. Try again!')
+            else:
+                counter = int(self.tr_count_map[coordinate[0],coordinate[1]])
+                print('Selected region: ', counter)
+                self.region = (self.data_highres[counter]).T
+                if transformed:
+                    self.region =  ndi.affine_transform(self.region, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+
+                self.toggle_region(transformed=transformed,assembled=False)
+
 
 if __name__=='__main__':
     path = '../gs.mrc'
