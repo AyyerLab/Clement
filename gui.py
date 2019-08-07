@@ -52,7 +52,12 @@ class GUI(QtGui.QMainWindow):
     # ---- UI functions
 
     def _init_ui(self):
-        self.resize(1600, 800)
+        geom = self.settings.value('geometry')
+        if geom is None:
+            self.resize(1600, 800)
+        else:
+            self.setGeometry(geom)
+
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -587,6 +592,7 @@ class GUI(QtGui.QMainWindow):
     def closeEvent(self, event):
         fm_operations.javabridge.kill_vm()
         self.settings.setValue('channel_colors', self.colors)
+        self.settings.setValue('geometry', self.geometry())
         event.accept()
 
     # ---- FM functions
