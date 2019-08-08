@@ -42,7 +42,7 @@ class FM_ops():
         self.tf_max_proj_data = None
         self.data_slices = []
         self.counter_clockwise = False
-
+        self.rotated = False
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
@@ -291,7 +291,8 @@ class FM_ops():
         self.orig_points = np.copy(np.array(my_points))
         self.points = np.copy(self.new_points)
         self.apply_transform()
-    
+        self.rotated = True
+
     def calc_orientation(self,points):
         my_list = []
         for i in range(1,len(points)):
@@ -319,7 +320,8 @@ class FM_ops():
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
             angles_deg = [angle * 180/np.pi for angle in angles]
-            angles_deg = [np.abs(angle-180) if angle > 90 else angle for angle in angles_deg] 
+            if not self.rotated:
+                angles_deg = [np.abs(angle-180) if angle > 90 else angle for angle in angles_deg] 
             print('angles_deg: ', angles_deg)
             theta = -(np.pi/180*np.mean(angles_deg))
             tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
