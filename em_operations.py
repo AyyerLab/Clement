@@ -12,9 +12,9 @@ from matplotlib import pyplot as plt
 matplotlib.use('QT5Agg')
 
 class EM_ops():
-    def __init__(self, step=100):
+    def __init__(self, step=10):
         self.data_highres = None
-        self.step = int(np.sqrt(step))
+        self.step = int(step)
         self.data = None
         self.stacked_data = None
         self.region = None
@@ -39,6 +39,7 @@ class EM_ops():
         self.first_rotation = False
         self.rotated = False
         self.tf_prev = np.identity(3)
+
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
             try:
@@ -283,7 +284,6 @@ class EM_ops():
                 #    self.region =  ndi.affine_transform(self.region, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
 
                 self.toggle_region(transformed=transformed,assembled=False)
-
 
 if __name__=='__main__':
     path = '../gs.mrc'
