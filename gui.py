@@ -16,7 +16,6 @@ import fm_operations
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
-
 class GUI(QtGui.QMainWindow):
     def __init__(self):
         super(GUI, self).__init__()
@@ -57,10 +56,15 @@ class GUI(QtGui.QMainWindow):
             self.resize(1600, 800)
         else:
             self.setGeometry(geom)
+        theme = self.settings.value('theme')
+        if theme is None:
+            theme = 'none'
+        self._set_theme(theme)
 
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
+        #layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
         # Menu bar
@@ -81,6 +85,19 @@ class GUI(QtGui.QMainWindow):
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
         filemenu.addAction(action)
+
+        # -- Theme menu
+        thememenu = menubar.addMenu('&Theme')
+        agroup = QtWidgets.QActionGroup(self)
+        agroup.setExclusive(True)
+        action = QtWidgets.QAction('None', self)
+        action.triggered.connect(lambda: self._set_theme('none'))
+        thememenu.addAction(action)
+        agroup.addAction(action)
+        action = QtWidgets.QAction('Dark', self)
+        action.triggered.connect(lambda: self._set_theme('dark'))
+        thememenu.addAction(action)
+        agroup.addAction(action)
 
         # Image views
         splitter_images = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
@@ -114,7 +131,6 @@ class GUI(QtGui.QMainWindow):
         parent_layout.addLayout(vbox)
 
         # ---- Select file or show max projection
-
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         button = QtWidgets.QPushButton('FM image:', self)
@@ -134,16 +150,16 @@ class GUI(QtGui.QMainWindow):
         self.next_btn.clicked.connect(self._next_file)
         line.addWidget(self.next_btn)
         
-
         # ---- Select channels
-
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
+        label = QtWidgets.QLabel('Colors:', self)
+        line.addWidget(label)
         self.overlay_btn = QtWidgets.QCheckBox('Overlay',self)
-        self.channel1_btn = QtWidgets.QCheckBox('Channel 1',self)
-        self.channel2_btn = QtWidgets.QCheckBox('Channel 2',self)
-        self.channel3_btn = QtWidgets.QCheckBox('Channel 3',self)
-        self.channel4_btn = QtWidgets.QCheckBox('Channel 4',self)
+        self.channel1_btn = QtWidgets.QCheckBox('',self)
+        self.channel2_btn = QtWidgets.QCheckBox('',self)
+        self.channel3_btn = QtWidgets.QCheckBox('',self)
+        self.channel4_btn = QtWidgets.QCheckBox('',self)
         self.overlay_btn.stateChanged.connect(self._show_overlay)
         self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state,channel))
         self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state,channel))
@@ -154,48 +170,87 @@ class GUI(QtGui.QMainWindow):
         self.channel2_btn.setChecked(True)
         self.channel3_btn.setChecked(True)
         self.channel4_btn.setChecked(True)
-       
 
         self.c1_btn = QtWidgets.QPushButton(' ', self)
-        self.c1_btn.clicked.connect(self._sel_color_c1)
+        self.c1_btn.clicked.connect(lambda: self._sel_color(0, self.c1_btn))
         width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 25
         self.c1_btn.setMaximumWidth(width)
         self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
         self.c2_btn = QtWidgets.QPushButton(' ', self)
-        self.c2_btn.clicked.connect(self._sel_color_c2)
+        self.c2_btn.clicked.connect(lambda: self._sel_color(1, self.c2_btn))
         self.c2_btn.setMaximumWidth(width)
         self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
         self.c3_btn = QtWidgets.QPushButton(' ', self)
         self.c3_btn.setMaximumWidth(width)
-        self.c3_btn.clicked.connect(self._sel_color_c3)
+        self.c3_btn.clicked.connect(lambda: self._sel_color(2, self.c3_btn))
         self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
         self.c4_btn = QtWidgets.QPushButton(' ', self)
         self.c4_btn.setMaximumWidth(width)
-        self.c4_btn.clicked.connect(self._sel_color_c4)
+        self.c4_btn.clicked.connect(lambda: self._sel_color(3, self.c4_btn))
         self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
-        
+
         line.addWidget(self.overlay_btn)
-        line.addStretch(1)
         line.addWidget(self.channel1_btn)
         line.addWidget(self.c1_btn)
-        line.addStretch(1)
         line.addWidget(self.channel2_btn) 
         line.addWidget(self.c2_btn)
-        line.addStretch(1)
         line.addWidget(self.channel3_btn)
         line.addWidget(self.c3_btn)
-        line.addStretch(1)
         line.addWidget(self.channel4_btn)
         line.addWidget(self.c4_btn)
+        line.addStretch(1)
+
+        # ---- Flips and rotates
+        label = QtWidgets.QLabel('Flips:', self)
+        line.addWidget(label)
+
+        self.fliph = QtWidgets.QPushButton('\u2345', self)
+        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
+        font = self.fliph.font()
+        font.setPointSize(24)
+        self.fliph.setMaximumWidth(width)
+        self.fliph.setMaximumHeight(width)
+        self.fliph.setCheckable(True)
+        self.fliph.setFont(font)
+        self.fliph.toggled.connect(self._fliph)
+        line.addWidget(self.fliph)
+
+        self.flipv = QtWidgets.QPushButton('\u2356', self)
+        self.flipv.setCheckable(True)
+        self.flipv.setMaximumWidth(width)
+        self.flipv.setMaximumHeight(width)
+        self.flipv.setFont(font)
+        self.flipv.toggled.connect(self._flipv)
+        line.addWidget(self.flipv)
+
+        self.transpose = QtWidgets.QPushButton('\u292f', self)
+        self.transpose.setCheckable(True)
+        self.transpose.setMaximumWidth(width)
+        self.transpose.setMaximumHeight(width)
+        font.setPointSize(20)
+        self.transpose.setFont(font)
+        self.transpose.toggled.connect(self._trans)
+        line.addWidget(self.transpose)
+
+        self.rotate = QtWidgets.QPushButton('\u293e', self)
+        self.rotate.setCheckable(True)
+        self.rotate.setMaximumWidth(width)
+        self.rotate.setMaximumHeight(width)
+        self.rotate.setFont(font)
+        self.rotate.toggled.connect(self._rot)
+        line.addWidget(self.rotate)
+        line.addStretch(1)
 
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
+        label = QtWidgets.QLabel('Grid transform:', self)
+        line.addWidget(label)
         self.define_btn = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(lambda state, par=self.fm_imview: self._define_grid_toggled(state, par))
         line.addWidget(self.define_btn)
-        self.transform_btn = QtWidgets.QPushButton('Transform FM image', self)
+        self.transform_btn = QtWidgets.QPushButton('Transform image', self)
         self.transform_btn.clicked.connect(lambda: self._affine_transform(self.fm_imview))
         line.addWidget(self.transform_btn)
         self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
@@ -211,40 +266,33 @@ class GUI(QtGui.QMainWindow):
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._show_grid(state, par))
         line.addWidget(self.show_grid_btn)
+        line.addStretch(1)
 
         # ---- Align colors
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.peak_btn = QtWidgets.QPushButton('Peak finding', self)
+        label = QtWidgets.QLabel('Peak finding:', self)
+        line.addWidget(label)
+        self.peak_btn = QtWidgets.QPushButton('Find peaks', self)
         self.peak_btn.clicked.connect(self._find_peaks)
         self.align_btn = QtWidgets.QPushButton('Align color channels', self)
         self.align_btn.clicked.connect(self._calc_shift)
         line.addWidget(self.peak_btn)
         line.addWidget(self.align_btn)
+        line.addStretch(1)
 
-        # ---- Flips and rotates
+        # Select points
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.fliph = QtWidgets.QCheckBox('Flip horizontally', self)
-        self.fliph.stateChanged.connect(self._fliph)
-        line.addWidget(self.fliph)
-        self.flipv = QtWidgets.QCheckBox('Flip vertically', self)
-        self.flipv.stateChanged.connect(self._flipv)
-        line.addWidget(self.flipv)
-        self.transpose = QtWidgets.QCheckBox('Transpose', self)
-        self.transpose.stateChanged.connect(self._trans)
-        line.addWidget(self.transpose)
-        self.rotate = QtWidgets.QCheckBox('Rotate 90 deg', self)
-        self.rotate.stateChanged.connect(self._rot)
-        line.addWidget(self.rotate)
-        vbox.addStretch(1)
-
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Point transform:', self)
+        line.addWidget(label)
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
         self.select_btn.toggled.connect(lambda state, par=self.fm_imview: self._define_corr_toggled(state, par))
         line.addWidget(self.select_btn)
+        line.addStretch(1)
+
+        vbox.addStretch(1)
 
     def _init_em_options(self, parent_layout):
         vbox = QtWidgets.QVBoxLayout()
@@ -253,7 +301,7 @@ class GUI(QtGui.QMainWindow):
         # ---- Assemble montage
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        button = QtWidgets.QPushButton('EM Montage:', self)
+        button = QtWidgets.QPushButton('EM Image:', self)
         button.clicked.connect(self._load_mrc)
         line.addWidget(button)
         self.mrc_fname = QtWidgets.QLabel(self)
@@ -264,7 +312,7 @@ class GUI(QtGui.QMainWindow):
         step_label = QtWidgets.QLabel(self)
         step_label.setText('Downsampling factor:')
         self.step_box = QtWidgets.QLineEdit(self)
-        self.step_box.setText('100')
+        self.step_box.setText('10')
         line.addWidget(step_label)
         line.addWidget(self.step_box)
         line.addStretch(1)
@@ -272,19 +320,22 @@ class GUI(QtGui.QMainWindow):
         button.clicked.connect(self._assemble_mrc)
         line.addWidget(button)
 
+        # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        self.define_btn_em = QtWidgets.QPushButton('Define EM Grid', self)
+        label = QtWidgets.QLabel('Grid transform:', self)
+        line.addWidget(label)
+        self.define_btn_em = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn_em.setCheckable(True)
         self.define_btn_em.toggled.connect(lambda state, par=self.em_imview: self._define_grid_toggled(state, par))
         line.addWidget(self.define_btn_em)
-        self.transform_btn_em = QtWidgets.QPushButton('Transform EM image', self)
+        self.transform_btn_em = QtWidgets.QPushButton('Transform image', self)
         self.transform_btn_em.clicked.connect(lambda: self._affine_transform(self.em_imview))
         line.addWidget(self.transform_btn_em)
         self.rot_transform_btn_em = QtWidgets.QCheckBox('Disable Shearing', self)
         self.rot_transform_btn_em.stateChanged.connect(lambda state, par=self.em_imview: self._allow_rotation_only(state,par))
         line.addWidget(self.rot_transform_btn_em)
-        self.show_btn_em = QtWidgets.QCheckBox('Show original EM data', self)
+        self.show_btn_em = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn_em.setEnabled(False)
         self.show_btn_em.setChecked(True)
         self.show_btn_em.stateChanged.connect(lambda state, par=self.em_imview: self._show_original(state, par))
@@ -294,9 +345,13 @@ class GUI(QtGui.QMainWindow):
         self.show_grid_btn_em.setChecked(False)
         self.show_grid_btn_em.stateChanged.connect(lambda state, par=self.em_imview: self._show_grid(state, par))
         line.addWidget(self.show_grid_btn_em)
+        line.addStretch(1)
         
+        # ---- Assembly grid options
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
+        label = QtWidgets.QLabel('Assembly grid:', self)
+        line.addWidget(label)
         self.show_boxes_btn = QtWidgets.QCheckBox('Show boxes',self)
         self.show_boxes_btn.stateChanged.connect(self._show_boxes)
         self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
@@ -308,14 +363,18 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(self.show_boxes_btn)
         line.addWidget(self.select_region_btn)
         line.addWidget(self.show_assembled_btn) 
+        line.addStretch(1)
 
-
+        # ---- Points of interest
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
+        label = QtWidgets.QLabel('Point transform:', self)
+        line.addWidget(label)
         self.select_btn_em = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn_em.setCheckable(True)
         self.select_btn_em.toggled.connect(lambda state, par=self.em_imview: self._define_corr_toggled(state, par))
         line.addWidget(self.select_btn_em)
+        line.addStretch(1)
 
         # ---- Quit button
         vbox.addStretch(1)
@@ -462,7 +521,6 @@ class GUI(QtGui.QMainWindow):
                     show_grid_btn.setEnabled(True)
                     show_grid_btn.setChecked(True)
 
-                
     def _define_corr_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -615,7 +673,15 @@ class GUI(QtGui.QMainWindow):
                     parent.addItem(self.tr_grid_box[index])
                 else:
                     parent.removeItem(self.tr_grid_box[index])
-     
+
+    def _set_theme(self, name):
+        if name == 'none':
+            self.setStyleSheet('')
+        else:
+            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '%s.css'%name), 'r') as f:
+                self.setStyleSheet(f.read())
+        self.settings.setValue('theme', name)
+
     def keyPressEvent(self, event):
         key = event.key()
         mod = int(event.modifiers())
@@ -711,44 +777,31 @@ class GUI(QtGui.QMainWindow):
         if self.fm is not None:
            self.channels[my_channel] = not self.channels[my_channel]          
            self._update_fm_imview()            
-    
-    def _sel_color_c1(self):
-        self._sel_color(0)
-        self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
 
-    def _sel_color_c2(self):
-        self._sel_color(1)
-        self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
-
-    def _sel_color_c3(self):
-        self._sel_color(2)
-        self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
-
-    def _sel_color_c4(self):
-        self._sel_color(3)
-        self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
-   
-    def _sel_color(self, my_channel):
+    def _sel_color(self, index, button):
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
-            self.colors[my_channel] = color.name()
+            cname = color.name()
+            self.colors[index] = cname
+            button.setStyleSheet('background-color: {}'.format(cname))
             self._update_fm_imview()
-            print(self.colors)
-             
+        else:
+            print('Invalid color')
+
     def _fliph(self, state):
-        self.fm.flip_horizontal(state == QtCore.Qt.Checked)
+        self.fm.flip_horizontal(state)
         self._update_fm_imview()
 
     def _flipv(self, state):
-        self.fm.flip_vertical(state == QtCore.Qt.Checked)
+        self.fm.flip_vertical(state)
         self._update_fm_imview()
 
     def _trans(self, state):
-        self.fm.transpose(state == QtCore.Qt.Checked)
+        self.fm.transpose(state)
         self._update_fm_imview()
 
     def _rot(self, state):
-        self.fm.rotate_clockwise(state == QtCore.Qt.Checked)
+        self.fm.rotate_clockwise(state)
         self._update_fm_imview()
 
     def _recalc_grid(self, orig=True):
@@ -785,7 +838,7 @@ class GUI(QtGui.QMainWindow):
         if self.fm is None:
             print('Pick FM image first')
             return
-        self.ind = (self.ind - 1 + self.num_channels) % self.num_channels0x2b2196f52048
+        self.ind = (self.ind - 1 + self.num_channels) % self.num_channels
         self.fm.parse(fname=self.fm.old_fname, z=self.ind)
         self._update_fm_imview()
         fname, indstr = self.fm_fname.text().split()
