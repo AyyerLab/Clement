@@ -377,24 +377,27 @@ class GUI(QtGui.QMainWindow):
             parent.addItem(roi)
             clicked_points.append(roi)
         elif selbtn.isChecked():
-            point = pg.CircleROI(pos, size, parent=item, movable=True)
-            point.setPen(0,255,0)
-            point.removeHandle(0)
-            parent.addItem(point)
-            points_corr.append(point)
+            if obj.transformed:
+                point = pg.CircleROI(pos, size, parent=item, movable=True)
+                point.setPen(0,255,0)
+                point.removeHandle(0)
+                parent.addItem(point)
+                points_corr.append(point)
 
-            # Coordinates in clicked image
-            shift = obj.transform_shift + [obj.side_length/2]*2
-            init = np.array([pos.x(), pos.y(), 1])
-            transf = np.dot(self.tr_matrices[index], init)
+                # Coordinates in clicked image
+                shift = obj.transform_shift + [obj.side_length/2]*2
+                init = np.array([pos.x(), pos.y(), 1])
+                transf = np.dot(self.tr_matrices[index], init)
 
-            cen = other_obj.side_length / 100
-            pos = QtCore.QPointF(transf[0]-cen, transf[1]-cen)
-            point = pg.CircleROI(pos, 2*cen, parent=other.getImageItem(), movable=False)
-            point.setPen(0,255,255)
-            point.removeHandle(0)
-            other.addItem(point)
-            points_corr[1-index].append(point)
+                cen = other_obj.side_length / 100
+                pos = QtCore.QPointF(transf[0]-cen, transf[1]-cen)
+                point = pg.CircleROI(pos, 2*cen, parent=other.getImageItem(), movable=False)
+                point.setPen(0,255,255)
+                point.removeHandle(0)
+                other.addItem(point)
+                points_corr[1-index].append(point)
+            else:
+                print('Transform images before point selection')
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
    
@@ -902,7 +905,7 @@ class GUI(QtGui.QMainWindow):
             assembled = True
         else:
             assembled = False
-            self.show_boxes_btn.isChecked(False)
+            self.show_boxes_btn.setChecked(False)
         if self.show_btn_em.isChecked():
             transformed = False
         else:

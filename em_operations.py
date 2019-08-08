@@ -271,7 +271,7 @@ class EM_ops():
 
                 print('Selected region: ', counter-1)
                 self.region = (self.data_highres[counter-1]).T
-                self.data = self.region
+                self.data = np.copy(self.region)
         else:
             if self.tr_count_map[coordinate[0],coordinate[1]] == 0:
                 print('Selected region ambiguous. Try again!')
