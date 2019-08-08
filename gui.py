@@ -404,35 +404,62 @@ class GUI(QtGui.QMainWindow):
             index = 0
             show_grid_btn = self.show_grid_btn
             obj = self.fm
+            show_btn = self.show_btn
         else:
             tag = 'EM'
             index = 1
             show_grid_btn = self.show_grid_btn_em
             obj = self.em
+            show_btn = self.show_btn_em
 
         if checked:
             print('Defining grid on %s image: Click on corners'%tag)
-            if self.grid_box[index] is not None:
-                parent.removeItem(self.grid_box[index])
-                self.grid_box[index] = None
+            show_grid_btn.setChecked(True)
+            if show_btn.isChecked():
+                if self.grid_box[index] is not None:
+                    parent.removeItem(self.grid_box[index])
+                    self.grid_box[index] = None
+            else:
+                if self.tr_grid_box[index] is not None:
+                    parent.removeItem(self.tr_grid_box[index])
+                    self.tr_grid_box[index] = None
         else:
-            print('Done defining grid on %s image: Manually adjust fine positions'%tag)
-            positions = [c.pos() for c in self.clicked_points[index]]
-            sizes = [c.size()[0] for c in self.clicked_points[index]]
-            for pos, s in zip(positions, sizes):
-                pos.setX(pos.x() + s/2)
-                pos.setY(pos.y() + s/2)
-            self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-            parent.addItem(self.grid_box[index])
-            [parent.removeItem(roi) for roi in self.clicked_points[index]]
-            points_obj = self.grid_box[index].getState()['points']
-            points = np.array([list((point[0], point[1])) for point in points_obj])
-            obj.orig_points = points
-            self.clicked_points[index] = []
-            if obj is not None:
-                show_grid_btn.setEnabled(True)
-                show_grid_btn.setChecked(True)
-            
+            if show_btn.isChecked():
+                print('Done defining grid on %s image: Manually adjust fine positions'%tag)
+                positions = [c.pos() for c in self.clicked_points[index]]
+                sizes = [c.size()[0] for c in self.clicked_points[index]]
+                for pos, s in zip(positions, sizes):
+                    pos.setX(pos.x() + s/2)
+                    pos.setY(pos.y() + s/2)
+                self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
+                parent.addItem(self.grid_box[index])
+                [parent.removeItem(roi) for roi in self.clicked_points[index]]
+                points_obj = self.grid_box[index].getState()['points']
+                points = np.array([list((point[0], point[1])) for point in points_obj])
+                obj.orig_points = points
+                self.clicked_points[index] = []
+                if obj is not None:
+                    show_grid_btn.setEnabled(True)
+                    show_grid_btn.setChecked(True)
+            else:
+                print('Done defining grid on %s image: Manually adjust fine positions'%tag)
+                positions = [c.pos() for c in self.clicked_points[index]]
+                sizes = [c.size()[0] for c in self.clicked_points[index]]
+                for pos, s in zip(positions, sizes):
+                    pos.setX(pos.x() + s/2)
+                    pos.setY(pos.y() + s/2)
+                self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
+                parent.addItem(self.tr_grid_box[index])
+                [parent.removeItem(roi) for roi in self.clicked_points[index]]
+                points_obj = self.tr_grid_box[index].getState()['points']
+                points = np.array([list((point[0], point[1])) for point in points_obj])
+                obj.orig_points = points
+                self.clicked_points[index] = []
+                if obj is not None:
+                    show_grid_btn.setEnabled(True)
+                    show_grid_btn.setChecked(True)
+
+                
     def _define_corr_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -468,7 +495,7 @@ class GUI(QtGui.QMainWindow):
             index = 1
             obj = self.em
             show_btn = self.show_btn_em
-
+        self.tr_boxes = []
         if self.grid_box[index] is not None:
             if self.rot_transform_btn.isChecked():
                 print('Performing rotation on %s image'%tag)
@@ -508,8 +535,7 @@ class GUI(QtGui.QMainWindow):
 
             positions = [point for point in obj.new_points]
             self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-            parent.addItem(self.tr_grid_box[index])
-    
+            parent.addItem(self.tr_grid_box[index]) 
         else:
             print('Define grid box on %s image first!'%tag)
 
@@ -575,17 +601,18 @@ class GUI(QtGui.QMainWindow):
             orig_btn = self.show_btn_em
             grid_btn = self.show_grid_btn_em
         
-        if orig_btn.isChecked():
-            if state:
-                parent.addItem(self.grid_box[index])
+        if self.grid_box[index] is not None:
+            if orig_btn.isChecked():
+                if state:
+                    parent.addItem(self.grid_box[index])
+                else:
+                    parent.removeItem(self.grid_box[index])
             else:
-                parent.removeItem(self.grid_box[index])
-        else:
-            if state:
-                parent.addItem(self.tr_grid_box[index])
-            else:
-                parent.removeItem(self.tr_grid_box[index])
- 
+                if state:
+                    parent.addItem(self.tr_grid_box[index])
+                else:
+                    parent.removeItem(self.tr_grid_box[index])
+     
     def keyPressEvent(self, event):
         key = event.key()
         mod = int(event.modifiers())
@@ -828,8 +855,7 @@ class GUI(QtGui.QMainWindow):
                 if self.show_btn_em.isChecked():
                     if len(self.boxes) == 0:
                         for i in range(len(self.em.pos_x)):
-                            roi = pg.PolyLineROI(self.em.grid_points[i], closed=True, movable=False)
-                            print(roi.getSceneHandlePositions())
+                            roi = pg.PolyLineROI(self.em.grid_points[i], closed=True, movable=False)                
                             self.boxes.append(roi)
                             self.em_imview.addItem(roi)
                     else:

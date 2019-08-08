@@ -38,7 +38,7 @@ class EM_ops():
         self.rot_angle = None
         self.first_rotation = False
         self.rotated = False
-
+        self.tf_prev = np.identity(3)
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
             try:
@@ -56,6 +56,8 @@ class EM_ops():
             self.pos_x = self._eh[1:10*dimensions[0]:10] // self.step
             self.pos_y = self._eh[2:10*dimensions[0]:10] // self.step
             self.pos_z = self._eh[3:10*dimensions[0]:10]
+            if len(self.grid_points) != 0:
+                self.grid_points = []
             for i in range(len(self.pos_x)):
                 point = np.array((self.pos_x[i],self.pos_y[i],1))
                 box_points = [point,point+(self.stacked_data.shape[1],0,0),point+(self.stacked_data.shape[1],self.stacked_data.shape[2],0),point+(0,self.stacked_data.shape[2],0)]
@@ -125,7 +127,7 @@ class EM_ops():
 
         self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
 
-        nx, ny = self.data.shape[:-1]
+        nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
@@ -149,7 +151,7 @@ class EM_ops():
         print('Sorted points:\n',my_points_sorted)
 
         self.tf_matrix = self.calc_rot_matrix(my_points_sorted)
-        nx, ny = self.data.shape[:-1]
+        nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
@@ -231,13 +233,14 @@ class EM_ops():
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
         self.points = np.copy(self.new_points)
-
+        
         for i in range(len(self.grid_points)):
             tr_box_points = []
             for point in self.grid_points[i]:
-                x_i, y_i, z_i = self.tf_matrix @ point
+                x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
                 tr_box_points.append(np.array([x_i,y_i,z_i]))
             self.tr_grid_points.append(tr_box_points)
+        self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
     
 
     def apply_transform_mp(self,data,return_dict):
