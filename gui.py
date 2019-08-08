@@ -481,8 +481,18 @@ class GUI(QtGui.QMainWindow):
                 points_obj = self.tr_grid_box[index].getState()['points']     
 
             points = np.array([list((point[0], point[1])) for point in points_obj])
-
-            obj.calc_transform(points)
+            
+            if obj == self.fm:
+                if self.rot_transform_btn.isChecked():
+                    obj.calc_rot_transform(points)
+                else:
+                    obj.calc_affine_transform(points)
+            else:
+                if self.rot_transform_btn.isChecked():
+                    obj.calc_rot_transform(points)
+                else:
+                    obj.calc_affine_transform(points)
+            
             if obj.data is None:
                 obj.toggle_original()
             else:
@@ -551,7 +561,7 @@ class GUI(QtGui.QMainWindow):
                     [parent.removeItem(box) for box in self.boxes]
                     [parent.addItem(box) for box in self.tr_boxes]
 
-            updater()
+        updater()
 
     def _show_grid(self, state, parent):
         if parent == self.fm_imview:

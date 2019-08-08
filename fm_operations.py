@@ -41,6 +41,7 @@ class FM_ops():
         self.max_proj_data = None
         self.tf_max_proj_data = None
         self.data_slices = []
+        self.counter_clockwise = False
 
         javabridge.start_vm(class_path=bioformats.JARS)
 
@@ -229,11 +230,9 @@ class FM_ops():
 
         return name_list
         #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
-
-    def calc_transform(self, my_points):
-        print('Input points:\n', my_points)
-        
-        my_points = self.calc_orientation(my_points)
+   
+    def calc_affine_transform(self, my_points):
+        my__points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
@@ -249,10 +248,7 @@ class FM_ops():
         self.new_points[2] = cen + (self.side_length, self.side_length)
         self.new_points[3] = cen + (0, self.side_length)
 
-        if self.no_shear:
-            self.tf_matrix = self.calc_rot_transform(my_points)
-        else:
-            self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
+        self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
 
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -260,6 +256,38 @@ class FM_ops():
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Transform matrix:\n', self.tf_matrix)
+        print('Shift: ', -self.tf_corners.min(1)[:2])
+        self.orig_points = np.copy(np.array(my_points))
+        self.points = np.copy(self.new_points)
+        self.apply_transform()
+
+    def calc_rot_transform(self, my_points):
+        #my_points = self.calc_orientation(my_points)
+        print('Input points:\n', my_points)
+
+        side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
+        side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
+        self.side_length = np.mean(side_list)
+        print('ROI side length:', self.side_length, '\xb1', side_list.std())
+        
+        my_points_sorted = np.array(sorted(my_points, key=lambda k: [k[0],k[1]]))
+        print('Sorted points:\n',my_points_sorted)
+        
+        self.tf_matrix = self.calc_rot_matrix(my_points_sorted)
+        nx, ny = self.data.shape[:-1]
+        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+        self.tf_corners = np.dot(self.tf_matrix, corners)
+        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
+        self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+        print('Tf: ', self.tf_matrix)
+        
+        cen = my_points.mean(0) + self.tf_corners.min(1)[:2] + (0,self.side_length/2)
+        self.new_points = np.zeros_like(my_points)
+        self.new_points[0] = cen + (0, 0)
+        self.new_points[1] = cen + (self.side_length, 0)
+        self.new_points[2] = cen + (self.side_length, self.side_length)
+        self.new_points[3] = cen + (0,self.side_length)
+
         self.orig_points = np.copy(np.array(my_points))
         self.points = np.copy(self.new_points)
         self.apply_transform()
@@ -274,14 +302,14 @@ class FM_ops():
         print(my_sum)
         if my_sum > 0:
             print('counter-clockwise')
+            self.counter_clockwise = True
             return points
         else:
             print('clockwise --> transpose points')
             order = [0,3,2,1]
-            return points[order]
-            
+            return points[order] 
 
-    def calc_rot_transform(self,pts):
+    def calc_rot_matrix(self,pts):
             sides = np.zeros_like(pts)
             sides[:3] = np.diff(pts,axis=0)
             sides[3] = pts[0]-pts[-1]
