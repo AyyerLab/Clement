@@ -461,7 +461,17 @@ class GUI(QtGui.QMainWindow):
                 print('Transform images before point selection')
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
-   
+            points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
+            ind = self.em.get_selected_region(np.array(points_obj), not self.show_btn_em.isChecked())
+            if ind is not None:
+                if self.show_btn_em.isChecked():
+                    boxes = self.boxes
+                else:
+                    boxes = self.tr_boxes
+                white_pen = pg.mkPen('w')
+                [box.setPen(white_pen) for box in boxes]
+                boxes[ind].setPen(pg.mkPen('#ed7370'))
+
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -910,10 +920,13 @@ class GUI(QtGui.QMainWindow):
     def _show_boxes(self):
         if self.show_boxes_btn.isChecked():
             if self.em is not None:
+                handle_pen = pg.mkPen('#00000000')
                 if self.show_btn_em.isChecked():
                     if len(self.boxes) == 0:
                         for i in range(len(self.em.pos_x)):
-                            roi = pg.PolyLineROI(self.em.grid_points[i], closed=True, movable=False)                
+                            roi = pg.PolyLineROI([], closed=True, movable=False)
+                            roi.handlePen = handle_pen
+                            roi.setPoints(self.em.grid_points[i])
                             self.boxes.append(roi)
                             self.em_imview.addItem(roi)
                     else:
@@ -921,7 +934,9 @@ class GUI(QtGui.QMainWindow):
                 else:
                     if len(self.tr_boxes) == 0:
                         for i in range(len(self.em.tr_grid_points)):
-                            roi = pg.PolyLineROI(self.em.tr_grid_points[i], closed=True, movable=False)         
+                            roi = pg.PolyLineROI([], closed=True, movable=False)
+                            roi.handlePen = handle_pen
+                            roi.setPoints(self.em.tr_grid_points[i])
                             self.tr_boxes.append(roi)
                             self.em_imview.addItem(roi)
                     else:
