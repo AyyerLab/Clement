@@ -173,18 +173,22 @@ class GUI(QtGui.QMainWindow):
 
         self.c1_btn = QtWidgets.QPushButton(' ', self)
         self.c1_btn.clicked.connect(lambda: self._sel_color(0, self.c1_btn))
-        width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 25
+        width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 24
         self.c1_btn.setMaximumWidth(width)
+        self.c1_btn.setMaximumHeight(width)
         self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
         self.c2_btn = QtWidgets.QPushButton(' ', self)
         self.c2_btn.clicked.connect(lambda: self._sel_color(1, self.c2_btn))
         self.c2_btn.setMaximumWidth(width)
+        self.c2_btn.setMaximumHeight(width)
         self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
         self.c3_btn = QtWidgets.QPushButton(' ', self)
         self.c3_btn.setMaximumWidth(width)
+        self.c3_btn.setMaximumHeight(width)
         self.c3_btn.clicked.connect(lambda: self._sel_color(2, self.c3_btn))
         self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
         self.c4_btn = QtWidgets.QPushButton(' ', self)
+        self.c4_btn.setMaximumHeight(width)
         self.c4_btn.setMaximumWidth(width)
         self.c4_btn.clicked.connect(lambda: self._sel_color(3, self.c4_btn))
         self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
@@ -223,16 +227,16 @@ class GUI(QtGui.QMainWindow):
         self.flipv.toggled.connect(self._flipv)
         line.addWidget(self.flipv)
 
-        self.transpose = QtWidgets.QPushButton('\u292f', self)
+        self.transpose = QtWidgets.QPushButton('\u292f \n \n', self)
         self.transpose.setCheckable(True)
         self.transpose.setMaximumWidth(width)
         self.transpose.setMaximumHeight(width)
-        font.setPointSize(20)
+        font.setPointSize(7)
         self.transpose.setFont(font)
         self.transpose.toggled.connect(self._trans)
         line.addWidget(self.transpose)
 
-        self.rotate = QtWidgets.QPushButton('\u293e', self)
+        self.rotate = QtWidgets.QPushButton('\u293e \n \n', self)
         self.rotate.setCheckable(True)
         self.rotate.setMaximumWidth(width)
         self.rotate.setMaximumHeight(width)
@@ -789,20 +793,24 @@ class GUI(QtGui.QMainWindow):
             print('Invalid color')
 
     def _fliph(self, state):
-        self.fm.flip_horizontal(state)
-        self._update_fm_imview()
+        if self.fm is not None:
+            self.fm.flip_horizontal(state)
+            self._update_fm_imview()
 
     def _flipv(self, state):
-        self.fm.flip_vertical(state)
-        self._update_fm_imview()
+        if self.fm is not None:
+            self.fm.flip_vertical(state)
+            self._update_fm_imview()
 
     def _trans(self, state):
-        self.fm.transpose(state)
-        self._update_fm_imview()
+        if self.fm is not None:
+            self.fm.transpose(state)
+            self._update_fm_imview()
 
     def _rot(self, state):
-        self.fm.rotate_clockwise(state)
-        self._update_fm_imview()
+        if self.fm is not None:
+            self.fm.rotate_clockwise(state)
+            self._update_fm_imview()
 
     def _recalc_grid(self, orig=True):
         if self.fm.orig_points is None:
