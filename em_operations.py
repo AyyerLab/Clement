@@ -258,12 +258,12 @@ class EM_ops():
             return
         return tf.estimate_transform('affine', source, dest).params
 
-    def select_region(self,coordinate,transformed):
-        print(self.data.shape)
+    def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
         if not self.transformed:
             if self.mcounts[coordinate[0],coordinate[1]] > 1:
                 print('Selected region ambiguous. Try again!')
+                return
             else:
                 counter = 0
                 my_bool = False
@@ -275,19 +275,25 @@ class EM_ops():
                         my_bool = True
 
                 print('Selected region: ', counter-1)
-                self.region = (self.data_highres[counter-1]).T
-                self.data = np.copy(self.region)
+                return counter - 1
         else:
             if self.tr_count_map[coordinate[0],coordinate[1]] == 0:
                 print('Selected region ambiguous. Try again!')
+                return
             else:
                 counter = int(self.tr_count_map[coordinate[0],coordinate[1]])
                 print('Selected region: ', counter)
-                self.region = (self.data_highres[counter]).T
-                #if transformed:
-                #    self.region =  ndi.affine_transform(self.region, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                return counter
 
-                self.toggle_region(transformed=transformed,assembled=False)
+    def select_region(self,coordinate,transformed):
+        counter = self.get_selected_region(coordinate, transformed)
+        if counter is None:
+            return
+        self.region = (self.data_highres[counter]).T
+        if not self.transformed:
+            self.data = np.copy(self.region)
+        else:
+            self.toggle_region(transformed=transformed, assembled=False)
 
 if __name__=='__main__':
     path = '../gs.mrc'

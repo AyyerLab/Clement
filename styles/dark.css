@@ -1,0 +1,96 @@
+/*
+ * background = #1d262a
+ * text color = #eaf0ce
+ * disabled color = #808371
+ * select color = #57727b
+ * highlight = #ed7340
+ */
+
+QWidget {
+  background: #1d262a;
+  color: #eaf0ce;
+}
+  QWidget:disabled {
+    color: #808371;
+  }
+
+QSplitter {
+  spacing: 0px;
+  padding: 0px;
+  margin: 0px;
+}
+  QSplitter::separator {
+    background-color: #1d262a;
+  }
+  QSplitter::separator:hover {
+    background-color: #57727b;
+  }
+  QSplitter::separator:horizontal {
+    width: 4px;
+  }
+
+QMenuBar {
+  background-color: #1d262a;
+}
+  QMenuBar::item {
+    background: transparent;
+    padding: 2px 6px;
+  }
+  QMenuBar::item:selected {
+    background: #57727b;
+  }
+
+QMenu {
+  background-color: #1d262a;
+}
+  QMenu::item:selected {
+    background: #57727b;
+  }
+
+QCheckBox::indicator {
+  border: 1px solid #eaf0ce;
+  padding: 1px;
+  height: 14px;
+  width: 14px;
+}
+  QCheckBox::indicator:checked {
+    /*background: #ed7340;*/
+    image: url('styles/rc/check-eaf0ce.png');
+  }
+  QCheckBox::indicator:hover {
+    border: 1px solid #ed7340;
+  }
+  QCheckBox::indicator::disabled {
+    border: 1px solid #808371;
+  }
+  QCheckBox::indicator:checked:disabled {
+    /*background: #974a29;*/
+    image: url('styles/rc/check-808371.png');
+  }
+
+QLineEdit {
+  border: 1px solid #eaf0ce;
+}
+  QLineEdit:hover, QLineEdit:focus {
+    border: 1px solid #ed7340;
+  }
+
+QPushButton {
+  border: 1px solid #57727b;
+  padding: 4px;
+  border-radius: 2px;
+}
+  QPushButton:disabled {
+    border: 1px solid #808371;
+    color: #808371;
+  }
+  QPushButton:hover {
+    border: 1px solid #ed7340;
+  }
+  QPushButton:pressed {
+    border: 1px solid #ed7340;
+    background: #57727b;
+  }
+  QPushButton:checked {
+    background: #57727b;
+  }
