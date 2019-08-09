@@ -64,7 +64,7 @@ class GUI(QtGui.QMainWindow):
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
-        #layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
         # Menu bar
@@ -104,6 +104,7 @@ class GUI(QtGui.QMainWindow):
         layout.addWidget(splitter_images, stretch=1)
 
         # -- FM Image view
+        #pg.setConfigOption('background', '#1d262a')
         self.fm_imview = pg.ImageView()
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
@@ -119,6 +120,7 @@ class GUI(QtGui.QMainWindow):
 
         # Options
         options = QtWidgets.QHBoxLayout()
+        options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options)
 
         self._init_fm_options(options)
@@ -142,11 +144,11 @@ class GUI(QtGui.QMainWindow):
         self.max_proj_btn.stateChanged.connect(self._show_max_projection)
         line.addWidget(self.max_proj_btn) 
         self.prev_btn = QtWidgets.QPushButton('\u2190', self)
-        self.prev_btn.setFixedWidth(16)
+        self.prev_btn.setFixedWidth(32)
         self.prev_btn.clicked.connect(self._prev_file)
         line.addWidget(self.prev_btn)
         self.next_btn = QtWidgets.QPushButton('\u2192', self)
-        self.next_btn.setFixedWidth(16)
+        self.next_btn.setFixedWidth(32)
         self.next_btn.clicked.connect(self._next_file)
         line.addWidget(self.next_btn)
         
@@ -155,49 +157,49 @@ class GUI(QtGui.QMainWindow):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Colors:', self)
         line.addWidget(label)
+        self.channel1_btn = QtWidgets.QCheckBox(' ',self)
+        self.channel2_btn = QtWidgets.QCheckBox(' ',self)
+        self.channel3_btn = QtWidgets.QCheckBox(' ',self)
+        self.channel4_btn = QtWidgets.QCheckBox(' ',self)
         self.overlay_btn = QtWidgets.QCheckBox('Overlay',self)
-        self.channel1_btn = QtWidgets.QCheckBox('',self)
-        self.channel2_btn = QtWidgets.QCheckBox('',self)
-        self.channel3_btn = QtWidgets.QCheckBox('',self)
-        self.channel4_btn = QtWidgets.QCheckBox('',self)
-        self.overlay_btn.stateChanged.connect(self._show_overlay)
         self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state,channel))
         self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state,channel))
         self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_channels(state,channel))
         self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_channels(state,channel))
-        self.overlay_btn.setChecked(True)
+        self.overlay_btn.stateChanged.connect(self._show_overlay)
         self.channel1_btn.setChecked(True)
         self.channel2_btn.setChecked(True)
         self.channel3_btn.setChecked(True)
         self.channel4_btn.setChecked(True)
+        self.overlay_btn.setChecked(True)
 
         self.c1_btn = QtWidgets.QPushButton(' ', self)
         self.c1_btn.clicked.connect(lambda: self._sel_color(0, self.c1_btn))
         width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 25
-        self.c1_btn.setMaximumWidth(width)
+        self.c1_btn.setFixedWidth(width)
         self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
         self.c2_btn = QtWidgets.QPushButton(' ', self)
         self.c2_btn.clicked.connect(lambda: self._sel_color(1, self.c2_btn))
-        self.c2_btn.setMaximumWidth(width)
+        self.c2_btn.setFixedWidth(width)
         self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
         self.c3_btn = QtWidgets.QPushButton(' ', self)
-        self.c3_btn.setMaximumWidth(width)
+        self.c3_btn.setFixedWidth(width)
         self.c3_btn.clicked.connect(lambda: self._sel_color(2, self.c3_btn))
         self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
         self.c4_btn = QtWidgets.QPushButton(' ', self)
-        self.c4_btn.setMaximumWidth(width)
+        self.c4_btn.setFixedWidth(width)
         self.c4_btn.clicked.connect(lambda: self._sel_color(3, self.c4_btn))
         self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
 
-        line.addWidget(self.overlay_btn)
-        line.addWidget(self.channel1_btn)
         line.addWidget(self.c1_btn)
-        line.addWidget(self.channel2_btn) 
+        line.addWidget(self.channel1_btn)
         line.addWidget(self.c2_btn)
-        line.addWidget(self.channel3_btn)
+        line.addWidget(self.channel2_btn) 
         line.addWidget(self.c3_btn)
-        line.addWidget(self.channel4_btn)
+        line.addWidget(self.channel3_btn)
         line.addWidget(self.c4_btn)
+        line.addWidget(self.channel4_btn)
+        line.addWidget(self.overlay_btn)
         line.addStretch(1)
 
         # ---- Flips and rotates
@@ -208,8 +210,8 @@ class GUI(QtGui.QMainWindow):
         width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
         font = self.fliph.font()
         font.setPointSize(24)
-        self.fliph.setMaximumWidth(width)
-        self.fliph.setMaximumHeight(width)
+        self.fliph.setFixedWidth(width)
+        self.fliph.setFixedHeight(width)
         self.fliph.setCheckable(True)
         self.fliph.setFont(font)
         self.fliph.toggled.connect(self._fliph)
@@ -217,16 +219,16 @@ class GUI(QtGui.QMainWindow):
 
         self.flipv = QtWidgets.QPushButton('\u2356', self)
         self.flipv.setCheckable(True)
-        self.flipv.setMaximumWidth(width)
-        self.flipv.setMaximumHeight(width)
+        self.flipv.setFixedWidth(width)
+        self.flipv.setFixedHeight(width)
         self.flipv.setFont(font)
         self.flipv.toggled.connect(self._flipv)
         line.addWidget(self.flipv)
 
         self.transpose = QtWidgets.QPushButton('\u292f', self)
         self.transpose.setCheckable(True)
-        self.transpose.setMaximumWidth(width)
-        self.transpose.setMaximumHeight(width)
+        self.transpose.setFixedWidth(width)
+        self.transpose.setFixedHeight(width)
         font.setPointSize(20)
         self.transpose.setFont(font)
         self.transpose.toggled.connect(self._trans)
@@ -234,8 +236,8 @@ class GUI(QtGui.QMainWindow):
 
         self.rotate = QtWidgets.QPushButton('\u293e', self)
         self.rotate.setCheckable(True)
-        self.rotate.setMaximumWidth(width)
-        self.rotate.setMaximumHeight(width)
+        self.rotate.setFixedWidth(width)
+        self.rotate.setFixedHeight(width)
         self.rotate.setFont(font)
         self.rotate.toggled.connect(self._rot)
         line.addWidget(self.rotate)
@@ -678,7 +680,7 @@ class GUI(QtGui.QMainWindow):
         if name == 'none':
             self.setStyleSheet('')
         else:
-            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '%s.css'%name), 'r') as f:
+            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'styles/%s.css'%name), 'r') as f:
                 self.setStyleSheet(f.read())
         self.settings.setValue('theme', name)
 
@@ -929,7 +931,6 @@ class GUI(QtGui.QMainWindow):
                 [self.em_imview.removeItem(box) for box in self.boxes]
             else:
                 [self.em_imview.removeItem(box) for box in self.tr_boxes]
-
 
     def _select_box(self,state,parent):
         if self.select_region_btn.isChecked():
