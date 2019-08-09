@@ -176,7 +176,7 @@ class GUI(QtGui.QMainWindow):
         self.c1_btn = QtWidgets.QPushButton(' ', self)
         self.c1_btn.clicked.connect(lambda: self._sel_color(0, self.c1_btn))
         width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 24
-        self.c2_btn.setFixedWidth(width)
+        self.c1_btn.setFixedWidth(width)
         self.c1_btn.setMaximumHeight(width)
         self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
         self.c2_btn = QtWidgets.QPushButton(' ', self)
