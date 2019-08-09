@@ -19,7 +19,7 @@ class EM_ops():
         self.stacked_data = None
         self.region = None
         self.data_backup = None
-        self.transformed_data = None   
+        self.transformed = False
         self.pos_x = None
         self.pos_y = None
         self.pos_z = None
