@@ -227,16 +227,16 @@ class GUI(QtGui.QMainWindow):
         self.flipv.toggled.connect(self._flipv)
         line.addWidget(self.flipv)
 
-        self.transpose = QtWidgets.QPushButton('\u292f \n \n', self)
+        self.transpose = QtWidgets.QPushButton('\u292f', self)
         self.transpose.setCheckable(True)
         self.transpose.setMaximumWidth(width)
         self.transpose.setMaximumHeight(width)
-        font.setPointSize(7)
+        font.setPointSize(20)
         self.transpose.setFont(font)
         self.transpose.toggled.connect(self._trans)
         line.addWidget(self.transpose)
 
-        self.rotate = QtWidgets.QPushButton('\u293e \n \n', self)
+        self.rotate = QtWidgets.QPushButton('\u293e', self)
         self.rotate.setCheckable(True)
         self.rotate.setMaximumWidth(width)
         self.rotate.setMaximumHeight(width)
@@ -293,9 +293,11 @@ class GUI(QtGui.QMainWindow):
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
         self.select_btn.toggled.connect(lambda state, par=self.fm_imview: self._define_corr_toggled(state, par))
+        self.refine_btn = QtWidgets.QPushButton('Refinement')
+        self.refine_btn.clicked.connect(self._refine)
         line.addWidget(self.select_btn)
+        line.addWidget(self.refine_btn)
         line.addStretch(1)
-
         vbox.addStretch(1)
 
     def _init_em_options(self, parent_layout):
@@ -377,7 +379,10 @@ class GUI(QtGui.QMainWindow):
         self.select_btn_em = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn_em.setCheckable(True)
         self.select_btn_em.toggled.connect(lambda state, par=self.em_imview: self._define_corr_toggled(state, par))
+        self.refine_btn_em = QtWidgets.QPushButton('Refinement')
+        self.refine_btn_em.clicked.connect(self._refine)
         line.addWidget(self.select_btn_em)
+        line.addWidget(self.refine_btn_em)
         line.addStretch(1)
 
         # ---- Quit button
@@ -407,7 +412,7 @@ class GUI(QtGui.QMainWindow):
                 else:
                     size = obj.side_length / 25
                 clicked_points = self.clicked_points[index]
-                points_corr = self.points_corr[index]
+                points_corr = self.points_corr
                 other = self.em_imview
                 other_obj = self.em
 
@@ -424,7 +429,7 @@ class GUI(QtGui.QMainWindow):
                 else:
                     size = obj.side_length / 25
                 clicked_points = self.clicked_points[index]
-                points_corr = self.points_corr[index]
+                points_corr = self.points_corr
                 other = self.fm_imview
                 other_obj = self.fm
         
@@ -440,27 +445,30 @@ class GUI(QtGui.QMainWindow):
             parent.addItem(roi)
             clicked_points.append(roi)
         elif selbtn.isChecked():
-            if obj.transformed:
-                point = pg.CircleROI(pos, size, parent=item, movable=True)
-                point.setPen(0,255,0)
-                point.removeHandle(0)
-                parent.addItem(point)
-                points_corr.append(point)
+            if other_obj is not None:
+                if obj.transformed and other_obj.transformed:
+                    point = pg.CircleROI(pos, size, parent=item, movable=False)
+                    point.setPen(0,255,0)
+                    point.removeHandle(0)
+                    parent.addItem(point)
+                    point_updated = self.fm.update_points(np.array((point.x(),point.y())).reshape(1,2))
+                    points_corr[index].append(point)
+                    
+                    # Coordinates in clicked image
 
-                # Coordinates in clicked image
-                shift = obj.transform_shift + [obj.side_length/2]*2
-                init = np.array([pos.x(), pos.y(), 1])
-                transf = np.dot(self.tr_matrices[index], init)
-
-                cen = other_obj.side_length / 100
-                pos = QtCore.QPointF(transf[0]-cen, transf[1]-cen)
-                point = pg.CircleROI(pos, 2*cen, parent=other.getImageItem(), movable=False)
-                point.setPen(0,255,255)
-                point.removeHandle(0)
-                other.addItem(point)
-                points_corr[1-index].append(point)
-            else:
-                print('Transform images before point selection')
+                    shift = obj.transform_shift + [obj.side_length/2]*2
+                    shift = self.fm.update_points(shift.reshape(1,2))[0]
+                    init = np.array([point_updated[0,0], point_updated[0,1], 1])
+                    transf = np.dot(self.tr_matrices[index], init)
+                    cen = other_obj.side_length / 100
+                    pos = QtCore.QPointF(transf[0]-cen, transf[1]-cen)  
+                    point = pg.CircleROI(pos, 2*cen, parent=other.getImageItem(), movable=True)
+                    point.setPen(0,255,255)
+                    point.removeHandle(0)
+                    other.addItem(point)
+                    points_corr[1-index].append(point)
+                else:
+                    print('Transform images before point selection')
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
    
@@ -538,16 +546,22 @@ class GUI(QtGui.QMainWindow):
             other_obj = self.fm
         if obj is None:
             return
-
-        if checked:
-            print('Select points of interest on %s image'%tag)
-            if len(self.points_corr[index]) != 0:
-                [parent.removeItem(point) for point in self.points_corr[index]]
-                self.points_corr[index] = []
-            if obj is not None and other_obj is not None:
+        
+        if other_obj is not None:
+            if checked:
+                print('Select points of interest on %s image'%tag)
+                if len(self.points_corr[index]) != 0:
+                    [parent.removeItem(point) for point in self.points_corr[index]]
+                    self.points_corr[index] = []
                 self.tr_matrices[index] = obj.get_transform(obj.points, other_obj.points)
+            else:
+                print('Done selecting points of interest on %s image'%tag)
         else:
-            print('Done selecting points of interest on %s image'%tag)
+            if checked:
+                if obj == self.fm:
+                    print('Open corresponding EM image first')
+                else:
+                    print('Open corresponding FM image first')
 
     def _affine_transform(self, parent):
         if parent == self.fm_imview:
@@ -875,12 +889,16 @@ class GUI(QtGui.QMainWindow):
 
         self.align_btn.setEnabled(False)
         '''
+    
+    def _refine(self):
+        pass
 
     # ---- EM functions
 
     def _load_mrc(self):
         if self.curr_mrc_folder is None:
-            self.curr_mrc_folder = os.getcwd()
+            #self.curr_mrc_folder = os.getcwd()
+            self.curr_mrc_folder = '/beegfs/cssb/user/kaufmanr/cryoCLEM-software/clem_dataset/'
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select .mrc file',
                                                              self.curr_mrc_folder,

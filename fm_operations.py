@@ -92,29 +92,50 @@ class FM_ops():
             self.points = np.copy(self.orig_points) if self.orig_points is not None else None
 
         if self.fliph:
-            self.data = np.flip(self.data, axis=0)
+            if self.transp and not self.rot:
+                self.data = np.flip(self.data, axis=1)
+            elif self.rot and not self.transp:
+                self.data = np.flip(self.data, axis=1)
+            else:
+                self.data = np.flip(self.data, axis=0)
         if self.flipv:
-            self.data = np.flip(self.data, axis=1)
+            if self.transp and not self.rot:
+                self.data = np.flip(self.data, axis=0)
+            elif self.rot and not self.transp:
+                self.data = np.flip(self.data, axis=0)
+            else:
+                self.data = np.flip(self.data, axis=1)
         if self.transp:
             self.data = np.transpose(self.data, (1, 0, 2))
         if self.rot:
             self.data = np.rot90(self.data, axes=(0, 1))
 
         if self.points is not None:
-            self._update_points()
+            self.points = self.update_points(self.points)
 
-    def _update_points(self):
+    def update_points(self,points):
         if self.fliph:
-            self.points[:,0] = self.data.shape[0] - self.points[:,0]
+            if self.transp and not self.rot:
+                points[:,1] = self.data.shape[1] - points[:,1]
+            elif self.rot and not self.transp:
+                points[:,1] = self.data.shape[1] - points[:,1]
+            else:
+                points[:,0] = self.data.shape[0] - points[:,0]
         if self.flipv:
-            self.points[:,1] = self.data.shape[1] - self.points[:,1]
+            if self.transp and not self.rot:
+                points[:,0] = self.data.shape[0] - points[:,0]
+            elif self.rot and not self.transp:
+                points[:,0] = self.data.shape[0] - points[:,0]
+            else:
+                points[:,1] = self.data.shape[1] - points[:,1]
         if self.transp:
-            self.points = self.points[:,::-1]
+            points = self.points[:,::-1]
         if self.rot:
-            temp = self.data.shape[1] - self.points[:,1]
-            self.points[:,1] = self.points[:,0]
-            self.points[:,0] = temp
-        print('Updating points', self.points[0])
+            temp = self.data.shape[1] - points[:,1]
+            points[:,1] = points[:,0]
+            points[:,0] = temp
+        print('Updating points', points[0])
+        return points
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip

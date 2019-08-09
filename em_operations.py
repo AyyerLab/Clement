@@ -20,6 +20,7 @@ class EM_ops():
         self.region = None
         self.data_backup = None
         self.transformed = False
+        self.transformed_data = None   
         self.pos_x = None
         self.pos_y = None
         self.pos_z = None
@@ -39,6 +40,8 @@ class EM_ops():
         self.first_rotation = False
         self.rotated = False
         self.tf_prev = np.identity(3)
+        self.orig_points = None
+        self.points = None
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
@@ -233,7 +236,7 @@ class EM_ops():
         self.transformed = True
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-        self.points = np.copy(self.new_points)
+        
         
         for i in range(len(self.grid_points)):
             tr_box_points = []
@@ -243,6 +246,7 @@ class EM_ops():
             self.tr_grid_points.append(tr_box_points)
         self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
     
+        self.transformed = True 
 
     def apply_transform_mp(self,data,return_dict):
         return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
