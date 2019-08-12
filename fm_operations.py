@@ -43,6 +43,8 @@ class FM_ops():
         self.data_slices = []
         self.counter_clockwise = False
         self.rotated = False
+        self.refine_matrix = None
+        self.refine_points = None
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
@@ -296,6 +298,7 @@ class FM_ops():
         print('New points: \n', self.new_points)
 
     def calc_rot_transform(self, my_points):
+        self.refine_matrix = None
         #my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 
@@ -409,7 +412,31 @@ class FM_ops():
             sys.stderr.write('\r%d'%i)
         print('k: ', k)
         return_dict[0] = np.transpose(np.array(channel_list),(1,2,0))
-
+    
+    def refine(self, source, dest):
+        if self._tf_data is not None:
+            self.refine_matrix = tf.estimate_transform('affine',source,dest).params
+            print('Refine matrix: ', self.refine_matrix)
+            nx, ny = self._tf_data.shape[:-1]
+            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+            self.refine_corners = np.dot(self.refine_matrix, corners)
+            self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
+            self.refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
+            print('Refine corners: ', self.refine_corners)
+            print('Refine matrix with shift:\n', self.refine_matrix)
+            print('Refine shift: ', -self.refine_corners.min(1)[:2])
+            #self.new_points = np.copy(np.array(my_points))
+            
+            tmp = np.copy(self._tf_data)
+            self._tf_data = np.empty(self._refine_shape+(self._tf_data.shape[-1],))
+            for i in range(self._tf_data.shape[-1]):
+                self._tf_data[:,:,i] = ndi.affine_transform(tmp[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self._refine_shape)
+                sys.stderr.write('\r%d'%i)
+            print('\r', self._tf_data.shape)
+            print(np.max(self._tf_data))
+            print(np.min(self._tf_data))
+            self._update_data()
+            #self.data = np.copy(self._tf_data)
     @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):

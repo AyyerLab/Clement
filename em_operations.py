@@ -251,13 +251,6 @@ class EM_ops():
     def apply_transform_mp(self,data,return_dict):
         return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         
-    @classmethod
-    def get_transform(self, source, dest):
-        if len(source) != len(dest):
-            print('Point length do not match')
-            return
-        return tf.estimate_transform('affine', source, dest).params
-
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
         if not self.transformed:
@@ -294,6 +287,14 @@ class EM_ops():
             self.data = np.copy(self.region)
         else:
             self.toggle_region(transformed=transformed, assembled=False)
+    
+    @classmethod
+    def get_transform(self, source, dest):
+        if len(source) != len(dest):
+            print('Point length do not match')
+            return
+        return tf.estimate_transform('affine', source, dest).params
+
 
 if __name__=='__main__':
     path = '../gs.mrc'
