@@ -458,9 +458,10 @@ class GUI(QtGui.QMainWindow):
                     
                     # Coordinates in clicked image
 
-                    shift = obj.transform_shift + [obj.side_length/2]*2
-                    shift = self.fm.update_points(shift.reshape(1,2))[0]
-                    init = np.array([point_updated[0,0], point_updated[0,1], 1])
+                    #shift = obj.transform_shift + [obj.side_length/2]*2
+                    #shift = self.fm.update_points(shift.reshape(1,2))[0]
+                    points_shifted = np.array([point_updated[0,0],point_updated[0,1]]) #- np.array(shift)
+                    init = np.array([points_shifted[0],points_shifted[1], 1])
                     transf = np.dot(self.tr_matrices[index], init)
                     cen = other_obj.side_length / 100
                     pos = QtCore.QPointF(transf[0]-cen, transf[1]-cen)  
@@ -565,7 +566,17 @@ class GUI(QtGui.QMainWindow):
                 if len(self.points_corr[index]) != 0:
                     [parent.removeItem(point) for point in self.points_corr[index]]
                     self.points_corr[index] = []
-                self.tr_matrices[index] = obj.get_transform(obj.points, other_obj.points)
+
+                print('src new points: \n', obj.new_points)
+                print('src points: \n',obj.points)
+                print('dst new points: \n', other_obj.new_points)
+                print('dst points: \n', other_obj.points)
+                src_sorted  = np.array(sorted(obj.points, key=lambda k: [k[0],k[1]]))
+                src_updated = self.fm.update_points(src_sorted)
+                dst_sorted = np.array(sorted(other_obj.points, key=lambda k: [k[0],k[1]]))
+                #print(src_sorted)
+                #print(dst_sorted)
+                self.tr_matrices[index] = obj.get_transform(src_updated, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%tag)
         else:

@@ -139,8 +139,8 @@ class EM_ops():
         print('Transform matrix:\n', self.tf_matrix)
         print('Shift: ', -self.tf_corners.min(1)[:2])
         self.orig_points = np.copy(np.array(my_points))
-        self.points = np.copy(self.new_points)
         self.apply_transform()
+        self.points = np.copy(self.new_points)
 
     def calc_rot_transform(self, my_points):
         #my_points = self.calc_orientation(my_points)
@@ -170,8 +170,8 @@ class EM_ops():
         self.new_points[3] = cen + (0,self.side_length)
 
         self.orig_points = np.copy(np.array(my_points))
-        self.points = np.copy(self.new_points)
         self.apply_transform()
+        self.points = np.copy(self.new_points)
         self.rotated = True
 
     def calc_orientation(self,points):
