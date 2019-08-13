@@ -549,11 +549,13 @@ class GUI(QtGui.QMainWindow):
             index = 0
             obj = self.fm
             other_obj = self.em
+            other_parent = self.em_imview
         else:
             tag = 'EM'
             index = 1
             obj = self.em
             other_obj = self.fm
+            other_parent = self.fm_imview
         if obj is None:
             return
         
@@ -562,17 +564,13 @@ class GUI(QtGui.QMainWindow):
                 print('Select points of interest on %s image'%tag)
                 if len(self.points_corr[index]) != 0:
                     [parent.removeItem(point) for point in self.points_corr[index]]
+                    [other_parent.removeItem(point) for point in self.points_corr[index-1]]
                     self.points_corr[index] = []
+                    self.points_corr[index-1] = []
                 src_sorted  = np.array(sorted(obj.points, key=lambda k: [k[0],k[1]]))
                 src_updated = self.fm.update_points(src_sorted)
-                dst_sorted = np.array(sorted(self.em.points, key=lambda k: [k[0],k[1]]))
-                if self.fm.refine_matrix is not None:
-                    if obj == self.em:
-                        self.tr_matrices[index] = self.fm.refine_matrix
-                    else:
-                        self.tr_matrices[index] = np.linalg.inv(self.fm.refine_matrix)
-                else:
-                    self.tr_matrices[index] = obj.get_transform(src_updated, dst_sorted)
+                dst_sorted = np.array(sorted(self.em.points, key=lambda k: [k[0],k[1]])) 
+                self.tr_matrices[index] = obj.get_transform(src_updated, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%tag)
         else:
@@ -641,11 +639,13 @@ class GUI(QtGui.QMainWindow):
 
         src = np.array([[point.x(),point.y()] for point in self.points_corr[0]])
         dst = np.array([[point.x(),point.y()] for point in self.points_corr[1]])
-
-        print(src.shape)
-        print(dst.shape)
-
         self.fm.refine(src,dst)
+        self.fm.refine_grid(self.fm.points,self.em.points)
+        [self.fm_imview.removeItem(point) for point in self.points_corr[0]]
+        [self.em_imview.removeItem(point) for point in self.points_corr[1]]
+        self.points_corr[0] = []
+        self.points_corr[1] = []
+
         self._update_fm_imview() 
     
     
