@@ -45,6 +45,7 @@ class FM_ops():
         self.rotated = False
         self.refine_matrix = None
         self.refine_points = None
+        self.merged = None
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
@@ -213,6 +214,7 @@ class FM_ops():
                 self.diff_list.append(tmp_list_diff)
         else:
             pass
+        line.addWidget(self.fm_fname, stretch=1)
 
     def align(self):
         if len(self.diff_list[0]) != 0:
@@ -427,6 +429,23 @@ class FM_ops():
             print('Refinement shift: ', self.refine_shift)
             self.new_points = np.array([point + self.refine_shift for point in self.new_points])
             self._update_data()
+
+    def merge(self, em_data,em_points):
+        self.merged = np.zeros((3000,3000,self.data.shape[-1]+1))
+        fm_origin = self.points[0]
+        em_origin = em_points[0]
+        shift = (fm_origin - em_origin).astype(np.int)
+        if shift[0] < 0 or shift[1] < 0:
+            shift = (em_origin - fm_origin).astype(np.int)
+        print(fm_origin)
+        print(em_origin)
+        print(shift)
+        self.merged[shift[0]:self.data.shape[0]+shift[0],shift[1]:self.data.shape[1]+shift[1],:-1] = self.data
+        self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/em_data.mean((0,1))
+        
+
+
+
 
     @classmethod
     def get_transform(self, source, dest):

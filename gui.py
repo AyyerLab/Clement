@@ -13,6 +13,7 @@ import em_operations
 import align_fm
 import affine_transform
 import fm_operations
+from popup import Merge
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -43,7 +44,7 @@ class GUI(QtGui.QMainWindow):
 
         self.curr_mrc_folder = None
         self.curr_fm_folder = None
-
+        self.refine = False
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080'])
         self._init_ui()
@@ -56,10 +57,10 @@ class GUI(QtGui.QMainWindow):
             self.resize(1600, 800)
         else:
             self.setGeometry(geom)
-        theme = self.settings.value('theme')
-        if theme is None:
-            theme = 'none'
-        self._set_theme(theme)
+        self.theme = self.settings.value('theme')
+        if self.theme is None:
+            self.theme = 'none'
+        self._set_theme(self.theme)
 
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
@@ -300,6 +301,15 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(self.select_btn)
         line.addWidget(self.refine_btn)
         line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Merge FM and EM:', self)
+        line.addWidget(label)
+        self.merge_btn = QtWidgets.QPushButton('Merge',self)
+        self.merge_btn.clicked.connect(self._merge)
+        line.addWidget(self.merge_btn)
+        line.addStretch(1)
         vbox.addStretch(1)
 
     def _init_em_options(self, parent_layout):
@@ -381,10 +391,10 @@ class GUI(QtGui.QMainWindow):
         self.select_btn_em = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn_em.setCheckable(True)
         self.select_btn_em.toggled.connect(lambda state, par=self.em_imview: self._define_corr_toggled(state, par))
-        self.refine_btn_em = QtWidgets.QPushButton('Refinement')
-        self.refine_btn_em.clicked.connect(self._refine)
+        #self.refine_btn_em = QtWidgets.QPushButton('Refinement')
+        #self.refine_btn_em.clicked.connect(self._refine)
         line.addWidget(self.select_btn_em)
-        line.addWidget(self.refine_btn_em)
+        #line.addWidget(self.refine_btn_em)
         line.addStretch(1)
 
         # ---- Quit button
@@ -645,10 +655,18 @@ class GUI(QtGui.QMainWindow):
         [self.em_imview.removeItem(point) for point in self.points_corr[1]]
         self.points_corr[0] = []
         self.points_corr[1] = []
-
+        self.refine = True
         self._update_fm_imview() 
     
-    
+    def _merge(self): 
+        if self.color_data is not None:
+            if self.refine:
+                self.fm.merge(self.em.data,self.em.points)
+            self.popup = Merge(self)
+            self.popup.show()
+        else:
+            print('Open images first')
+
     def _allow_rotation_only(self,checked,parent):
         if parent == self.fm_imview:
             obj = self.fm
@@ -774,6 +792,7 @@ class GUI(QtGui.QMainWindow):
             self.fm_fname.setText(file_name + ' [0/%d]'%self.fm.num_channels)
         
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
+        print(self.fm.data.shape)
         self._update_fm_imview()  
         
     def _show_max_projection(self):
@@ -788,9 +807,11 @@ class GUI(QtGui.QMainWindow):
 
     def _calc_colors(self,my_channels):
         my_channels = [np.repeat(channel[:,:,np.newaxis],3,axis=2) for channel in my_channels]
+        my_channels_red = []
         for i in range(len(my_channels)):
-            my_channels[i] = my_channels[i] * cm.hex2color(self.colors[i])
-        return my_channels
+            if self.channels[i]:
+                my_channels_red.append(my_channels[i] * cm.hex2color(self.colors[i]))
+        return my_channels_red
 
     def _update_fm_imview(self):
         if self.fm is not None:
@@ -799,14 +820,13 @@ class GUI(QtGui.QMainWindow):
                 if self.channels[i]:
                     channels.append(self.fm.data[:,:,i])
                 else:
-                    if self.overlay_btn.isChecked():
-                        channels.append(np.zeros_like(self.fm.data[:,:,i]))
-                                
-            if len(channels) == 0:
-                channels.append(np.zeros_like(self.fm.data[:,:,0]))
+                    channels.append(np.zeros_like(self.fm.data[:,:,i]))
             
-            color_channels = self._calc_colors(channels)
+            color_channels = self._calc_colors(channels)       
+            if len(color_channels) == 0:
+                color_channels.append(np.zeros_like(self.fm.data[:,:,0]))
             
+                        
             self.color_data = np.array(color_channels)  
             if self.overlay_btn.isChecked():
                 self.color_data = np.sum(self.color_data,axis=0)
