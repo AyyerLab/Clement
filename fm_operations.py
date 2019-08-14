@@ -30,6 +30,7 @@ class FM_ops():
         self.diff_list = []
         self._tf_data = None
         self.old_fname = None
+        self.points = None
         self.new_points = None
         self.side_length = None
         self.orig_points = None
@@ -166,6 +167,8 @@ class FM_ops():
             self.transformed = not self.transformed
         else:
             self.transformed = transformed
+        print(transformed)
+        print(self.transformed)
         self._update_data()
 
     def calc_max_projection(self):
@@ -283,7 +286,9 @@ class FM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Transform matrix:\n', self.tf_matrix)
         print('Shift: ', -self.tf_corners.min(1)[:2])
-        self.orig_points = np.copy(np.array(my_points))
+        
+        if not self.transformed:
+            self.orig_points = np.copy(np.array(my_points))
         self.apply_transform()
         self.points = np.copy(self.new_points)
         print('New points: \n', self.new_points)
@@ -430,8 +435,7 @@ class FM_ops():
             self.new_points = np.array([point + self.refine_shift for point in self.new_points])
             self._update_data()
 
-    def merge(self, em_data,em_points):
-        
+    def merge(self, em_data,em_points):        
         fm_origin = self.points[0]
         em_origin = em_points[0]
 
@@ -448,10 +452,6 @@ class FM_ops():
         print(self.merged.shape)
         self.merged[np.abs(shift[0]):self.data.shape[0]+np.abs(shift[0]),np.abs(shift[1]):self.data.shape[1]+np.abs(shift[1]),:-1] = self.data
         self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/np.max(em_data)*np.max(self.data)
-        
-
-
-
 
     @classmethod
     def get_transform(self, source, dest):

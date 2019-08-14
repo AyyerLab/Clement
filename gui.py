@@ -29,6 +29,7 @@ class GUI(QtGui.QMainWindow):
         self.color_data = None
         self.overlay = True
         
+        self.original_help = [True,True]
         self.box_points = []
         self.boxes = []
         self.tr_box_points = []
@@ -39,7 +40,10 @@ class GUI(QtGui.QMainWindow):
         self.clicked_points = [[], []]
         self.points_corr = [[], []]
         self.grid_box = [None, None]
+        self.show_grid_box = [False, False]
         self.tr_grid_box = [None, None]
+        self.show_tr_grid_box = [False, False]
+        self.redo_tr = False
         self.tr_matrices = [None, None]
 
         self.curr_mrc_folder = None
@@ -272,6 +276,7 @@ class GUI(QtGui.QMainWindow):
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(lambda state, par=self.fm_imview: self._show_grid(state, par))
+        self.show_grid_btn.clicked.connect(self._update_fm_imview)
         line.addWidget(self.show_grid_btn)
         line.addStretch(1)
 
@@ -497,65 +502,100 @@ class GUI(QtGui.QMainWindow):
             tag = 'FM'
             index = 0
             show_grid_btn = self.show_grid_btn
+            updater = self._update_fm_imview
             obj = self.fm
             show_btn = self.show_btn
         else:
             tag = 'EM'
             index = 1
             show_grid_btn = self.show_grid_btn_em
+            updater = self._update_em_imview
             obj = self.em
             show_btn = self.show_btn_em
 
         if checked:
             print('Defining grid on %s image: Click on corners'%tag)
+            show_grid_btn.setChecked(False)
+
         else:
             print('Done defining grid on %s image: Manually adjust fine positions'%tag)
-            positions = [c.pos() for c in self.clicked_points[index]]
-            sizes = [c.size()[0] for c in self.clicked_points[index]]
-            for pos, s in zip(positions, sizes):
-                pos.setX(pos.x() + s/2)
-                pos.setY(pos.y() + s/2)
-            points = np.array([(point.x(), point.y()) for point in positions])
-            if show_btn.isChecked():
-                self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-                obj.orig_points = points
+            if len(self.clicked_points[index]) == 4:
+                if show_btn.isChecked():
+                    self.grid_box[index] = None
+                else:
+                    self.tr_grid_box[index] = None
+
+                positions = [c.pos() for c in self.clicked_points[index]]
+                sizes = [c.size()[0] for c in self.clicked_points[index]]
+                for pos, s in zip(positions, sizes):
+                    pos.setX(pos.x() + s/2)
+                    pos.setY(pos.y() + s/2)
+                points = np.array([(point.x(), point.y()) for point in positions])
+                if show_btn.isChecked():
+                    self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
+                    obj.orig_points = points
+                else:
+                    self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
+                [parent.removeItem(roi) for roi in self.clicked_points[index]]
+                self.clicked_points[index] = []
+                if obj is not None:
+                    show_grid_btn.setEnabled(True)
+                    show_grid_btn.setChecked(True)
+                    if show_btn.isChecked():
+                        self.show_grid_box[index] = True
+                    else:
+                        self.show_tr_grid_box[index] = True
             else:
-                self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-            [parent.removeItem(roi) for roi in self.clicked_points[index]]
-            self.clicked_points[index] = []
-            if obj is not None:
-                show_grid_btn.setEnabled(True)
-                show_grid_btn.setChecked(True)
+                print('You have to select exactly 4 points. Try again!')
+                [parent.removeItem(roi) for roi in self.clicked_points[index]]
+                self.clicked_points[index] = []
 
-
-    def _recalc_grid(self, orig=True):
-        if self.fm.orig_points is None:
-            return
-        if orig:
-            print('Recalc orig')
-            self.fm_imview.removeItem(self.grid_box[0])
-            self.fm._update_data()
-            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
-            self.grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
-            self.fm_imview.addItem(self.grid_box[0])
-            print(pos[0].x(), pos[0].y())
+    def _show_grid(self, state, parent):
+        if parent == self.fm_imview:
+            index = 0
+            obj = self.fm
+            orig_btn = self.show_btn
+            grid_btn = self.show_grid_btn
         else:
-            print('Recalc transf')
-            self.fm_imview.removeItem(self.tr_grid_box[0])
-            self.fm._update_data()
-            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
-            self.tr_grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
-            self.fm_imview.addItem(self.tr_grid_box[0])
-            print(pos[0].x(), pos[0].y())
-            #if show_btn.isChecked():
-            #    if self.grid_box[index] is not None:
-            #        parent.removeItem(self.grid_box[index])
-            #        self.grid_box[index] = None
-            #else:
-            #    if self.tr_grid_box[index] is not None:
-            #        parent.removeItem(self.tr_grid_box[index])
-            #        self.tr_grid_box[index] = None
-
+            index = 1
+            obj = self.em
+            orig_btn = self.show_btn_em
+            grid_btn = self.show_grid_btn_em
+        
+        if obj.orig_points is None:
+            return
+        else:
+            if grid_btn.isChecked():    
+                if orig_btn.isChecked():
+                    print(1)
+                    self.show_grid_box[index] = True
+                    parent.addItem(self.grid_box[index])
+                    if self.show_tr_grid_box[index]:
+                        print(2)
+                        parent.removeItem(self.tr_grid_box[index])
+                        self.show_tr_grid_box[index] = False
+                else:
+                    self.show_tr_grid_box[index] = True
+                    parent.addItem(self.tr_grid_box[index])
+                    print(3)
+                    if self.show_grid_box[index]:
+                        parent.removeItem(self.grid_box[index])
+                        self.show_grid_box[index] = False
+                        print(4)
+            else:
+                if orig_btn.isChecked():
+                    print(5)
+                    if self.show_grid_box[index]:
+                        parent.removeItem(self.grid_box[index])
+                        self.show_grid_box[index] = False
+                        print(6)
+                else:
+                    print(7)
+                    if self.show_tr_grid_box[index]:
+                        print('8')
+                        parent.removeItem(self.tr_grid_box[index])
+                        self.show_tr_grid_box[index] = False
+                
     def _define_corr_toggled(self, checked, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -604,8 +644,15 @@ class GUI(QtGui.QMainWindow):
             index = 1
             obj = self.em
             show_btn = self.show_btn_em
-        self.tr_boxes = []
-        if self.grid_box[index] is not None:
+            self.tr_boxes = []
+        
+        if show_btn.isChecked():
+            grid_box = self.grid_box[index]
+        else:
+            self.redo_tr = True
+            grid_box = self.tr_grid_box[index]
+
+        if grid_box is not None:
             if self.rot_transform_btn.isChecked():
                 print('Performing rotation on %s image'%tag)
             else:
@@ -633,23 +680,17 @@ class GUI(QtGui.QMainWindow):
                 obj.toggle_original()
             else:
                 obj.toggle_original(True)
-                        
-            self._update_fm_imview() if index == 0 else self._update_em_imview()
-
+                                              
+            self.original_help[index] = False
             show_btn.setEnabled(True)
             show_btn.setChecked(False)
-            
-            if not show_btn.isChecked() and self.tr_grid_box[index] is not None:
-                parent.removeItem(self.tr_grid_box[index])
-
-            positions = [point for point in obj.new_points]
-            self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-            parent.addItem(self.tr_grid_box[index]) 
+            self.original_help[index] = True
+            self._recalc_grid(toggle_orig=True)
+            self._update_fm_imview() if index == 0 else self._update_em_imview()
         else:
             print('Define grid box on %s image first!'%tag)
 
     def _refine(self):
-
         src = np.array([[point.x(),point.y()] for point in self.points_corr[0]])
         dst = np.array([[point.x(),point.y()] for point in self.points_corr[1]])
         self.fm.refine(src,dst)
@@ -695,54 +736,28 @@ class GUI(QtGui.QMainWindow):
             orig_btn = self.show_btn_em
             grid_btn = self.show_grid_btn_em
 
-        if obj is not None:
-            obj.toggle_original(state==0)
-            if grid_btn.isChecked():
-                if state:
-                    if self.tr_grid_box[index] is not None:
-                        parent.removeItem(self.tr_grid_box[index])
-                    parent.addItem(self.grid_box[index])
-                else:
-                    parent.removeItem(self.grid_box[index])
-                    if self.tr_grid_box[index] is not None:
-                        parent.addItem(self.tr_grid_box[index])
-        if obj == self.em:
-            if self.show_boxes_btn.isChecked():
-                if state:
-                    [parent.removeItem(box) for box in self.tr_boxes]
-                    if len(self.boxes) == 0:
-                        self._show_boxes()
-                    else:
-                        [parent.addItem(box) for box in self.boxes]
-                else:
-                    [parent.removeItem(box) for box in self.boxes]
-                    [parent.addItem(box) for box in self.tr_boxes]
-
-        updater()
-
-    def _show_grid(self, state, parent):
-        if parent == self.fm_imview:
-            index = 0
-            obj = self.fm
-            orig_btn = self.show_btn
-            grid_btn = self.show_grid_btn
-        else:
-            index = 1
-            obj = self.em
-            orig_btn = self.show_btn_em
-            grid_btn = self.show_grid_btn_em
+        if self.original_help[index]:
         
-        if self.grid_box[index] is not None:
-            if orig_btn.isChecked():
-                if state:
-                    parent.addItem(self.grid_box[index])
-                else:
-                    parent.removeItem(self.grid_box[index])
+            #self.original[index] = not self.original[index]
+
+            if obj is not None:
+                obj.toggle_original(state==0)
+            if obj == self.em:
+                if self.show_boxes_btn.isChecked():
+                    if state:
+                        [parent.removeItem(box) for box in self.tr_boxes]
+                        if len(self.boxes) == 0:
+                            self._show_boxes()
+                        else:
+                            [parent.addItem(box) for box in self.boxes]
+                    else:
+                        [parent.removeItem(box) for box in self.boxes]
+                        [parent.addItem(box) for box in self.tr_boxes]
+            if obj == self.fm:
+                self._recalc_grid(toggle_orig=True)
             else:
-                if state:
-                    parent.addItem(self.tr_grid_box[index])
-                else:
-                    parent.removeItem(self.tr_grid_box[index])
+                self._show_grid(None,parent)
+            updater()
 
     def _set_theme(self, name):
         if name == 'none':
@@ -775,8 +790,8 @@ class GUI(QtGui.QMainWindow):
     
     def _update_fm_imview(self):
         if self.fm is not None:
-            self._calc_color_channels() 
-            #self._calc_grid(not self.fm.transformed)
+            self._calc_color_channels()  
+            #self._show_grid(parent=self.fm_imview)
             vr = self.fm_imview.getImageItem().getViewBox().targetRect()
             levels = self.fm_imview.getHistogramWidget().item.getLevels()
             self.fm_imview.setImage(self.color_data, levels=levels)
@@ -855,42 +870,49 @@ class GUI(QtGui.QMainWindow):
     def _fliph(self, state):
         if self.fm is not None:
             self.fm.flip_horizontal(state)
+            self._recalc_grid()
             self._update_fm_imview()
 
     def _flipv(self, state):
         if self.fm is not None:
             self.fm.flip_vertical(state)
+            self._recalc_grid()
             self._update_fm_imview()
 
     def _trans(self, state):
         if self.fm is not None:
             self.fm.transpose(state)
+            self._recalc_grid()
             self._update_fm_imview()
 
     def _rot(self, state):
         if self.fm is not None:
             self.fm.rotate_clockwise(state)
+            self._recalc_grid()
             self._update_fm_imview()
 
-    def _recalc_grid(self, orig=True):
-        if self.fm.orig_points is None:
-            return
-        if orig:
-            print('Recalc orig')
-            self.fm_imview.removeItem(self.grid_box[0])
-            self.fm._update_data()
-            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
-            self.grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
-            self.fm_imview.addItem(self.grid_box[0])
-            print(pos[0].x(), pos[0].y())
-        else:
-            print('Recalc transf')
-            self.fm_imview.removeItem(self.tr_grid_box[0])
-            self.fm._update_data()
-            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
-            self.tr_grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
-            self.fm_imview.addItem(self.tr_grid_box[0])
-            print(pos[0].x(), pos[0].y())
+    def _recalc_grid(self,toggle_orig=False):
+        if self.fm.points is not None:
+            if self.show_btn.isChecked(): 
+                if self.show_grid_btn.isChecked():
+                    if not toggle_orig:
+                        self.fm_imview.removeItem(self.grid_box[0])
+                        self.show_grid_box[0] = False
+                print('Recalc original grid')
+                pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
+                self.grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            else:
+                if self.show_grid_btn.isChecked():
+                    if not toggle_orig:
+                        self.fm_imview.removeItem(self.tr_grid_box[0])
+                        self.show_tr_grid_box[0] = False 
+                    if self.redo_tr:
+                        self.fm_imview.removeItem(self.tr_grid_box[0])
+                        self.redo_tr = False
+                print('Recalc transformed grid')
+                pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
+                self.tr_grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            self._show_grid(None,self.fm_imview) 
 
     def _next_file(self):
         if self.fm is None:
