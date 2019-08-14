@@ -66,7 +66,7 @@ class Merge(QtGui.QMainWindow,):
         self.imview = pg.ImageView()
         self.imview.ui.roiBtn.hide()
         self.imview.ui.menuBtn.hide()
-        self.imview.setImage(np.sum(self.data,axis=2), levels=(self.data.min(), self.data.mean()*2))   
+        self.imview.setImage(np.sum(self.data,axis=2), levels=(self.data.min(), self.data.max()//3))   
         layout.addWidget(self.imview)
       
 

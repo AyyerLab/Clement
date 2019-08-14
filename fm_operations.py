@@ -431,17 +431,23 @@ class FM_ops():
             self._update_data()
 
     def merge(self, em_data,em_points):
-        self.merged = np.zeros((3000,3000,self.data.shape[-1]+1))
+        
         fm_origin = self.points[0]
         em_origin = em_points[0]
+
         shift = (fm_origin - em_origin).astype(np.int)
-        if shift[0] < 0 or shift[1] < 0:
-            shift = (em_origin - fm_origin).astype(np.int)
+       
+        x_shape = np.max([em_data.shape[0],np.abs(shift[0])+self.data.shape[0]])
+        y_shape = np.max([em_data.shape[1],np.abs(shift[1])+self.data.shape[1]])
+
         print(fm_origin)
         print(em_origin)
         print(shift)
-        self.merged[shift[0]:self.data.shape[0]+shift[0],shift[1]:self.data.shape[1]+shift[1],:-1] = self.data
-        self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/em_data.mean((0,1))
+        
+        self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
+        print(self.merged.shape)
+        self.merged[np.abs(shift[0]):self.data.shape[0]+np.abs(shift[0]),np.abs(shift[1]):self.data.shape[1]+np.abs(shift[1]),:-1] = self.data
+        self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/np.max(em_data)*np.max(self.data)
         
 
 
