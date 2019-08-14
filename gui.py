@@ -508,50 +508,53 @@ class GUI(QtGui.QMainWindow):
 
         if checked:
             print('Defining grid on %s image: Click on corners'%tag)
-            show_grid_btn.setChecked(True)
-            if show_btn.isChecked():
-                if self.grid_box[index] is not None:
-                    parent.removeItem(self.grid_box[index])
-                    self.grid_box[index] = None
-            else:
-                if self.tr_grid_box[index] is not None:
-                    parent.removeItem(self.tr_grid_box[index])
-                    self.tr_grid_box[index] = None
         else:
+            print('Done defining grid on %s image: Manually adjust fine positions'%tag)
+            positions = [c.pos() for c in self.clicked_points[index]]
+            sizes = [c.size()[0] for c in self.clicked_points[index]]
+            for pos, s in zip(positions, sizes):
+                pos.setX(pos.x() + s/2)
+                pos.setY(pos.y() + s/2)
+            points = np.array([(point.x(), point.y()) for point in positions])
             if show_btn.isChecked():
-                print('Done defining grid on %s image: Manually adjust fine positions'%tag)
-                positions = [c.pos() for c in self.clicked_points[index]]
-                sizes = [c.size()[0] for c in self.clicked_points[index]]
-                for pos, s in zip(positions, sizes):
-                    pos.setX(pos.x() + s/2)
-                    pos.setY(pos.y() + s/2)
                 self.grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-                parent.addItem(self.grid_box[index])
-                [parent.removeItem(roi) for roi in self.clicked_points[index]]
-                points_obj = self.grid_box[index].getState()['points']
-                points = np.array([list((point[0], point[1])) for point in points_obj])
                 obj.orig_points = points
-                self.clicked_points[index] = []
-                if obj is not None:
-                    show_grid_btn.setEnabled(True)
-                    show_grid_btn.setChecked(True)
             else:
-                print('Done defining grid on %s image: Manually adjust fine positions'%tag)
-                positions = [c.pos() for c in self.clicked_points[index]]
-                sizes = [c.size()[0] for c in self.clicked_points[index]]
-                for pos, s in zip(positions, sizes):
-                    pos.setX(pos.x() + s/2)
-                    pos.setY(pos.y() + s/2)
                 self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
-                parent.addItem(self.tr_grid_box[index])
-                [parent.removeItem(roi) for roi in self.clicked_points[index]]
-                points_obj = self.tr_grid_box[index].getState()['points']
-                points = np.array([list((point[0], point[1])) for point in points_obj])
-                obj.orig_points = points
-                self.clicked_points[index] = []
-                if obj is not None:
-                    show_grid_btn.setEnabled(True)
-                    show_grid_btn.setChecked(True)
+            [parent.removeItem(roi) for roi in self.clicked_points[index]]
+            self.clicked_points[index] = []
+            if obj is not None:
+                show_grid_btn.setEnabled(True)
+                show_grid_btn.setChecked(True)
+
+
+    def _recalc_grid(self, orig=True):
+        if self.fm.orig_points is None:
+            return
+        if orig:
+            print('Recalc orig')
+            self.fm_imview.removeItem(self.grid_box[0])
+            self.fm._update_data()
+            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
+            self.grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            self.fm_imview.addItem(self.grid_box[0])
+            print(pos[0].x(), pos[0].y())
+        else:
+            print('Recalc transf')
+            self.fm_imview.removeItem(self.tr_grid_box[0])
+            self.fm._update_data()
+            pos = [QtCore.QPointF(point[0], point[1]) for point in self.fm.points]
+            self.tr_grid_box[0] = pg.PolyLineROI(pos, closed=True, movable=False)
+            self.fm_imview.addItem(self.tr_grid_box[0])
+            print(pos[0].x(), pos[0].y())
+            #if show_btn.isChecked():
+            #    if self.grid_box[index] is not None:
+            #        parent.removeItem(self.grid_box[index])
+            #        self.grid_box[index] = None
+            #else:
+            #    if self.tr_grid_box[index] is not None:
+            #        parent.removeItem(self.tr_grid_box[index])
+            #        self.tr_grid_box[index] = None
 
     def _define_corr_toggled(self, checked, parent):
         if parent == self.fm_imview:
@@ -769,7 +772,16 @@ class GUI(QtGui.QMainWindow):
         event.accept()
 
     # ---- FM functions
-
+    
+    def _update_fm_imview(self):
+        if self.fm is not None:
+            self._calc_color_channels() 
+            #self._calc_grid(not self.fm.transformed)
+            vr = self.fm_imview.getImageItem().getViewBox().targetRect()
+            levels = self.fm_imview.getHistogramWidget().item.getLevels()
+            self.fm_imview.setImage(self.color_data, levels=levels)
+            self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+    
     def _load_fm_images(self):
         if self.curr_fm_folder is None:
             #self.curr_fm_folder = os.getcwd()
@@ -805,38 +817,21 @@ class GUI(QtGui.QMainWindow):
         self.fm.calc_max_projection()
         self._update_fm_imview()
 
-    def _calc_colors(self,my_channels):
-        my_channels = [np.repeat(channel[:,:,np.newaxis],3,axis=2) for channel in my_channels]
-        my_channels_red = []
-        for i in range(len(my_channels)):
+    def _calc_color_channels(self):
+        channels = []
+        for i in range(len(self.channels)):
             if self.channels[i]:
-                my_channels_red.append(my_channels[i] * cm.hex2color(self.colors[i]))
-        return my_channels_red
+                my_channel = self.fm.data[:,:,i]
+                my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
+                channels.append(my_channel_rgb * cm.hex2color(self.colors[i]))
+                    
+        if len(channels) == 0:
+            channels.append(np.zeros_like(self.fm.data[:,:,0]))
 
-    def _update_fm_imview(self):
-        if self.fm is not None:
-            channels = []
-            for i in range(len(self.channels)):
-                if self.channels[i]:
-                    channels.append(self.fm.data[:,:,i])
-                else:
-                    channels.append(np.zeros_like(self.fm.data[:,:,i]))
-            
-            color_channels = self._calc_colors(channels)       
-            if len(color_channels) == 0:
-                color_channels.append(np.zeros_like(self.fm.data[:,:,0]))
-            
-                        
-            self.color_data = np.array(color_channels)  
-            if self.overlay_btn.isChecked():
-                self.color_data = np.sum(self.color_data,axis=0)
-            
-            self._recalc_grid(not self.fm.transformed)
-            vr = self.fm_imview.getImageItem().getViewBox().targetRect()
-            levels = self.fm_imview.getHistogramWidget().item.getLevels()
-            self.fm_imview.setImage(self.color_data, levels=levels)
-            self.fm_imview.getImageItem().getViewBox().setRange(vr, padding=0)
-        
+        self.color_data = np.array(channels)
+        if self.overlay_btn.isChecked():
+            self.color_data = np.sum(self.color_data,axis=0)
+    
     def _show_overlay(self,checked):
         if self.fm is not None:
             self.overlay = not self.overlay
