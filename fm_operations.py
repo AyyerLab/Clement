@@ -22,6 +22,7 @@ class FM_ops():
         self.fliph = False
         self.transp = False
         self.rot = False
+        self.flips = [self.fliph, self.flipv, self.transp, self.rot]
         self.transformed = False
         self.coordinates = []
         self.threshold = 0
@@ -81,7 +82,9 @@ class FM_ops():
     def __del__(self):
         javabridge.kill_vm()
 
-    def _update_data(self):
+    def _update_data(self,flip_list=None):
+        if flip_list is None:
+            flip_list = self.flips
         if self.transformed and self._tf_data is not None:
             if self.show_max_proj and self.tf_max_proj_data is not None:
                 self.data = np.copy(self.tf_max_proj_data)
@@ -112,29 +115,30 @@ class FM_ops():
         if self.transp:
             self.data = np.transpose(self.data, (1, 0, 2))
         if self.rot:
-            self.data = np.rot90(self.data, axes=(0, 1))
-
-        if self.points is not None:
-            self.points = self.update_points(self.points)
+            self.data = np.rot90(self.data, axes=(0, 1)) 
     
-    def update_points(self,points):
-        if self.fliph:
+        if self.points is not None:
+            self.points = self.update_points(self.points,flip_list)
+    
+    def update_points(self,points,flips):
+        print(flips)
+        if flips[0]:
             if self.transp and not self.rot:
                 points[:,1] = self.data.shape[0] - points[:,1]
             elif self.rot and not self.transp:
                 points[:,1] = self.data.shape[0] - points[:,1]
             else:
                 points[:,0] = self.data.shape[0] - points[:,0]
-        if self.flipv:
+        if flips[1]:
             if self.transp and not self.rot:
                 points[:,0] = self.data.shape[1] - points[:,0]
             elif self.rot and not self.transp:
                 points[:,0] = self.data.shape[1] - points[:,0]
             else:
                 points[:,1] = self.data.shape[1] - points[:,1]
-        if self.transp:
+        if flips[2]:
             points = np.flip(self.points,axis=1)
-        if self.rot:
+        if flips[3]:
             temp = self.data.shape[0] - points[:,1]
             points[:,1] = points[:,0]
             points[:,0] = temp
@@ -144,21 +148,25 @@ class FM_ops():
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip
-        self._update_data()
+        self.flips = [self.fliph, self.flipv, self.transp, self.rot]
+        self._update_data(self.flips)
 
     def flip_vertical(self, do_flip):
         self.flipv = do_flip
-        self._update_data()
+        self.flips = [self.fliph, self.flipv, self.transp, self.rot]
+        self._update_data(self.flips)
 
     def transpose(self, do_transp):
         self.transp = do_transp
-        self._update_data()
+        self.flips = [self.fliph, self.flipv, self.transp, self.rot]
+        self._update_data(self.flips)
 
     def rotate_clockwise(self, do_rot):
         self.rot = do_rot
-        self._update_data()
+        self.flips = [self.fliph, self.flipv, self.transp, self.rot] 
+        self._update_data(self.flips)
 
-    def toggle_original(self, transformed=None):
+    def toggle_original(self, transformed=None, first_flips=False):
         if self._tf_data is None:
             print('Need to transform data first')
             return
@@ -167,9 +175,15 @@ class FM_ops():
             self.transformed = not self.transformed
         else:
             self.transformed = transformed
+
+        if first_flips:
+            flip_list = np.copy(self.first_flips)
+        else:
+            flip_list = [False,False,False,False]
+        
         print(transformed)
         print(self.transformed)
-        self._update_data()
+        self._update_data(flip_list = flip_list)
 
     def calc_max_projection(self):
         self.show_max_proj = not self.show_max_proj
@@ -181,7 +195,7 @@ class FM_ops():
                 if self.transformed:
                     self.apply_transform() 
 
-        self._update_data()
+        self._update_data(self.first_flips)
 
     def peak_finding(self):
         for i in range(1, len(self.data)):
@@ -261,6 +275,8 @@ class FM_ops():
         #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
    
     def calc_affine_transform(self, my_points):
+        self.first_flips = list(np.copy([True if flip else False for flip in self.flips]))
+        print(self.first_flips) 
         my__points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 

@@ -677,7 +677,7 @@ class GUI(QtGui.QMainWindow):
                     obj.calc_affine_transform(points)
             
             if obj.data is None:
-                obj.toggle_original()
+                obj.toggle_original(first_flips=True)
             else:
                 obj.toggle_original(True)
                                               
