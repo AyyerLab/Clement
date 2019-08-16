@@ -17,7 +17,8 @@ class EM_ops():
         self.step = int(step)
         self.data = None
         self.stacked_data = None
-        self.region = None
+        self.orig_region = None
+        self.tf_region = None
         self.data_backup = None
         self.transformed = False
         self.transformed_data = None   
@@ -25,14 +26,14 @@ class EM_ops():
         self.pos_y = None
         self.pos_z = None
         self.grid_points = []
-        self.tr_grid_points = []      
+        self.tf_grid_points = []      
         self._tf_data = None
         self._orig_data = None
         self.side_length = None
         self.mcounts = None
-        self.tr_mcounts = None
+        self.tf_mcounts = None
         self.count_map = None
-        self.tr_count_map = None
+        self.tf_count_map = None
         self.tf_matrix = np.identity(3)
         self.no_shear = False
         self.clockwise = False
@@ -92,25 +93,40 @@ class EM_ops():
             f.set_data(self.data)
             f.update_header_stats()
 
-    def toggle_original(self, transformed=None):
-        if self._tf_data is None:
-            print('Need to transform data first')
-            return
-        if transformed is None:
-            self.data = np.copy(self._tf_data if self.transformed else self._orig_data)
-            self.transformed = not self.transformed
-        else:
-            self.transformed = transformed
-            self.data = np.copy(self._tf_data if self.transformed else self._orig_data)
-    
-    def toggle_region(self,transformed=True,assembled=False):
-        if assembled:
-                if transformed:
-                    self.data = self._tf_data
+    def toggle_original(self):
+        #if self._tf_data is None:
+        #    print('Need to transform data first')
+        #    return
+        #self.transformed = not self.transformed
+        if self.assembled:
+            if self.transformed:
+                if self._tf_data is not None:
+                    self.data = np.copy(self._tf_data)
                 else:
-                    self.data = self._orig_data
+                    self.data = np.copy(self._orig_data)
+                    self.transformed = False
+                print(1)
+            else:
+                self.data = np.copy(self._orig_data)
+                print(2)
         else:
-            self.data = np.copy(self.region)
+            if self.transformed:
+                self.data = np.copy(self.tf_region)
+                print(3)
+            else:
+                self.data = np.copy(self.orig_region)
+                print(4)
+        print(self.transformed)
+
+    def toggle_region(self):
+        self.toggle_original()
+        #if assembled:
+        #        if transformed:
+        #            self.data = self._tf_data
+        #        else:
+        #            self.data = self._orig_data
+        #else:
+        #    self.data = np.copy(self.region)
     
     def calc_affine_transform(self, my_points):
         my__points = self.calc_orientation(my_points)
@@ -212,6 +228,7 @@ class EM_ops():
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
+        self.transformed = True
 
         manager = mp.Manager()
         dict1 = manager.dict()
@@ -226,27 +243,32 @@ class EM_ops():
         p1.join()
         p2.join()
         p3.join()
-        self._tf_data = np.array(dict1[0])
-        self.tr_mcounts = np.array(dict2[0])
-        self.tr_count_map = np.array(dict3[0])
-        
+        if self.assembled:
+            self._tf_data = np.array(dict1[0])
+            self.tf_mcounts = np.array(dict2[0])
+            self.tf_count_map = np.array(dict3[0])
+        else:
+            self.tf_region = np.array(dict1[0])
+            self.tf_mcounts = np.array(dict2[0])
+            self.tf_count_map = np.array(dict3[0])
+
+
         #self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         self.transform_shift = -self.tf_corners.min(1)[:2]
-        print(self._tf_data.shape, self.transform_shift)
-        self.transformed = True
-        self.data = np.copy(self._tf_data)
+        #print(self._tf_data.shape, self.transform_shift)
+        #self.transformed = True
+        #self.data = np.copy(self._tf_data)
+        self.toggle_original()
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
         
         
         for i in range(len(self.grid_points)):
-            tr_box_points = []
+            tf_box_points = []
             for point in self.grid_points[i]:
                 x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
-                tr_box_points.append(np.array([x_i,y_i,z_i]))
-            self.tr_grid_points.append(tr_box_points)
+                tf_box_points.append(np.array([x_i,y_i,z_i]))
+            self.tf_grid_points.append(tf_box_points)
         self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
-    
-        self.transformed = True 
 
     def apply_transform_mp(self,data,return_dict):
         return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
@@ -270,23 +292,29 @@ class EM_ops():
                 print('Selected region: ', counter-1)
                 return counter - 1
         else:
-            if self.tr_count_map[coordinate[0],coordinate[1]] == 0:
+            if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
                 print('Selected region ambiguous. Try again!')
                 return
             else:
-                counter = int(self.tr_count_map[coordinate[0],coordinate[1]])
+                counter = int(self.tf_count_map[coordinate[0],coordinate[1]])
                 print('Selected region: ', counter)
                 return counter
 
     def select_region(self,coordinate,transformed):
+        #self.transformed = False
         counter = self.get_selected_region(coordinate, transformed)
         if counter is None:
             return
-        self.region = (self.data_highres[counter]).T
-        if not self.transformed:
-            self.data = np.copy(self.region)
+        if transformed:
+            self.tf_region = np.copy(self.data_highres[counter].T)
         else:
-            self.toggle_region(transformed=transformed, assembled=False)
+            self.orig_region = np.copy(self.data_highres[counter].T)
+        self.toggle_region()
+        #self.region = (self.data_highres[counter]).T
+        #if not self.transformed:
+        #    self.data = np.copy(self.region)
+        #else:
+        #    self.toggle_region(transformed=transformed, assembled=False)
     
     @classmethod
     def get_transform(self, source, dest):

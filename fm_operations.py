@@ -163,16 +163,12 @@ class FM_ops():
         self.flips[3] = self.rot 
         self._update_data()
 
-    def toggle_original(self, transformed=None):
+    def toggle_original(self):
         if self._tf_data is None:
             print('Need to transform data first')
             return
-
-        if transformed is None:
-            self.transformed = not self.transformed
-        else:
-            self.transformed = transformed
-
+        
+        print(self.transformed)
         self._update_data()
 
     def calc_max_projection(self):
@@ -267,8 +263,9 @@ class FM_ops():
     def calc_affine_transform(self, my_points):
         self.first_flips = list(np.copy([True if flip else False for flip in self.flips]))
         if True in self.first_flips:
-            self._orig_points = np.copy(self.points)
-            self._orig_data = np.copy(self.data)
+            if not self.transformed:
+                self._orig_points = np.copy(self.points)
+                self._orig_data = np.copy(self.data)
         print('First flips: ',self.first_flips) 
         my__points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
@@ -374,7 +371,8 @@ class FM_ops():
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
-              
+        
+        self.transformed = True
         if self.max_proj_data is None:
             self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
@@ -405,8 +403,7 @@ class FM_ops():
             print('\r', self._tf_data.shape)
 
         self.transform_shift = -self.tf_corners.min(1)[:2]
-        print(self.transform_shift)
-        self.transformed = True
+        print(self.transform_shift) 
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
 

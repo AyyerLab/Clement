@@ -683,6 +683,7 @@ class GUI(QtGui.QMainWindow):
             obj = self.em
             show_btn = self.show_btn_em
             self.tr_boxes = []
+
         
         if show_btn.isChecked():
             grid_box = self.grid_box[index]
@@ -702,19 +703,13 @@ class GUI(QtGui.QMainWindow):
                 points_obj = self.tr_grid_box[index].getState()['points']     
 
             points = np.array([list((point[0], point[1])) for point in points_obj])
-            
-            if obj == self.fm:
-                if self.rot_transform_btn.isChecked():
-                    obj.calc_rot_transform(points)
-                else:
-                    obj.calc_affine_transform(points)
+                        
+            if self.rot_transform_btn.isChecked():
+                obj.calc_rot_transform(points)
             else:
-                if self.rot_transform_btn.isChecked():
-                    obj.calc_rot_transform(points)
-                else:
-                    obj.calc_affine_transform(points)
-            
-            obj.toggle_original(transformed=True)
+                obj.calc_affine_transform(points)
+           
+            #obj.toggle_original()
                                               
             self.original_help[index] = False
             show_btn.setEnabled(True)
@@ -779,7 +774,8 @@ class GUI(QtGui.QMainWindow):
 
         if self.original_help[index]:
             if obj is not None:
-                obj.toggle_original(state==0)
+                obj.transformed = not obj.transformed
+                obj.toggle_original()
             if obj == self.fm:
                 self._recalc_grid(parent,toggle_orig=True)
             else:
@@ -1030,10 +1026,10 @@ class GUI(QtGui.QMainWindow):
                 if self.show_boxes:
                     [self.em_imview.removeItem(box) for box in self.boxes]       
                 if len(self.tr_boxes) == 0:
-                    for i in range(len(self.em.tr_grid_points)):
+                    for i in range(len(self.em.tf_grid_points)):
                         roi = pg.PolyLineROI([], closed=True, movable=False)
                         roi.handlePen = handle_pen
-                        roi.setPoints(self.em.tr_grid_points[i])
+                        roi.setPoints(self.em.tf_grid_points[i])
                         self.tr_boxes.append(roi)
                         self.em_imview.addItem(roi)
                 else:
@@ -1068,21 +1064,23 @@ class GUI(QtGui.QMainWindow):
                 
     def _show_assembled(self):
         self.show_grid_btn_em.setChecked(False)
-        if self.show_btn_em.isChecked():
-            transformed = False
-        else:
-            transformed = True
-
         if self.show_assembled_btn.isChecked():
-            assembled = True
+            self.em.assembled = True
             self.show_boxes_btn.setEnabled(True)
             self.select_region_btn.setEnabled(True) 
+            if self.em._tf_data is None:
+                self.show_btn_em.setChecked(True)
+                self.show_btn_em.setEnabled(False)
+
         else:
-            assembled = False
+            self.em.assembled = False
             self.show_boxes_btn.setEnabled(False)
             self.show_boxes_btn.setChecked(False)
             self.select_region_btn.setEnabled(False)
-        self.em.toggle_region(transformed,assembled)
+            if self.em.tf_region is not None:
+                print('hello')
+                self.show_btn_em.setEnabled(True)
+        self.em.toggle_region()
         self._update_em_imview()
     
     def _save_mrc_montage(self):
