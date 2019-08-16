@@ -264,7 +264,7 @@ class FM_ops():
         self.first_flips = list(np.copy([True if flip else False for flip in self.flips]))
         if True in self.first_flips:
             if not self.transformed:
-                self._orig_points = np.copy(self.points)
+                #self._orig_points = np.copy(self.points)
                 self._orig_data = np.copy(self.data)
         print('First flips: ',self.first_flips) 
         my__points = self.calc_orientation(my_points)
@@ -327,7 +327,8 @@ class FM_ops():
         self.new_points[2] = cen + (self.side_length, self.side_length)
         self.new_points[3] = cen + (0,self.side_length)
 
-        self.orig_points = np.copy(np.array(my_points))
+        if not self.transformed:
+            self.orig_points = np.copy(np.array(my_points))
         self.apply_transform()
         self.points = np.copy(self.new_points)
         self.rotated = True
