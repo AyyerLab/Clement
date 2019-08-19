@@ -28,7 +28,7 @@ class GUI(QtGui.QMainWindow):
         self.colors = ['#ff0000', '#00ff00', '#0000ff', '#808080']
         self.color_data = None
         self.overlay = True
-        
+         
         self.original_help = [True,True]
         self.box_points = []
         self.boxes = []
@@ -388,6 +388,7 @@ class GUI(QtGui.QMainWindow):
         self.show_assembled_btn = QtWidgets.QCheckBox('Show assembled image',self)
         self.show_assembled_btn.stateChanged.connect(self._show_assembled)
         self.show_assembled_btn.setChecked(True)
+        self.show_assembled_btn.setEnabled(False)
         line.addWidget(self.show_boxes_btn)
         line.addWidget(self.select_region_btn)
         line.addWidget(self.show_assembled_btn) 
@@ -559,7 +560,7 @@ class GUI(QtGui.QMainWindow):
                     if show_btn.isChecked():
                         self.show_grid_box[index] = True
                     else:
-                        self.show_tr_grid_box[index] = True
+                        self.show_tr_grid_box[index] = True                            
             else:
                 print('You have to select exactly 4 points. Try again!')
                 [parent.removeItem(roi) for roi in self.clicked_points[index]]
@@ -577,7 +578,7 @@ class GUI(QtGui.QMainWindow):
             show_btn = self.show_btn_em
             idx = 1
 
-        if obj.points is not None:
+        if obj.points is not None: 
             if show_btn.isChecked():     
                 if grid_btn.isChecked():
                     if not toggle_orig:
@@ -598,7 +599,7 @@ class GUI(QtGui.QMainWindow):
                 pos = [QtCore.QPointF(point[0], point[1]) for point in obj.points]
                 self.tr_grid_box[idx] = pg.PolyLineROI(pos, closed=True, movable=False)
             self._show_grid(None,parent) 
-    
+
     def _show_grid(self, state, parent):
         if parent == self.fm_imview:
             index = 0
@@ -611,9 +612,50 @@ class GUI(QtGui.QMainWindow):
             orig_btn = self.show_btn_em
             grid_btn = self.show_grid_btn_em
         
-        if obj.orig_points is None:
-            return
+      #  if obj.orig_points is None:
+     #       return
+    #else:
+        if grid_btn.isChecked():    
+            if orig_btn.isChecked():
+                self.show_grid_box[index] = True
+                parent.addItem(self.grid_box[index])
+                if self.show_tr_grid_box[index]:
+                    parent.removeItem(self.tr_grid_box[index])
+                    self.show_tr_grid_box[index] = False
+            else:
+                self.show_tr_grid_box[index] = True
+                parent.addItem(self.tr_grid_box[index])
+                if self.show_grid_box[index]:
+                    parent.removeItem(self.grid_box[index])
+                    self.show_grid_box[index] = False 
         else:
+            if orig_btn.isChecked():
+                if self.show_grid_box[index]:
+                    parent.removeItem(self.grid_box[index])
+                    self.show_grid_box[index] = False
+            else:
+                if self.show_tr_grid_box[index]:
+                    parent.removeItem(self.tr_grid_box[index])
+                    self.show_tr_grid_box[index] = False
+                
+    def _define_corr_toggled(self, checked, parent):
+        if parent == self.fm_imview:
+            tag = 'FM'
+            index = 0
+            obj = self.fm
+            other_obj = self.em
+            other_parent = self.em_imview
+        else:
+            tag = 'EM'
+            index = 1
+            obj = self.em
+            other_obj = self.fm
+            other_parent = self.fm_imview
+
+        if obj is None:
+            print('Select data first')
+            return
+        
             if grid_btn.isChecked():    
                 if orig_btn.isChecked():
                     self.show_grid_box[index] = True
@@ -635,26 +677,7 @@ class GUI(QtGui.QMainWindow):
                 else:
                     if self.show_tr_grid_box[index]:
                         parent.removeItem(self.tr_grid_box[index])
-                        self.show_tr_grid_box[index] = False
-                
-    def _define_corr_toggled(self, checked, parent):
-        if parent == self.fm_imview:
-            tag = 'FM'
-            index = 0
-            obj = self.fm
-            other_obj = self.em
-            other_parent = self.em_imview
-        else:
-            tag = 'EM'
-            index = 1
-            obj = self.em
-            other_obj = self.fm
-            other_parent = self.fm_imview
-
-        if obj is None:
-            print('Select data first')
-            return
-        
+                        self.show_tr_grid_box[index]
         if other_obj is not None and other_obj._tf_data is not None:
             if checked:
                 print('Select points of interest on %s image'%tag)
@@ -683,46 +706,36 @@ class GUI(QtGui.QMainWindow):
             index = 0
             obj = self.fm
             show_btn = self.show_btn
+            rot_btn = self.rot_transform_btn
         else:
             tag = 'EM'
             index = 1
             obj = self.em
             show_btn = self.show_btn_em
             self.tr_boxes = []
-
-        
+            rot_btn = self.rot_transform_btn_em
+ 
         if show_btn.isChecked():
             grid_box = self.grid_box[index]
         else:
             self.redo_tr = True
             grid_box = self.tr_grid_box[index]
 
-        if grid_box is not None:
-            if self.rot_transform_btn.isChecked():
-                print('Performing rotation on %s image'%tag)
-            else:
-                print('Performing affine transformation on %s image'%tag)
-
-            if show_btn.isChecked():
-                points_obj = self.grid_box[index].getState()['points']
-            else:
-                points_obj = self.tr_grid_box[index].getState()['points']     
-
+        if grid_box is not None:    
+            points_obj = grid_box.getState()['points']
             points = np.array([list((point[0], point[1])) for point in points_obj])
-                        
-            if self.rot_transform_btn.isChecked():
+            if rot_btn.isChecked():
+                print('Performing rotation on %s image'%tag)
                 obj.calc_rot_transform(points)
             else:
-                obj.calc_affine_transform(points)
-           
-            #obj.toggle_original()
+                print('Performing affine transformation on %s image'%tag)
+                obj.calc_affine_transform(points) 
                                               
             self.original_help[index] = False
             show_btn.setEnabled(True)
             show_btn.setChecked(False)
             self.original_help[index] = True
             self._recalc_grid(parent,toggle_orig=True)
-            #self._show_grid(None,parent)
             self._update_fm_imview() if index == 0 else self._update_em_imview()
         else:
             print('Define grid box on %s image first!'%tag)
@@ -777,17 +790,13 @@ class GUI(QtGui.QMainWindow):
             updater = self._update_em_imview
             orig_btn = self.show_btn_em
             grid_btn = self.show_grid_btn_em
-
+        
         if self.original_help[index]:
             if obj is not None:
                 obj.transformed = not obj.transformed
-                print('obj.transformed:', obj.transformed)
-                obj.toggle_original()
-            if obj == self.fm:
+                print('Transformed?', obj.transformed)
+                obj.toggle_original()    
                 self._recalc_grid(parent,toggle_orig=True)
-            else:
-                #self._show_grid(None,parent)
-                self._recalc_grid(parent)
             updater()
 
     def _set_theme(self, name):
@@ -850,7 +859,6 @@ class GUI(QtGui.QMainWindow):
             self.fm_fname.setText(file_name + ' [0/%d]'%self.fm.num_channels)
         
         self.fm_imview.setImage(self.fm.data, levels=(self.fm.data.min(), self.fm.data.mean()*2))
-        print(self.fm.data.shape)
         self._update_fm_imview()  
         
     def _show_max_projection(self):
@@ -945,7 +953,6 @@ class GUI(QtGui.QMainWindow):
     def _find_peaks(self):
         if self.fm is not None:
             self.fm.peak_finding()
-        #print(self.fm.diff_list)
         else:
             print('You have to select the data first!')
 
@@ -1010,8 +1017,6 @@ class GUI(QtGui.QMainWindow):
             self.em.assemble()
             print('Done')
             self.em_imview.setImage(self.em.data)
-            #self.assemble_btn.setEnabled(False)
-            #self.show_assembled_btn.setChecked(True)
         else:
             print('You have to choose .mrc file first!')
     
@@ -1057,45 +1062,68 @@ class GUI(QtGui.QMainWindow):
         if self.show_boxes_btn.isChecked():
             if self.select_region_btn.isChecked():
                 print('Select box!')
-                #parent.setImage(self.em.data)
             else:
+                
                 if self.box_coordinate is not None:
                     if self.show_btn_em.isChecked():
                         transformed = False
                     else:
                         transformed = True
-                    points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
-                    print(points_obj)
+                    points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
                     self.em.select_region(np.array(points_obj),transformed)
                     self.show_assembled_btn.setEnabled(True)
                     self.show_assembled_btn.setChecked(False) 
                     self.show_grid_btn_em.setEnabled(False)
                     self.show_grid_btn_em.setChecked(False)
-                    self._update_em_imview() 
+                    self.original_help[1] = False
+                    self.show_btn_em.setChecked(True)
+                    self.original_help[1] = True
+                    self.show_btn_em.setEnabled(False)
+                    #self._update_em_imview() 
                     self.box_coordinate = None
-                    
+                                
+
     def _show_assembled(self):
         #self.show_grid_btn_em.setEnabled(False)
         #self.show_grid_btn_em.setChecked(False)
         if self.em is not None:
             if self.show_assembled_btn.isChecked():
                 self.em.assembled = True
-                #self.show_boxes_btn.setEnabled(True)
-                #self.select_region_btn.setEnabled(True) 
+                if self.em.orig_points is None:
+                    self.show_grid_btn_em.setEnabled(False)
+                    self.show_grid_btn_em.setChecked(False)
+                else:
+                    self.show_grid_btn_em.setEnabled(True)
+                    self.show_grid_btn_em.setChecked(True)
+    
+                
+                self.show_boxes_btn.setEnabled(True)
+                self.select_region_btn.setEnabled(True) 
+                               
                 if self.em._tf_data is None:
                     self.show_btn_em.setChecked(True)
                     self.show_btn_em.setEnabled(False)
+                else:
+                    self.show_btn_em.setEnabled(True)
             else:
                 self.em.assembled = False
                 self.show_boxes_btn.setEnabled(False)
                 self.show_boxes_btn.setChecked(False)
                 self.select_region_btn.setEnabled(False)
-                if self.em.tf_region is not None:
-                    print('hello')
+
+                if self.em.tf_region is not None: 
                     self.show_btn_em.setEnabled(True)
+                else:
+                    self.show_btn_em.setEnabled(False)
+                if self.em.orig_points_region is None:
+                    self.show_grid_btn_em.setEnabled(False)
+                    self.show_grid_btn_em.setChecked(False)
+
+
             self.em.toggle_region()
             self._recalc_grid(self.em_imview)
             self._update_em_imview()
+        
         
     def _save_mrc_montage(self):
         if self.em is None:

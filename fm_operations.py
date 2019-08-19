@@ -22,7 +22,6 @@ class FM_ops():
         self.fliph = False
         self.transp = False
         self.rot = False
-        self.flips = [self.fliph, self.flipv, self.transp, self.rot]
         self.transformed = False
         self.coordinates = []
         self.threshold = 0
@@ -144,36 +143,29 @@ class FM_ops():
         return points
 
     def flip_horizontal(self, do_flip):
-        self.fliph = do_flip
-        self.flips[0] = self.fliph
+        self.fliph = do_flip 
         self._update_data()
 
     def flip_vertical(self, do_flip):
         self.flipv = do_flip
-        self.flips[1] = self.flipv
         self._update_data()
 
     def transpose(self, do_transp):
         self.transp = do_transp
-        self.flips[2] = self.transp
         self._update_data()
 
     def rotate_clockwise(self, do_rot):
-        self.rot = do_rot
-        self.flips[3] = self.rot 
+        self.rot = do_rot 
         self._update_data()
 
     def toggle_original(self):
         if self._tf_data is None:
             print('Need to transform data first')
-            return
-        
-        print(self.transformed)
+            return 
         self._update_data()
 
     def calc_max_projection(self):
-        self.show_max_proj = not self.show_max_proj
-        print(self.show_max_proj)
+        self.show_max_proj = not self.show_max_proj 
         if self.show_max_proj:
             if self.max_proj_data is None:
                 self.parse_slices()
@@ -212,7 +204,6 @@ class FM_ops():
                         if diff_norm < self.max_shift and diff_norm != 0:
                             tmp_list_diff.append(self.coordinates[0][k]-self.coordinates[i][l])
                             tmp_list_match.append(self.coordinates[0][k])
-                print(tmp_list_diff)
                 self.matches.append(tmp_list_match)
                 self.diff_list.append(tmp_list_diff)
         else:
@@ -232,8 +223,6 @@ class FM_ops():
         else:
             shift2 = np.zeros((2))
 
-        print(shift1)
-        print(shift2)
         shift.append(shift1)
         shift.append(shift2)
         data_shifted = np.zeros_like(self.data[1:])
@@ -260,14 +249,11 @@ class FM_ops():
         return name_list
         #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
    
-    def calc_affine_transform(self, my_points):
-        self.first_flips = list(np.copy([True if flip else False for flip in self.flips]))
-        if True in self.first_flips:
+    def calc_affine_transform(self, my_points): 
+        if self.fliph or self.flipv or self.transp or self.rot:
             if not self.transformed:
-                #self._orig_points = np.copy(self.points)
-                self._orig_data = np.copy(self.data)
-        print('First flips: ',self.first_flips) 
-        my__points = self.calc_orientation(my_points)
+                self._orig_data = np.copy(self.data) 
+        my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
@@ -300,7 +286,6 @@ class FM_ops():
         print('New points: \n', self.new_points)
 
     def calc_rot_transform(self, my_points):
-        self.refine_matrix = None
         #my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 
@@ -309,8 +294,7 @@ class FM_ops():
         self.side_length = np.mean(side_list)
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
         
-        my_points_sorted = np.array(sorted(my_points, key=lambda k: [k[0],k[1]]))
-        print('Sorted points:\n',my_points_sorted)
+        my_points_sorted = np.array(sorted(my_points, key=lambda k: [k[0],k[1]])) 
         
         self.tf_matrix = self.calc_rot_matrix(my_points_sorted)
         nx, ny = self.data.shape[:-1]
@@ -328,7 +312,7 @@ class FM_ops():
         self.new_points[3] = cen + (0,self.side_length)
 
         if not self.transformed:
-            self.orig_points = np.copy(np.array(my_points))
+            self.orig_points = np.copy(my_points)
         self.apply_transform()
         self.points = np.copy(self.new_points)
         self.rotated = True
@@ -339,8 +323,6 @@ class FM_ops():
             my_list.append((points[i][0]-points[i-1][0])*(points[i][1]+points[i-1][1]))
         my_list.append((points[0][0]-points[-1][0])*(points[0][1]+points[-1][1]))
         my_sum = np.sum(my_list)
-        print(my_list)
-        print(my_sum)
         if my_sum > 0:
             print('counter-clockwise')
             self.counter_clockwise = True
@@ -354,8 +336,7 @@ class FM_ops():
             sides = np.zeros_like(pts)
             sides[:3] = np.diff(pts,axis=0)
             sides[3] = pts[0]-pts[-1]
-            dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]])
-            print(sides)
+            dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]]) 
             angles = []
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
@@ -403,8 +384,7 @@ class FM_ops():
             self._tf_data = np.array(dict2[0])
             print('\r', self._tf_data.shape)
 
-        self.transform_shift = -self.tf_corners.min(1)[:2]
-        print(self.transform_shift) 
+        self.transform_shift = -self.tf_corners.min(1)[:2] 
         self.data = np.copy(self._tf_data)
         self.new_points = np.array([point + self.transform_shift for point in self.new_points])
 
@@ -450,13 +430,8 @@ class FM_ops():
        
         x_shape = np.max([em_data.shape[0],np.abs(shift[0])+self.data.shape[0]])
         y_shape = np.max([em_data.shape[1],np.abs(shift[1])+self.data.shape[1]])
-
-        print(fm_origin)
-        print(em_origin)
-        print(shift)
-        
+  
         self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
-        print(self.merged.shape)
         self.merged[np.abs(shift[0]):self.data.shape[0]+np.abs(shift[0]),np.abs(shift[1]):self.data.shape[1]+np.abs(shift[1]),:-1] = self.data
         self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/np.max(em_data)*np.max(self.data)
 

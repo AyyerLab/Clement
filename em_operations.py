@@ -2,6 +2,7 @@ import sys
 import glob
 import os
 import numpy as np
+import copy
 import scipy.signal as sc
 import mrcfile as mrc
 import multiprocessing as mp
@@ -100,44 +101,42 @@ class EM_ops():
         if self.assembled:
             if self.transformed:
                 if self._tf_data is not None:
-                    self.data = np.copy(self._tf_data)
+                    self.data = copy.copy(self._tf_data)
                 else:
-                    self.data = np.copy(self._orig_data)
+                    self.data = copy.copy(self._orig_data)
                     self.transformed = False
-                self.points = np.copy(self.new_points)
-                print(1)
+                self.points = copy.copy(self.new_points)
             if not self.transformed:
-                self.data = np.copy(self._orig_data)
-                self.points = np.copy(self.orig_points)
-                print(2)
+                self.data = copy.copy(self._orig_data)
+                self.points = copy.copy(self.orig_points)
         else:
             if self.transformed:
-                self.data = np.copy(self.tf_region)
-                self.points = np.copy(self.tf_points_region)
-                print(3)
+                if self.tf_region is not None:
+                    self.data = copy.copy(self.tf_region)
+                else:
+                    self.data = copy.copy(self.orig_region)
+                    self.transformed = False
+                if self.tf_points_region is not None:
+                    self.points = copy.copy(self.tf_points_region)
+                else:
+                    self.points = None 
             else:
                 self.data = np.copy(self.orig_region)
-                self.points = np.copy(self.orig_points_region)
-                print(4)
-        print(self.transformed)
+                self.points = copy.copy(self.orig_points_region)
 
     def toggle_region(self):
         self.toggle_original() 
     
     def calc_affine_transform(self, my_points):
-        my__points = self.calc_orientation(my_points)
+        my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
-
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
-
         self.side_length = np.mean(side_list)
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
         cen = my_points.mean(0) - np.ones(2)*self.side_length/2.
-
-        points_tmp = np.zeros_like(my_points)
-        #self.new_points = np.zeros_like(my_points)
+        points_tmp = np.zeros_like(my_points) 
         points_tmp[0] = cen + (0, 0)
         points_tmp[1] = cen + (self.side_length, 0)
         points_tmp[2] = cen + (self.side_length, self.side_length)
@@ -155,16 +154,14 @@ class EM_ops():
         print('Assembled? ', self.assembled)
         if not self.transformed:
             if self.assembled:
-                self.orig_points = np.copy(np.array(my_points))
+                self.orig_points = np.copy(my_points)
             else:
                 self.orig_points_region = np.copy(my_points)
         self.apply_transform(points_tmp)
-        #self.points = np.copy(self.new_points)
 
     def calc_rot_transform(self, my_points):
         #my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
-
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
         self.side_length = np.mean(side_list)
@@ -182,16 +179,19 @@ class EM_ops():
         print('Tf: ', self.tf_matrix)
 
         cen = my_points.mean(0) + self.tf_corners.min(1)[:2] + (0,self.side_length/2)
-        self.new_points = np.zeros_like(my_points)
-        self.new_points[0] = cen + (0, 0)
-        self.new_points[1] = cen + (self.side_length, 0)
-        self.new_points[2] = cen + (self.side_length, self.side_length)
-        self.new_points[3] = cen + (0,self.side_length)
+
+        points_tmp  = np.zeros_like(my_points)
+        points_tmp[0] = cen + (0, 0)
+        points_tmp[1] = cen + (self.side_length, 0)
+        points_tmp[2] = cen + (self.side_length, self.side_length)
+        points_tmp[3] = cen + (0,self.side_length)
 
         if not self.transformed:
-            self.orig_points = np.copy(np.array(my_points))
-        self.apply_transform()
-        #self.points = np.copy(self.new_points)
+            if self.assembled:
+                self.orig_points = np.copy(my_points)
+            else:
+                self.orig_points_region = np.copy(my_points)
+        self.apply_transform(points_tmp) 
         self.rotated = True
 
     def calc_orientation(self,points):
@@ -200,8 +200,6 @@ class EM_ops():
             my_list.append((points[i][0]-points[i-1][0])*(points[i][1]+points[i-1][1]))
         my_list.append((points[0][0]-points[-1][0])*(points[0][1]+points[-1][1]))
         my_sum = np.sum(my_list)
-        print(my_list)
-        print(my_sum)
         if my_sum > 0:
             print('counter-clockwise')
             return points
@@ -215,7 +213,6 @@ class EM_ops():
             sides[:3] = np.diff(pts,axis=0)
             sides[3] = pts[0]-pts[-1]
             dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]])
-            print(sides)
             angles = []
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
@@ -225,13 +222,12 @@ class EM_ops():
             print('angles_deg: ', angles_deg)
             theta = -(np.pi/180*np.mean(angles_deg))
             tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]) 
-
             return tf_matrix
 
     def apply_transform(self,pts):
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
-            return
+            return 
         self.transformed = True
 
         manager = mp.Manager()
@@ -251,27 +247,19 @@ class EM_ops():
             self._tf_data = np.array(dict1[0])
             self.tf_mcounts = np.array(dict2[0])
             self.tf_count_map = np.array(dict3[0])
-        else:
-            print('hi')
+        else: 
             self.tf_region = np.array(dict1[0])
             self.tf_mcounts = np.array(dict2[0])
             self.tf_count_map = np.array(dict3[0])
 
-
-        #self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         self.transform_shift = -self.tf_corners.min(1)[:2]
-        #print(self._tf_data.shape, self.transform_shift)
-        #self.transformed = True
-        #self.data = np.copy(self._tf_data)
-        #self.toggle_original()
-        pts = np.array([point + self.transform_shift for point in pts])
-        print('assembled? ', self.assembled)
+        pts = np.array([point + self.transform_shift for point in pts]) 
         if self.assembled:
             self.new_points = np.copy(pts)
         else:
             self.tf_points_region = np.copy(pts)  
         self.toggle_original()
-           
+        self.tf_grid_points = []    
         for i in range(len(self.grid_points)):
             tf_box_points = []
             for point in self.grid_points[i]:
@@ -318,7 +306,7 @@ class EM_ops():
             return
         else:
             self.orig_region  = np.copy(self.data_highres[counter].T)
-            self.toggle_region()
+            #self.toggle_region()
         #self.region = (self.data_highres[counter]).T
         #if not self.transformed:
         #    self.data = np.copy(self.region)
