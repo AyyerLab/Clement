@@ -133,7 +133,7 @@ class FM_ops():
             else:
                 points[:,1] = self.data.shape[1] - points[:,1]
         if self.transp:
-            points = np.flip(self.points,axis=1)
+            points = np.array([np.flip(point) for point in points])
         if self.rot:
             temp = self.data.shape[0] - points[:,1]
             points[:,1] = points[:,0]
@@ -420,7 +420,11 @@ class FM_ops():
             self.refine_shift = -self.refine_corners.min(1)[:2]
             print('Refinement shift: ', self.refine_shift)
             self.new_points = np.array([point + self.refine_shift for point in self.new_points])
-            self._update_data()
+            #self.new_points[:,1] = self._tf_data.shape[1] - self.new_points[:,1]
+            self.data = np.copy(self._tf_data)
+            self.update_points(self.new_points)
+            self.points = np.copy(self.new_points)
+            #self._update_data()
 
     def merge(self, em_data,em_points):        
         fm_origin = self.points[0]
@@ -440,4 +444,7 @@ class FM_ops():
         if len(source) != len(dest):
             print('Point length do not match')
             return
-        return tf.estimate_transform('affine', source, dest).params
+        print(source)
+        print(dest)
+        matrix = tf.estimate_transform('affine', source, dest).params
+        return matrix

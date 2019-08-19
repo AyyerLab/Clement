@@ -76,7 +76,7 @@ class EM_ops():
 
             self.data = np.zeros((np.max(self.pos_x)+dimensions[2],np.max(self.pos_y)+dimensions[1]), dtype='f4')
             #sys.stderr.write(self.data.shape)
-
+            print(self.data.shape)
             self.mcounts = np.zeros_like(self.data)
             self.count_map = np.zeros_like(self.data)
             for i in range(dimensions[0]):
@@ -170,7 +170,7 @@ class EM_ops():
         my_points_sorted = np.array(sorted(my_points, key=lambda k: [k[0],k[1]]))
         print('Sorted points:\n',my_points_sorted)
 
-        self.tf_matrix = self.calc_rot_matrix(my_points_sorted)
+        self.tf_matrix = self.calc_rot_matrix(my_points)
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
@@ -217,8 +217,12 @@ class EM_ops():
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
             angles_deg = [angle * 180/np.pi for angle in angles]
-            if not self.rotated:
-                angles_deg = [np.abs(angle-180) if angle > 90 else angle for angle in angles_deg] 
+            #if not self.rotated:
+            
+            for i in range(len(angles_deg)):
+                print(angles_deg[i])
+                print(np.abs((angles_deg[i]%90)-90))
+            angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg] 
             print('angles_deg: ', angles_deg)
             theta = -(np.pi/180*np.mean(angles_deg))
             tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]) 
@@ -283,10 +287,10 @@ class EM_ops():
                 while not my_bool:
                     x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
                     y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
-                    counter += 1
+                    #counter += 1
                     if coordinate[0] in x_range and coordinate[1] in y_range:
                         my_bool = True
-
+                    counter += 1
                 print('Selected region: ', counter-1)
                 return counter - 1
         else:
@@ -306,13 +310,7 @@ class EM_ops():
             return
         else:
             self.orig_region  = np.copy(self.data_highres[counter].T)
-            #self.toggle_region()
-        #self.region = (self.data_highres[counter]).T
-        #if not self.transformed:
-        #    self.data = np.copy(self.region)
-        #else:
-        #    self.toggle_region(transformed=transformed, assembled=False)
-    
+  
     @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):
