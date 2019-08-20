@@ -493,15 +493,18 @@ class GUI(QtGui.QMainWindow):
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
             points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
-            ind = self.em.get_selected_region(np.array(points_obj), not self.show_btn_em.isChecked())
-            if ind is not None:
-                if self.show_btn_em.isChecked():
-                    boxes = self.boxes
-                else:
-                    boxes = self.tr_boxes
-                white_pen = pg.mkPen('w')
-                [box.setPen(white_pen) for box in boxes]
-                boxes[ind].setPen(pg.mkPen('#ed7370'))
+            if points_obj[0] < self.em.data.shape[0] and points_obj[1] < self.em.data.shape[1]:
+                ind = self.em.get_selected_region(np.array(points_obj), not self.show_btn_em.isChecked())            
+                if ind is not None:
+                    if self.show_btn_em.isChecked():
+                        boxes = self.boxes
+                    else:
+                        boxes = self.tr_boxes
+                    white_pen = pg.mkPen('w')
+                    [box.setPen(white_pen) for box in boxes]
+                    boxes[ind].setPen(pg.mkPen('#ed7370'))
+            else:
+                print('Oops, something went wrong. Try again!')
 
     def _define_grid_toggled(self, checked, parent):
         if parent == self.fm_imview:
@@ -1071,6 +1074,14 @@ class GUI(QtGui.QMainWindow):
                         transformed = True
                     points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
                     self.em.select_region(np.array(points_obj),transformed)
+                    if transformed:
+                        if self.em.tf_region is None:
+                            print('Ooops, something went wrong. Try again!')
+                            return
+                    else:
+                        if self.em.orig_region is None:
+                            print('Oops, something went wrong. Try again!')
+                            return
                     self.show_assembled_btn.setEnabled(True)
                     self.show_assembled_btn.setChecked(False) 
                     self.show_grid_btn_em.setEnabled(False)
@@ -1078,8 +1089,7 @@ class GUI(QtGui.QMainWindow):
                     self.original_help[1] = False
                     self.show_btn_em.setChecked(True)
                     self.original_help[1] = True
-                    self.show_btn_em.setEnabled(False)
-                    #self._update_em_imview() 
+                    self.show_btn_em.setEnabled(False) 
                     self.box_coordinate = None
                                 
 
