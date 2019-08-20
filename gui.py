@@ -492,6 +492,7 @@ class GUI(QtGui.QMainWindow):
                     print('Transform images before point selection')
         elif self.select_region_btn.isChecked():
             self.box_coordinate = pos
+
             points_obj = [self.box_coordinate.x(),self.box_coordinate.y()]
             if (points_obj[0] < self.em.data.shape[0]) and (points_obj[1] < self.em.data.shape[1]):
                 ind = self.em.get_selected_region(np.array(points_obj), not self.show_btn_em.isChecked())

@@ -82,8 +82,8 @@ class FM_ops():
         javabridge.kill_vm()
 
     def _update_data(self):
-        if self.transformed and self._tf_data is not None:
-            if self.show_max_proj and self.tf_max_proj_data is not None:
+        if self.transformed and (self._tf_data is not None or self.tf_max_proj_data is not None):
+            if self.show_max_proj:
                 self.data = np.copy(self.tf_max_proj_data)
             else:
                 self.data = np.copy(self._tf_data)
@@ -170,10 +170,10 @@ class FM_ops():
             if self.max_proj_data is None:
                 self.parse_slices()
                 self.max_proj_data = np.max(np.array(self.data_slices),axis=0)
-                if self.transformed:
-                    self.apply_transform() 
-
-        self._update_data(self.first_flips)
+                            
+            if self.transformed and self.tf_max_proj_data is None:
+                self.apply_transform() 
+        self._update_data()
 
     def peak_finding(self):
         for i in range(1, len(self.data)):
@@ -355,19 +355,23 @@ class FM_ops():
             return
         
         self.transformed = True
+        self.transform_shift = -self.tf_corners.min(1)[:2] 
         if self.max_proj_data is None:
             self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
                 self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
             print('\r', self._tf_data.shape)
-
+            self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+            
         elif self.tf_max_proj_data is None and self.transformed:
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
                 self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
-            print('\r', self._tf_data.shape)
+            print('\r hello')
+            print(self.transformed)
+            print('\r', self.max_proj_data.shape)
         
         else:
             manager = mp.Manager()
@@ -383,11 +387,13 @@ class FM_ops():
             self.tf_max_proj_data = np.array(dict1[0])
             self._tf_data = np.array(dict2[0])
             print('\r', self._tf_data.shape)
-
-        self.transform_shift = -self.tf_corners.min(1)[:2] 
-        self.data = np.copy(self._tf_data)
-        self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-
+            self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+            
+        if self.show_max_proj:
+            self.data = np.copy(self.tf_max_proj_data)
+        else:
+            self.data = np.copy(self._tf_data)
+        
     def apply_transform_mp(self,k,data,return_dict):
         channel_list = []
         for i in range(data.shape[-1]):
