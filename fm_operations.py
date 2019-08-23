@@ -23,6 +23,10 @@ class FM_ops():
         self.transp = False
         self.rot = False
         self.transformed = False
+        self.flipv_matrix = np.array([[1,0,0],[0,-1,0],[0,0,1]])
+        self.fliph_matrix = np.array([[-1,0,0],[0,1,0],[0,0,1]])
+        self.transp_matrix = np.array([[0,1,0],[1,0,0],[0,0,1]])
+        self.rot_matrix = np.array([[0,1,0],[-1,0,0],[0,0,1]])
         self.coordinates = []
         self.threshold = 0
         self.max_shift = 10
@@ -44,9 +48,11 @@ class FM_ops():
         self.data_slices = []
         self.counter_clockwise = False
         self.rotated = False
+        self.corr_matrix = None
         self.refine_matrix = None
         self.refine_points = None
         self.merged = None
+        self.history = []
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
@@ -144,18 +150,47 @@ class FM_ops():
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip 
+        if do_flip:
+            self.history.append(self.fliph_matrix)
+        else:
+            if np.array_equal(self.history[-1], self.fliph_matrix):
+                del self.history[-1]
+            else:
+                self.history.append(np.linalg.inv(self.fliph_matrix))
         self._update_data()
 
     def flip_vertical(self, do_flip):
         self.flipv = do_flip
+        if do_flip:
+            self.history.append(self.flipv_matrix)
+        else:
+            if np.array_equal(self.history[-1], self.flipv_matrix):
+                del self.history[-1]
+            else:
+                self.history.append(np.linalg.inv(self.flipv_matrix))
         self._update_data()
 
     def transpose(self, do_transp):
         self.transp = do_transp
+        if do_transp:
+            self.history.append(self.transp_matrix)
+        else:
+            if np.array_equal(self.history[-1], self.transp_matrix):
+                del self.history[-1]
+            else:
+                self.history.append(np.linalg.inv(self.transp_matrix))
         self._update_data()
 
     def rotate_clockwise(self, do_rot):
         self.rot = do_rot 
+        if do_rot:
+            self.history.append(self.rot_matrix)
+        else:
+            if np.array_equal(self.history[-1], self.rot_matrix):
+                del self.history[-1]
+            else:
+                self.history.append(np.linalg.inv(self.rot_matrix))
+        print('History: ', self.history)
         self._update_data()
 
     def toggle_original(self):
@@ -393,6 +428,8 @@ class FM_ops():
             self.data = np.copy(self.tf_max_proj_data)
         else:
             self.data = np.copy(self._tf_data)
+
+        self.history.append(self.tf_matrix)
         
     def apply_transform_mp(self,k,data,return_dict):
         channel_list = []
@@ -404,32 +441,53 @@ class FM_ops():
     
     def refine(self, source, dst):
         if self._tf_data is not None:
+            print('Corr_matrix2: ', self.corr_matrix)
             self.refine_matrix = tf.estimate_transform('affine',source,dst).params
-            nx, ny = self._tf_data.shape[:-1]
+            
+            self.cum_matrix = self.history[0]
+            for i in range(1,len(self.history)):
+                self.cum_matrix = self.history[i] @ self.cum_matrix
+            self.tf_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
+            nx, ny = self.data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            self.refine_corners = np.dot(self.refine_matrix, corners)
-            self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
-            self.refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
-            tmp = np.copy(self._tf_data)
-            self._tf_data = np.empty(self._refine_shape+(self._tf_data.shape[-1],))
-            for i in range(self._tf_data.shape[-1]):
-                self._tf_data[:,:,i] = ndi.affine_transform(tmp[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self._refine_shape)
-                sys.stderr.write('\r%d'%i)               
-    
-    def refine_grid(self, src, dst):
+            self.tf_corners = np.dot(self.tf_matrix, corners)
+            self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
+            self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+            print('New tf_matrix: ', self.tf_matrix)
+            #tmp = np.copy(self.data)
+            #self.data = np.empty(self._refine_shape+(self._tf_data.shape[-1],))
+            #for i in range(self._tf_data.shape[-1]):
+            #    self.data[:,:,i] = ndi.affine_transform(tmp[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self._refine_shape)
+            #    sys.stderr.write('\r%d'%i)               
+            #self.data = np.copy(self._orig_data)
+            self.refine_grid()
+            self.transform_shift = -self.tf_corners.min(1)[:2]
+            
+            self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+            for i in range(self.data.shape[-1]):
+                self._tf_data[:,:,i] = ndi.affine_transform(self._orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                sys.stderr.write('\r%d'%i)
+            print('\r', self._tf_data.shape)
+            
+            #self.apply_transform()
+            #self.update_points(self.new_points)
+            self._update_data()
+            
+ 
+    def refine_grid(self):
         if self._tf_data is not None:
-            self.rg_matrix = tf.estimate_transform('affine',src,dst).params
+            #self.rg_matrix = tf.estimate_transform('affine',src,dst).params
             for i in range(len(self.points)):
-                points = [src[i][0],src[i][1],1]
-                self.new_points[i] = (self.rg_matrix @ points)[:2]
-
-            self.refine_shift = -self.refine_corners.min(1)[:2]
-            print('Refinement shift: ', self.refine_shift)
-            self.new_points = np.array([point + self.refine_shift for point in self.new_points])
+                point = [self.orig_points[i][0],self.orig_points[i][1],1]
+                self.new_points[i] = (self.tf_matrix @ point)[:2]
+            #self.update_points(self.new_points)
+            #self.refine_shift = -self.refine_corners.min(1)[:2]
+            #print('Refinement shift: ', self.refine_shift)
+            #self.new_points = np.array([point + self.refine_shift for point in self.new_points])
             #self.new_points[:,1] = self._tf_data.shape[1] - self.new_points[:,1]
-            self.data = np.copy(self._tf_data)
-            self.update_points(self.new_points)
-            self.points = np.copy(self.new_points)
+            #self.data = np.copy(self._tf_data)
+            #self.update_points(self.new_points)
+            #self.points = np.copy(self.new_points)
             #self._update_data()
 
     def merge(self, em_data,em_points):        
@@ -445,12 +503,12 @@ class FM_ops():
         self.merged[np.abs(shift[0]):self.data.shape[0]+np.abs(shift[0]),np.abs(shift[1]):self.data.shape[1]+np.abs(shift[1]),:-1] = self.data
         self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/np.max(em_data)*np.max(self.data)
 
-    @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):
             print('Point length do not match')
             return
         print(source)
         print(dest)
-        matrix = tf.estimate_transform('affine', source, dest).params
-        return matrix
+        self.corr_matrix = tf.estimate_transform('affine', source, dest).params
+        print('Corr_matrix: ', self.corr_matrix)
+        return self.corr_matrix

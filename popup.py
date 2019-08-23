@@ -69,7 +69,6 @@ class Merge(QtGui.QMainWindow,):
         self.imview.setImage(np.sum(self.data,axis=2), levels=(self.data.min(), self.data.max()//3))   
         layout.addWidget(self.imview)
       
-
         options = QtWidgets.QHBoxLayout()
         options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options) 
@@ -81,10 +80,11 @@ class Merge(QtGui.QMainWindow,):
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
 
-        button = QtWidgets.QLabel('FM image:', self)
-        line.addWidget(button)
-        self.fm_fname  = self.parent.fm_fname
-        line.addWidget(self.fm_fname, stretch=1)
+        label = QtWidgets.QLabel('FM image:', self)
+        line.addWidget(label)
+        self.fm_fname  = self.parent.fm_fname.text()
+        label = QtWidgets.QLabel(self.fm_fname, self)
+        line.addWidget(label, stretch=1)
         self.max_proj_btn = QtWidgets.QCheckBox('Max projection')
         self.max_proj_btn.stateChanged.connect(self._show_max_projection)
         line.addWidget(self.max_proj_btn)
@@ -99,10 +99,11 @@ class Merge(QtGui.QMainWindow,):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        button = QtWidgets.QLabel('EM Image:', self)
-        line.addWidget(button)
-        self.em_fname = self.parent.mrc_fname
-        line.addWidget(self.em_fname, stretch=1)
+        label = QtWidgets.QLabel('EM Image:', self)
+        line.addWidget(label)
+        self.em_fname = self.parent.mrc_fname.text()
+        label = QtWidgets.QLabel(self.em_fname, self)
+        line.addWidget(label, stretch=1)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
