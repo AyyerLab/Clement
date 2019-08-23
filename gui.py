@@ -378,9 +378,6 @@ class GUI(QtGui.QMainWindow):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Assembly grid:', self)
         line.addWidget(label)
-        self.show_boxes_btn = QtWidgets.QCheckBox('Show boxes',self)
-        self.show_boxes_btn.stateChanged.connect(self._show_boxes)
-        #self.show_boxes_btn.setEnabled(False)
         self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
         self.select_region_btn.setCheckable(True)
         self.select_region_btn.toggled.connect(lambda state, par=self.em_imview: self._select_box(state,par))
@@ -389,7 +386,6 @@ class GUI(QtGui.QMainWindow):
         self.show_assembled_btn.stateChanged.connect(self._show_assembled)
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
-        line.addWidget(self.show_boxes_btn)
         line.addWidget(self.select_region_btn)
         line.addWidget(self.show_assembled_btn) 
         line.addStretch(1)
@@ -1021,14 +1017,10 @@ class GUI(QtGui.QMainWindow):
         self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
         if self.show_assembled_btn.isChecked():
-            if self.show_boxes_btn.isChecked():
+            if self.show_boxes:
                 self._show_boxes()
         else:
-            self.show_boxes_btn.setEnabled(False)
-            self.show_boxes_btn.setChecked(False)
             self.show_boxes = False
-
-
 
     def _assemble_mrc(self):
         if self.step_box.text() is '':
@@ -1040,122 +1032,115 @@ class GUI(QtGui.QMainWindow):
             self.em = em_operations.EM_ops(step=int(step))
             self.em.parse(self.mrc_fname.text())
             self.em.assemble()
-            print('Done')
             self.em_imview.setImage(self.em.data)
         else:
-            print('You have to choose .mrc file first!')
+            print('You have to choose an .mrc file first!')
     
     def _show_boxes(self):
-        if self.em is not None:
-            if self.show_boxes_btn.isChecked():
-                handle_pen = pg.mkPen('#00000000') 
-                if self.show_btn_em.isChecked():  
-                    if self.show_boxes:
-                        [self.em_imview.removeItem(box) for box in self.tr_boxes]        
-                    if len(self.boxes) == 0:
-                        for i in range(len(self.em.pos_x)):
-                            roi = pg.PolyLineROI([], closed=True, movable=False)
-                            roi.handlePen = handle_pen
-                            roi.setPoints(self.em.grid_points[i])
-                            self.boxes.append(roi)
-                            self.em_imview.addItem(roi)
-                    else:
-                        [self.em_imview.addItem(box) for box in self.boxes]
-                else:
-                    if self.show_boxes:
-                        [self.em_imview.removeItem(box) for box in self.boxes]       
-                    if len(self.tr_boxes) == 0:
-                        for i in range(len(self.em.tf_grid_points)):
-                            roi = pg.PolyLineROI([], closed=True, movable=False)
-                            roi.handlePen = handle_pen
-                            roi.setPoints(self.em.tf_grid_points[i])
-                            self.tr_boxes.append(roi)
-                            self.em_imview.addItem(roi)
-                    else:
-                        [self.em_imview.addItem(box) for box in self.tr_boxes]
-                self.show_boxes = True
+        if self.em is None:
+            return
+
+        handle_pen = pg.mkPen('#00000000') 
+        if self.show_btn_em.isChecked():  
+            if self.show_boxes:
+                [self.em_imview.removeItem(box) for box in self.tr_boxes]        
+            if len(self.boxes) == 0:
+                for i in range(len(self.em.pos_x)):
+                    roi = pg.PolyLineROI([], closed=True, movable=False)
+                    roi.handlePen = handle_pen
+                    roi.setPoints(self.em.grid_points[i])
+                    self.boxes.append(roi)
+                    self.em_imview.addItem(roi)
             else:
-                if self.show_btn_em.isChecked():
-                    if self.show_boxes:
-                        [self.em_imview.removeItem(box) for box in self.boxes]
-                else:
-                    if self.show_boxes:
-                        [self.em_imview.removeItem(box) for box in self.tr_boxes]
-                self.show_boxes = False
+                [self.em_imview.addItem(box) for box in self.boxes]
+        else:
+            if self.show_boxes:
+                [self.em_imview.removeItem(box) for box in self.boxes]       
+            if len(self.tr_boxes) == 0:
+                for i in range(len(self.em.tf_grid_points)):
+                    roi = pg.PolyLineROI([], closed=True, movable=False)
+                    roi.handlePen = handle_pen
+                    roi.setPoints(self.em.tf_grid_points[i])
+                    self.tr_boxes.append(roi)
+                    self.em_imview.addItem(roi)
+            else:
+                [self.em_imview.addItem(box) for box in self.tr_boxes]
+        self.show_boxes = True
+
+    def _hide_boxes(self):
+        if self.show_btn_em.isChecked():
+            if self.show_boxes:
+                [self.em_imview.removeItem(box) for box in self.boxes]
+        else:
+            if self.show_boxes:
+                [self.em_imview.removeItem(box) for box in self.tr_boxes]
+        self.show_boxes = False
 
     def _select_box(self,state,parent):
-        if self.show_boxes_btn.isChecked():
-            if self.select_region_btn.isChecked():
-                print('Select box!')
+        if self.select_region_btn.isChecked():
+            self._show_boxes()
+            print('Select box!')
+        else:
+            if self.box_coordinate is not None:
+                if self.show_btn_em.isChecked():
+                    transformed = False
+                else:
+                    transformed = True
+                points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
+                self.em.select_region(np.array(points_obj),transformed)
+                self._hide_boxes()
+                if ((transformed and self.em.tf_region is None) or
+                   (not transformed and self.em.orig_region is None)):
+                    print('Ooops, something went wrong. Try again!')
+                    return
+                self.show_assembled_btn.setEnabled(True)
+                self.show_assembled_btn.setChecked(False) 
+                self.show_grid_btn_em.setEnabled(False)
+                self.show_grid_btn_em.setChecked(False)
+                self.original_help[1] = False
+                self.show_btn_em.setChecked(True)
+                self.original_help[1] = True
+                self.show_btn_em.setEnabled(False) 
+                self.box_coordinate = None
             else:
-                
-                if self.box_coordinate is not None:
-                    if self.show_btn_em.isChecked():
-                        transformed = False
-                    else:
-                        transformed = True
-                    points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
-                    self.em.select_region(np.array(points_obj),transformed)
-                    if transformed:
-                        if self.em.tf_region is None:
-                            print('Ooops, something went wrong. Try again!')
-                            return
-                    else:
-                        if self.em.orig_region is None:
-                            print('Oops, something went wrong. Try again!')
-                            return
-                    self.show_assembled_btn.setEnabled(True)
-                    self.show_assembled_btn.setChecked(False) 
-                    self.show_grid_btn_em.setEnabled(False)
-                    self.show_grid_btn_em.setChecked(False)
-                    self.original_help[1] = False
-                    self.show_btn_em.setChecked(True)
-                    self.original_help[1] = True
-                    self.show_btn_em.setEnabled(False) 
-                    self.box_coordinate = None
-                                
+                self._hide_boxes()
 
     def _show_assembled(self):
-        #self.show_grid_btn_em.setEnabled(False)
-        #self.show_grid_btn_em.setChecked(False)
-        if self.em is not None:
-            if self.show_assembled_btn.isChecked():
-                self.em.assembled = True
-                if self.em.orig_points is None:
-                    self.show_grid_btn_em.setEnabled(False)
-                    self.show_grid_btn_em.setChecked(False)
-                else:
-                    self.show_grid_btn_em.setEnabled(True)
-                    self.show_grid_btn_em.setChecked(True)
-    
-                
-                self.show_boxes_btn.setEnabled(True)
-                self.select_region_btn.setEnabled(True) 
-                               
-                if self.em._tf_data is None:
-                    self.show_btn_em.setChecked(True)
-                    self.show_btn_em.setEnabled(False)
-                else:
-                    self.show_btn_em.setEnabled(True)
+        if self.em is None:
+            return
+
+        if self.show_assembled_btn.isChecked():
+            self.em.assembled = True
+            if self.em.orig_points is None:
+                self.show_grid_btn_em.setEnabled(False)
+                self.show_grid_btn_em.setChecked(False)
             else:
-                self.em.assembled = False
-                self.show_boxes_btn.setEnabled(False)
-                self.show_boxes_btn.setChecked(False)
-                self.select_region_btn.setEnabled(False)
+                self.show_grid_btn_em.setEnabled(True)
+                self.show_grid_btn_em.setChecked(True)
 
-                if self.em.tf_region is not None: 
-                    self.show_btn_em.setEnabled(True)
-                else:
-                    self.show_btn_em.setEnabled(False)
-                if self.em.orig_points_region is None:
-                    self.show_grid_btn_em.setEnabled(False)
-                    self.show_grid_btn_em.setChecked(False)
+            
+            self.select_region_btn.setEnabled(True) 
+                           
+            if self.em._tf_data is None:
+                self.show_btn_em.setChecked(True)
+                self.show_btn_em.setEnabled(False)
+            else:
+                self.show_btn_em.setEnabled(True)
+        else:
+            self.em.assembled = False
+            self.select_region_btn.setEnabled(False)
 
+            if self.em.tf_region is not None: 
+                self.show_btn_em.setEnabled(True)
+            else:
+                self.show_btn_em.setEnabled(False)
+            if self.em.orig_points_region is None:
+                self.show_grid_btn_em.setEnabled(False)
+                self.show_grid_btn_em.setChecked(False)
 
-            self.em.toggle_region()
-            self._recalc_grid(self.em_imview)
-            self._update_em_imview()
-        
+        self.em.toggle_region()
+        self._recalc_grid(self.em_imview)
+        self._update_em_imview()
         
     def _save_mrc_montage(self):
         if self.em is None:
