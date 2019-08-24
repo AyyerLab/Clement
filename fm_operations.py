@@ -453,13 +453,13 @@ class FM_ops():
             #    self.cum_matrix = self.history[i] @ self.cum_matrix
             self.cum_matrix = np.copy(self.tf_matrix)
             self.tf_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
-            #self.tf_matrix[:2,2] += self.tf_corners.min(1)[:2]
+            self.tf_matrix[:2,2] += self.tf_corners.min(1)[:2]
             print('Shift 1: \n', self.tf_corners.min(1)[:2])
             nx, ny = self._orig_data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
             self.tf_corners = np.dot(self.tf_matrix, corners)
             self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
-            #self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+            self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
             print('Shift 2: \n', self.tf_corners.min(1)[:2])
             print('New tf_matrix: \n', self.tf_matrix)
             self.refine_grid()
