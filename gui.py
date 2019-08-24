@@ -698,12 +698,16 @@ class GUI(QtGui.QMainWindow):
                     self.points_corr[index] = []
                     self.points_corr[index-1] = []
                 if self.fm.refine_matrix is None:
-                    src_sorted  = np.array(sorted(obj.points, key=lambda k: [k[0],k[1]]))
+                    #src_sorted  = np.array(sorted(obj.points, key=lambda k: [k[0],k[1]]))
+                    #print('fm_points1 not updated: \n', src_sorted)
+                    src_sorted= np.array(sorted(obj.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
                     src_updated = self.fm.update_points(src_sorted)
-                    dst_sorted = np.array(sorted(self.em.points, key=lambda k: [k[0],k[1]])) 
+                    dst_sorted = np.array(sorted(other_obj.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
+                    print('fm_points1: \n ', src_updated)
+                    print('em_points1: \n ', dst_sorted)
                     self.tr_matrices[index] = obj.get_transform(src_updated,dst_sorted)
-                else:
-                    self.tr_matrices[index] = obj.get_transform(obj.points,other_obj.points)
+                #else:
+                #    self.tr_matrices[index] = obj.get_transform(obj.points,other_obj.points)
                     
             else:
                 print('Done selecting points of interest on %s image'%tag)
@@ -722,6 +726,7 @@ class GUI(QtGui.QMainWindow):
             obj = self.fm
             show_btn = self.show_btn
             rot_btn = self.rot_transform_btn
+            self.refine_matrix = None
         else:
             tag = 'EM'
             index = 1
@@ -758,19 +763,25 @@ class GUI(QtGui.QMainWindow):
     def _refine(self):
         if len(self.points_corr[0]) > 3:
             src = np.array([[point.x(),point.y()] for point in self.points_corr[0]])
+            src_updated = self.fm.update_points(src)
             dst = np.array([[point.x(),point.y()] for point in self.points_corr[1]])
-            self.fm.refine(src,dst)
+            self.fm.refine(src_updated,dst)
             #self.fm.refine_grid(self.fm.points,self.em.points)
             [self.fm_imview.removeItem(point) for point in self.points_corr[0]]
             [self.em_imview.removeItem(point) for point in self.points_corr[1]]
             self.points_corr[0] = []
             self.points_corr[1] = []
             self.refine = True
-            self._recalc_grid(self.fm_imview)
+            self._show_grid(None, self.fm_imview)
+            #self._recalc_grid(self.fm_imview)
             #src_sorted  = np.array(sorted(self.fm.points, key=lambda k: [k[0],k[1]]))
-            #src_updated = self.fm.update_points(src_sorted)
-            #dst_sorted = np.array(sorted(self.em.points, key=lambda k: [k[0],k[1]]))
-            self.tr_matrices[0] = self.fm.get_transform(self.fm.points, self.em.points)
+            src_sorted = np.array(sorted(src, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
+            src_updated = self.fm.update_points(src_sorted)
+            dst_sorted = np.array(sorted(self.em.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
+            print('fm_points2: \n ', src_updated)
+            print('em_points2: \n ', dst_sorted)   
+            self.tr_matrices[0] = self.fm.get_transform(src_updated, dst_sorted)
+            print('New corr matrix: ', self.tr_matrices[0])
 
             self._update_fm_imview() 
         else:
