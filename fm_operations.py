@@ -488,23 +488,50 @@ class FM_ops():
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.merge_fm_corners = np.dot(self.merge_matrix, corners)
         self._merge_fm_shape = tuple([int(i) for i in (self.merge_fm_corners.max(1) - self.merge_fm_corners.min(1))[:2]])
-        self.merge_matrix[:2, 2] -= self.merge_fm_corners.min(1)[:2]
-
+        shift = self.merge_fm_corners.min(1)[:2]
+        self.merge_matrix[:2, 2] -= shift
         self.merge_fm_data = np.empty(self._merge_fm_shape+(self.data.shape[-1],))
+        print('merge_fm_data.shape: ', self.merge_fm_data.shape)
         for i in range(self.data.shape[-1]):
+            print(i)
             self.merge_fm_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self._merge_fm_shape)
 
-        x_shape = np.max([em_data.shape[0],(self.merge_fm_corners.max(1)-self.merge_fm_corners.min(1))[0]]).astype(np.int16)
-        y_shape = np.max([em_data.shape[1],(self.merge_fm_corners.max(1)-self.merge_fm_corners.min(1))[1]]).astype(np.int16)
+        fm_shift = np.zeros(2).astype(int)
+        em_shift = np.zeros(2).astype(int)
+        if shift[0] < 0:
+            em_shift[0] = int(shift[0])
+        else:
+            fm_shift[0] = int(shift[0])
+        if shift[1] < 0:
+            em_shift[1] = int(shift[1])
+        else:
+            fm_shift[1] = int(shift[1])
         
-        print('merge_fm_shape: ', self._merge_fm_shape)
+        x_shape = np.max([em_data.shape[0]+em_shift[0],self.merge_fm_corners.max(1)[0]]).astype(int)
+        y_shape = np.max([em_data.shape[1]+em_shift[1],self.merge_fm_corners.max(1)[1]]).astype(int)
         self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
-        #self.merged = np.zeros((3000,3000,self.data.shape[-1]+1))
-        print('min corners: \n', self.merge_fm_corners.min(1))
-        print('max corners \n', self.merge_fm_corners.max(1))
-        shift = self.merge_fm_corners.min(1)[:2]
-        self.merged[int(self.merge_fm_corners.min(1)[0]+np.abs(shift[0])):int(self.merge_fm_corners.max(1)[0]+np.abs(shift[0])),int(self.merge_fm_corners.min(1)[1]+np.abs(shift[1])):int(self.merge_fm_corners.max(1)[1]+np.abs(shift[1])),:-1] = self.merge_fm_data
-        self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/np.max(em_data)*np.max(self.data)
+        print('Shift: ', shift)
+        print('FM shift: ', fm_shift)
+        print('EM shift: ', em_shift)
+        print('Merged.shape: ', self.merged.shape)
+        self.merged[fm_shift[0]:self._merge_fm_shape[0]+fm_shift[0],fm_shift[1]:self._merge_fm_shape[1]+fm_shift[1],:-1] = self.merge_fm_data
+        self.merged[em_shift[0]:em_data.shape[0]+em_shift[0],em_shift[1]:em_data.shape[1]+em_shift[1],-1] = em_data/np.max(em_data)*np.max(self.data)     
+        
+#        self.merge_fm_data = np.empty(self._merge_fm_shape+(self.data.shape[-1],))
+#        for i in range(self.data.shape[-1]):
+#            self.merge_fm_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self._merge_fm_shape)
+#
+#        x_shape = np.max([em_data.shape[0],(self.merge_fm_corners.max(1)-self.merge_fm_corners.min(1))[0]]).astype(np.int16)
+#        y_shape = np.max([em_data.shape[1],(self.merge_fm_corners.max(1)-self.merge_fm_corners.min(1))[1]]).astype(np.int16)
+#        
+#        print('merge_fm_shape: ', self._merge_fm_shape)
+#        self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
+#        #self.merged = np.zeros((3000,3000,self.data.shape[-1]+1))
+#        print('min corners: \n', self.merge_fm_corners.min(1))
+#        print('max corners \n', self.merge_fm_corners.max(1))
+#        shift = self.merge_fm_corners.min(1)[:2]
+#        self.merged[int(self.merge_fm_corners.min(1)[0]+np.abs(shift[0])):int(self.merge_fm_corners.max(1)[0]+np.abs(shift[0])),int(self.merge_fm_corners.min(1)[1]+np.abs(shift[1])):int(self.merge_fm_corners.max(1)[1]+np.abs(shift[1])),:-1] = self.merge_fm_data
+#        self.merged[:em_data.shape[0],:em_data.shape[1],-1] = em_data/np.max(em_data)*np.max(self.data)
 
     def get_transform(self, source, dest):
         if len(source) != len(dest):
