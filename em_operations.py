@@ -167,8 +167,8 @@ class EM_ops():
         self.side_length = np.mean(side_list)
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
-        my_points_sorted = np.array(sorted(my_points, key=lambda k: [k[0],k[1]]))
-        print('Sorted points:\n',my_points_sorted)
+        #my_points_sorted = np.array(sorted(my_points, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1]))
+        #print('Sorted points:\n',my_points_sorted)
 
         self.tf_matrix = self.calc_rot_matrix(my_points)
         nx, ny = self.data.shape
@@ -212,7 +212,11 @@ class EM_ops():
             sides = np.zeros_like(pts)
             sides[:3] = np.diff(pts,axis=0)
             sides[3] = pts[0]-pts[-1]
+            sides = np.array(sorted(sides, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1])))
+
             dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]])
+            dst_sides = np.array(sorted(dst_sides, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1])))
+
             angles = []
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
@@ -224,7 +228,10 @@ class EM_ops():
                 print(np.abs((angles_deg[i]%90)-90))
             angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg] 
             print('angles_deg: ', angles_deg)
-            theta = -(np.pi/180*np.mean(angles_deg))
+            if self.transformed:
+                theta = (np.pi/180*np.mean(angles_deg))
+            else:
+                theta = -(np.pi/180*np.mean(angles_deg))
             tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]) 
             return tf_matrix
 
