@@ -701,6 +701,7 @@ class GUI(QtGui.QMainWindow):
                 src_sorted= np.array(sorted(obj.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
                 src_updated = self.fm.update_points(src_sorted)
                 dst_sorted = np.array(sorted(other_obj.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
+                print('fm_points1 not updated: \n', src_sorted)
                 print('fm_points1: \n ', src_updated)
                 print('em_points1: \n ', dst_sorted)
                 self.tr_matrices[index] = obj.get_transform(src_updated,dst_sorted)
@@ -762,23 +763,12 @@ class GUI(QtGui.QMainWindow):
             dst = np.array([[point.x(),point.y()] for point in self.points_corr[1]])
             dst = np.array([point + self.cen for point in dst])
             self.fm.refine(src_updated,dst)
-            #self.fm.refine_grid(self.fm.points,self.em.points)
             [self.fm_imview.removeItem(point) for point in self.points_corr[0]]
             [self.em_imview.removeItem(point) for point in self.points_corr[1]]
             self.points_corr[0] = []
             self.points_corr[1] = []
             self.refine = True
-            #self._show_grid(None, self.fm_imview)
             self._recalc_grid(self.fm_imview)
-            #src_sorted  = np.array(sorted(self.fm.points, key=lambda k: [k[0],k[1]]))
-            #src_sorted = np.array(sorted(src, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-            #src_updated = self.fm.update_points(src_sorted)
-            #dst_sorted = np.array(sorted(self.em.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-            #print('fm_points2: \n ', src_updated)
-            #print('em_points2: \n ', dst_sorted)   
-            #self.tr_matrices[0] = self.fm.get_transform(src_updated, dst_sorted)
-            #print('New corr matrix: ', self.tr_matrices[0])
-
             self._update_fm_imview() 
         else:
             print('Select at least 4 points for refinement!')
