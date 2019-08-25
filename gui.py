@@ -886,8 +886,9 @@ class GUI(QtGui.QMainWindow):
         else:
             self.prev_btn.setEnabled(True)
             self.next_btn.setEnabled(True)
-        self.fm.calc_max_projection()
-        self._update_fm_imview()
+        if self.fm is not None:
+            self.fm.calc_max_projection()
+            self._update_fm_imview()
 
     def _calc_color_channels(self):
         channels = []
