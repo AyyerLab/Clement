@@ -213,47 +213,6 @@ class GUI(QtGui.QMainWindow):
         line.addWidget(self.overlay_btn)
         line.addStretch(1)
 
-        # ---- Flips and rotates
-        label = QtWidgets.QLabel('Flips:', self)
-        line.addWidget(label)
-
-        self.fliph = QtWidgets.QPushButton('\u2345', self)
-        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
-        font = self.fliph.font()
-        font.setPointSize(24)
-        self.fliph.setFixedWidth(width)
-        self.fliph.setFixedHeight(width)
-        self.fliph.setCheckable(True)
-        self.fliph.setFont(font)
-        self.fliph.toggled.connect(self._fliph)
-        line.addWidget(self.fliph)
-
-        self.flipv = QtWidgets.QPushButton('\u2356', self)
-        self.flipv.setCheckable(True)
-        self.flipv.setFixedWidth(width)
-        self.flipv.setFixedHeight(width)
-        self.flipv.setFont(font)
-        self.flipv.toggled.connect(self._flipv)
-        line.addWidget(self.flipv)
-
-        self.transpose = QtWidgets.QPushButton('\u292f', self)
-        self.transpose.setCheckable(True)
-        self.transpose.setFixedWidth(width)
-        self.transpose.setFixedHeight(width)
-        font.setPointSize(20)
-        self.transpose.setFont(font)
-        self.transpose.toggled.connect(self._trans)
-        line.addWidget(self.transpose)
-
-        self.rotate = QtWidgets.QPushButton('\u293e', self)
-        self.rotate.setCheckable(True)
-        self.rotate.setFixedWidth(width)
-        self.rotate.setFixedHeight(width)
-        self.rotate.setFont(font)
-        self.rotate.toggled.connect(self._rot)
-        line.addWidget(self.rotate)
-        line.addStretch(1)
-
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -309,6 +268,51 @@ class GUI(QtGui.QMainWindow):
         self.refine_btn.clicked.connect(self._refine)
         line.addWidget(self.select_btn)
         line.addWidget(self.refine_btn)
+        line.addStretch(1)
+ 
+        # ---- Flips and rotates
+        label = QtWidgets.QLabel('Flips:', self)
+        line.addWidget(label)
+
+        self.fliph = QtWidgets.QPushButton('\u2345', self)
+        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
+        font = self.fliph.font()
+        font.setPointSize(24)
+        self.fliph.setFixedWidth(width)
+        self.fliph.setFixedHeight(width)
+        self.fliph.setCheckable(True)
+        self.fliph.setFont(font)
+        self.fliph.toggled.connect(self._fliph)
+        self.fliph.setEnabled(False)
+        line.addWidget(self.fliph)
+
+        self.flipv = QtWidgets.QPushButton('\u2356', self)
+        self.flipv.setCheckable(True)
+        self.flipv.setFixedWidth(width)
+        self.flipv.setFixedHeight(width)
+        self.flipv.setFont(font)
+        self.flipv.toggled.connect(self._flipv)
+        self.flipv.setEnabled(False)
+        line.addWidget(self.flipv)
+
+        self.transpose = QtWidgets.QPushButton('\u292f', self)
+        self.transpose.setCheckable(True)
+        self.transpose.setFixedWidth(width)
+        self.transpose.setFixedHeight(width)
+        font.setPointSize(20)
+        self.transpose.setFont(font)
+        self.transpose.toggled.connect(self._trans)
+        self.transpose.setEnabled(False)
+        line.addWidget(self.transpose)
+
+        self.rotate = QtWidgets.QPushButton('\u293e', self)
+        self.rotate.setCheckable(True)
+        self.rotate.setFixedWidth(width)
+        self.rotate.setFixedHeight(width)
+        self.rotate.setFont(font)
+        self.rotate.toggled.connect(self._rot)
+        line.addWidget(self.rotate)
+        self.rotate.setEnabled(False)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -656,33 +660,10 @@ class GUI(QtGui.QMainWindow):
             other_obj = self.fm
             other_parent = self.fm_imview
 
-        if obj is None:
+        if obj is None or other_obj is None:
             print('Select data first')
             return
-        
-            if grid_btn.isChecked():    
-                if orig_btn.isChecked():
-                    self.show_grid_box[index] = True
-                    parent.addItem(self.grid_box[index])
-                    if self.show_tr_grid_box[index]:
-                        parent.removeItem(self.tr_grid_box[index])
-                        self.show_tr_grid_box[index] = False
-                else:
-                    self.show_tr_grid_box[index] = True
-                    parent.addItem(self.tr_grid_box[index])
-                    if self.show_grid_box[index]:
-                        parent.removeItem(self.grid_box[index])
-                        self.show_grid_box[index] = False 
-            else:
-                if orig_btn.isChecked():
-                    if self.show_grid_box[index]:
-                        parent.removeItem(self.grid_box[index])
-                        self.show_grid_box[index] = False
-                else:
-                    if self.show_tr_grid_box[index]:
-                        parent.removeItem(self.tr_grid_box[index])
-                        self.show_tr_grid_box[index]
-        
+       
         if obj == self.fm:
             check_obj = self.fm._tf_data is not None
             check_other = self.em._tf_data is not None or self.em.tf_region is not None
@@ -715,6 +696,7 @@ class GUI(QtGui.QMainWindow):
                 else:
                     print('Select and transform FM data first')
                     return
+
     def _affine_transform(self, parent):
         if parent == self.fm_imview:
             tag = 'FM'
@@ -723,6 +705,10 @@ class GUI(QtGui.QMainWindow):
             show_btn = self.show_btn
             rot_btn = self.rot_transform_btn
             self.refine_matrix = None
+            self.fliph.setEnabled(True)
+            self.flipv.setEnabled(True)
+            self.transpose.setEnabled(True)
+            self.rotate.setEnabled(True)
         else:
             tag = 'EM'
             index = 1

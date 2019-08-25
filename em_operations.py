@@ -160,7 +160,6 @@ class EM_ops():
         self.apply_transform(points_tmp)
 
     def calc_rot_transform(self, my_points):
-        #my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
@@ -178,7 +177,7 @@ class EM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Tf: ', self.tf_matrix)
 
-        cen = my_points.mean(0) + self.tf_corners.min(1)[:2] + (0,self.side_length/2)
+        cen = my_points.mean(0) # + self.tf_corners.min(1)[:2] #+ (0,self.side_length/2)
 
         points_tmp  = np.zeros_like(my_points)
         points_tmp[0] = cen + (0, 0)
@@ -221,11 +220,8 @@ class EM_ops():
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
             angles_deg = [angle * 180/np.pi for angle in angles]
-            #if not self.rotated:
             
-            for i in range(len(angles_deg)):
-                print(angles_deg[i])
-                print(np.abs((angles_deg[i]%90)-90))
+            #for i in range(len(angles_deg)):
             angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg] 
             print('angles_deg: ', angles_deg)
             if self.transformed:
