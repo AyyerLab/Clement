@@ -8,7 +8,9 @@ import numpy as np
 import pyqtgraph as pg
 import matplotlib.colors as cm
 import matplotlib.pyplot as plt
-
+import csv 
+import mrcfile as mrc
+from PIL import Image
 import em_operations
 import align_fm
 import affine_transform
@@ -30,13 +32,12 @@ class Merge(QtGui.QMainWindow,):
             self.colors.append('#808080')
         else:
             self.data = np.copy(self.parent.fm.data)
-        print(self.data.shape)
+        self.curr_mrc_folder = self.parent.curr_mrc_folder
         self.num_channels = self.parent.num_channels
         self.ind = self.parent.ind
-        print(self.channels)
-        print(self.colors)
         self.color_data = None
         self.overlay = True
+        self.clicked_points = []
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self._init_ui()
     
@@ -56,7 +57,7 @@ class Merge(QtGui.QMainWindow,):
         # -- File menu
         filemenu = menubar.addMenu('&File')
         action = QtWidgets.QAction('&Save merged image', self)
-        action.triggered.connect(self._save_merged_image)
+        action.triggered.connect(self._save_data)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
@@ -66,6 +67,7 @@ class Merge(QtGui.QMainWindow,):
         self.imview = pg.ImageView()
         self.imview.ui.roiBtn.hide()
         self.imview.ui.menuBtn.hide()
+        self.imview.scene.sigMouseClicked.connect(lambda evt: self._imview_clicked(evt))
         self.imview.setImage(np.sum(self.data,axis=2), levels=(self.data.min(), self.data.max()//3))   
         layout.addWidget(self.imview)
       
@@ -171,6 +173,36 @@ class Merge(QtGui.QMainWindow,):
         line.addWidget(self.overlay_btn)
         line.addStretch(1)
 
+        # Select and save coordinates
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Select and save coordinates', self)
+        line.addWidget(label)
+        self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
+        self.select_btn.setCheckable(True)
+        #self.select_btn.toggled.connect(self._imview_clicked)
+        self.save_btn = QtWidgets.QPushButton('Save data')
+        self.save_btn.clicked.connect(self._save_data)
+        line.addWidget(self.select_btn)
+        line.addWidget(self.save_btn)
+        line.addStretch(1)
+
+    def _imview_clicked(self, event):
+        if self.select_btn.isChecked():
+            if event.button() == QtCore.Qt.RightButton:
+                event.ignore()
+            size = 0.01 * self.data.shape[0]
+
+            pos = self.imview.getImageItem().mapFromScene(event.pos())
+            pos.setX(pos.x() - size/2)
+            pos.setY(pos.y() - size/2)
+            item = self.imview.getImageItem()
+            point = pg.CircleROI(pos, size, parent=item, movable=False)
+            point.setPen(0,255,0)
+            point.removeHandle(0)
+            self.imview.addItem(point)
+            self.clicked_points.append([pos.x(),pos.y()])
+
     def _show_overlay(self,checked):
         self.overlay = not self.overlay
         self._update_imview()
@@ -218,17 +250,39 @@ class Merge(QtGui.QMainWindow,):
         self.imview.setImage(self.color_data, levels=levels)
         self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-    def _save_merged_image(self):
+    def _save_data(self):
         if self.data is None:
             print('No image to save!')
-        else:
-            if self.curr_mrc_folder is None:
-                self.curr_mrc_folder = os.getcwd()
-            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', parent.curr_mrc_folder, '*.tif')
-            #self.curr_mrc_folder = os.path.dirname(file_name)
-            #if file_name is not '':
-            #    self.em.save_merge(file_name)
+            return
+        if len(self.clicked_points) == 0:
+            print('No coordinates selected!')
+            return
+        if self.curr_mrc_folder is None:
+            self.curr_mrc_folder = os.getcwd()
+        file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder, '*.tif')
+        if file_name is not '':
+            img = Image.fromarray(self.data,mode='F')
+            img.save(file_name+'.tif')
+            self._save_merge(file_name)
+            self._save_coordinates(file_name)
     
+    def _save_merge(self, fname):
+        try:
+            with mrc.new(fname+'.mrc', overwrite=True) as f:
+                f.set_data(self.data.astype(np.float32))
+                f.update_header_stats()
+        except PermissionError:
+            pass
+
+    def _save_coordinates(self, fname):
+        try:
+            with open(fname+'.txt', 'a') as f:
+                csv.writer(f, delimiter=' ').writerows(['Selected region: ', self.parent.em.selected_region])
+                csv.writer(f, delimiter=' ').writerows(self.clicked_points)
+        except PermissionError:
+            print('Permission error! Choose a different directory!')
+            self._save_data()
+            
     def _show_max_projection(self):
         if self.max_proj_btn.isChecked():
             self.prev_btn.setEnabled(False)

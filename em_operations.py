@@ -45,6 +45,7 @@ class EM_ops():
         self.orig_points = None
         self.orig_points_region = None
         self.tf_points_region = None
+        self.selected_region = None
         self.points = None
         self.assembled = True
 
@@ -307,12 +308,12 @@ class EM_ops():
 
     def select_region(self,coordinate,transformed):
         self.assembled = False
-        counter = self.get_selected_region(coordinate, transformed)
+        self.selected_region = self.get_selected_region(coordinate, transformed)
         self.transformed = False
-        if counter is None:
+        if self.selected_region is None:
             return
         else:
-            self.orig_region  = np.copy(self.data_highres[counter].T)
+            self.orig_region  = np.copy(self.data_highres[self.selected_region].T)
   
     @classmethod
     def get_transform(self, source, dest):

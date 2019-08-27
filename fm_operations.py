@@ -87,10 +87,11 @@ class FM_ops():
     def __del__(self):
         javabridge.kill_vm()
 
-    def _update_data(self):
+    def _update_data(self,update_points=True):
         if self.transformed and (self._tf_data is not None or self.tf_max_proj_data is not None):
             if self.show_max_proj:
                 self.data = np.copy(self.tf_max_proj_data)
+                print('here')
             else:
                 self.data = np.copy(self._tf_data)
             self.points = np.copy(self.new_points)
@@ -103,37 +104,28 @@ class FM_ops():
         
         if self.transp:
             self.data = np.transpose(self.data, (1, 0, 2))
+        if self.rot:
+            self.data = np.rot90(self.data, axes=(0,1))
         if self.fliph:
             self.data = np.flip(self.data, axis=0)
         if self.flipv:
             self.data = np.flip(self.data, axis=1)
-        if self.rot:
-            if (self.fliph and not self.flipv) or (self.flipv and not self.fliph):
-                self.data = np.rot90(self.data, axes=(1,0))
-            else:
-                self.data = np.rot90(self.data, axes=(0, 1)) 
-        if self.points is not None: 
-            self.points = self.update_points(self.points)
+        if self.points is not None:
+            if update_points:
+                self.points = self.update_points(self.points)
     
     def update_points(self,points):
         if self.transp:
             points = np.array([np.flip(point) for point in points])
+        if self.rot:
+            temp = self.data.shape[0] - points[:,1]
+            points[:,1] = points[:,0]
+            points[:,0] = temp
         if self.fliph:
             points[:,0] = self.data.shape[0] - points[:,0]
         if self.flipv:
             points[:,1] = self.data.shape[1] - points[:,1]
-        if self.rot:
-            if (self.fliph and self.flipv) or (not self.fliph and not self.flipv):
-                temp = self.data.shape[0] - points[:,1]
-                points[:,1] = points[:,0]
-                points[:,0] = temp
-            else:
-                temp = self.data.shape[1] - points[:,0]
-                points[:,0] = points[:,1]
-                points[:,1] = temp
-
         print('Updating points \n', points)
-
         return points
 
     def flip_horizontal(self, do_flip):
@@ -368,6 +360,9 @@ class FM_ops():
             return tf_matrix
 
     def apply_transform(self):
+        print('history: ', self.history)
+        if not self.transformed:
+            self.history = []
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
@@ -381,19 +376,16 @@ class FM_ops():
             print('\r', self._tf_data.shape)
             self.new_points = np.array([point + self.transform_shift for point in self.new_points])
             print(1)
-            
+            self.history.append(self.tf_matrix)
+             
         elif self.show_max_proj and self.transformed:
-            self.cum_matrix = self.history[0]
-            print('tf_matrix: \n' , self.tf_matrix)
-            for i in range(1,len(self.history)):
-                self.cum_matrix = self.history[i] @ self.cum_matrix
-
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.cum_matrix), order=1, output_shape=self._tf_shape)
+                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.history[0]), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
             print('\r', self.max_proj_data.shape)
             print(2)
+            self._update_data(update_points=False)
         
         else:
             manager = mp.Manager()
@@ -411,13 +403,13 @@ class FM_ops():
             print('\r', self._tf_data.shape)
             print(3)
             self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+            self.history.append(self.tf_matrix)
             
         if self.show_max_proj:
             self.data = np.copy(self.tf_max_proj_data)
         else:
             self.data = np.copy(self._tf_data)
         
-        self.history.append(self.tf_matrix)
         self.transformed = True 
       
     def apply_transform_mp(self,k,data,return_dict):
