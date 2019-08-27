@@ -754,6 +754,7 @@ class GUI(QtGui.QMainWindow):
             self.points_corr[0] = []
             self.points_corr[1] = []
             self.refine = True
+            #self._show_grid(None,self.fm_imview)
             self._recalc_grid(self.fm_imview)
             self._update_fm_imview() 
         else:

@@ -10,7 +10,8 @@ import matplotlib.colors as cm
 import matplotlib.pyplot as plt
 import csv 
 import mrcfile as mrc
-from PIL import Image
+import imageio
+
 import em_operations
 import align_fm
 import affine_transform
@@ -261,8 +262,7 @@ class Merge(QtGui.QMainWindow,):
             self.curr_mrc_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder, '*.tif')
         if file_name is not '':
-            img = Image.fromarray(self.data,mode='F')
-            img.save(file_name+'.tif')
+            imageio.imwrite(file_name+'.tif',data)
             self._save_merge(file_name)
             self._save_coordinates(file_name)
     
