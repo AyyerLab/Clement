@@ -54,6 +54,7 @@ class FM_ops():
         self.merged = None
         self.history = []
         self.refine_history = []
+        self.shift_history = [np.zeros(2)]
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
@@ -431,15 +432,18 @@ class FM_ops():
                     self.cum_matrix = self.history[i] @ self.cum_matrix
             else:
                 self.cum_matrix = self.refine_history[-1]
+            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
+            #self.refine_matrix[:2,2] += self.shift_history[-1] 
             nx, ny = self._orig_data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            tf_corners = np.dot(self.cum_matrix, corners)
-            tf_shift = tf_corners.min(1)[:2]
-            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
             refine_corners = np.dot(self.refine_matrix, corners)
             self.refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
-            self.refine_shift = refine_corners.min(1)[:2]-tf_shift
-            self.refine_matrix[:2, 2] -= self.refine_shift
+            self.refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
+            
+            self.refine_shift = -refine_corners.min(1)[:2] - self.shift_history[-1]
+            print('refine_corners.min(1): ', refine_corners.min(1)[:2])
+            print('self.shift_history: ', self.shift_history)
+
             self.refine_grid()
             if self.show_max_proj: 
                 self.tf_max_proj_data = np.empty(self.refine_shape+(self._orig_data.shape[-1],))
@@ -457,12 +461,14 @@ class FM_ops():
                 print('\r', self._tf_data.shape)
             
             self.refine_history.append(self.refine_matrix)
-            self.corr_matrix = np.copy(self.corr_matrix_new)
+            #self.corr_matrix = np.copy(self.corr_matrix_new)
+            #self.shift_history = refine_corners.min(1)[:2] 
+            self.shift_history.append(refine_corners.min(1)[:2])
             self._update_data()
             
     def refine_grid(self):
         if self._tf_data is not None:
-            self.new_points = np.array([point - self.refine_shift for point in self.new_points])
+            self.new_points = np.array([point + self.refine_shift for point in self.new_points])
 
     def merge(self, em_data,em_points):        
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
