@@ -705,6 +705,11 @@ class GUI(QtGui.QMainWindow):
             show_btn = self.show_btn
             rot_btn = self.rot_transform_btn
             self.refine_matrix = None
+
+            self.fliph.setChecked(False)
+            self.flipv.setChecked(False)
+            self.transpose.setChecked(False)
+            self.rotate.setChecked(False)
             self.fliph.setEnabled(True)
             self.flipv.setEnabled(True)
             self.transpose.setEnabled(True)
@@ -802,7 +807,7 @@ class GUI(QtGui.QMainWindow):
                 print('Transformed?', obj.transformed)
                 obj.toggle_original()    
                 self._recalc_grid(parent,toggle_orig=True)
-            updater()
+                updater()
 
     def _set_theme(self, name):
         if name == 'none':

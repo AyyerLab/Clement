@@ -53,6 +53,7 @@ class FM_ops():
         self.refine_points = None
         self.merged = None
         self.history = []
+        self.refine_history = []
         javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
@@ -130,47 +131,47 @@ class FM_ops():
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip 
-        if do_flip:
-            self.history.append(self.fliph_matrix)
-        else:
-            if np.array_equal(self.history[-1], self.fliph_matrix):
-                del self.history[-1]
-            else:
-                self.history.append(np.linalg.inv(self.fliph_matrix))
+        #if do_flip:
+        #    self.history.append(self.fliph_matrix)
+        #else:
+        #    if np.array_equal(self.history[-1], self.fliph_matrix):
+        #        del self.history[-1]
+        #    else:
+        #        self.history.append(np.linalg.inv(self.fliph_matrix))
         self._update_data()
 
     def flip_vertical(self, do_flip):
         self.flipv = do_flip
-        if do_flip:
-            self.history.append(self.flipv_matrix)
-        else:
-            if np.array_equal(self.history[-1], self.flipv_matrix):
-                del self.history[-1]
-            else:
-                self.history.append(np.linalg.inv(self.flipv_matrix))
+        #if do_flip:
+        #    self.history.append(self.flipv_matrix)
+        #else:
+        #    if np.array_equal(self.history[-1], self.flipv_matrix):
+        #        del self.history[-1]
+        #    else:
+        #        self.history.append(np.linalg.inv(self.flipv_matrix))
         self._update_data()
 
     def transpose(self, do_transp):
         self.transp = do_transp
-        if do_transp:
-            self.history.append(self.transp_matrix)
-        else:
-            if np.array_equal(self.history[-1], self.transp_matrix):
-                del self.history[-1]
-            else:
-                self.history.append(np.linalg.inv(self.transp_matrix))
+        #if do_transp:
+        #    self.history.append(self.transp_matrix)
+        #else:
+        #    if np.array_equal(self.history[-1], self.transp_matrix):
+        #        del self.history[-1]
+        #    else:
+        #        self.history.append(np.linalg.inv(self.transp_matrix))
         self._update_data()
 
     def rotate_clockwise(self, do_rot):
         self.rot = do_rot 
-        if do_rot:
-            self.history.append(self.rot_matrix)
-        else:
-            if np.array_equal(self.history[-1], self.rot_matrix):
-                del self.history[-1]
-            else:
-                self.history.append(np.linalg.inv(self.rot_matrix))
-        print('History: ', self.history)
+        #if do_rot:
+        #    self.history.append(self.rot_matrix)
+        #else:
+        #    if np.array_equal(self.history[-1], self.rot_matrix):
+        #        del self.history[-1]
+        #    else:
+        #        self.history.append(np.linalg.inv(self.rot_matrix))
+        #print('History: ', self.history)
         self._update_data()
 
     def toggle_original(self):
@@ -263,6 +264,9 @@ class FM_ops():
         #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
    
     def calc_affine_transform(self, my_points): 
+        if not self.transformed:
+            self.history = []
+            self.refine_history = []
         my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 
@@ -361,8 +365,7 @@ class FM_ops():
 
     def apply_transform(self):
         print('history: ', self.history)
-        if not self.transformed:
-            self.history = []
+
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
@@ -422,44 +425,45 @@ class FM_ops():
     def refine(self, source, dst):
         if self._tf_data is not None:
             self.corr_matrix_new = tf.estimate_transform('affine',source,dst).params
-            self.cum_matrix = self.history[0]
-            #for i in range(1,len(self.history)):
-            #    self.cum_matrix = self.history[i] @ self.cum_matrix
-            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
-            self.refine_matrix[:2,2] += self.tf_corners.min(1)[:2]
+            if len(self.refine_history) == 0: 
+                self.cum_matrix = self.history[0]
+                for i in range(1,len(self.history)):
+                    self.cum_matrix = self.history[i] @ self.cum_matrix
+            else:
+                self.cum_matrix = self.refine_history[-1]
             nx, ny = self._orig_data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+            tf_corners = np.dot(self.cum_matrix, corners)
+            tf_shift = tf_corners.min(1)[:2]
+            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
             refine_corners = np.dot(self.refine_matrix, corners)
-            refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
-            self.refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
-            print('New tf_matrix: \n', self.refine_matrix)
+            self.refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
+            self.refine_shift = refine_corners.min(1)[:2]-tf_shift
+            self.refine_matrix[:2, 2] -= self.refine_shift
             self.refine_grid()
-            refine_shift = -refine_corners.min(1)[:2]
             if self.show_max_proj: 
-                self.tf_max_proj_data = np.empty(refine_shape+(self._orig_data.shape[-1],))
+                self.tf_max_proj_data = np.empty(self.refine_shape+(self._orig_data.shape[-1],))
                 for i in range(self._orig_data.shape[-1]):
-                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=refine_shape)
+                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
                     sys.stderr.write('\r%d'%i)
                 print('\r', self._tf_data.shape)
                 
                 self.data = np.copy(self.tf_max_proj_data)
             else:
-                self._tf_data = np.empty(refine_shape+(self._orig_data.shape[-1],))
+                self._tf_data = np.empty(self.refine_shape+(self._orig_data.shape[-1],))
                 for i in range(self._orig_data.shape[-1]):
-                    self._tf_data[:,:,i] = ndi.affine_transform(self._orig_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=refine_shape)
+                    self._tf_data[:,:,i] = ndi.affine_transform(self._orig_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
                     sys.stderr.write('\r%d'%i)
                 print('\r', self._tf_data.shape)
-                print(self.fliph,self.flipv,self.transp,self.rot)
-                #self.data = np.copy(self._tf_data)
-                self._update_data()
- 
+            
+            self.refine_history.append(self.refine_matrix)
+            self.corr_matrix = np.copy(self.corr_matrix_new)
+            self._update_data()
+            
     def refine_grid(self):
         if self._tf_data is not None:
-            for i in range(len(self.points)):
-                point = [self.orig_points[i][0],self.orig_points[i][1],1]
-                self.new_points[i] = (self.refine_matrix @ point)[:2]
-            self.points = np.copy(self.new_points)
-    
+            self.new_points = np.array([point - self.refine_shift for point in self.new_points])
+
     def merge(self, em_data,em_points):        
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         dst = np.array(sorted(em_points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
@@ -476,7 +480,6 @@ class FM_ops():
         for i in range(self.data.shape[-1]):
             print(i)
             self.merge_fm_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self._merge_fm_shape)
-
         fm_shift = np.zeros(2).astype(int)
         em_shift = np.zeros(2).astype(int)
         if shift[0] < 0:
