@@ -1079,10 +1079,10 @@ class GUI(QtGui.QMainWindow):
                 points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
                 self.em.select_region(np.array(points_obj),transformed)
                 self._hide_boxes()
-                if ((transformed and self.em.tf_region is None) or
-                   (not transformed and self.em.orig_region is None)):
-                    print('Ooops, something went wrong. Try again!')
-                    return
+                #if ((transformed and self.em.tf_region is None) or
+                #   (not transformed and self.em.orig_region is None)):
+                #    print('Ooops, something went wrong. Try again!')
+                #    return
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False) 
                 self.show_grid_btn_em.setEnabled(False)
