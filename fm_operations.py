@@ -459,7 +459,7 @@ class FM_ops():
             if self.show_max_proj: 
                 self.tf_max_proj_data = np.empty(self.refine_shape+(self.data.shape[-1],))
                 for i in range(self.data.shape[-1]):
-                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.tf_max_proj_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
+                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
                     sys.stderr.write('\r%d'%i)
                 print('\r', self._tf_data.shape)
                 
