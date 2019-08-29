@@ -431,41 +431,43 @@ class FM_ops():
             sys.stderr.write('\r%d'%i)
         return_dict[0] = np.transpose(np.array(channel_list),(1,2,0))
     
-    def refine(self, source, dst):
+    def refine(self, source, dst, em_grid_points):
         if self._tf_data is not None:
             self.corr_matrix_new = tf.estimate_transform('affine',source,dst).params
-            if len(self.refine_history) == 0: 
-                self.cum_matrix = self.history[0]
-                for i in range(1,len(self.history)):
-                    self.cum_matrix = self.history[i] @ self.cum_matrix
-            else:
-                self.cum_matrix = self.refine_history[-1]
-            
-            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix) @ self.cum_matrix
-            self.refine_matrix[:2,2] += self.shift_history[-1]
-            nx, ny = self._orig_data.shape[:-1]
+            #if len(self.refine_history) == 0: 
+            #    self.cum_matrix = self.history[0]
+            #    for i in range(1,len(self.history)):
+            #        self.cum_matrix = self.history[i] @ self.cum_matrix
+            #else:
+            #    self.cum_matrix = self.refine_history[-1]
+           
+            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix) 
+            #self.refine_matrix =  self.refine_step @ self.cum_matrix
+            #self.refine_matrix[:2,2] += self.shift_history[-1]
+            nx, ny = self.data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
             refine_corners = np.dot(self.refine_matrix, corners)
             self.refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
             #shift_corrected = self.correct_shift(refine_corners.min(1)[:2])
+            self.refine_tmp = np.copy(self.refine_matrix)
             self.refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
-            self.refine_shift = -(refine_corners.min(1)[:2] - self.corrected_shift_history[-1])
+            #self.refine_shift = -(refine_corners.min(1)[:2] - self.corrected_shift_history[-1])
             #print('shift_corrected: ', shift_corrected)
             #print('refine_corners.min(1): ', refine_corners.min(1)[:2])
             #print('self.refine_shift: ', self.refine_shift)
-            self.refine_grid()
+            self.refine_grid(em_grid_points)
             if self.show_max_proj: 
-                self.tf_max_proj_data = np.empty(self.refine_shape+(self._orig_data.shape[-1],))
-                for i in range(self._orig_data.shape[-1]):
-                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
+                self.tf_max_proj_data = np.empty(self.refine_shape+(self.data.shape[-1],))
+                for i in range(self.data.shape[-1]):
+                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.tf_max_proj_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
                     sys.stderr.write('\r%d'%i)
                 print('\r', self._tf_data.shape)
                 
                 self.data = np.copy(self.tf_max_proj_data)
             else:
-                self._tf_data = np.empty(self.refine_shape+(self._orig_data.shape[-1],))
-                for i in range(self._orig_data.shape[-1]):
-                    self._tf_data[:,:,i] = ndi.affine_transform(self._orig_data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
+                self._tf_data = np.empty(self.refine_shape+(self.data.shape[-1],))
+                for i in range(self.data.shape[-1]):
+                    self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
                     sys.stderr.write('\r%d'%i)
                 print('\r', self._tf_data.shape)
             
@@ -474,18 +476,11 @@ class FM_ops():
             #self.corrected_shift_history.append(shift_corrected)
             self._update_data()
             
-    def refine_grid(self):
+    def refine_grid(self, em_points):
         if self._tf_data is not None:
-            print('self.new_points: ', self.new_points)
-            point = np.array([self.orig_points[0][0],self.orig_points[0][1],1])
-            new_point = (self.refine_matrix @ point)[:2]
-            self.new_points[0] = new_point + (0, 0)
-            self.new_points[1] = new_point + (self.side_length, 0)
-            self.new_points[2] = new_point + (self.side_length, self.side_length)
-            self.new_points[3] = new_point + (0,self.side_length)
-
-            #self.new_points = np.array([point + self.refine_shift for point in self.new_points])
-            #self.new_points = np.array([point + self.refine_shift for point in self.new_points])
+            #print(self.refine_step[:2,2])
+            self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
+            self.new_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
             #pts = [[point[0],point[1],1] for point in self.orig_points]
             #for i in range(len(pts)):
             #    self.new_points[i] = (self.refine_matrix @ pts[i])[:2] 
