@@ -754,6 +754,7 @@ class GUI(QtGui.QMainWindow):
             dst = np.array([[point.x(),point.y()] for point in self.points_corr[1]])
             dst = np.array([point + self.cen for point in dst])
             self.fm.refine(src_updated,dst)
+            #self.fm.refine(src,dst)
             [self.fm_imview.removeItem(point) for point in self.points_corr[0]]
             [self.em_imview.removeItem(point) for point in self.points_corr[1]]
             self.points_corr[0] = []
