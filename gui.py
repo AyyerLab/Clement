@@ -1002,10 +1002,16 @@ class GUI(QtGui.QMainWindow):
             self.assemble_btn.setEnabled(True) 
             
     def _update_em_imview(self):
-        vr = self.em_imview.getImageItem().getViewBox().targetRect()
-        levels = self.em_imview.getHistogramWidget().item.getLevels()
+        old_shape = self.em_imview.image.shape
+        new_shape = self.em.data.shape
+        if old_shape == new_shape:
+            vr = self.em_imview.getImageItem().getViewBox().targetRect()
+            levels = self.em_imview.getHistogramWidget().item.getLevels()
+        else:
+            levels=None
         self.em_imview.setImage(self.em.data, levels=levels)
-        self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if old_shape == new_shape:
+            self.em_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
         if self.show_assembled_btn.isChecked():
             if self.show_boxes:
