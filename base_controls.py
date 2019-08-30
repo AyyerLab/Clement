@@ -89,11 +89,12 @@ class BaseControls(QtWidgets.QWidget):
                 self.imview.addItem(point)
                 self.points_corr.append(point)
                 
-                point_updated = self.ops.update_points(np.array((point.x(),point.y())).reshape(1,2))
+                #point_updated = self.ops.update_points(np.array((point.x(),point.y())).reshape(1,2))
                 #self.points_corr.append(point_updated[0,:])
 
                 # Coordinates in clicked image
-                init = np.array([point_updated[0,0],point_updated[0,1], 1])
+                init = np.array([point.x(),point.y(), 1])
+                #init = np.array([point_updated[0,0],point_updated[0,1], 1])
                 transf = np.dot(self.tr_matrices, init)
                 self.cen = self.other.ops.side_length / 100
                 pos = QtCore.QPointF(transf[0]-self.cen, transf[1]-self.cen)  
@@ -220,10 +221,12 @@ class BaseControls(QtWidgets.QWidget):
                     [self.other.imview.removeItem(point) for point in self.other.points_corr]
                     self.points_corr = []
                     self.other.points_corr = []
+                #src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
+                #src_updated = self.ops.update_points(src_sorted)
+                #src_updated = self.ops.update_points(self.ops.points)
                 src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-                src_updated = self.ops.update_points(src_sorted)
                 dst_sorted = np.array(sorted(self.other.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-                self.tr_matrices = self.ops.get_transform(src_updated, dst_sorted)
+                self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%self.tag)
         else:
@@ -288,10 +291,11 @@ class BaseControls(QtWidgets.QWidget):
         if len(self.points_corr) > 3:
             src = np.array([[point.x(),point.y()] for point in self.points_corr])
             #src = np.array(self.points_corr)
-            src_updated = self.ops.update_points(src)
+            #src_updated = self.ops.update_points(src)
             dst = np.array([[point.x(),point.y()] for point in self.other.points_corr])
             dst = np.array([point + self.cen for point in dst])
-            self.ops.refine(src_updated, dst,self.other.ops.points)
+            #self.ops.refine(src_updated, dst,self.other.ops.points)
+            self.ops.refine(src, dst,self.other.ops.points)
             [self.imview.removeItem(point) for point in self.points_corr]
             [self.other.imview.removeItem(point) for point in self.other.points_corr]
             self.points_corr = []
