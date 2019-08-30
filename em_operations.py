@@ -283,29 +283,31 @@ class EM_ops():
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
         if not self.transformed:
-            if self.mcounts[coordinate[0],coordinate[1]] > 1:
-                print('Selected region ambiguous. Try again!')
-                return
-            else:
-                counter = 0
-                my_bool = False
-                while not my_bool:
-                    x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
-                    y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
-                    #counter += 1
-                    if coordinate[0] in x_range and coordinate[1] in y_range:
-                        my_bool = True
-                    counter += 1
-                print('Selected region: ', counter-1)
-                return counter - 1
+            if (coordinate[0] < self.mcounts.shape[0]) and (coordinate[1] < self.mcounts.shape[1]):
+                if self.mcounts[coordinate[0],coordinate[1]] > 1:
+                    print('Selected region ambiguous. Try again!')
+                    return
+                else:
+                    counter = 0
+                    my_bool = False
+                    while not my_bool:
+                        x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
+                        y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
+                        #counter += 1
+                        if coordinate[0] in x_range and coordinate[1] in y_range:
+                            my_bool = True
+                        counter += 1
+                    print('Selected region: ', counter-1)
+                    return counter - 1
         else:
-            if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
-                print('Selected region ambiguous. Try again!')
-                return
-            else:
-                counter = int(self.tf_count_map[coordinate[0],coordinate[1]])
-                print('Selected region: ', counter)
-                return counter
+            if (coordinate[0] < self.tf_count_map.shape[0]) and (coordinate[1] < self.tf_count_map.shape[1]):
+                if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
+                    print('Selected region ambiguous. Try again!')
+                    return
+                else:
+                    counter = int(self.tf_count_map[coordinate[0],coordinate[1]])
+                    print('Selected region: ', counter)
+                    return counter
 
     def select_region(self,coordinate,transformed):
         self.assembled = False

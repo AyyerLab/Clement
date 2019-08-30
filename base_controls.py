@@ -22,7 +22,7 @@ class BaseControls(QtWidgets.QWidget):
         self.tr_boxes = []
         self.original_help = True
         self.redo_tr = False
-
+        self.box_coordinate = None
         self.setContentsMargins(0, 0, 0, 0)
         
     def _init_ui(self):
@@ -227,15 +227,7 @@ class BaseControls(QtWidgets.QWidget):
                 print('Select and transform both data first')
 
     def _affine_transform(self, parent):
-        if hasattr(self, 'fliph'):
-            self.fliph.setChecked(False)
-            self.fliph.setEnabled(True)
-            self.flipv.setChecked(False)
-            self.flipv.setEnabled(True)
-            self.transpose.setChecked(False)
-            self.transpose.setEnabled(True)
-            self.rotate.setChecked(False)
-            self.rotate.setEnabled(True)
+
  
         if self.show_btn.isChecked():
             grid_box = self.grid_box
@@ -244,6 +236,16 @@ class BaseControls(QtWidgets.QWidget):
             grid_box = self.tr_grid_box
 
         if grid_box is not None:
+            if hasattr(self, 'fliph'):
+                self.fliph.setChecked(False)
+                self.fliph.setEnabled(True)
+                self.flipv.setChecked(False)
+                self.flipv.setEnabled(True)
+                self.transpose.setChecked(False)
+                self.transpose.setEnabled(True)
+                self.rotate.setChecked(False)
+                self.rotate.setEnabled(True)
+
             points_obj = grid_box.getState()['points']
             points = np.array([list((point[0], point[1])) for point in points_obj])
             if self.rot_transform_btn.isChecked():

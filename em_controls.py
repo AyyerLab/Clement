@@ -38,11 +38,13 @@ class EMControls(BaseControls):
         step_label.setText('Downsampling factor:')
         self.step_box = QtWidgets.QLineEdit(self)
         self.step_box.setText('10')
+        self.step_box.setEnabled(False)
         line.addWidget(step_label)
         line.addWidget(self.step_box)
         line.addStretch(1)
         self.assemble_btn = QtWidgets.QPushButton('Assemble', self)
         self.assemble_btn.clicked.connect(self._assemble_mrc)
+        self.assemble_btn.setEnabled(False)
         line.addWidget(self.assemble_btn)
 
         # ---- Define and align to grid
@@ -53,12 +55,15 @@ class EMControls(BaseControls):
         self.define_btn = QtWidgets.QPushButton('Define Grid', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(self._define_grid_toggled)
+        self.define_btn.setEnabled(False)
         line.addWidget(self.define_btn)
         self.transform_btn = QtWidgets.QPushButton('Transform image', self)
         self.transform_btn.clicked.connect(self._affine_transform)
+        self.transform_btn.setEnabled(False)
         line.addWidget(self.transform_btn)
         self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
         self.rot_transform_btn.stateChanged.connect(self._allow_rotation_only)
+        self.rot_transform_btn.setEnabled(False)
         line.addWidget(self.rot_transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn.setEnabled(False)
@@ -80,7 +85,7 @@ class EMControls(BaseControls):
         self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
         self.select_region_btn.setCheckable(True)
         self.select_region_btn.toggled.connect(self._select_box)
-        #self.select_region_btn.setEnabled(False)
+        self.select_region_btn.setEnabled(False)
         self.show_assembled_btn = QtWidgets.QCheckBox('Show assembled image',self)
         self.show_assembled_btn.stateChanged.connect(self._show_assembled)
         self.show_assembled_btn.setChecked(True)
@@ -96,6 +101,7 @@ class EMControls(BaseControls):
         line.addWidget(label)
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
+        self.select_btn.setEnabled(False)
         self.select_btn.toggled.connect(self._define_corr_toggled)
         #self.refine_btn = QtWidgets.QPushButton('Refinement')
         #self.refine_btn.clicked.connect(self._refine)
@@ -126,7 +132,8 @@ class EMControls(BaseControls):
         if file_name is not '':
             self.mrc_fname.setText(file_name)
             self.assemble_btn.setEnabled(True) 
-            
+            self.step_box.setEnabled(True)
+
     def _update_imview(self):
         old_shape = self.imview.image.shape
         new_shape = self.ops.data.shape
@@ -154,6 +161,13 @@ class EMControls(BaseControls):
             self.ops.parse(self.mrc_fname.text())
             self.ops.assemble()
             self.imview.setImage(self.ops.data)
+            self.define_btn.setEnabled(True)
+            self.transform_btn.setEnabled(True)
+            self.rot_transform_btn.setEnabled(True)
+            self.select_region_btn.setEnabled(True)
+            self.select_btn.setEnabled(True)
+     
+
         else:
             print('You have to choose an .mrc file first!')
     
@@ -210,10 +224,10 @@ class EMControls(BaseControls):
                 points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
                 self.ops.select_region(np.array(points_obj),transformed)
                 self._hide_boxes()
-                #if ((transformed and self.ops.tf_region is None) or
-                #   (not transformed and self.ops.orig_region is None)):
-                #    print('Ooops, something went wrong. Try again!')
-                #    return
+                if ((transformed and self.ops.tf_region is None) or
+                   (not transformed and self.ops.orig_region is None)):
+                    print('Ooops, something went wrong. Try again!')
+                    return
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False) 
                 self.show_grid_btn.setEnabled(False)
@@ -239,7 +253,6 @@ class EMControls(BaseControls):
                 self.show_grid_btn.setEnabled(True)
                 self.show_grid_btn.setChecked(True)
 
-            
             self.select_region_btn.setEnabled(True) 
                            
             if self.ops._tf_data is None:
