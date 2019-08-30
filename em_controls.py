@@ -128,10 +128,14 @@ class EMControls(BaseControls):
             self.assemble_btn.setEnabled(True) 
             
     def _update_imview(self):
-        vr = self.imview.getImageItem().getViewBox().targetRect()
+        old_shape = self.imview.image.shape
+        new_shape = self.ops.data.shape
+        if old_shape == new_shape:
+            vr = self.imview.getImageItem().getViewBox().targetRect()
         levels = self.imview.getHistogramWidget().item.getLevels()
         self.imview.setImage(self.ops.data, levels=levels)
-        self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if old_shape == new_shape:
+            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
         if self.show_assembled_btn.isChecked():
             if self.show_boxes:
