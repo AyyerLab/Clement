@@ -10,7 +10,6 @@ from em_controls import EMControls
 from fm_controls import FMControls
 import fm_operations # To kill javabridge on exit
 import align_fm
-from popup import Merge
 
 warnings.simplefilter('ignore', category=FutureWarning)
 

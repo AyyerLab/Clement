@@ -7,6 +7,7 @@ import matplotlib.colors as cm
 
 from base_controls import BaseControls
 from fm_operations import FM_ops
+from popup import Merge
 
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
