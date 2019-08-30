@@ -27,9 +27,9 @@ class Merge(QtGui.QMainWindow,):
             self.colors.append('#808080')
         else:
             self.data = np.copy(self.parent.fm.data)
-        self.curr_mrc_folder = self.parent.curr_mrc_folder
-        self.num_channels = self.parent.num_channels
-        self.ind = self.parent.ind
+        self.curr_mrc_folder = self.parent.emcontrols.curr_mrc_folder
+        self.num_channels = self.parent.fmcontrols.num_channels
+        self.ind = self.parent.fmcontrols.ind
         self.color_data = None
         self.overlay = True
         self.clicked_points = []
@@ -79,7 +79,7 @@ class Merge(QtGui.QMainWindow,):
 
         label = QtWidgets.QLabel('FM image:', self)
         line.addWidget(label)
-        self.fm_fname  = self.parent.fm_fname.text()
+        self.fm_fname  = self.parent.fmcontrols.fm_fname.text()
         label = QtWidgets.QLabel(self.fm_fname, self)
         line.addWidget(label, stretch=1)
         self.max_proj_btn = QtWidgets.QCheckBox('Max projection')
@@ -98,7 +98,7 @@ class Merge(QtGui.QMainWindow,):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('EM Image:', self)
         line.addWidget(label)
-        self.em_fname = self.parent.mrc_fname.text()
+        self.em_fname = self.parent.emcontrols.mrc_fname.text()
         label = QtWidgets.QLabel(self.em_fname, self)
         line.addWidget(label, stretch=1)
 

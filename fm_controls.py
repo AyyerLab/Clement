@@ -7,7 +7,6 @@ import matplotlib.colors as cm
 
 from base_controls import BaseControls
 from fm_operations import FM_ops
-from popup import Merge
 
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
@@ -15,10 +14,10 @@ class FMControls(BaseControls):
         self.tag = 'FM'
         self.imview = imview
         self.colors = colors
-
         self.ops = None
         self.curr_fm_folder = None
         self.channels = [True, True, True, True] 
+        self.ind = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._init_ui()
@@ -208,7 +207,7 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Merge FM and EM:', self)
         line.addWidget(label)
         self.merge_btn = QtWidgets.QPushButton('Merge',self)
-        self.merge_btn.clicked.connect(self._merge)
+        #self.merge_btn.clicked.connect(self._merge)
         line.addWidget(self.merge_btn)
         line.addStretch(1)
         vbox.addStretch(1)
@@ -360,16 +359,5 @@ class FMControls(BaseControls):
         self.align_btn.setEnabled(False)
         '''
 
-    def _merge(self): 
-        fm = self.ops
-        em = self.other.ops
-        if fm is not None and em is not None:
-            if fm._tf_data is not None and (em._tf_data is not None or em.tf_region is not None):
-                fm.merge(em.data, em.points)
-                self.popup = Merge(self)
-                self.popup.show()
-            else:
-                print('Transform FM and EM data first!')
-        else:
-            print('Select FM and EM data first!')
+
 

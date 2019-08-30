@@ -10,6 +10,7 @@ from em_controls import EMControls
 from fm_controls import FMControls
 import fm_operations # To kill javabridge on exit
 import align_fm
+from popup import Merge
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -78,6 +79,7 @@ class GUI(QtGui.QMainWindow):
         self.emcontrols.quit_button.clicked.connect(self.close)
         self.emcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
+        self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
         # Menu Bar
         self._init_menubar()
@@ -116,6 +118,19 @@ class GUI(QtGui.QMainWindow):
         agroup.addAction(action)
 
         self.show()
+   
+    def merge(self):
+        self.fm = self.fmcontrols.ops
+        self.em = self.emcontrols.ops
+        if self.fm is not None and self.em is not None:
+            if self.fm._tf_data is not None and (self.em._tf_data is not None or self.em.tf_region is not None):
+                self.fm.merge(self.em.data, self.em.points)
+                self.popup = Merge(self)
+                self.popup.show()
+            else:
+                print('Transform FM and EM data first!')
+        else:
+            print('Select FM and EM data first!')
 
     def _set_theme(self, name):
         if name == 'none':
