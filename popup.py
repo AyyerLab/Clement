@@ -12,12 +12,6 @@ import csv
 import mrcfile as mrc
 import imageio
 
-import em_operations
-import align_fm
-import affine_transform
-import fm_operations
-import popup
-
 warnings.simplefilter('ignore', category=FutureWarning)
 
 class Merge(QtGui.QMainWindow,):

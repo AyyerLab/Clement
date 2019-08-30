@@ -7,12 +7,13 @@ import pyqtgraph as pg
 app = QtWidgets.QApplication([])
 
 g = gui.GUI()
-g._parse_fm_images('data/5b_2.lif')
-g.fm.parse(g.fm.old_fname, z=10)
+g.fmcontrols._parse_fm_images('data/5b_2.lif')
+#g.fm.parse(g.fm.old_fname, z=10)
 g.fm_imview.setLevels(1.5,4)
-g.mrc_fname.setText('data/5b2_montage.mrc')
-g._assemble_mrc()
+g.emcontrols.mrc_fname.setText('data/5b2_montage.mrc')
+g.emcontrols._assemble_mrc()
 
+'''
 points = [[ 892.0407028 ,  416.98723286],
      [1355.78337583,  922.20282787],
      [ 835.48671828, 1359.55364146],
