@@ -43,6 +43,7 @@ class EM_ops():
         self.rotated = False
         self.tf_prev = np.identity(3)
         self.orig_points = None
+        self.new_points = None
         self.orig_points_region = None
         self.tf_points_region = None
         self.selected_region = None

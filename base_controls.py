@@ -82,23 +82,26 @@ class BaseControls(QtWidgets.QWidget):
             print('Select both data first')
 
         if self.ops.transformed and self.other.ops.transformed:
-            point = pg.CircleROI(pos, size, parent=item, movable=False)
-            point.setPen(0,255,0)
-            point.removeHandle(0)
-            self.imview.addItem(point)
-            point_updated = self.ops.update_points(np.array((point.x(),point.y())).reshape(1,2))
-            self.points_corr.append(point)
+            if self.tr_matrices is not None:
+                point = pg.CircleROI(pos, size, parent=item, movable=False)
+                point.setPen(0,255,0)
+                point.removeHandle(0)
+                self.imview.addItem(point)
+                self.points_corr.append(point)
+                
+                point_updated = self.ops.update_points(np.array((point.x(),point.y())).reshape(1,2))
+                #self.points_corr.append(point_updated[0,:])
 
-            # Coordinates in clicked image
-            init = np.array([point_updated[0,0],point_updated[0,1], 1])
-            transf = np.dot(self.tr_matrices, init)
-            self.cen = self.other.ops.side_length / 100
-            pos = QtCore.QPointF(transf[0]-self.cen, transf[1]-self.cen)  
-            point = pg.CircleROI(pos, 2*self.cen, parent=self.other.imview.getImageItem(), movable=True)
-            point.setPen(0,255,255)
-            point.removeHandle(0)
-            self.other.imview.addItem(point)
-            self.other.points_corr.append(point)
+                # Coordinates in clicked image
+                init = np.array([point_updated[0,0],point_updated[0,1], 1])
+                transf = np.dot(self.tr_matrices, init)
+                self.cen = self.other.ops.side_length / 100
+                pos = QtCore.QPointF(transf[0]-self.cen, transf[1]-self.cen)  
+                point = pg.CircleROI(pos, 2*self.cen, parent=self.other.imview.getImageItem(), movable=True)
+                point.setPen(0,255,255)
+                point.removeHandle(0)
+                self.other.imview.addItem(point)
+                self.other.points_corr.append(point)
         else:
             print('Transform both images before point selection')
 
@@ -206,8 +209,8 @@ class BaseControls(QtWidgets.QWidget):
             print('Select both data first')
             return
        
-        check_obj = self.ops._tf_data is not None or (hasattr(self.ops, '_tf_region') and self.ops._tf_region is not None)
-        check_other = self.other.ops._tf_data is not None or (hasattr(self.other.ops, '_tf_region') and self.other.ops._tf_region is not None)
+        check_obj = self.ops._tf_data is not None or (hasattr(self.ops, 'tf_region') and self.ops.tf_region is not None)
+        check_other = self.other.ops._tf_data is not None or (hasattr(self.other.ops, 'tf_region') and self.other.ops.tf_region is not None)
         
         if check_obj and check_other:
             if checked:
@@ -220,9 +223,6 @@ class BaseControls(QtWidgets.QWidget):
                 src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
                 src_updated = self.ops.update_points(src_sorted)
                 dst_sorted = np.array(sorted(self.other.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-                print('points1 not updated: \n', src_sorted)
-                print('points1: \n ', src_updated)
-                print('other points1: \n ', dst_sorted)
                 self.tr_matrices = self.ops.get_transform(src_updated, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%self.tag)
@@ -263,6 +263,8 @@ class BaseControls(QtWidgets.QWidget):
             self.original_help = True
             self._recalc_grid(toggle_orig=True)
             self._update_imview()
+            print('self.new_points: ', self.ops.new_points)
+            print('self.points: ', self.ops.points)
         else:
             print('Define grid box on %s image first!'%self.tag)
 
@@ -285,10 +287,11 @@ class BaseControls(QtWidgets.QWidget):
     def _refine(self):
         if len(self.points_corr) > 3:
             src = np.array([[point.x(),point.y()] for point in self.points_corr])
+            #src = np.array(self.points_corr)
             src_updated = self.ops.update_points(src)
             dst = np.array([[point.x(),point.y()] for point in self.other.points_corr])
             dst = np.array([point + self.cen for point in dst])
-            self.fm.refine(src_updated, dst)
+            self.ops.refine(src_updated, dst,self.other.ops.points)
             [self.imview.removeItem(point) for point in self.points_corr]
             [self.other.imview.removeItem(point) for point in self.other.points_corr]
             self.points_corr = []

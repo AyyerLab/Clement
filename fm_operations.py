@@ -433,6 +433,10 @@ class FM_ops():
     
     def refine(self, source, dst, em_grid_points):
         if self._tf_data is not None:
+            print('source: \n', source)
+            print('dst: \n', dst)
+            print(source.shape)
+            print(dst.shape)
             self.corr_matrix_new = tf.estimate_transform('affine',source,dst).params
             #if len(self.refine_history) == 0: 
             #    self.cum_matrix = self.history[0]

@@ -12,7 +12,7 @@ class EMControls(BaseControls):
         super(EMControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
-
+        self.ops = None
         self.curr_mrc_folder = None
         self.show_boxes = False
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
