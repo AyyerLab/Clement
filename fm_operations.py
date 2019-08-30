@@ -470,21 +470,22 @@ class FM_ops():
                     self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
                     sys.stderr.write('\r%d'%i)
                 print('\r', self._tf_data.shape)
+                self.data = np.copy(self._tf_data)
             
             self.refine_history.append(self.refine_matrix)
             self.shift_history.append(refine_corners.min(1)[:2])
             #self.corrected_shift_history.append(shift_corrected)
-            self._update_data()
+            #self._update_data()
             
     def refine_grid(self, em_points):
-        if self._tf_data is not None:
-            #print(self.refine_step[:2,2])
-            self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
-            self.new_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
-            #pts = [[point[0],point[1],1] for point in self.orig_points]
-            #for i in range(len(pts)):
-            #    self.new_points[i] = (self.refine_matrix @ pts[i])[:2] 
-            #print('self.new_points: ', self.new_points)
+        #print(self.refine_step[:2,2])
+        self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
+        self.new_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
+        self.points = np.copy(self.new_points)
+        #pts = [[point[0],point[1],1] for point in self.orig_points]
+        #for i in range(len(pts)):
+        #    self.new_points[i] = (self.refine_matrix @ pts[i])[:2] 
+        #print('self.new_points: ', self.new_points)
     
     def correct_shift(self,shift):
         shift_corr = np.copy(shift)
