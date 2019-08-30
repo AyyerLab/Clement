@@ -25,6 +25,7 @@ for point in points:
     g.clicked_points[0].append(roi)
 g.define_btn.setChecked(False)    
 g._affine_transform(g.fm_imview)
+'''
 g.rotate.setChecked(True)
 g.flipv.setChecked(True)
 
@@ -41,5 +42,6 @@ for point in points:
     g.clicked_points[1].append(roi)
 g.define_btn_em.setChecked(False)    
 g._affine_transform(g.em_imview)
+'''
 
 sys.exit(app.exec_())
