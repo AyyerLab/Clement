@@ -4,8 +4,6 @@ from PyInstaller.utils import hooks
 block_cipher = None
 
 datas = []
-datas += hooks.collect_data_files('bioformats')
-datas += hooks.collect_data_files('javabridge')
 datas += [('styles/dark.qss', 'styles')]
 datas += [('styles/rc/*.png', 'styles/rc')]
 
