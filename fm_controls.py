@@ -258,10 +258,10 @@ class FMControls(BaseControls):
     def _parse_fm_images(self, file_name):
         self.ops = FM_ops()
         self.ops.parse(file_name, z=0)
-        self.num_channels = self.ops.num_channels
+        self.num_slices = self.ops.num_slices
 
         if file_name is not '':
-            self.fm_fname.setText(file_name + ' [0/%d]'%self.ops.num_channels)
+            self.fm_fname.setText(file_name + ' [0/%d]'%self.ops.num_slices)
         
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean()*2))
             self._update_imview()  
@@ -355,21 +355,21 @@ class FMControls(BaseControls):
         if self.ops is None:
             print('Pick FM image first')
             return
-        self.ind = (self.ind + 1 + self.num_channels) % self.num_channels
+        self.ind = (self.ind + 1 + self.num_slices) % self.num_slices
         self.ops.parse(fname=self.ops.old_fname, z=self.ind)
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
+        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
 
     def _prev_file(self):
         if self.ops is None:
             print('Pick FM image first')
             return
-        self.ind = (self.ind - 1 + self.num_channels) % self.num_channels
+        self.ind = (self.ind - 1 + self.num_slices) % self.num_slices
         self.ops.parse(fname=self.ops.old_fname, z=self.ind)
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
+        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
  
     def _find_peaks(self):
         if self.ops is not None:
