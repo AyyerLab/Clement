@@ -8,7 +8,6 @@ import pyqtgraph as pg
 
 from em_controls import EMControls
 from fm_controls import FMControls
-import fm_operations # To kill javabridge on exit
 import align_fm
 from popup import Merge
 
@@ -154,7 +153,6 @@ class GUI(QtGui.QMainWindow):
             event.ignore()
 
     def closeEvent(self, event):
-        fm_operations.javabridge.kill_vm()
         self.settings.setValue('channel_colors', self.colors)
         self.settings.setValue('geometry', self.geometry())
         event.accept()
