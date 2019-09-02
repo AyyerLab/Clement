@@ -33,6 +33,7 @@ class Merge(QtGui.QMainWindow,):
         self.color_data = None
         self.overlay = True
         self.clicked_points = []
+        self.stage_positions = None
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self._init_ui()
     
@@ -175,7 +176,7 @@ class Merge(QtGui.QMainWindow,):
         line.addWidget(label)
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
-        #self.select_btn.toggled.connect(self._imview_clicked)
+        self.select_btn.toggled.connect(self._calc_stage_positions)
         self.save_btn = QtWidgets.QPushButton('Save data')
         self.save_btn.clicked.connect(self._save_data)
         line.addWidget(self.select_btn)
@@ -196,7 +197,7 @@ class Merge(QtGui.QMainWindow,):
             point.setPen(0,255,0)
             point.removeHandle(0)
             self.imview.addItem(point)
-            self.clicked_points.append([pos.x(),pos.y()])
+            self.clicked_points.append(point)
 
     def _show_overlay(self,checked):
         self.overlay = not self.overlay
@@ -245,6 +246,18 @@ class Merge(QtGui.QMainWindow,):
         self.imview.setImage(self.color_data, levels=levels)
         self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
+    def _calc_stage_positions(self,checked):
+        if checked:
+            print('Select points of interest!')
+            if len(self.clicked_points) != 0:
+                [self.imview.removeItem(point) for point in self.clicked_points]
+                self.clicked_points = []
+                self.stage_positions = None
+        else:
+            coordinates = [np.array([point.x(),point.y()]) for point in self.clicked_points]
+            self.stage_positions = self.parent.emcontrols.ops.calc_stage_positions(coordinates)
+            print('Done selecting points of interest!')
+
     def _save_data(self):
         if self.data is None:
             print('No image to save!')
@@ -252,11 +265,14 @@ class Merge(QtGui.QMainWindow,):
         if len(self.clicked_points) == 0:
             print('No coordinates selected!')
             return
+    
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder, '*.tif')
+        #curr_img = self.imview.getImageItem()
         if file_name is not '':
-            imageio.imwrite(file_name+'.tif',data)
+            #imageio.imwrite(file_name+'.tif',curr_img)
+            self.imview.export(file_name+'.tif')
             self._save_merge(file_name)
             self._save_coordinates(file_name)
     
@@ -271,8 +287,9 @@ class Merge(QtGui.QMainWindow,):
     def _save_coordinates(self, fname):
         try:
             with open(fname+'.txt', 'a') as f:
-                csv.writer(f, delimiter=' ').writerows(['Selected region: ', self.parent.em.selected_region])
-                csv.writer(f, delimiter=' ').writerows(self.clicked_points)
+                #csv.writer(f, delimiter=' ').writerow(self.parent.emcontrols.ops.selected_region)
+                csv.writer(f, delimiter=' ').writerows(self.stage_positions)
+
         except PermissionError:
             print('Permission error! Choose a different directory!')
             self._save_data()

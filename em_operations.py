@@ -47,8 +47,11 @@ class EM_ops():
         self.orig_points_region = None
         self.tf_points_region = None
         self.selected_region = None
+        self.stage_origin = None
         self.points = None
         self.assembled = True
+        self.cum_matrix = None
+        self.history = [np.identity(3)]
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
@@ -268,14 +271,21 @@ class EM_ops():
         else:
             self.tf_points_region = np.copy(pts)  
         self.toggle_original()
-        self.tf_grid_points = []    
+        self.tf_grid_points = []
+        
+        self.cum_matrix = self.history[0]
+        for i in range(1,len(self.history)):
+            self.cum_matrix = self.history[i] @ self.cum_matrix
+
         for i in range(len(self.grid_points)):
             tf_box_points = []
             for point in self.grid_points[i]:
-                x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
+                #x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
+                x_i, y_i, z_i = self.cum_matrix @ point
                 tf_box_points.append(np.array([x_i,y_i,z_i]))
             self.tf_grid_points.append(tf_box_points)
-        self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
+        #self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
+        self.history.append(self.tf_matrix)
 
     def apply_transform_mp(self,data,return_dict):
         return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
@@ -317,7 +327,17 @@ class EM_ops():
             return
         else:
             self.orig_region  = np.copy(self.data_highres[self.selected_region].T)
-  
+        self.stage_origin = np.array((self.pos_x[self.selected_region]*self.step,self.pos_y[self.selected_region]*self.step))
+
+    def calc_stage_positions(self, clicked_points):
+        inverse_matrix = np.linalg.inv(self.history[-1] @ self.cum_matrix)
+        stage_positions = []
+        for i in range(len(clicked_points)):
+            point = np.array([clicked_points[i][0],clicked_points[i][1],1])
+            stage_positions.append((inverse_matrix @ point)[:2] + self.stage_origin)
+        print(stage_positions)
+        return stage_positions
+
     @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):
