@@ -6,9 +6,10 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
+#from pyqtgraph import exporters
 import csv 
 import mrcfile as mrc
-import imageio
+from matplotlib import colors as cm
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -267,10 +268,10 @@ class Merge(QtGui.QMainWindow,):
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder, '*.tif')
-        #curr_img = self.imview.getImageItem()
+        #exporter = exporters.ImageExporter(self.imview)
         if file_name is not '':
-            #imageio.imwrite(file_name+'.tif',curr_img)
             self.imview.export(file_name+'.tif')
+            #exporter.export(file_name+'.tif')
             self._save_merge(file_name)
             self._save_coordinates(file_name)
     
@@ -320,7 +321,7 @@ class Merge(QtGui.QMainWindow,):
         if name == 'none':
             self.setStyleSheet('')
         else:
-            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'styles/%s.css'%name), 'r') as f:
+            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'styles/%s.qss'%name), 'r') as f:
                 self.setStyleSheet(f.read())
         self.settings.setValue('theme', name)
 
