@@ -6,7 +6,13 @@
 *.mdoc
 *.lif
 *.lifext
+/data
 
 # Temp files
 .*.swp
+
+# Compiled files
+res_styles.py
+build/
+dist/
 

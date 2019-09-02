@@ -6,13 +6,10 @@ import scipy.signal as sc
 import javabridge
 import bioformats
 import pyqtgraph as pg
-import matplotlib
-from matplotlib import pyplot as plt
 from PIL import Image
 import scipy.ndimage as ndi
 from skimage import transform as tf
 import multiprocessing as mp
-matplotlib.use('QT5Agg')
 
 class FM_ops():
     def __init__(self):

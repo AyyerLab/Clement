@@ -23,6 +23,7 @@ class BaseControls(QtWidgets.QWidget):
         self.original_help = True
         self.redo_tr = False
         self.box_coordinate = None
+        self.refine = False
         self.setContentsMargins(0, 0, 0, 0)
         
     def _init_ui(self):
