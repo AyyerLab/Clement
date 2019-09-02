@@ -3,8 +3,7 @@ import glob
 import os
 import numpy as np
 import scipy.signal as sc
-import javabridge
-import bioformats
+import read_lif
 import pyqtgraph as pg
 import matplotlib
 from matplotlib import pyplot as plt
@@ -16,7 +15,7 @@ matplotlib.use('QT5Agg')
 
 class FM_ops():
     def __init__(self):
-        self.num_channels = None
+        self.num_slices = None
         self.data = None
         self.flipv = False
         self.fliph = False
@@ -46,7 +45,6 @@ class FM_ops():
         self.show_max_proj = False
         self.max_proj_data = None
         self.tf_max_proj_data = None
-        self.data_slices = []
         self.counter_clockwise = False
         self.rotated = False
         self.corr_matrix = None
@@ -55,7 +53,6 @@ class FM_ops():
         self.merged = None
         self.history = []
         self.refine_history = []
-        javabridge.start_vm(class_path=bioformats.JARS)
 
     def parse(self, fname, z):
         ''' Parses file
@@ -65,30 +62,25 @@ class FM_ops():
         '''
 
         if fname != self.old_fname:
-            self.reader = bioformats.ImageReader(fname)
+            # TODO: Enable user to choose another series
+            self.reader = read_lif.Reader(fname).getSeries()[0]
+            self.num_slices = self.reader.getFrameShape()[0]
+            self.num_channels = len(self.reader.getChannels())
             self.old_fname = fname
-            self.num_channels = self.reader.rdr.getSizeZ()
         
-        
-        self._orig_data = self.reader.read(z=z)
+        # TODO: Look into modifying read_lif to get
+        # a single Z-slice with all channels rather than all slices for a single channel
+        self._orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
+                                    for i in range(self.num_channels)])
+        self._orig_data = self._orig_data.transpose(1,2,0)
+        print(self._orig_data.shape)
         self._orig_data /= self._orig_data.mean((0, 1))
         self.data = np.copy(self._orig_data)
-        self.data_slices.append(self.data)
 
         if self.transformed:
             self.apply_transform()
             self._update_data() 
         
-    def parse_slices(self):
-        for i in range(self.num_channels):
-            data = self.reader.read(z=i)
-            data /= data.mean((0,1))
-            self.data_slices.append(data)
-        print('Done')
-        
-    def __del__(self):
-        javabridge.kill_vm()
-
     def _update_data(self,update_points=True):
         if self.transformed and (self._tf_data is not None or self.tf_max_proj_data is not None):
             if self.show_max_proj:
@@ -97,7 +89,7 @@ class FM_ops():
                 self.data = np.copy(self._tf_data)
             self.points = np.copy(self.new_points)
         else:
-            if self.show_max_proj and self.data_slices is not None:
+            if self.show_max_proj and self.max_proj_data is not None:
                 self.data = np.copy(self.max_proj_data)
             else:
                 self.data = np.copy(self._orig_data)
@@ -153,9 +145,10 @@ class FM_ops():
 
     def calc_max_projection(self):
         self.show_max_proj = not self.show_max_proj
-        self.parse_slices()
         if self.max_proj_data is None:
-            self.max_proj_data = np.max(np.array(self.data_slices),axis=0)
+            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
+                                           for i in range(self.num_channels)]).transpose(1,2,0).astype('f4')
+            self.max_proj_data /= self.max_proj_data.mean((0, 1))
         if self.transformed:
             if self.tf_max_proj_data is None:
                 self.apply_transform()
