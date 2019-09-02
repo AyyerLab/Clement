@@ -6,11 +6,8 @@ import copy
 import scipy.signal as sc
 import mrcfile as mrc
 import multiprocessing as mp
-import matplotlib
 import scipy.ndimage as ndi
 from skimage import transform as tf
-from matplotlib import pyplot as plt
-matplotlib.use('QT5Agg')
 
 class EM_ops():
     def __init__(self, step=10):
@@ -324,11 +321,3 @@ class EM_ops():
             print('Point length do not match')
             return
         return tf.estimate_transform('affine', source, dest).params
-
-
-if __name__=='__main__':
-    path = '../gs.mrc'
-    assembler = EM_ops()
-    assembler.parse(path)
-    assembler.assemble()
-    #pg.show(merged.T)

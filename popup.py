@@ -6,8 +6,6 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
-import matplotlib.colors as cm
-import matplotlib.pyplot as plt
 import csv 
 import mrcfile as mrc
 import imageio
