@@ -70,7 +70,6 @@ class FM_ops():
         self._orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
                                     for i in range(self.num_channels)])
         self._orig_data = self._orig_data.transpose(1,2,0)
-        print(self._orig_data.shape)
         self._orig_data /= self._orig_data.mean((0, 1))
         self.data = np.copy(self._orig_data)
 
