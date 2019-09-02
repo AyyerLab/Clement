@@ -168,10 +168,11 @@ class EM_ops():
         self.side_length = np.mean(side_list)
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
-        #my_points_sorted = np.array(sorted(my_points, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1]))
-        #print('Sorted points:\n',my_points_sorted)
-
         self.tf_matrix = self.calc_rot_matrix(my_points)
+        
+        center = np.mean(my_points,axis=0)
+        tf_center = (self.tf_matrix @ np.array([center[0],center[1],1]))[:2]
+        
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
@@ -179,13 +180,11 @@ class EM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Tf: ', self.tf_matrix)
 
-        cen = my_points.mean(0) # + self.tf_corners.min(1)[:2] #+ (0,self.side_length/2)
-
         points_tmp  = np.zeros_like(my_points)
-        points_tmp[0] = cen + (0, 0)
-        points_tmp[1] = cen + (self.side_length, 0)
-        points_tmp[2] = cen + (self.side_length, self.side_length)
-        points_tmp[3] = cen + (0,self.side_length)
+        points_tmp[0] = tf_center + (-self.side_length/2, -self.side_length/2)
+        points_tmp[1] = tf_center + (self.side_length/2, -self.side_length/2)
+        points_tmp[2] = tf_center + (self.side_length/2, self.side_length/2)
+        points_tmp[3] = tf_center + (-self.side_length/2,self.side_length/2)
 
         if not self.transformed:
             if self.assembled:
@@ -194,6 +193,7 @@ class EM_ops():
                 self.orig_points_region = np.copy(my_points)
         self.apply_transform(points_tmp) 
         self.rotated = True
+        print('New points: \n', self.new_points)
 
     def calc_orientation(self,points):
         my_list = []
@@ -223,7 +223,6 @@ class EM_ops():
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
             angles_deg = [angle * 180/np.pi for angle in angles]
             
-            #for i in range(len(angles_deg)):
             angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg] 
             print('angles_deg: ', angles_deg)
             if self.transformed:
