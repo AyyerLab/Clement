@@ -7,6 +7,7 @@ import matplotlib.colors as cm
 
 from base_controls import BaseControls
 from fm_operations import FM_ops
+import align_fm
 
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
@@ -14,6 +15,7 @@ class FMControls(BaseControls):
         self.tag = 'FM'
         self.imview = imview
         self.colors = colors
+        self.overlay = True
         self.ops = None
         self.curr_fm_folder = None
         self.channels = [True, True, True, True] 

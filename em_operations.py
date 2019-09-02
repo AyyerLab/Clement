@@ -6,11 +6,8 @@ import copy
 import scipy.signal as sc
 import mrcfile as mrc
 import multiprocessing as mp
-import matplotlib
 import scipy.ndimage as ndi
 from skimage import transform as tf
-from matplotlib import pyplot as plt
-matplotlib.use('QT5Agg')
 
 class EM_ops():
     def __init__(self, step=10):
@@ -47,8 +44,11 @@ class EM_ops():
         self.orig_points_region = None
         self.tf_points_region = None
         self.selected_region = None
+        self.stage_origin = None
         self.points = None
         self.assembled = True
+        self.cum_matrix = None
+        self.history = [np.identity(3)]
 
     def parse(self, fname):
         with mrc.open(fname, 'r', permissive=True) as f:
@@ -168,10 +168,11 @@ class EM_ops():
         self.side_length = np.mean(side_list)
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
-        #my_points_sorted = np.array(sorted(my_points, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1]))
-        #print('Sorted points:\n',my_points_sorted)
-
         self.tf_matrix = self.calc_rot_matrix(my_points)
+        
+        center = np.mean(my_points,axis=0)
+        tf_center = (self.tf_matrix @ np.array([center[0],center[1],1]))[:2]
+        
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
@@ -179,13 +180,11 @@ class EM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Tf: ', self.tf_matrix)
 
-        cen = my_points.mean(0) # + self.tf_corners.min(1)[:2] #+ (0,self.side_length/2)
-
         points_tmp  = np.zeros_like(my_points)
-        points_tmp[0] = cen + (0, 0)
-        points_tmp[1] = cen + (self.side_length, 0)
-        points_tmp[2] = cen + (self.side_length, self.side_length)
-        points_tmp[3] = cen + (0,self.side_length)
+        points_tmp[0] = tf_center + (-self.side_length/2, -self.side_length/2)
+        points_tmp[1] = tf_center + (self.side_length/2, -self.side_length/2)
+        points_tmp[2] = tf_center + (self.side_length/2, self.side_length/2)
+        points_tmp[3] = tf_center + (-self.side_length/2,self.side_length/2)
 
         if not self.transformed:
             if self.assembled:
@@ -194,6 +193,7 @@ class EM_ops():
                 self.orig_points_region = np.copy(my_points)
         self.apply_transform(points_tmp) 
         self.rotated = True
+        print('New points: \n', self.new_points)
 
     def calc_orientation(self,points):
         my_list = []
@@ -223,7 +223,6 @@ class EM_ops():
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
             angles_deg = [angle * 180/np.pi for angle in angles]
             
-            #for i in range(len(angles_deg)):
             angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg] 
             print('angles_deg: ', angles_deg)
             if self.transformed:
@@ -268,14 +267,21 @@ class EM_ops():
         else:
             self.tf_points_region = np.copy(pts)  
         self.toggle_original()
-        self.tf_grid_points = []    
+        self.tf_grid_points = []
+        
+        self.cum_matrix = self.history[0]
+        for i in range(1,len(self.history)):
+            self.cum_matrix = self.history[i] @ self.cum_matrix
+
         for i in range(len(self.grid_points)):
             tf_box_points = []
             for point in self.grid_points[i]:
-                x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
+                #x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
+                x_i, y_i, z_i = self.cum_matrix @ point
                 tf_box_points.append(np.array([x_i,y_i,z_i]))
             self.tf_grid_points.append(tf_box_points)
-        self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
+        #self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
+        self.history.append(self.tf_matrix)
 
     def apply_transform_mp(self,data,return_dict):
         return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
@@ -317,18 +323,20 @@ class EM_ops():
             return
         else:
             self.orig_region  = np.copy(self.data_highres[self.selected_region].T)
-  
+        self.stage_origin = np.array((self.pos_x[self.selected_region]*self.step,self.pos_y[self.selected_region]*self.step))
+
+    def calc_stage_positions(self, clicked_points):
+        inverse_matrix = np.linalg.inv(self.history[-1] @ self.cum_matrix)
+        stage_positions = []
+        for i in range(len(clicked_points)):
+            point = np.array([clicked_points[i][0],clicked_points[i][1],1])
+            stage_positions.append((inverse_matrix @ point)[:2] + self.stage_origin)
+        print(stage_positions)
+        return stage_positions
+
     @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):
             print('Point length do not match')
             return
         return tf.estimate_transform('affine', source, dest).params
-
-
-if __name__=='__main__':
-    path = '../gs.mrc'
-    assembler = EM_ops()
-    assembler.parse(path)
-    assembler.assemble()
-    #pg.show(merged.T)

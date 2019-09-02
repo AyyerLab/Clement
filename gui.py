@@ -6,27 +6,23 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 
+import res_styles
 from em_controls import EMControls
 from fm_controls import FMControls
-import align_fm
 from popup import Merge
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
+def resource_path(rel_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath('.')
+    return os.path.join(base_path, rel_path)
+
 class GUI(QtGui.QMainWindow):
     def __init__(self):
         super(GUI, self).__init__()
-        self.ind = 0
-         
-        self.colors = ['#ff0000', '#00ff00', '#0000ff', '#808080']
-        self.color_data = None
-        self.overlay = True
-         
-        self.box_points = []
-        self.tr_box_points = []
-        self.box_coordinate = None
-        
-        self.refine = False
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080'])
         self._init_ui()
@@ -135,7 +131,7 @@ class GUI(QtGui.QMainWindow):
         if name == 'none':
             self.setStyleSheet('')
         else:
-            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'styles/%s.css'%name), 'r') as f:
+            with open(resource_path('styles/%s.qss'%name), 'r') as f:
                 self.setStyleSheet(f.read())
         self.settings.setValue('theme', name)
 
