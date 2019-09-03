@@ -1,5 +1,6 @@
 name: clement
 channels:
+  - conda-forge
   - defaults
 dependencies:
   - python=3
@@ -11,8 +12,8 @@ dependencies:
   - pyinstaller
   - numexpr
   - pip
+  - git
   - pip:
     - mrcfile
     - read-lif
-    - git
 
