@@ -3,10 +3,10 @@ import glob
 import os
 import numpy as np
 import copy
-import scipy.signal as sc
 import mrcfile as mrc
 import multiprocessing as mp
-import scipy.ndimage as ndi
+from scipy import ndimage as ndi
+from scipy import signal as sc
 from skimage import transform as tf
 
 class EM_ops():

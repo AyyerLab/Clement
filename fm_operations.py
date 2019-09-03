@@ -1,14 +1,12 @@
 import sys
-import glob
 import os
-import numpy as np
-import scipy.signal as sc
-import read_lif
-import pyqtgraph as pg
-from PIL import Image
-import scipy.ndimage as ndi
-from skimage import transform as tf
 import multiprocessing as mp
+import numpy as np
+import pyqtgraph as pg
+from scipy import signal as sc
+from scipy import ndimage as ndi
+from skimage import transform as tf
+import read_lif
 
 class FM_ops():
     def __init__(self):
@@ -191,6 +189,7 @@ class FM_ops():
             pass
 
     def align(self):
+        '''
         if len(self.diff_list[0]) != 0:
             shift1_arr = np.array(self.diff_list[0])
             shift1 = (np.median(shift1_arr[:, 0], axis=0), np.median(shift1_arr[:, 1], axis=0))
@@ -228,9 +227,10 @@ class FM_ops():
 
         return name_list
         #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
+        '''
+        pass
    
     def calc_affine_transform(self, my_points): 
-
         my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
 

@@ -3,11 +3,11 @@ import os
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
-import matplotlib.colors as cm
+from matplotlib import colors as cm
 
 from base_controls import BaseControls
 from fm_operations import FM_ops
-import align_fm
+#import align_fm
 
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, names):
