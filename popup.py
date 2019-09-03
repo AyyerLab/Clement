@@ -271,7 +271,7 @@ class Merge(QtGui.QMainWindow,):
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder, '*.tif')
         #exporter = exporters.ImageExporter(self.imview)
         if file_name is not '':
-            self.imview.export(file_name+'.tif')
+            self.imview.export(file_name)
             #exporter.export(file_name+'.tif')
             self._save_merge(file_name)
             self._save_coordinates(file_name)
