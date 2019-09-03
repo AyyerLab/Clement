@@ -50,16 +50,22 @@ class FM_ops():
         self.refine_points = None
         self.merged = None
 
-    def parse(self, fname, z):
+    def parse(self, fname, z, series=None, reopen=True):
         ''' Parses file
 
         Saves parsed file in self._orig_data
         self.data is the array to be displayed
         '''
 
-        if fname != self.old_fname:
-            # TODO: Enable user to choose another series
-            self.reader = read_lif.Reader(fname).getSeries()[0]
+        if reopen:
+            base_reader = read_lif.Reader(fname)
+            if len(base_reader.getSeries()) == 1:
+                self.reader = base_reader.getSeries()[0]
+            elif series is not None:
+                self.reader = base_reader.getSeries()[series]
+            else:
+                return [s.getName() for s in base_reader.getSeries()]
+
             self.num_slices = self.reader.getFrameShape()[0]
             self.num_channels = len(self.reader.getChannels())
             self.old_fname = fname

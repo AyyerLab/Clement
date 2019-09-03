@@ -9,6 +9,27 @@ from base_controls import BaseControls
 from fm_operations import FM_ops
 import align_fm
 
+class SeriesPicker(QtWidgets.QDialog):
+    def __init__(self, names):
+        super(SeriesPicker, self).__init__()
+        self.current_series = 0
+
+        self.setWindowTitle('Pick image series...')
+        layout = QtWidgets.QHBoxLayout()
+        self.setLayout(layout)
+
+        self.picker = QtWidgets.QComboBox(self)
+        layout.addWidget(self.picker)
+        self.picker.addItems(names)
+        self.picker.currentIndexChanged.connect(self.series_changed)
+
+        button = QtWidgets.QPushButton('Confirm', self)
+        layout.addWidget(button)
+        button.clicked.connect(self.accept)
+
+    def series_changed(self, i):
+        self.current_series = i
+
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
         super(FMControls, self).__init__()
@@ -17,7 +38,7 @@ class FMControls(BaseControls):
         self.colors = colors
         self.overlay = True
         self.ops = None
-        self.curr_fm_folder = None
+        self.curr_folder = None
         self.channels = [True, True, True, True] 
         self.ind = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
@@ -244,20 +265,25 @@ class FMControls(BaseControls):
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
     
     def _load_fm_images(self):
-        if self.curr_fm_folder is None:
-            self.curr_fm_folder = os.getcwd()
+        if self.curr_folder is None:
+            self.curr_folder = os.getcwd()
 
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select FM file',
-                                                             self.curr_fm_folder,
+                                                             self.curr_folder,
                                                              '*.lif')
         if file_name is not '':
-            self.curr_fm_folder = os.path.dirname(file_name)
+            self.curr_folder = os.path.dirname(file_name)
             self._parse_fm_images(file_name)
 
     def _parse_fm_images(self, file_name):
         self.ops = FM_ops()
-        self.ops.parse(file_name, z=0)
+        retval = self.ops.parse(file_name, z=0)
+        if retval is not None:
+            picker = SeriesPicker(retval)
+            picker.exec_()
+            series = picker.current_series
+            self.ops.parse(file_name, z=0, series=series)
         self.num_slices = self.ops.num_slices
 
         if file_name is not '':
@@ -279,7 +305,6 @@ class FMControls(BaseControls):
             self.select_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
-            
 
     def _show_max_projection(self):
         if self.max_proj_btn.isChecked():
@@ -356,7 +381,7 @@ class FMControls(BaseControls):
             print('Pick FM image first')
             return
         self.ind = (self.ind + 1 + self.num_slices) % self.num_slices
-        self.ops.parse(fname=self.ops.old_fname, z=self.ind)
+        self.ops.parse(fname=self.ops.old_fname, z=self.ind, reopen=False)
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
         self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
@@ -366,7 +391,7 @@ class FMControls(BaseControls):
             print('Pick FM image first')
             return
         self.ind = (self.ind - 1 + self.num_slices) % self.num_slices
-        self.ops.parse(fname=self.ops.old_fname, z=self.ind)
+        self.ops.parse(fname=self.ops.old_fname, z=self.ind, reopen=False)
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
         self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
