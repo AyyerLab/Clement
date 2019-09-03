@@ -10,7 +10,9 @@ dependencies:
   - pyqtgraph
   - pyinstaller
   - numexpr
+  - pip
   - pip:
     - mrcfile
     - read-lif
+    - git
 
