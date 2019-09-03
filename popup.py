@@ -253,7 +253,8 @@ class Merge(QtGui.QMainWindow,):
                 self.clicked_points = []
                 self.stage_positions = None
         else:
-            coordinates = [np.array([point.x(),point.y()]) for point in self.clicked_points]
+            size = 0.01 * self.data.shape[0]
+            coordinates = [np.array([point.x()+size/2,point.y()+size/2]) for point in self.clicked_points]
             self.stage_positions = self.parent.emcontrols.ops.calc_stage_positions(coordinates)
             print('Done selecting points of interest!')
 
