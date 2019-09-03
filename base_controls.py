@@ -140,7 +140,7 @@ class BaseControls(QtWidgets.QWidget):
                     else:
                         self.ops.orig_points = points
                 else:
-                    self.tr_grid_box[index] = pg.PolyLineROI(positions, closed=True, movable=False)
+                    self.tr_grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
                 [self.imview.removeItem(roi) for roi in self.clicked_points]
                 self.clicked_points = []
                 self.show_grid_btn.setEnabled(True)
@@ -162,6 +162,7 @@ class BaseControls(QtWidgets.QWidget):
             if self.show_btn.isChecked():     
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
+                        self.imview.removeItem(self.tf_grid_box)
                         self.imview.removeItem(self.grid_box)
                         self.show_grid_box = False
                 print('Recalculating original grid...')
@@ -169,6 +170,7 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
+                        self.imview.removeItem(self.grid_box)
                         self.imview.removeItem(self.tr_grid_box)
                         self.show_tr_grid_box = False
                     if self.redo_tr:
@@ -260,7 +262,6 @@ class BaseControls(QtWidgets.QWidget):
             self.original_help = True
             self._recalc_grid(toggle_orig=True)
             self._update_imview()
-            self.transform_btn.setEnabled(False)
         else:
             print('Define grid box on %s image first!'%self.tag)
 
@@ -279,10 +280,10 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.toggle_original()    
                 self._recalc_grid(toggle_orig=True)
                 self._update_imview()
-                if self.ops.transformed:
-                    self.transform_btn.setEnabled(False)
-                else:
-                    self.transform_btn.setEnabled(True)
+                #if self.ops.transformed:
+                #    self.transform_btn.setEnabled(False)
+                #else:
+                #    self.transform_btn.setEnabled(True)
 
     def _refine(self):
         if len(self.points_corr) > 3:

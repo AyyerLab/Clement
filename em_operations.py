@@ -50,7 +50,6 @@ class EM_ops():
         self.points = None
         self.assembled = True
         self.cum_matrix = None
-        self.history = [np.identity(3)]
 
     def parse(self, fname):
         if fname != self.old_fname:
@@ -274,19 +273,12 @@ class EM_ops():
         self.toggle_original()
         self.tf_grid_points = []
         
-        self.cum_matrix = self.history[0]
-        for i in range(1,len(self.history)):
-            self.cum_matrix = self.history[i] @ self.cum_matrix
-
         for i in range(len(self.grid_points)):
             tf_box_points = []
             for point in self.grid_points[i]:
-                #x_i, y_i, z_i = self.tf_matrix @ (self.tf_prev @ point)
-                x_i, y_i, z_i = self.cum_matrix @ point
+                x_i, y_i, z_i = self.tf_matrix @ point
                 tf_box_points.append(np.array([x_i,y_i,z_i]))
             self.tf_grid_points.append(tf_box_points)
-        #self.tf_prev = np.copy(self.tf_matrix @ self.tf_prev) 
-        self.history.append(self.tf_matrix)
 
     def apply_transform_mp(self,data,return_dict):
         return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
@@ -334,7 +326,7 @@ class EM_ops():
         stage_y = self._eh[5:10*self.stacked_data.shape[0]:10]
         self.stage_origin = np.array([stage_x[self.selected_region],stage_y[self.selected_region]])
         
-        inverse_matrix = np.linalg.inv(self.history[-1] @ self.cum_matrix)
+        inverse_matrix = np.linalg.inv(self.tf_matrix)
         stage_positions = []
         for i in range(len(clicked_points)):
             point = np.array([clicked_points[i][0],clicked_points[i][1],1])

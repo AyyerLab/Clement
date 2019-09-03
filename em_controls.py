@@ -224,10 +224,10 @@ class EMControls(BaseControls):
                 points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
                 self.ops.select_region(np.array(points_obj),transformed)
                 self._hide_boxes()
-                if ((transformed and self.ops.tf_region is None) or
-                   (not transformed and self.ops.orig_region is None)):
-                    print('Ooops, something went wrong. Try again!')
-                    return
+                #if ((transformed and self.ops.tf_region is None) or
+                #   (not transformed and self.ops.orig_region is None)):
+                #    print('Ooops, something went wrong. Try again!')
+                #    return
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False) 
                 self.show_grid_btn.setEnabled(False)
@@ -237,6 +237,7 @@ class EMControls(BaseControls):
                 self.original_help = True
                 self.show_btn.setEnabled(False) 
                 self.box_coordinate = None
+                self.transform_btn.setEnabled = True
             else:
                 self._hide_boxes()
 
@@ -246,6 +247,10 @@ class EMControls(BaseControls):
 
         if self.show_assembled_btn.isChecked():
             self.ops.assembled = True
+            if self.show_btn.isChecked():
+                self.imview.removeItem(self.grid_box)
+            else:
+                self.imview.removeItem(self.tr_grid_box)
             if self.ops.orig_points is None:
                 self.show_grid_btn.setEnabled(False)
                 self.show_grid_btn.setChecked(False)
@@ -263,7 +268,10 @@ class EMControls(BaseControls):
         else:
             self.ops.assembled = False
             self.select_region_btn.setEnabled(False)
-
+            if self.show_btn.isChecked():
+                self.imview.removeItem(self.grid_box)
+            else:
+                self.imview.removeItem(self.tr_grid_box)
             if self.ops.tf_region is not None: 
                 self.show_btn.setEnabled(True)
             else:
