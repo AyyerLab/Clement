@@ -1,4 +1,4 @@
-# CLEMent
+# Clement
 ## GUI for Correlative Light and Electron Microscopy
 A graphical program to correlate electron microscopy and fluorescent optical images of the same sample.
 
