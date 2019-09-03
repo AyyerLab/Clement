@@ -27,7 +27,7 @@ class Merge(QtGui.QMainWindow,):
         else:
             self.data = np.copy(self.parent.fm.data)
         self.curr_mrc_folder = self.parent.emcontrols.curr_mrc_folder
-        self.num_channels = self.parent.fmcontrols.num_channels
+        self.num_slices = self.parent.fmcontrols.num_slices
         self.ind = self.parent.fmcontrols.ind
         self.color_data = None
         self.overlay = True
@@ -304,18 +304,18 @@ class Merge(QtGui.QMainWindow,):
         self._update_imview()
 
     def _next_file(self):
-        self.ind = (self.ind + 1 + self.num_channels) % self.num_channels
+        self.ind = (self.ind + 1 + self.num_slices) % self.num_slices
         self.parent.fm.parse(fname=self.parent.fm.old_fname, z=self.ind)
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
+        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
 
     def _prev_file(self):
-        self.ind = (self.ind - 1 + self.num_channels) % self.num_channels
+        self.ind = (self.ind - 1 + self.num_slices) % self.num_slices
         self.parent.fm.parse(fname=self.parent.fm.old_fname, z=self.ind)
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_channels))
+        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
 
     def _set_theme(self, name):
         if name == 'none':
