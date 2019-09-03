@@ -8,13 +8,13 @@ Here are the instructions to install the program from source and package it for 
  * Download [Miniconda](https://docs.conda.io/en/latest/miniconda.html) if you do not already have it.
  * Clone this repository
  ```
- $ git clone https://github.com/kartikayyer/CLEMent.git
- $ cd CLEMent
+ $ git clone https://github.com/kartikayyer/Clement.git
+ $ cd Clement
  ```
  * Create a conda environment using the environment.yml file provided:
  ```
  $ conda env create -f environment.yml
- $ conda activate clem
+ $ conda activate clement
  ```
  * Create the resources file;
  ```
