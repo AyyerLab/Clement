@@ -11,6 +11,7 @@ from skimage import transform as tf
 
 class EM_ops():
     def __init__(self, step=10):
+        self.pixel_size = None
         self.old_fname = None
         self.data_highres = None
         self.step = int(step)
@@ -62,6 +63,7 @@ class EM_ops():
                 self._h = f.header
                 self._eh = np.frombuffer(f.extended_header, dtype='i2')
                 self.old_fname = fname
+                self.pixel_size = np.array([f.voxel_size.x,f.voxel_size.y,f.voxel_size.y])
 
     def assemble(self):
         dimensions = self.stacked_data.shape
@@ -326,14 +328,19 @@ class EM_ops():
             return
         else:
             self.orig_region  = np.copy(self.data_highres[self.selected_region].T)
-        self.stage_origin = np.array((self.pos_x[self.selected_region]*self.step,self.pos_y[self.selected_region]*self.step))
 
     def calc_stage_positions(self, clicked_points):
+        stage_x = self._eh[4:10*self.stacked_data.shape[0]:10]
+        stage_y = self._eh[5:10*self.stacked_data.shape[0]:10]
+        self.stage_origin = np.array([stage_x[self.selected_region],stage_y[self.selected_region]])
+        
         inverse_matrix = np.linalg.inv(self.history[-1] @ self.cum_matrix)
         stage_positions = []
         for i in range(len(clicked_points)):
             point = np.array([clicked_points[i][0],clicked_points[i][1],1])
-            stage_positions.append((inverse_matrix @ point)[:2] + self.stage_origin)
+            coordinate_angstrom = (inverse_matrix @ point)[:2] * self.pixel_size[:2]
+            coordinate_microns = coordinate_angstrom * 10**-4
+            stage_positions.append(coordinate_microns*25 + self.stage_origin)       #stage position in microns * 25
         print(stage_positions)
         return stage_positions
 
