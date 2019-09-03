@@ -13,6 +13,7 @@ import multiprocessing as mp
 class FM_ops():
     def __init__(self):
         self.num_slices = None
+        self.selected_slice = None
         self.data = None
         self.flipv = False
         self.fliph = False
@@ -48,8 +49,6 @@ class FM_ops():
         self.refine_matrix = None
         self.refine_points = None
         self.merged = None
-        self.history = []
-        self.refine_history = []
 
     def parse(self, fname, z):
         ''' Parses file
@@ -72,6 +71,7 @@ class FM_ops():
         self._orig_data = self._orig_data.transpose(1,2,0)
         self._orig_data /= self._orig_data.mean((0, 1))
         self.data = np.copy(self._orig_data)
+        self.selected_slice = z
 
         if self.transformed:
             self.apply_transform()
@@ -326,15 +326,10 @@ class FM_ops():
 
     def apply_transform(self):
         if not self.transformed:
-            self.history = []
-            self.refine_history = []
-            self.shift_history = [np.zeros(2)]
-            self.corrected_shift_history = [np.zeros(2)]
             self.fliph = False
             self.transp = False
             self.rot = False
             self.flipv = False
-        print('history: ', self.history)
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
@@ -347,12 +342,11 @@ class FM_ops():
                 sys.stderr.write('\r%d'%i)
             print('\r', self._tf_data.shape)
             self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-            self.history.append(self.tf_matrix)
              
         elif self.show_max_proj and self.transformed:
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.history[0]), order=1, output_shape=self._tf_shape)
+                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
             print('\r', self.max_proj_data.shape)
             self._update_data(update_points=False)
@@ -372,7 +366,6 @@ class FM_ops():
             self._tf_data = np.array(dict2[0])
             print('\r', self._tf_data.shape)
             self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-            self.history.append(self.tf_matrix)
             
         if self.show_max_proj:
             self.data = np.copy(self.tf_max_proj_data)
@@ -410,8 +403,6 @@ class FM_ops():
                 self._tf_data = np.copy(self.data)
             print('\r', self.data.shape)
 
-            self.refine_history.append(self.refine_matrix)
-            
     def refine_grid(self, em_points):
         self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
         self.new_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])

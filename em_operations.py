@@ -11,6 +11,7 @@ from skimage import transform as tf
 
 class EM_ops():
     def __init__(self, step=10):
+        self.old_fname = None
         self.data_highres = None
         self.step = int(step)
         self.data = None
@@ -51,14 +52,16 @@ class EM_ops():
         self.history = [np.identity(3)]
 
     def parse(self, fname):
-        with mrc.open(fname, 'r', permissive=True) as f:
-            try:
-                self.data_highres = f.data
-                self.stacked_data = self.data_highres[:,::self.step,::self.step]
-            except IndexError:
-                self.stacked_data = f.data
-            self._h = f.header
-            self._eh = np.frombuffer(f.extended_header, dtype='i2')
+        if fname != self.old_fname:
+            with mrc.open(fname, 'r', permissive=True) as f:
+                try:
+                    self.data_highres = f.data
+                    self.stacked_data = self.data_highres[:,::self.step,::self.step]
+                except IndexError:
+                    self.stacked_data = f.data
+                self._h = f.header
+                self._eh = np.frombuffer(f.extended_header, dtype='i2')
+                self.old_fname = fname
 
     def assemble(self):
         dimensions = self.stacked_data.shape
