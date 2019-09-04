@@ -30,6 +30,10 @@ class SeriesPicker(QtWidgets.QDialog):
     def series_changed(self, i):
         self.current_series = i
 
+    def closeEvent(self, event):
+        self.current_series = -1
+        event.accept()
+
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
         super(FMControls, self).__init__()
@@ -283,6 +287,8 @@ class FMControls(BaseControls):
             picker = SeriesPicker(retval)
             picker.exec_()
             series = picker.current_series
+            if series < 0:
+                return
             self.ops.parse(file_name, z=0, series=series)
         self.num_slices = self.ops.num_slices
 

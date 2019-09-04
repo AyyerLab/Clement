@@ -384,41 +384,38 @@ class FM_ops():
             self.rot = False
             self.flipv = False
             self.refined = False
+        
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
-        print('self.transformed?: ', self.transformed) 
+
+        # Calculate transform_shift for point transforms
         self.transform_shift = -self.tf_corners.min(1)[:2] 
+
         if not self.show_max_proj and self.max_proj_data is None:
+            # If max_projection has not yet been selected
             self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
                 self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
-            print('\r', self._tf_data.shape)
+            print('\n', self._tf_data.shape)
             self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-             
         elif self.show_max_proj and self.transformed:
+            # If showing max_projection with image already transformed (???)
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
                 self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
-            print('\r', self.max_proj_data.shape)
             self._update_data(update_points=False)
-        
         else:
-            manager = mp.Manager()
-            dict1 = manager.dict()
-            dict2 = manager.dict()
-            p1 = mp.Process(target=self.apply_transform_mp,args=(0,self.max_proj_data,dict1))
-            p2 = mp.Process(target=self.apply_transform_mp,args=(1,self._orig_data,dict2))
-            p1.start()
-            p2.start()
-            p1.join()
-            p2.join()
-        
-            self.tf_max_proj_data = np.array(dict1[0])
-            self._tf_data = np.array(dict2[0])
-            print('\r', self._tf_data.shape)
+            self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+            self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
+            for i in range(self.data.shape[-1]):
+                self._tf_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                sys.stderr.write('\r%d'%i)
+            print('\n', self._tf_data.shape)
+            print(self.max_proj_data.shape)
             self.new_points = np.array([point + self.transform_shift for point in self.new_points])
             
         if self.show_max_proj:
