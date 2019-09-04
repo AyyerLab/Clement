@@ -171,7 +171,7 @@ class BaseControls(QtWidgets.QWidget):
             if self.show_btn.isChecked():     
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
-                        self.imview.removeItem(self.tf_grid_box)
+                        self.imview.removeItem(self.tr_grid_box)
                         self.imview.removeItem(self.grid_box)
                         self.show_grid_box = False
                 print('Recalculating original grid...')
@@ -285,6 +285,17 @@ class BaseControls(QtWidgets.QWidget):
         if self.original_help:
             if self.ops is not None:
                 self.ops.transformed = not self.ops.transformed
+                if hasattr(self.ops, 'flipv') and not self.ops.transformed:
+                    self.flipv.setEnabled(False)
+                    self.fliph.setEnabled(False)
+                    self.transpose.setEnabled(False)
+                    self.rotate.setEnabled(False)
+                elif hasattr(self.ops, 'flipv') and self.ops.transformed:
+                    self.flipv.setEnabled(True)
+                    self.fliph.setEnabled(True)
+                    self.transpose.setEnabled(True)
+                    self.rotate.setEnabled(True)
+
                 print('Transformed?', self.ops.transformed)
                 self.ops.toggle_original()    
                 self._recalc_grid(toggle_orig=True)
@@ -299,7 +310,7 @@ class BaseControls(QtWidgets.QWidget):
             src = np.array([[point.x(),point.y()] for point in self.points_corr])
             dst = np.array([[point.x(),point.y()] for point in self.other.points_corr])
             dst = np.array([point + self.cen for point in dst])
-            self.ops.refine(src, dst,self.other.ops.points)
+            self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
             [self.imview.removeItem(point) for point in self.points_corr]
             [self.other.imview.removeItem(point) for point in self.other.points_corr]
             self.points_corr = []
