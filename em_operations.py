@@ -267,7 +267,7 @@ class EM_ops():
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
         if not self.transformed:
-            if (coordinate[0] < self.mcounts.shape[0]) and (coordinate[1] < self.mcounts.shape[1]):
+            if (0 <= coordinate[0] < self.mcounts.shape[0]) and (0 <= coordinate[1] < self.mcounts.shape[1]):
                 if self.mcounts[coordinate[0],coordinate[1]] > 1:
                     print('Selected region ambiguous. Try again!')
                     return
@@ -284,7 +284,7 @@ class EM_ops():
                     print('Selected region: ', counter-1)
                     return counter - 1
         else:
-            if (coordinate[0] < self.tf_count_map.shape[0]) and (coordinate[1] < self.tf_count_map.shape[1]):
+            if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (0 <= coordinate[1] < self.tf_count_map.shape[1]):
                 if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
                     print('Selected region ambiguous. Try again!')
                     return
