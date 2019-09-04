@@ -203,7 +203,7 @@ class FMControls(BaseControls):
         line.addWidget(label)
 
         self.fliph = QtWidgets.QPushButton('\u2345', self)
-        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
+        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25 
         font = self.fliph.font()
         font.setPointSize(24)
         self.fliph.setFixedWidth(width)

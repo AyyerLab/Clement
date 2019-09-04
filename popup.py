@@ -85,14 +85,11 @@ class Merge(QtGui.QMainWindow,):
         self.max_proj_btn = QtWidgets.QCheckBox('Max projection')
         self.max_proj_btn.stateChanged.connect(self._show_max_projection)
         line.addWidget(self.max_proj_btn)
-        self.prev_btn = QtWidgets.QPushButton('\u2190', self)
-        self.prev_btn.setFixedWidth(32)
-        self.prev_btn.clicked.connect(self._prev_file)
-        line.addWidget(self.prev_btn)
-        self.next_btn = QtWidgets.QPushButton('\u2192', self)
-        self.next_btn.setFixedWidth(32)
-        self.next_btn.clicked.connect(self._next_file)
-        line.addWidget(self.next_btn)
+        self.slice_select_btn = QtWidgets.QSpinBox(self)
+        self.slice_select_btn.editingFinished.connect(self._slice_changed)
+        self.slice_select_btn.setRange(0, self.parent.fm.num_slices)
+        self.slice_select_btn.setValue(self.parent.fmcontrols.slice_select_btn.value())
+        line.addWidget(self.slice_select_btn)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -311,28 +308,17 @@ class Merge(QtGui.QMainWindow,):
             self._save_data()
             
     def _show_max_projection(self):
-        if self.max_proj_btn.isChecked():
-            self.prev_btn.setEnabled(False)
-            self.next_btn.setEnabled(False)
-        else:
-            self.prev_btn.setEnabled(True)
-            self.next_btn.setEnabled(True)
+        self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
+
         self.parent.fm.calc_max_projection()
         self._update_imview()
 
-    def _next_file(self):
-        self.ind = (self.ind + 1 + self.num_slices) % self.num_slices
-        self.parent.fm.parse(fname=self.parent.fm.old_fname, z=self.ind)
+    def _slice_changed(self):
+        num = self.slice_select_btn.value()
+        self.parent.fm.parse(fname=self.fm_fname, z=num, reopen=False)    
         self._update_imview()
-        fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
-
-    def _prev_file(self):
-        self.ind = (self.ind - 1 + self.num_slices) % self.num_slices
-        self.parent.fm.parse(fname=self.parent.fm.old_fname, z=self.ind)
-        self._update_imview()
-        fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
+        fname, indstr = self.fm_fname.split()
+        self.fm_fname = (fname + ' [%d/%d]'%(num, self.parent.fm.num_slices))
 
     def _set_theme(self, name):
         if name == 'none':
