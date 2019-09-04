@@ -30,6 +30,8 @@ class Merge(QtGui.QMainWindow,):
         self.color_data = None
         self.overlay = True
         self.clicked_points = []
+        self.annotations = []
+        self.counter = 0
         self.stage_positions = None
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self._init_ui()
@@ -182,6 +184,7 @@ class Merge(QtGui.QMainWindow,):
 
     def _imview_clicked(self, event):
         if self.select_btn.isChecked():
+            self.counter += 1
             if event.button() == QtCore.Qt.RightButton:
                 event.ignore()
                 return
@@ -195,13 +198,17 @@ class Merge(QtGui.QMainWindow,):
             point.setPen(0,255,0)
             point.removeHandle(0)
             self.imview.addItem(point)
-            self.clicked_points.append(point)
- 
-            point.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point))
+            self.clicked_points.append(point) 
+            annotation = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
+            annotation.setPos(pos.x()+5, pos.y()+5)
+            self.annotations.append(annotation)
+            self.imview.addItem(annotation)
+            point.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point,annotation))
 
-    def _remove_correlated_points(self,pt):
+    def _remove_correlated_points(self,pt,anno):
         self.imview.removeItem(pt)
         self.clicked_points.remove(pt)
+        self.annotations.remove(anno)
 
     def _show_overlay(self,checked):
         self.overlay = not self.overlay
@@ -255,7 +262,10 @@ class Merge(QtGui.QMainWindow,):
             print('Select points of interest!')
             if len(self.clicked_points) != 0:
                 [self.imview.removeItem(point) for point in self.clicked_points]
+                [self.imview.removeItem(annotation) for annotation in self.annotations]
                 self.clicked_points = []
+                self.annotations = []
+                self.counter = 0
                 self.stage_positions = None
         else:
             size = 0.01 * self.data.shape[0]
@@ -274,8 +284,9 @@ class Merge(QtGui.QMainWindow,):
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder)
+        screenshot = self.imview.grab()
         if file_name is not '':
-            self.imview.export(file_name+'.tif')
+            screenshot.save(file_name,'tif')
             self._save_merge(file_name)
             self._save_coordinates(file_name)
     
@@ -292,7 +303,7 @@ class Merge(QtGui.QMainWindow,):
         for i in range(len(self.stage_positions)):
             enumerated.append((i+1,self.stage_positions[i][0],self.stage_positions[i][1]))
         try:
-            with open(fname+'.txt', 'a') as f:
+            with open(fname+'.txt', 'a', newline='') as f:
                 csv.writer(f, delimiter=' ').writerows(enumerated)
 
         except PermissionError:
