@@ -271,6 +271,7 @@ class BaseControls(QtWidgets.QWidget):
             self.original_help = True
             self._recalc_grid(toggle_orig=True)
             self._update_imview()
+            self.transform_btn.setEnabled(False)
         else:
             print('Define grid box on %s image first!'%self.tag)
 
@@ -300,10 +301,10 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.toggle_original()    
                 self._recalc_grid(toggle_orig=True)
                 self._update_imview()
-                #if self.ops.transformed:
-                #    self.transform_btn.setEnabled(False)
-                #else:
-                #    self.transform_btn.setEnabled(True)
+                if self.ops.transformed:
+                    self.transform_btn.setEnabled(False)
+                else:
+                    self.transform_btn.setEnabled(True)
 
     def _refine(self):
         if len(self.points_corr) > 3:

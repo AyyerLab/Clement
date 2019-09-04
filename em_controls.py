@@ -237,7 +237,7 @@ class EMControls(BaseControls):
                 self.original_help = True
                 self.show_btn.setEnabled(False) 
                 self.box_coordinate = None
-                self.transform_btn.setEnabled = True
+                self.transform_btn.setEnabled(True)
             else:
                 self._hide_boxes()
 
