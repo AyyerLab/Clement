@@ -241,27 +241,17 @@ class EM_ops():
             return 
         self.transformed = True
 
-        manager = mp.Manager()
-        dict1 = manager.dict()
-        dict2 = manager.dict()
-        dict3 = manager.dict()
-        p1 = mp.Process(target=self.apply_transform_mp,args=(self.data,dict1))
-        p2 = mp.Process(target=self.apply_transform_mp,args=(self.mcounts,dict2))
-        p3 = mp.Process(target=self.apply_transform_mp,args=(self.count_map,dict3))
-        p1.start()
-        p2.start()
-        p3.start()
-        p1.join()
-        p2.join()
-        p3.join()
+        tf1 = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+        tf2 = ndi.affine_transform(self.mcounts, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+        tf3 = ndi.affine_transform(self.count_map, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         if self.assembled:
-            self._tf_data = np.array(dict1[0])
-            self.tf_mcounts = np.array(dict2[0])
-            self.tf_count_map = np.array(dict3[0])
+            self._tf_data = tf1
+            self.tf_mcounts = tf2
+            self.tf_count_map = tf3
         else: 
-            self.tf_region = np.array(dict1[0])
-            self.tf_mcounts = np.array(dict2[0])
-            self.tf_count_map = np.array(dict3[0])
+            self.tf_region = tf1
+            self.tf_mcounts = tf2
+            self.tf_count_map = tf3
 
         self.transform_shift = -self.tf_corners.min(1)[:2]
         pts = np.array([point + self.transform_shift for point in pts]) 
