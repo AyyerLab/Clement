@@ -47,6 +47,44 @@ QMenu {
     background: #57727b;
   }
 
+  QAbstractItemView QLineEdit {
+    padding: 4px;
+  }
+QComboBox {
+  selection-background-color: #57727b;
+  padding-left: 6px;
+  padding-right: 6px;
+  min-height: 1.5em;
+}
+  QComboBox QAbstractItemView {
+    border: 1px solid #57727b;
+    background-color: #1d262a;
+    selection-background-color: #57727b;
+    padding-left: 2px;
+  }
+  QCombobox:hover {
+    border: 1px solid #ed7340;
+  }
+  QComboBox::indicator {
+    background-color: transparent;
+    selection-background-color: transparent;
+    color: transparent;
+    selection-color: transparent;
+  }
+  QComboBox::indicator:alternate {
+    background: #1d262a;
+  }
+  QComboBox::item:alternate {
+    background: #1d262a;
+  }
+  QComboBox::item:selected {
+    background: #57727b;
+    border: 0px solid transparent;
+  }
+  QComboBox::item:checked {
+    font-weight: bold;
+  }
+
 QCheckBox::indicator {
   border: 1px solid #eaf0ce;
   padding: 1px;
@@ -73,6 +111,9 @@ QLineEdit {
 }
   QLineEdit:hover, QLineEdit:focus {
     border: 1px solid #ed7340;
+  }
+  QLineEdit:disabled {
+    border: 1px solid #808371;
   }
 
 QPushButton {
