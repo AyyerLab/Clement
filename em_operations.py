@@ -240,48 +240,30 @@ class EM_ops():
             print('Calculate transform matrix first')
             return 
         self.transformed = True
-
-        manager = mp.Manager()
-        dict1 = manager.dict()
-        dict2 = manager.dict()
-        dict3 = manager.dict()
-        p1 = mp.Process(target=self.apply_transform_mp,args=(self.data,dict1))
-        p2 = mp.Process(target=self.apply_transform_mp,args=(self.mcounts,dict2))
-        p3 = mp.Process(target=self.apply_transform_mp,args=(self.count_map,dict3))
-        p1.start()
-        p2.start()
-        p3.start()
-        p1.join()
-        p2.join()
-        p3.join()
+        
+        self.tf_mcounts = ndi.affine_transform(self.mcounts, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+        self.tf_count_map = ndi.affine_transform(self.count_map, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+        
         if self.assembled:
-            self._tf_data = np.array(dict1[0])
-            self.tf_mcounts = np.array(dict2[0])
-            self.tf_count_map = np.array(dict3[0])
-        else: 
-            self.tf_region = np.array(dict1[0])
-            self.tf_mcounts = np.array(dict2[0])
-            self.tf_count_map = np.array(dict3[0])
-
+            self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+        else:
+            self.tf_region = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+            
         self.transform_shift = -self.tf_corners.min(1)[:2]
         pts = np.array([point + self.transform_shift for point in pts]) 
         if self.assembled:
             self.new_points = np.copy(pts)
+            self.tf_grid_points = [] 
+            for i in range(len(self.grid_points)):
+                tf_box_points = []
+                for point in self.grid_points[i]:
+                    x_i, y_i, z_i = self.tf_matrix @ point
+                    tf_box_points.append(np.array([x_i,y_i,z_i]))
+                self.tf_grid_points.append(tf_box_points)
         else:
             self.tf_points_region = np.copy(pts)  
         self.toggle_original()
-        self.tf_grid_points = []
-        
-        for i in range(len(self.grid_points)):
-            tf_box_points = []
-            for point in self.grid_points[i]:
-                x_i, y_i, z_i = self.tf_matrix @ point
-                tf_box_points.append(np.array([x_i,y_i,z_i]))
-            self.tf_grid_points.append(tf_box_points)
-
-    def apply_transform_mp(self,data,return_dict):
-        return_dict[0] = ndi.affine_transform(data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-        
+                
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
         if not self.transformed:
