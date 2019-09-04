@@ -65,16 +65,12 @@ class FMControls(BaseControls):
         self.max_proj_btn.stateChanged.connect(self._show_max_projection)
         self.max_proj_btn.setEnabled(False)
         line.addWidget(self.max_proj_btn) 
-        self.prev_btn = QtWidgets.QPushButton('\u2190', self)
-        self.prev_btn.setFixedWidth(32)
-        self.prev_btn.clicked.connect(self._prev_file)
-        self.prev_btn.setEnabled(False)
-        line.addWidget(self.prev_btn)
-        self.next_btn = QtWidgets.QPushButton('\u2192', self)
-        self.next_btn.setFixedWidth(32)
-        self.next_btn.clicked.connect(self._next_file)
-        self.next_btn.setEnabled(False)
-        line.addWidget(self.next_btn)
+        self.slice_select_btn = QtWidgets.QSpinBox(self)
+        self.slice_select_btn.setRange(0, 0)
+        self.slice_select_btn.setEnabled(False)
+        #self.slice_select_btn.valueChanged.connect(self._slice_changed)
+        self.slice_select_btn.editingFinished.connect(self._slice_changed)
+        line.addWidget(self.slice_select_btn)
         
         # ---- Select channels
         line = QtWidgets.QHBoxLayout()
@@ -294,13 +290,13 @@ class FMControls(BaseControls):
         self.num_slices = self.ops.num_slices
 
         if file_name is not '':
-            self.fm_fname.setText(file_name + ' [0/%d]'%self.ops.num_slices)
+            self.fm_fname.setText(file_name + ' [0/%d]'%self.num_slices)
+            self.slice_select_btn.setRange(0, self.num_slices)
         
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean()*2))
             self._update_imview()  
             self.max_proj_btn.setEnabled(True)
-            self.prev_btn.setEnabled(True)
-            self.next_btn.setEnabled(True)
+            self.slice_select_btn.setEnabled(True)
             self.channel1_btn.setEnabled(True)
             self.channel2_btn.setEnabled(True)
             self.channel3_btn.setEnabled(True)
@@ -318,12 +314,7 @@ class FMControls(BaseControls):
             self.merge_btn.setEnabled(True)
 
     def _show_max_projection(self):
-        if self.max_proj_btn.isChecked():
-            self.prev_btn.setEnabled(False)
-            self.next_btn.setEnabled(False)
-        else:
-            self.prev_btn.setEnabled(True)
-            self.next_btn.setEnabled(True)
+        self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
         if self.ops is not None:
             self.ops.calc_max_projection()
             self._update_imview()
@@ -387,26 +378,16 @@ class FMControls(BaseControls):
             self._recalc_grid()
             self._update_imview()
 
-    def _next_file(self):
+    def _slice_changed(self):
         if self.ops is None:
             print('Pick FM image first')
             return
-        self.ind = (self.ind + 1 + self.num_slices) % self.num_slices
-        self.ops.parse(fname=self.ops.old_fname, z=self.ind, reopen=False)
+        num = self.slice_select_btn.value()
+        self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)    
         self._update_imview()
         fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
+        self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))
 
-    def _prev_file(self):
-        if self.ops is None:
-            print('Pick FM image first')
-            return
-        self.ind = (self.ind - 1 + self.num_slices) % self.num_slices
-        self.ops.parse(fname=self.ops.old_fname, z=self.ind, reopen=False)
-        self._update_imview()
-        fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(self.ind, self.num_slices))
- 
     def _find_peaks(self):
         if self.ops is not None:
             self.ops.peak_finding()
