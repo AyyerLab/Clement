@@ -4,7 +4,6 @@ import os
 import numpy as np
 import copy
 import mrcfile as mrc
-import multiprocessing as mp
 from scipy import ndimage as ndi
 from scipy import signal as sc
 from skimage import transform as tf
