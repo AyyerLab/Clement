@@ -84,24 +84,34 @@ class BaseControls(QtWidgets.QWidget):
 
         if self.ops.transformed and self.other.ops.transformed:
             if self.tr_matrices is not None:
-                point = pg.CircleROI(pos, size, parent=item, movable=False)
-                point.setPen(0,255,0)
-                point.removeHandle(0)
-                self.imview.addItem(point)
-                self.points_corr.append(point)
+                point_obj = pg.CircleROI(pos, size, parent=item, movable=False, removable=True)
+                point_obj.setPen(0,255,0)
+                point_obj.removeHandle(0)
+                self.imview.addItem(point_obj)
+                self.points_corr.append(point_obj)
                 
                 # Coordinates in clicked image
-                init = np.array([point.x(),point.y(), 1])
+                init = np.array([point_obj.x(),point_obj.y(), 1])
                 transf = np.dot(self.tr_matrices, init)
                 self.cen = self.other.ops.side_length / 100
                 pos = QtCore.QPointF(transf[0]-self.cen, transf[1]-self.cen)  
-                point = pg.CircleROI(pos, 2*self.cen, parent=self.other.imview.getImageItem(), movable=True)
-                point.setPen(0,255,255)
-                point.removeHandle(0)
-                self.other.imview.addItem(point)
-                self.other.points_corr.append(point)
+                point_other = pg.CircleROI(pos, 2*self.cen, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+                point_other.setPen(0,255,255)
+                point_other.removeHandle(0)
+                self.other.imview.addItem(point_other)
+                self.other.points_corr.append(point_other)
+                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj,point_other))
+                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other,point_obj))
+                print(self.points_corr)
+                print(self.other.points_corr)
         else:
             print('Transform both images before point selection')
+
+    def _remove_correlated_points(self,pt1,pt2):
+        self.imview.removeItem(pt1)
+        self.other.imview.removeItem(pt2)
+        self.points_corr.remove(pt1)
+        self.other.points_corr.remove(pt2)
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
