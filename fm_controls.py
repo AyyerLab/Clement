@@ -10,8 +10,8 @@ from fm_operations import FM_ops
 #import align_fm
 
 class SeriesPicker(QtWidgets.QDialog):
-    def __init__(self, names):
-        super(SeriesPicker, self).__init__()
+    def __init__(self, parent, names):
+        super(SeriesPicker, self).__init__(parent)
         self.current_series = 0
 
         self.setWindowTitle('Pick image series...')
@@ -284,10 +284,11 @@ class FMControls(BaseControls):
         self.ops = FM_ops()
         retval = self.ops.parse(file_name, z=0)
         if retval is not None:
-            picker = SeriesPicker(retval)
+            picker = SeriesPicker(self, retval)
             picker.exec_()
             series = picker.current_series
             if series < 0:
+                self.ops = None
                 return
             self.ops.parse(file_name, z=0, series=series)
         self.num_slices = self.ops.num_slices
