@@ -184,17 +184,24 @@ class Merge(QtGui.QMainWindow,):
         if self.select_btn.isChecked():
             if event.button() == QtCore.Qt.RightButton:
                 event.ignore()
+                return
             size = 0.01 * self.data.shape[0]
 
             pos = self.imview.getImageItem().mapFromScene(event.pos())
             pos.setX(pos.x() - size/2)
             pos.setY(pos.y() - size/2)
             item = self.imview.getImageItem()
-            point = pg.CircleROI(pos, size, parent=item, movable=False)
+            point = pg.CircleROI(pos, size, parent=item, movable=False, removable=True)
             point.setPen(0,255,0)
             point.removeHandle(0)
             self.imview.addItem(point)
             self.clicked_points.append(point)
+ 
+            point.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point))
+
+    def _remove_correlated_points(self,pt):
+        self.imview.removeItem(pt)
+        self.clicked_points.remove(pt)
 
     def _show_overlay(self,checked):
         self.overlay = not self.overlay
@@ -266,11 +273,9 @@ class Merge(QtGui.QMainWindow,):
     
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
-        file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder, '*.tif')
-        #exporter = exporters.ImageExporter(self.imview)
+        file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder)
         if file_name is not '':
-            self.imview.export(file_name)
-            #exporter.export(file_name+'.tif')
+            self.imview.export(file_name+'.tif')
             self._save_merge(file_name)
             self._save_coordinates(file_name)
     
@@ -283,10 +288,12 @@ class Merge(QtGui.QMainWindow,):
             pass
 
     def _save_coordinates(self, fname):
+        enumerated = []
+        for i in range(len(self.stage_positions)):
+            enumerated.append((i+1,self.stage_positions[i][0],self.stage_positions[i][1]))
         try:
             with open(fname+'.txt', 'a') as f:
-                #csv.writer(f, delimiter=' ').writerow(self.parent.emcontrols.ops.selected_region)
-                csv.writer(f, delimiter=' ').writerows(self.stage_positions)
+                csv.writer(f, delimiter=' ').writerows(enumerated)
 
         except PermissionError:
             print('Permission error! Choose a different directory!')
