@@ -32,6 +32,7 @@ class BaseControls(QtWidgets.QWidget):
     def _imview_clicked(self, event):
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
+            return
 
         if self.ops is None:
             return
@@ -102,8 +103,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.other.points_corr.append(point_other)
                 point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj,point_other))
                 point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other,point_obj))
-                print(self.points_corr)
-                print(self.other.points_corr)
         else:
             print('Transform both images before point selection')
 
@@ -239,7 +238,7 @@ class BaseControls(QtWidgets.QWidget):
             if checked:
                 print('Select and transform both data first')
 
-    def _affine_transform(self, parent):
+    def _affine_transform(self):
         if self.show_btn.isChecked():
             grid_box = self.grid_box
         else:
