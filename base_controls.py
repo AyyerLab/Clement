@@ -101,16 +101,16 @@ class BaseControls(QtWidgets.QWidget):
                 point_other.removeHandle(0)
                 self.other.imview.addItem(point_other)
                 self.other.points_corr.append(point_other)
-                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj,point_other))
-                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other,point_obj))
+                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self.points_corr, self.other.points_corr))
+                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other.points_corr, self.points_corr))
         else:
             print('Transform both images before point selection')
 
-    def _remove_correlated_points(self,pt1,pt2):
-        self.imview.removeItem(pt1)
-        self.other.imview.removeItem(pt2)
-        self.points_corr.remove(pt1)
-        self.other.points_corr.remove(pt2)
+    def _remove_correlated_points(self,imv1,imv2,pt1,pt2,pt_list,pt_list2):
+        imv1.removeItem(pt1)
+        imv2.removeItem(pt2)
+        pt_list.remove(pt1)
+        pt_list2.remove(pt2)
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
