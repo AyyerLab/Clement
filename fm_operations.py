@@ -466,7 +466,7 @@ class FM_ops():
             print('\r', self.data.shape)
             self.refined = True
 
-    def merge(self, em_data,em_points):        
+    def calc_merge_matrix(self, em_data,em_points):        
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         dst = np.array(sorted(em_points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         self.merge_matrix = tf.estimate_transform('affine', src, dst).params
@@ -477,28 +477,32 @@ class FM_ops():
         self._merge_fm_shape = tuple([int(i) for i in (self.merge_fm_corners.max(1) - self.merge_fm_corners.min(1))[:2]])
         shift = self.merge_fm_corners.min(1)[:2]
         self.merge_matrix[:2, 2] -= shift
-        self.merge_fm_data = np.empty(self._merge_fm_shape+(self.data.shape[-1],))
-        print('merge_fm_data.shape: ', self.merge_fm_data.shape)
-        for i in range(self.data.shape[-1]):
-            print(i)
-            self.merge_fm_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self._merge_fm_shape)
-        fm_shift = np.zeros(2).astype(int)
-        em_shift = np.zeros(2).astype(int)
+        self.fm_shift = np.zeros(2).astype(int)
+        self.em_shift = np.zeros(2).astype(int)
         if shift[0] < 0:
-            em_shift[0] = np.abs(int(shift[0]))
+            self.em_shift[0] = np.abs(int(shift[0]))
         else:
-            fm_shift[0] = int(shift[0])
+            self.fm_shift[0] = int(shift[0])
         if shift[1] < 0:
-            em_shift[1] = np.abs(int(shift[1]))
+            self.em_shift[1] = np.abs(int(shift[1]))
         else:
-            fm_shift[1] = int(shift[1])
-        
-        x_shape = np.max([em_data.shape[0]+em_shift[0],self.merge_fm_data.shape[0]+fm_shift[0]]).astype(int)
-        y_shape = np.max([em_data.shape[1]+em_shift[1],self.merge_fm_data.shape[1]+fm_shift[1]]).astype(int)
+            self.fm_shift[1] = int(shift[1])
+       
+        self.merge_fm_data = np.empty(self._merge_fm_shape+(self.data.shape[-1],))
+        x_shape = np.max([em_data.shape[0]+self.em_shift[0],self.merge_fm_data.shape[0]+self.fm_shift[0]]).astype(int)
+        y_shape = np.max([em_data.shape[1]+self.em_shift[1],self.merge_fm_data.shape[1]+self.fm_shift[1]]).astype(int)
         self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
+        self.merged[self.em_shift[0]:em_data.shape[0]+self.em_shift[0],self.em_shift[1]:em_data.shape[1]+self.em_shift[1],-1] = em_data/np.max(em_data)*np.max(self.data)     
+        
+        self.apply_merge()
+
+    def apply_merge(self):
+        for i in range(self.data.shape[-1]):   
+            self.merge_fm_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self._merge_fm_shape)
+            sys.stderr.write('\r%d'%i)
+       
         print('Merged.shape: ', self.merged.shape)
-        self.merged[fm_shift[0]:self._merge_fm_shape[0]+fm_shift[0],fm_shift[1]:self._merge_fm_shape[1]+fm_shift[1],:-1] = self.merge_fm_data
-        self.merged[em_shift[0]:em_data.shape[0]+em_shift[0],em_shift[1]:em_data.shape[1]+em_shift[1],-1] = em_data/np.max(em_data)*np.max(self.data)     
+        self.merged[self.fm_shift[0]:self._merge_fm_shape[0]+self.fm_shift[0],self.fm_shift[1]:self._merge_fm_shape[1]+self.fm_shift[1],:-1] = self.merge_fm_data
         
     def get_transform(self, source, dest):
         if len(source) != len(dest):

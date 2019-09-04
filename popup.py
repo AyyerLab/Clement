@@ -309,13 +309,17 @@ class Merge(QtGui.QMainWindow,):
             
     def _show_max_projection(self):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
-
         self.parent.fm.calc_max_projection()
+        self.parent.fm.apply_merge()
+        self.data = np.copy(self.parent.fm.merged)       
         self._update_imview()
 
     def _slice_changed(self):
         num = self.slice_select_btn.value()
-        self.parent.fm.parse(fname=self.fm_fname, z=num, reopen=False)    
+        self.parent.fm.parse(fname=self.fm_fname, z=num, reopen=False)
+        self.parent.fm.apply_merge()
+        self.data = np.copy(self.parent.fm.merged)
+
         self._update_imview()
         fname, indstr = self.fm_fname.split()
         self.fm_fname = (fname + ' [%d/%d]'%(num, self.parent.fm.num_slices))
