@@ -181,10 +181,10 @@ class Merge(QtGui.QMainWindow,):
 
     def _imview_clicked(self, event):
         if self.select_btn.isChecked():
-            self.counter += 1
             if event.button() == QtCore.Qt.RightButton:
                 event.ignore()
                 return
+            self.counter += 1
             size = 0.01 * self.data.shape[0]
 
             pos = self.imview.getImageItem().mapFromScene(event.pos())
@@ -205,6 +205,7 @@ class Merge(QtGui.QMainWindow,):
     def _remove_correlated_points(self,pt,anno):
         self.imview.removeItem(pt)
         self.clicked_points.remove(pt)
+        self.imview.removeItem(anno)
         self.annotations.remove(anno)
 
     def _show_overlay(self,checked):
@@ -276,6 +277,9 @@ class Merge(QtGui.QMainWindow,):
             return
         if len(self.clicked_points) == 0:
             print('No coordinates selected!')
+            return
+        if self.stage_positions is None:
+            print('Confirm selected points first!')
             return
     
         if self.curr_mrc_folder is None:
