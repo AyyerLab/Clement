@@ -11,7 +11,6 @@ class BaseControls(QtWidgets.QWidget):
         self.other = None # The other controls object
 
         self.tr_matrices = None
-        self.cen = 0
         self.clicked_points = []
         self.points_corr = []
         self.show_grid_box = False
@@ -38,28 +37,24 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         pos = self.imview.getImageItem().mapFromScene(event.pos())
-        #if self.ops.side_length is None:
-        #    size = self.ops.data.shape[0]*0.01
-        #else:
-        #    size = self.ops.side_length / 25
-        size = 20
+        
+        self._size_ops = self.ops.data.shape[0]*0.01
+        if self.other.ops is not None:
+            self._size_other = self.other.ops.data.shape[0]*0.005
+
         item = self.imview.getImageItem()
         
-        #pos.setX(pos.x() - size/2)
-        #pos.setY(pos.y() - size/2)
+        pos.setX(pos.x() - self._size_ops/2)
+        pos.setY(pos.y() - self._size_ops/2)
 
-        #pos_draw = np.copy(pos)
-        #pos_draw.setX(pos_draw.x() - size/2)
-        #pos_draw.setY(pos_draw.y() - size/2)
-        
         if self.define_btn.isChecked():
-            roi = pg.CircleROI(pos, size, parent=item, movable=False)
+            roi = pg.CircleROI(pos, self._size_ops, parent=item, movable=False)
             roi.setPen(255,0,0)
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
         elif self.select_btn.isChecked():
-            self._draw_correlated_points(pos, size, item)
+            self._draw_correlated_points(pos, self._size_ops, self._size_other, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
             '''EM only: Select individual image from montage'''
             self.box_coordinate = pos
@@ -85,23 +80,23 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 print('Oops, something went wrong. Try again!')
 
-    def _draw_correlated_points(self, pos, size, item):
+    def _draw_correlated_points(self, pos, size1, size2, item):
         if self.other.ops is None:
             print('Select both data first')
 
         if self.ops.transformed and self.other.ops.transformed:
             if self.tr_matrices is not None:
-                point_obj = pg.CircleROI(pos, size, parent=item, movable=False, removable=True)
+                point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                 point_obj.setPen(0,255,0)
                 point_obj.removeHandle(0)
                 self.imview.addItem(point_obj)
                 self.points_corr.append(point_obj)
                 
                 # Coordinates in clicked image
-                init = np.array([point_obj.x(),point_obj.y(), 1])
+                init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
                 transf = np.dot(self.tr_matrices, init)
-                pos = QtCore.QPointF(transf[0], transf[1])  
-                point_other = pg.CircleROI(pos, size, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+                pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)  
+                point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                 point_other.setPen(0,255,255)
                 point_other.removeHandle(0)
                 self.other.imview.addItem(point_other)
@@ -321,9 +316,8 @@ class BaseControls(QtWidgets.QWidget):
 
     def _refine(self):
         if len(self.points_corr) > 3:
-            src = np.array([[point.x(),point.y()] for point in self.points_corr])
-            dst = np.array([[point.x(),point.y()] for point in self.other.points_corr])
-            dst = np.array([point + self.cen for point in dst])
+            src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self.points_corr])
+            dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other.points_corr])
             self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
             [self.imview.removeItem(point) for point in self.points_corr]
             [self.other.imview.removeItem(point) for point in self.other.points_corr]
