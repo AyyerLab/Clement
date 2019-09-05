@@ -38,14 +38,20 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         pos = self.imview.getImageItem().mapFromScene(event.pos())
-        if self.ops.side_length is None:
-            size = self.ops.data.shape[0]*0.01
-        else:
-            size = self.ops.side_length / 25
-        pos.setX(pos.x() - size/2)
-        pos.setY(pos.y() - size/2)
+        #if self.ops.side_length is None:
+        #    size = self.ops.data.shape[0]*0.01
+        #else:
+        #    size = self.ops.side_length / 25
+        size = 20
         item = self.imview.getImageItem()
+        
+        #pos.setX(pos.x() - size/2)
+        #pos.setY(pos.y() - size/2)
 
+        #pos_draw = np.copy(pos)
+        #pos_draw.setX(pos_draw.x() - size/2)
+        #pos_draw.setY(pos_draw.y() - size/2)
+        
         if self.define_btn.isChecked():
             roi = pg.CircleROI(pos, size, parent=item, movable=False)
             roi.setPen(255,0,0)
@@ -94,9 +100,8 @@ class BaseControls(QtWidgets.QWidget):
                 # Coordinates in clicked image
                 init = np.array([point_obj.x(),point_obj.y(), 1])
                 transf = np.dot(self.tr_matrices, init)
-                self.cen = self.other.ops.side_length / 100
-                pos = QtCore.QPointF(transf[0]-self.cen, transf[1]-self.cen)  
-                point_other = pg.CircleROI(pos, 2*self.cen, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+                pos = QtCore.QPointF(transf[0], transf[1])  
+                point_other = pg.CircleROI(pos, size, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                 point_other.setPen(0,255,255)
                 point_other.removeHandle(0)
                 self.other.imview.addItem(point_other)

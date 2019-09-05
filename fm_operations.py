@@ -455,7 +455,7 @@ class FM_ops():
             self.refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
             self.refine_grid(em_grid_points)          
             self.apply_refinement()
-   
+
     def refine_grid(self, em_points):
         self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
         self.new_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
@@ -469,19 +469,11 @@ class FM_ops():
             sys.stderr.write('\r%d'%i)
          
         if self.show_max_proj: 
-            #self.tf_max_proj_data = np.copy(self.data)
             self.refined_max_proj = np.copy(self.data)
         else:
-            #self._tf_data = np.copy(self.data)
             self.refined_data = np.copy(self.data)
         print('\r', self.data.shape)
         self.refined = True
-        #self.fliph = False
-        #self.flipv = False
-        #self.transp = False
-        #self.rot = False
-
-
 
     def calc_merge_matrix(self, em_data,em_points):        
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
@@ -494,6 +486,7 @@ class FM_ops():
         self._merge_fm_shape = tuple([int(i) for i in (self.merge_fm_corners.max(1) - self.merge_fm_corners.min(1))[:2]])
         shift = self.merge_fm_corners.min(1)[:2]
         self.merge_matrix[:2, 2] -= shift
+
         self.fm_shift = np.zeros(2).astype(int)
         self.em_shift = np.zeros(2).astype(int)
         if shift[0] < 0:
@@ -525,7 +518,5 @@ class FM_ops():
         if len(source) != len(dest):
             print('Point length do not match')
             return
-        print(source)
-        print(dest)
         self.corr_matrix = tf.estimate_transform('affine', source, dest).params
         return self.corr_matrix
