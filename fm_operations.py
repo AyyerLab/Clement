@@ -185,11 +185,11 @@ class FM_ops():
         self.rot = do_rot 
         self._update_data()
 
-    def toggle_original(self):
+    def toggle_original(self,update=True):
         if self._tf_data is None:
             print('Need to transform data first')
             return
-        self._update_data()
+        self._update_data(update=update)
 
     def calc_max_projection(self):
         self.show_max_proj = not self.show_max_proj
@@ -476,6 +476,12 @@ class FM_ops():
             self.refined_data = np.copy(self.data)
         print('\r', self.data.shape)
         self.refined = True
+        #self.fliph = False
+        #self.flipv = False
+        #self.transp = False
+        #self.rot = False
+
+
 
     def calc_merge_matrix(self, em_data,em_points):        
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))

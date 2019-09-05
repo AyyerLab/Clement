@@ -26,6 +26,7 @@ class Merge(QtGui.QMainWindow,):
             self.data = np.copy(self.parent.fm.data)
         self.curr_mrc_folder = self.parent.emcontrols.curr_mrc_folder
         self.num_slices = self.parent.fmcontrols.num_slices
+        self._current_slice = self.parent.fmcontrols._current_slice
         self.ind = self.parent.fmcontrols.ind
         self.color_data = None
         self.overlay = True
@@ -320,13 +321,15 @@ class Merge(QtGui.QMainWindow,):
 
     def _slice_changed(self):
         num = self.slice_select_btn.value()
-        self.parent.fm.parse(fname=self.fm_fname, z=num, reopen=False)
-        self.parent.fm.apply_merge()
-        self.data = np.copy(self.parent.fm.merged)
-
-        self._update_imview()
-        fname, indstr = self.fm_fname.split()
-        self.fm_fname = (fname + ' [%d/%d]'%(num, self.parent.fm.num_slices))
+        if num != self._current_slice:
+            self.parent.fm.parse(fname=self.fm_fname, z=num, reopen=False)
+            self.parent.fm.apply_merge()
+            self.data = np.copy(self.parent.fm.merged)
+            self._update_imview()
+            fname, indstr = self.fm_fname.split()
+            self.fm_fname = (fname + ' [%d/%d]'%(num, self.parent.fm.num_slices))
+            self._current_slice = num 
+            self.slice_select_btn.clearFocus()
 
     def _set_theme(self, name):
         if name == 'none':

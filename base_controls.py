@@ -292,14 +292,22 @@ class BaseControls(QtWidgets.QWidget):
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
                 elif hasattr(self.ops, 'flipv') and self.ops.transformed:
-                    self.flipv.setEnabled(True)
-                    self.fliph.setEnabled(True)
-                    self.transpose.setEnabled(True)
-                    self.rotate.setEnabled(True)
+                    if not self.ops.refined:
+                        self.flipv.setEnabled(True)
+                        self.fliph.setEnabled(True)
+                        self.transpose.setEnabled(True)
+                        self.rotate.setEnabled(True)
 
                 print('Transformed?', self.ops.transformed)
-                self.ops.toggle_original()    
+                if hasattr(self.ops,'refined'):
+                    if self.ops.refined:
+                        self.ops.toggle_original(update=False)
+                    else:
+                        self.ops.toggle_original()
+                else:
+                    self.ops.toggle_original()
                 self._recalc_grid(toggle_orig=True)
+
                 self._update_imview()
                 if self.ops.transformed:
                     self.transform_btn.setEnabled(False)
@@ -319,6 +327,10 @@ class BaseControls(QtWidgets.QWidget):
             self.refine = True
             self._recalc_grid()
             self._update_imview() 
+            self.fliph.setEnabled(False)
+            self.flipv.setEnabled(False)
+            self.transpose.setEnabled(False)
+            self.rotate.setEnabled(False)
         else:
             print('Select at least 4 points for refinement!')
         
