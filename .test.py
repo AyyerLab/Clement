@@ -19,7 +19,7 @@ fm_fname = 'data/5b_2.lif'
 app = QtWidgets.QApplication([])
 
 g = gui.GUI()
-g.fmcontrols._parse_fm_images(fm_fname)
+g.fmcontrols._parse_fm_images(fm_fname, series=0)
 g.fm_imview.setLevels(1.5,4)
 g.emcontrols.mrc_fname.setText(em_fname)
 g.emcontrols._assemble_mrc()
