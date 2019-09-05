@@ -13,7 +13,7 @@ warnings.simplefilter('ignore', category=FutureWarning)
 
 class Merge(QtGui.QMainWindow,):
     def __init__(self, parent):
-        super(Merge, self).__init__()
+        super(Merge, self).__init__(parent)
         self.parent = parent 
         self.theme = self.parent.theme
         self.channels = [False, False, False, False]
