@@ -274,6 +274,7 @@ class FMControls(BaseControls):
                                                              '*.lif')
         if file_name is not '':
             self.curr_folder = os.path.dirname(file_name)
+            self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(file_name)
 
     def _parse_fm_images(self, file_name):
@@ -382,11 +383,15 @@ class FMControls(BaseControls):
         if self.ops is None:
             print('Pick FM image first')
             return
+
         num = self.slice_select_btn.value()
-        self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)    
-        self._update_imview()
-        fname, indstr = self.fm_fname.text().split()
-        self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))
+        if num != self._current_slice:
+            self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)    
+            self._update_imview()
+            fname, indstr = self.fm_fname.text().split()
+            self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))
+            self._current_slice = num
+            self.slice_select_btn.clearFocus()
 
     def _find_peaks(self):
         if self.ops is not None:
