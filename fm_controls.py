@@ -45,6 +45,7 @@ class FMControls(BaseControls):
         self.curr_folder = None
         self.channels = [True, True, True, True] 
         self.ind = 0
+        self._current_slice = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._init_ui()
@@ -277,9 +278,9 @@ class FMControls(BaseControls):
             self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(file_name)
 
-    def _parse_fm_images(self, file_name):
+    def _parse_fm_images(self, file_name, series=None):
         self.ops = FM_ops()
-        retval = self.ops.parse(file_name, z=0)
+        retval = self.ops.parse(file_name, z=0, series=series)
         if retval is not None:
             picker = SeriesPicker(self, retval)
             picker.exec_()
