@@ -4,8 +4,8 @@ with open('README.md', 'r') as fptr:
     long_desc = fptr.read()
 
 setuptools.setup(
-    name='Clement',
-    version='0.1',
+    name='clement',
+    version='0.1.2',
     author='CNI Group at MPSD',
     author_email='kartik.ayyer@mpsd.mpg.de',
     description='GUI for Correlative Light and Electron Microscopy',
@@ -18,6 +18,8 @@ setuptools.setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Development Status :: 3 - Alpha',
         'Topic :: Scientific/Engineering :: Visualization',
+        'Operating System :: OS Independent',
+        'Intended Audience :: Science/Research',
     ],
     python_requires='>=3.6',
     install_requires=[
@@ -28,9 +30,10 @@ setuptools.setup(
         'numexpr',
         'mrcfile',
         'read-lif',
-        'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop',        
+        #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=pyqtgraph',
+        'pyqtgraph',
     ],
-    package_data={'Clement': ['styles/*.qss']},
+    package_data={'clement': ['styles/*.qss']},
     entry_points={'gui_scripts': [
         'clement = clement.gui:main',
         ],
