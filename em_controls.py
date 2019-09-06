@@ -157,17 +157,15 @@ class EMControls(BaseControls):
             step = self.step_box.text()
 
         if self.mrc_fname.text() is not '':
-            self.ops = EM_ops(step=int(step))
-            self.ops.parse(self.mrc_fname.text())
-            self.ops.assemble()
+            self.ops = EM_ops()
+            self.ops.parse(self.mrc_fname.text(), int(step))
             self.imview.setImage(self.ops.data)
             self.define_btn.setEnabled(True)
             self.transform_btn.setEnabled(True)
             self.rot_transform_btn.setEnabled(True)
             self.select_region_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
-     
-
+            self.boxes = []
         else:
             print('You have to choose an .mrc file first!')
     
