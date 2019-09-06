@@ -480,6 +480,7 @@ class FM_ops():
         dst = np.array(sorted(em_points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         self.merge_matrix = tf.estimate_transform('affine', src, dst).params
 
+        '''
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.merge_fm_corners = np.dot(self.merge_matrix, corners)
@@ -503,16 +504,19 @@ class FM_ops():
         y_shape = np.max([em_data.shape[1]+self.em_shift[1],self.merge_fm_data.shape[1]+self.fm_shift[1]]).astype(int)
         self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
         self.merged[self.em_shift[0]:em_data.shape[0]+self.em_shift[0],self.em_shift[1]:em_data.shape[1]+self.em_shift[1],-1] = em_data/np.max(em_data)*np.max(self.data)     
+        '''
         
+        self.merged = np.zeros(em_data.shape + (self.data.shape[-1]+1,), dtype='f4')
+        self.merged[:,:,-1] = em_data / em_data.max() * self.data.max()
         self.apply_merge()
 
     def apply_merge(self):
-        for i in range(self.data.shape[-1]):   
-            self.merge_fm_data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self._merge_fm_shape)
+        for i in range(self.data.shape[-1]):
+            self.merged[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.merge_matrix), order=1, output_shape=self.merged.shape[:2])
             sys.stderr.write('\r%d'%i)
        
         print('Merged.shape: ', self.merged.shape)
-        self.merged[self.fm_shift[0]:self._merge_fm_shape[0]+self.fm_shift[0],self.fm_shift[1]:self._merge_fm_shape[1]+self.fm_shift[1],:-1] = self.merge_fm_data
+        #self.merged[self.fm_shift[0]:self._merge_fm_shape[0]+self.fm_shift[0],self.fm_shift[1]:self._merge_fm_shape[1]+self.fm_shift[1],:-1] = self.merge_fm_data
         
     def get_transform(self, source, dest):
         if len(source) != len(dest):
