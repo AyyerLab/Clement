@@ -21,13 +21,12 @@ Here are the instructions to install the program from source.
  * Create a conda environment using the environment.yml file provided:
  ```
  $ conda env create -f environment.yml
- $ conda activate clement
- $ cd clement
+ $ conda activate clement-dev
  ```
- * You can now run the program directly by running `./gui.py`
- * In order to compile to an executable:
+ * You can now run the program directly by running `./run_local`
+ * In order to compile to an executable, run
  ```
- $ pyinstaller clement.spec
+ $ pyinstaller install.spec
  ```
  * This will create a single file executable in the `dist/` folder which you can use directly and on other computers with compatible platforms.
 
