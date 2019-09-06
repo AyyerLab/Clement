@@ -6,10 +6,10 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 
-import res_styles
-from em_controls import EMControls
-from fm_controls import FMControls
-from popup import Merge
+from . import res_styles
+from .em_controls import EMControls
+from .fm_controls import FMControls
+from .popup import Merge
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -17,7 +17,7 @@ def resource_path(rel_path):
     try:
         base_path = sys._MEIPASS
     except Exception:
-        base_path = os.path.abspath('.')
+        base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, rel_path)
 
 class GUI(QtGui.QMainWindow):
@@ -153,7 +153,10 @@ class GUI(QtGui.QMainWindow):
         self.settings.setValue('geometry', self.geometry())
         event.accept()
 
-if __name__ == '__main__':
+def main():
     app = QtWidgets.QApplication([])
     gui = GUI()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

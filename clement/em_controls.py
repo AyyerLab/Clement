@@ -4,8 +4,8 @@ import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 
-from base_controls import BaseControls
-from em_operations import EM_ops
+from .base_controls import BaseControls
+from .em_operations import EM_ops
 
 class EMControls(BaseControls):
     def __init__(self, imview):
