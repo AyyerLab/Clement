@@ -8,7 +8,6 @@ dependencies:
   - scipy
   - scikit-image
   - pyqt=5
-  - pyqtgraph
   - pyinstaller
   - numexpr
   - pip
@@ -16,4 +15,5 @@ dependencies:
   - pip:
     - mrcfile
     - read-lif
+    - git+https://github.com/pyqtgraph/pyqtgraph.git@develop
 
