@@ -16,10 +16,6 @@ Here are the instructions to install the program from source and package it for 
  $ conda env create -f environment.yml
  $ conda activate clement
  ```
- * Create the resources file;
- ```
- $ pyrcc5 styles/res.qrc -o res_styles.py
- ```
  * You can now run the program directly by running `./gui.py`, or you can compile to an executable:
  ```
  $ pyinstaller clement.spec

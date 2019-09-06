@@ -12,7 +12,6 @@
 .*.swp
 
 # Compiled files
-res_styles.py
 build/
 dist/
 
