@@ -4,10 +4,9 @@ from PyInstaller.utils import hooks
 block_cipher = None
 
 datas = []
-datas += [('styles/dark.qss', 'styles')]
-datas += [('styles/rc/*.png', 'styles/rc')]
+datas += [('clement/styles/dark.qss', 'styles')]
 
-a = Analysis(['gui.py'],
+a = Analysis(['run_local'],
              pathex=['/home/ayyerkar/repos/CLEMGui'],
              binaries=[],
              datas=datas,
