@@ -6,7 +6,7 @@ __pycache__/
 *.mdoc
 *.lif
 *.lifext
-/data
+data
 
 # Temp files
 .*.swp
@@ -14,4 +14,4 @@ __pycache__/
 # Compiled files
 build/
 dist/
-
+*.egg-info/
