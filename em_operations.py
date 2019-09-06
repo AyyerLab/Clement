@@ -9,13 +9,10 @@ from scipy import signal as sc
 from skimage import transform as tf
 
 class EM_ops():
-    def __init__(self, step=10):
+    def __init__(self):
         self.pixel_size = None
         self.old_fname = None
-        self.data_highres = None
-        self.step = int(step)
         self.data = None
-        self.stacked_data = None
         self.orig_region = None
         self.tf_region = None
         self.data_backup = None
@@ -50,51 +47,48 @@ class EM_ops():
         self.assembled = True
         self.cum_matrix = None
 
-    def parse(self, fname):
+    def parse(self, fname, step):
+        f = mrc.open(fname, 'r', permissive=True)
         if fname != self.old_fname:
-            with mrc.open(fname, 'r', permissive=True) as f:
-                try:
-                    self.data_highres = f.data
-                    self.stacked_data = self.data_highres[:,::self.step,::self.step]
-                except IndexError:
-                    self.stacked_data = f.data
-                self._h = f.header
-                self._eh = np.frombuffer(f.extended_header, dtype='i2')
-                self.old_fname = fname
-                self.pixel_size = np.array([f.voxel_size.x,f.voxel_size.y,f.voxel_size.y])
+            self._h = f.header
+            self._eh = np.frombuffer(f.extended_header, dtype='i2')
+            self.old_fname = fname
+            self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y])
 
-    def assemble(self):
-        dimensions = self.stacked_data.shape
-        
+        dimensions = np.array(f.data.shape)
+        dimensions[1] = int(np.ceil(dimensions[1] / step))
+        dimensions[2] = int(np.ceil(dimensions[2] / step))
         if len(dimensions) == 3:
-            self.pos_x = self._eh[1:10*dimensions[0]:10] // self.step
-            self.pos_y = self._eh[2:10*dimensions[0]:10] // self.step
+            self.pos_x = self._eh[1:10*dimensions[0]:10] // step
+            self.pos_y = self._eh[2:10*dimensions[0]:10] // step
             self.pos_z = self._eh[3:10*dimensions[0]:10]
-            if len(self.grid_points) != 0:
-                self.grid_points = []
+            self.grid_points = []
             for i in range(len(self.pos_x)):
-                point = np.array((self.pos_x[i],self.pos_y[i],1))
-                box_points = [point,point+(self.stacked_data.shape[1],0,0),point+(self.stacked_data.shape[1],self.stacked_data.shape[2],0),point+(0,self.stacked_data.shape[2],0)]
+                point = np.array((self.pos_x[i], self.pos_y[i], 1))
+                box_points = [point + (0, 0, 0), 
+                              point + (dimensions[2], 0, 0),
+                              point + (dimensions[2], dimensions[1], 0),
+                              point + (0, dimensions[1], 0)]
                 self.grid_points.append(box_points)
 
             cy, cx = np.indices(dimensions[1:3])
 
-            self.data = np.zeros((np.max(self.pos_x)+dimensions[2],np.max(self.pos_y)+dimensions[1]), dtype='f4')
-            #sys.stderr.write(self.data.shape)
-            print(self.data.shape)
+            self.data = np.zeros((self.pos_x.max() + dimensions[2], self.pos_y.max() + dimensions[1]), dtype='f4')
             self.mcounts = np.zeros_like(self.data)
             self.count_map = np.zeros_like(self.data)
+            sys.stdout.write('Assembling images into %s-shaped array...'% (self.data.shape,))
             for i in range(dimensions[0]):
-                sys.stderr.write('\rMerge for image {}'.format(i))
                 np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)    
-                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), self.stacked_data[i])
+                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), f.data[i, ::step, ::step])
                 np.add.at(self.count_map, (cx+self.pos_x[i], cy+self.pos_y[i]), i)
-            sys.stderr.write('\n')
+            sys.stdout.write('done\n')
             self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
             self.count_map[self.mcounts>1] = 0
         else:
-            self.data = np.copy(self._stack_data)
+            self.data = np.copy(f.data)
+        f.close()
 
+        self.stack_shape = dimensions
         self._orig_data = np.copy(self.data)
 
     def save_merge(self, fname):
@@ -275,8 +269,8 @@ class EM_ops():
                     counter = 0
                     my_bool = False
                     while not my_bool:
-                        x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stacked_data.shape[1])
-                        y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stacked_data.shape[2])
+                        x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.stack_shape[1])
+                        y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.stack_shape[2])
                         #counter += 1
                         if coordinate[0] in x_range and coordinate[1] in y_range:
                             my_bool = True
@@ -300,11 +294,12 @@ class EM_ops():
         if self.selected_region is None:
             return
         else:
-            self.orig_region  = np.copy(self.data_highres[self.selected_region].T)
+            with mrcfile.open(self.old_fname, 'r', permissive=True):
+                self.orig_region = np.copy(f.data[self.selected_region].T)
 
     def calc_stage_positions(self, clicked_points):
-        stage_x = self._eh[4:10*self.stacked_data.shape[0]:10]
-        stage_y = self._eh[5:10*self.stacked_data.shape[0]:10]
+        stage_x = self._eh[4:10*self.stack_shape[0]:10]
+        stage_y = self._eh[5:10*self.stack_shape[0]:10]
         self.stage_origin = np.array([stage_x[self.selected_region],stage_y[self.selected_region]])
         
         inverse_matrix = np.linalg.inv(self.tf_matrix)
