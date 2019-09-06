@@ -2,8 +2,15 @@
 ## GUI for Correlative Light and Electron Microscopy
 A graphical program to correlate electron microscopy and fluorescent optical images of the same sample.
 
-## Installation from source
-Here are the instructions to install the program from source and package it for distribution. In the future, binaries will also be released.
+## Installation
+The package is pure python, and the easiest way to install it is through PyPi with the following command:
+```
+$ pip install clement
+```
+We recommend create a separate environment using either `conda` or `virtualenv` to manage dependencies.
+
+### Installation from source
+Here are the instructions to install the program from source.
 
  * Download [Miniconda](https://docs.conda.io/en/latest/miniconda.html) if you do not already have it.
  * Clone this repository
@@ -15,8 +22,10 @@ Here are the instructions to install the program from source and package it for 
  ```
  $ conda env create -f environment.yml
  $ conda activate clement
+ $ cd clement
  ```
- * You can now run the program directly by running `./gui.py`, or you can compile to an executable:
+ * You can now run the program directly by running `./gui.py`
+ * In order to compile to an executable:
  ```
  $ pyinstaller clement.spec
  ```
