@@ -294,7 +294,7 @@ class EM_ops():
         if self.selected_region is None:
             return
         else:
-            with mrcfile.open(self.old_fname, 'r', permissive=True):
+            with mrc.open(self.old_fname, 'r', permissive=True):
                 self.orig_region = np.copy(f.data[self.selected_region].T)
 
     def calc_stage_positions(self, clicked_points):
