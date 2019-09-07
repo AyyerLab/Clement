@@ -4,10 +4,8 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
-#from pyqtgraph import exporters
 import csv 
 import mrcfile as mrc
-from matplotlib import colors as cm
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -232,7 +230,8 @@ class Merge(QtGui.QMainWindow,):
         my_channels_red = []
         for i in range(len(my_channels)):
             if self.channels[i]:
-                my_channels_red.append(my_channels[i] * cm.hex2color(self.colors[i]))
+                rgb = tuple([int(self.colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
+                my_channels_red.append(my_channels[i] * rgb)
         return my_channels_red
 
     def _update_imview(self):

@@ -3,7 +3,6 @@ import os
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
-from matplotlib import colors as cm
 
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
@@ -327,7 +326,8 @@ class FMControls(BaseControls):
             if self.channels[i]:
                 my_channel = self.ops.data[:,:,i]
                 my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
-                channels.append(my_channel_rgb * cm.hex2color(self.colors[i]))
+                rgb = tuple([int(self.colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
+                channels.append(my_channel_rgb * rgb)
                     
         if len(channels) == 0:
             channels.append(np.zeros_like(self.ops.data[:,:,0]))
