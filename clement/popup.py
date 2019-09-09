@@ -22,7 +22,7 @@ class Merge(QtGui.QMainWindow,):
             self.colors.append('#808080')
         else:
             self.data = np.copy(self.parent.fm.data)
-        self.curr_mrc_folder = self.parent.emcontrols.curr_mrc_folder
+        self.curr_mrc_folder = self.parent.emcontrols.curr_folder
         self.num_slices = self.parent.fmcontrols.num_slices
         self._current_slice = self.parent.fmcontrols._current_slice
         self.ind = self.parent.fmcontrols.ind

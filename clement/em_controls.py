@@ -13,7 +13,7 @@ class EMControls(BaseControls):
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
-        self.curr_mrc_folder = None
+        self.curr_folder = None
         self.show_boxes = False
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
@@ -121,13 +121,13 @@ class EMControls(BaseControls):
         self.show()
 
     def _load_mrc(self):
-        if self.curr_mrc_folder is None:
-            self.curr_mrc_folder = os.getcwd()
+        if self.curr_folder is None:
+            self.curr_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select .mrc file',
-                                                             self.curr_mrc_folder,
+                                                             self.curr_folder,
                                                              '*.mrc')
-        self.curr_mrc_folder = os.path.dirname(file_name)
+        self.curr_folder = os.path.dirname(file_name)
 
         if file_name is not '':
             self.mrc_fname.setText(file_name)
@@ -279,10 +279,10 @@ class EMControls(BaseControls):
         if self.ops is None:
             print('No montage to save!')
         else:
-            if self.curr_mrc_folder is None:
-                self.curr_mrc_folder = os.getcwd()
-            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_mrc_folder, '*.mrc')
-            self.curr_mrc_folder = os.path.dirname(file_name)
+            if self.curr_folder is None:
+                self.curr_folder = os.getcwd()
+            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_folder, '*.mrc')
+            self.curr_folder = os.path.dirname(file_name)
             if file_name is not '':
                 self.ops.save_merge(file_name)
 
