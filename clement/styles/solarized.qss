@@ -1,0 +1,135 @@
+/*
+ * background = #eee8d5
+ * text color = #073642
+ * disabled color = #839496
+ * select color = #b58900
+ * highlight = #2aa198
+ */
+
+QWidget {
+  background: #eee8d5;
+  color: #073642;
+}
+  QWidget:disabled {
+    color: #839496;
+  }
+
+QSplitter {
+  spacing: 0px;
+  padding: 0px;
+  margin: 0px;
+}
+  QSplitter::separator {
+    background-color: #eee8d5;
+  }
+  QSplitter::separator:hover {
+    background-color: #b58900;
+  }
+  QSplitter::separator:horizontal {
+    width: 4px;
+  }
+
+QMenuBar {
+  background-color: #eee8d5;
+}
+  QMenuBar::item {
+    background: transparent;
+    padding: 2px 6px;
+  }
+  QMenuBar::item:selected {
+    background: #b58900;
+  }
+
+QMenu {
+  background-color: #eee8d5;
+}
+  QMenu::item:selected {
+    background: #b58900;
+  }
+
+  QAbstractItemView QLineEdit {
+    padding: 4px;
+  }
+QComboBox {
+  selection-background-color: #b58900;
+  padding-left: 6px;
+  padding-right: 6px;
+  min-height: 1.5em;
+}
+  QComboBox QAbstractItemView {
+    border: 1px solid #b58900;
+    background-color: #eee8d5;
+    selection-background-color: #b58900;
+    padding-left: 2px;
+  }
+  QCombobox:hover {
+    border: 1px solid #2aa198;
+  }
+  QComboBox::indicator {
+    background-color: transparent;
+    selection-background-color: transparent;
+    color: transparent;
+    selection-color: transparent;
+  }
+  QComboBox::indicator:alternate {
+    background: #eee8d5;
+  }
+  QComboBox::item:alternate {
+    background: #eee8d5;
+  }
+  QComboBox::item:selected {
+    background: #b58900;
+    border: 0px solid transparent;
+  }
+  QComboBox::item:checked {
+    font-weight: bold;
+  }
+
+QCheckBox::indicator {
+  border: 1px solid #073642;
+  padding: 1px;
+  height: 14px;
+  width: 14px;
+}
+  QCheckBox::indicator:checked {
+    image: url(':/rc/check-073642.svg');
+  }
+  QCheckBox::indicator:hover {
+    border: 1px solid #2aa198;
+  }
+  QCheckBox::indicator::disabled {
+    border: 1px solid #839496;
+  }
+  QCheckBox::indicator:checked:disabled {
+    image: url(':/rc/check-839496.svg');
+  }
+
+QLineEdit {
+  border: 1px solid #073642;
+}
+  QLineEdit:hover, QLineEdit:focus {
+    border: 1px solid #2aa198;
+  }
+  QLineEdit:disabled {
+    border: 1px solid #839496;
+  }
+
+QPushButton {
+  border: 1px solid #b58900;
+  padding: 4px;
+  border-radius: 2px;
+}
+  QPushButton:disabled {
+    border: 1px solid #839496;
+    color: #839496;
+  }
+  QPushButton:hover {
+    border: 1px solid #2aa198;
+  }
+  QPushButton:pressed {
+    border: 1px solid #2aa198;
+    background: #b58900;
+  }
+  QPushButton:checked {
+    background: #b58900;
+  }

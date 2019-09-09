@@ -113,6 +113,10 @@ class GUI(QtGui.QMainWindow):
         action.triggered.connect(lambda: self._set_theme('dark'))
         thememenu.addAction(action)
         agroup.addAction(action)
+        action = QtWidgets.QAction('Solarized', self)
+        action.triggered.connect(lambda: self._set_theme('solarized'))
+        thememenu.addAction(action)
+        agroup.addAction(action)
 
         self.show()
    
@@ -133,6 +137,7 @@ class GUI(QtGui.QMainWindow):
         if name == 'none':
             self.setStyleSheet('')
         else:
+            self.setStyleSheet('')
             with open(resource_path('styles/%s.qss'%name), 'r') as f:
                 self.setStyleSheet(f.read())
         self.settings.setValue('theme', name)
