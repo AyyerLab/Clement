@@ -66,8 +66,10 @@ class GUI(QtGui.QMainWindow):
         layout.addLayout(options)
 
         self.fmcontrols = FMControls(self.fm_imview, self.colors)
+        self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fmcontrols)
         self.emcontrols = EMControls(self.em_imview)
+        self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         options.addWidget(self.emcontrols)
 
         # Connect controllers
@@ -151,6 +153,8 @@ class GUI(QtGui.QMainWindow):
     def closeEvent(self, event):
         self.settings.setValue('channel_colors', self.colors)
         self.settings.setValue('geometry', self.geometry())
+        self.settings.setValue('fm_folder', self.fmcontrols.curr_folder)
+        self.settings.setValue('em_folder', self.emcontrols.curr_folder)
         event.accept()
 
 def main():
