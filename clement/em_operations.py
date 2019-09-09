@@ -300,7 +300,11 @@ class EM_ops():
     def calc_stage_positions(self, clicked_points):
         stage_x = self._eh[4:10*self.stack_shape[0]:10]
         stage_y = self._eh[5:10*self.stack_shape[0]:10]
-        self.stage_origin = np.array([stage_x[self.selected_region],stage_y[self.selected_region]])
+        if self.assembled:
+            curr_region = 0
+        else:
+            curr_region = self.selected_region
+        self.stage_origin = np.array([stage_x[curr_region],stage_y[curr_region]])
         
         inverse_matrix = np.linalg.inv(self.tf_matrix)
         stage_positions = []
