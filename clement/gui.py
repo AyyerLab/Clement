@@ -33,10 +33,6 @@ class GUI(QtGui.QMainWindow):
             self.resize(1600, 800)
         else:
             self.setGeometry(geom)
-        self.theme = self.settings.value('theme')
-        if self.theme is None:
-            self.theme = 'none'
-        self._set_theme(self.theme)
 
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
@@ -80,6 +76,11 @@ class GUI(QtGui.QMainWindow):
 
         # Menu Bar
         self._init_menubar()
+
+        self.theme = self.settings.value('theme')
+        if self.theme is None:
+            self.theme = 'none'
+        self._set_theme(self.theme)
         self.show()
 
     def _init_menubar(self):
@@ -140,6 +141,16 @@ class GUI(QtGui.QMainWindow):
             self.setStyleSheet('')
             with open(resource_path('styles/%s.qss'%name), 'r') as f:
                 self.setStyleSheet(f.read())
+            if name == 'solarized':
+                c = (203, 76, 22, 80)
+            else:
+                c = (0, 0, 255, 80)
+            hitem = self.fm_imview.getHistogramWidget().item
+            hitem.region.setBrush(c)
+            hitem.fillHistogram(color=c)
+            hitem = self.em_imview.getHistogramWidget().item
+            hitem.region.setBrush(c)
+            hitem.fillHistogram(color=c)
         self.settings.setValue('theme', name)
 
     def keyPressEvent(self, event):
