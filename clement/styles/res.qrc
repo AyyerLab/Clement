@@ -1,8 +1,10 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
   <qresource>
-	<file>rc/check-808371.png</file>
-	<file>rc/check-eaf0ce.png</file>
+	<file>rc/check-808371.svg</file>
+	<file>rc/check-eaf0ce.svg</file>
+	<file>rc/check-839496.svg</file>
+	<file>rc/check-073642.svg</file>
   </qresource>
 </RCC>
 <!-- Compile using `pyrcc5 -o res_styles.py styles/res.qrc` -->

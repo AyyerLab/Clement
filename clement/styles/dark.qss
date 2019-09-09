@@ -93,7 +93,7 @@ QCheckBox::indicator {
 }
   QCheckBox::indicator:checked {
     /*background: #ed7340;*/
-    image: url(':/rc/check-eaf0ce.png');
+    image: url(':/rc/check-eaf0ce.svg');
   }
   QCheckBox::indicator:hover {
     border: 1px solid #ed7340;
@@ -103,7 +103,7 @@ QCheckBox::indicator {
   }
   QCheckBox::indicator:checked:disabled {
     /*background: #974a29;*/
-    image: url(':/rc/check-808371.png');
+    image: url(':/rc/check-808371.svg');
   }
 
 QLineEdit {
