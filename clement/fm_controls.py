@@ -202,7 +202,9 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Flips:', self)
         line.addWidget(label)
 
-        self.fliph = QtWidgets.QPushButton('\u2345', self)
+        #self.fliph = QtWidgets.QPushButton('\u2345', self)
+        self.fliph = QtWidgets.QPushButton('', self)
+        self.fliph.setObjectName('fliph')
         width = self.fliph.fontMetrics().boundingRect(' ').width() + 25 
         font = self.fliph.font()
         font.setPointSize(24)
@@ -214,7 +216,9 @@ class FMControls(BaseControls):
         self.fliph.setEnabled(False)
         line.addWidget(self.fliph)
 
-        self.flipv = QtWidgets.QPushButton('\u2356', self)
+        #self.flipv = QtWidgets.QPushButton('\u2356', self)
+        self.flipv = QtWidgets.QPushButton('', self)
+        self.flipv.setObjectName('flipv')
         self.flipv.setCheckable(True)
         self.flipv.setFixedWidth(width)
         self.flipv.setFixedHeight(width)
@@ -223,7 +227,9 @@ class FMControls(BaseControls):
         self.flipv.setEnabled(False)
         line.addWidget(self.flipv)
 
-        self.transpose = QtWidgets.QPushButton('\u292f', self)
+        #self.transpose = QtWidgets.QPushButton('\u292f', self)
+        self.transpose = QtWidgets.QPushButton('', self)
+        self.transpose.setObjectName('transpose')
         self.transpose.setCheckable(True)
         self.transpose.setFixedWidth(width)
         self.transpose.setFixedHeight(width)
@@ -233,7 +239,9 @@ class FMControls(BaseControls):
         self.transpose.setEnabled(False)
         line.addWidget(self.transpose)
 
-        self.rotate = QtWidgets.QPushButton('\u293e', self)
+        #self.rotate = QtWidgets.QPushButton('\u293e', self)
+        self.rotate = QtWidgets.QPushButton('', self)
+        self.rotate.setObjectName('rotate')
         self.rotate.setCheckable(True)
         self.rotate.setFixedWidth(width)
         self.rotate.setFixedHeight(width)

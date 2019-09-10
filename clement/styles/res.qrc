@@ -5,6 +5,22 @@
 	<file>rc/check-eaf0ce.svg</file>
 	<file>rc/check-839496.svg</file>
 	<file>rc/check-073642.svg</file>
+	<file>rc/rotate-808371.svg</file>
+	<file>rc/rotate-eaf0ce.svg</file>
+	<file>rc/rotate-839496.svg</file>
+	<file>rc/rotate-073642.svg</file>
+	<file>rc/fliph-808371.svg</file>
+	<file>rc/fliph-eaf0ce.svg</file>
+	<file>rc/fliph-839496.svg</file>
+	<file>rc/fliph-073642.svg</file>
+	<file>rc/flipv-808371.svg</file>
+	<file>rc/flipv-eaf0ce.svg</file>
+	<file>rc/flipv-839496.svg</file>
+	<file>rc/flipv-073642.svg</file>
+	<file>rc/transpose-808371.svg</file>
+	<file>rc/transpose-eaf0ce.svg</file>
+	<file>rc/transpose-839496.svg</file>
+	<file>rc/transpose-073642.svg</file>
   </qresource>
 </RCC>
 <!-- Compile using `pyrcc5 -o res_styles.py styles/res.qrc` -->

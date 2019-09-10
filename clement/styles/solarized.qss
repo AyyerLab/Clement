@@ -133,3 +133,32 @@ QPushButton {
   QPushButton:checked {
     background: #b58900;
   }
+
+#rotate {
+  image: url(':rc/rotate-073642.svg');
+  padding: 0px;
+}
+  #rotate:disabled {
+    image: url(':rc/rotate-839496.svg');
+  }
+#fliph {
+  image: url(':rc/fliph-073642.svg');
+  padding: 1px;
+}
+  #fliph:disabled {
+    image: url(':rc/fliph-839496.svg');
+  }
+#flipv {
+  image: url(':rc/flipv-073642.svg');
+  padding: 1px;
+}
+  #flipv:disabled {
+    image: url(':rc/flipv-839496.svg');
+  }
+#transpose {
+  image: url(':rc/transpose-073642.svg');
+  padding: 1px;
+}
+  #transpose:disabled {
+    image: url(':rc/transpose-839496.svg');
+  }
