@@ -143,14 +143,17 @@ class GUI(QtGui.QMainWindow):
                 self.setStyleSheet(f.read())
             if name == 'solarized':
                 c = (203, 76, 22, 80)
+                bc = '#002b36'
             else:
                 c = (0, 0, 255, 80)
-            hitem = self.fm_imview.getHistogramWidget().item
-            hitem.region.setBrush(c)
-            hitem.fillHistogram(color=c)
-            hitem = self.em_imview.getHistogramWidget().item
-            hitem.region.setBrush(c)
-            hitem.fillHistogram(color=c)
+                bc = (0, 0, 0)
+
+            for imview in [self.em_imview, self.fm_imview]:
+                imview.view.setBackgroundColor(bc)
+                hwidget = imview.getHistogramWidget()
+                hwidget.setBackground(bc)
+                hwidget.item.region.setBrush(c)
+                hwidget.item.fillHistogram(color=c)
         self.settings.setValue('theme', name)
 
     def keyPressEvent(self, event):
