@@ -56,9 +56,10 @@ class EM_ops():
             self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y])
 
         dimensions = np.array(f.data.shape)
-        dimensions[1] = int(np.ceil(dimensions[1] / step))
-        dimensions[2] = int(np.ceil(dimensions[2] / step))
-        if len(dimensions) == 3:
+        print(dimensions)
+        if len(dimensions) == 3 and dimensions[0] > 1:
+            dimensions[1] = int(np.ceil(dimensions[1] / step))
+            dimensions[2] = int(np.ceil(dimensions[2] / step))
             self.pos_x = self._eh[1:10*dimensions[0]:10] // step
             self.pos_y = self._eh[2:10*dimensions[0]:10] // step
             self.pos_z = self._eh[3:10*dimensions[0]:10]
@@ -84,6 +85,8 @@ class EM_ops():
             sys.stdout.write('done\n')
             self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
             self.count_map[self.mcounts>1] = 0
+        elif dimensions[0] == 1:
+            self.data = np.copy(f.data[0])
         else:
             self.data = np.copy(f.data)
         f.close()
