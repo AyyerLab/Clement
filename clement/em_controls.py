@@ -163,9 +163,14 @@ class EMControls(BaseControls):
             self.define_btn.setEnabled(True)
             self.transform_btn.setEnabled(True)
             self.rot_transform_btn.setEnabled(True)
-            self.select_region_btn.setEnabled(True)
-            self.select_btn.setEnabled(True)
+            if self.ops.stacked_data:
+                self.select_region_btn.setEnabled(True)
+                self.select_btn.setEnabled(True)
+            else:
+                self.select_region_btn.setEnabled(False)
+                self.select_btn.setEnabled(False)
             self.boxes = []
+            self.show_grid_btn.setChecked(False)
         else:
             print('You have to choose an .mrc file first!')
     
