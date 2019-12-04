@@ -123,6 +123,9 @@ class BaseControls(QtWidgets.QWidget):
         else:
             print('Done defining grid on %s image: Manually adjust fine positions'%self.tag)
             if len(self.clicked_points) == 4:
+                self.show_grid_btn.setEnabled(True)
+                if not self.ops.transformed:
+                    self.transform_btn.setEnabled(True)
                 # Initialize grid_box on original or transformed image
                 if self.show_btn.isChecked():
                     self.grid_box = None

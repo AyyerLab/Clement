@@ -161,14 +161,25 @@ class EMControls(BaseControls):
             self.ops.parse(self.mrc_fname.text(), int(step))
             self.imview.setImage(self.ops.data)
             self.define_btn.setEnabled(True)
-            self.transform_btn.setEnabled(True)
             self.rot_transform_btn.setEnabled(True)
+            self.show_btn.setChecked(True)
+            self.show_btn.setEnabled(True)
+            self.transform_btn.setEnabled(False) 
+            if self.tr_grid_box is not None:
+                self.imview.removeItem(self.tr_grid_box)
+            if self.grid_box is not None:
+                self.imview.removeItem(self.grid_box)
+            self.grid_box = None
+            self.ops.transformed = False
+            self.show_grid_btn.setEnabled(False)
+            
             if self.ops.stacked_data:
                 self.select_region_btn.setEnabled(True)
                 self.select_btn.setEnabled(True)
             else:
                 self.select_region_btn.setEnabled(False)
                 self.select_btn.setEnabled(False)
+                self.show_assembled_btn.setEnabled(False)
             self.boxes = []
             self.show_grid_btn.setChecked(False)
         else:
@@ -177,9 +188,9 @@ class EMControls(BaseControls):
     def _show_boxes(self):
         if self.ops is None:
             return
-
         handle_pen = pg.mkPen('#00000000') 
-        if self.show_btn.isChecked():  
+        if self.show_btn.isChecked(): 
+            print('iii')
             if self.show_boxes:
                 [self.imview.removeItem(box) for box in self.tr_boxes]        
             if len(self.boxes) == 0:
