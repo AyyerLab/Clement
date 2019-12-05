@@ -321,7 +321,7 @@ class EM_ops():
     def calc_stage_positions(self, clicked_points):
         stage_x = self._eh[4:10*self.dimensions[0]:10]
         stage_y = self._eh[5:10*self.dimensions[0]:10]
-        if self.assembled:
+        if self.assembled or self.selected_region is None:
             curr_region = 0
         else:
             curr_region = self.selected_region
