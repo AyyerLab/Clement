@@ -88,7 +88,7 @@ class BaseControls(QtWidgets.QWidget):
 
         if self.ops.transformed and self.other.ops.transformed:
             if self.tr_matrices is not None:
-                point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
+                point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True) 
                 point_obj.setPen(0,255,0)
                 point_obj.removeHandle(0)
                 self.imview.addItem(point_obj)

@@ -224,32 +224,24 @@ class Merge(QtGui.QMainWindow,):
             self._update_imview()
         else:
             print('Invalid color')
-    
-    def _calc_colors(self,my_channels):
-        my_channels = [np.repeat(channel[:,:,np.newaxis],3,axis=2) for channel in my_channels]
-        my_channels_red = []
-        for i in range(len(my_channels)):
-            if self.channels[i]:
-                rgb = tuple([int(self.colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
-                my_channels_red.append(my_channels[i] * rgb)
-        return my_channels_red
-
-    def _update_imview(self):
+ 
+    def _calc_color_channels(self):
         channels = []
         for i in range(len(self.channels)):
             if self.channels[i]:
-                channels.append(self.data[:,:,i])
-            else:
-                channels.append(np.zeros_like(self.data[:,:,i]))
+                my_channel = self.data[:,:,i]
+                my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
+                rgb = tuple([int(self.colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
+                channels.append(my_channel_rgb * rgb)
+        if len(channels) == 0:
+            channels.append(np.zeros_like(self.data[:,:,0]))
 
-        color_channels = self._calc_colors(channels)
-        if len(color_channels) == 0:
-            color_channels.append(np.zeros_like(self.data[:,:,0]))
-                                                  
-        self.color_data = np.array(color_channels)
+        self.color_data = np.array(channels)
         if self.overlay_btn.isChecked():
             self.color_data = np.sum(self.color_data,axis=0)
 
+    def _update_imview(self):
+        color_channels = self._calc_color_channels()
         vr = self.imview.getImageItem().getViewBox().targetRect()
         levels = self.imview.getHistogramWidget().item.getLevels()
         self.imview.setImage(self.color_data, levels=levels)

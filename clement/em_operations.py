@@ -65,9 +65,9 @@ class EM_ops():
             self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
             self.pos_x = self._eh[1:10*self.dimensions[0]:10] // step
             self.pos_y = self._eh[2:10*self.dimensions[0]:10] // step
-            stage_x = self._eh[4:10*self.dimensions[0]:10]
+            #self.pos_x = self._eh[4:10*self.dimensions[0]:10]// step
+            #self.pos_y = self._eh[5:10*self.dimensions[0]:10] // step
             print('pos_x raw: ', self.pos_x)
-            print('stage_x raw: ', stage_x)
             print('pos_y raw: ', self.pos_y) 
             self.pos_x -= self.pos_x.min()
             self.pos_y -= self.pos_y.min()
