@@ -64,9 +64,15 @@ class EM_ops():
             self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
             self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
             self.pos_x = self._eh[1:10*self.dimensions[0]:10] // step
-            self.pos_x -= self.pos_x.min()
             self.pos_y = self._eh[2:10*self.dimensions[0]:10] // step
+            stage_x = self._eh[4:10*self.dimensions[0]:10]
+            print('pos_x raw: ', self.pos_x)
+            print('stage_x raw: ', stage_x)
+            print('pos_y raw: ', self.pos_y) 
+            self.pos_x -= self.pos_x.min()
             self.pos_y -= self.pos_y.min()
+            print('pos_x : ', self.pos_x)
+            print('pos_y : ', self.pos_y)
             self.pos_z = self._eh[3:10*self.dimensions[0]:10]
             self.grid_points = []
             for i in range(len(self.pos_x)):
@@ -270,9 +276,6 @@ class EM_ops():
                 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
-        print(self.pos_x)
-        print(self.pos_y)
-        print(self.dimensions[1],self.dimensions[2])
         try:
             if not self.transformed:
                 if (0 <= coordinate[0] < self.mcounts.shape[0]) and (0 <= coordinate[1] < self.mcounts.shape[1]):
@@ -289,9 +292,6 @@ class EM_ops():
                                 my_bool = True
                             counter += 1
                         print('Selected region: ', counter-1)
-                        print(coordinate)
-                        print(x_range.min(),x_range.max())
-                        print(y_range.min(),y_range.max())
                         return counter - 1
             else:
                 if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (0 <= coordinate[1] < self.tf_count_map.shape[1]):
@@ -333,7 +333,7 @@ class EM_ops():
             point = np.array([clicked_points[i][0],clicked_points[i][1],1])
             coordinate_angstrom = (inverse_matrix @ point)[:2] * self.pixel_size[:2]
             coordinate_microns = coordinate_angstrom * 10**-4
-            stage_positions.append(coordinate_microns*25 + self.stage_origin)       #stage position in microns * 25
+            stage_positions.append(coordinate_microns + self.stage_origin)       #stage position in microns
         print(stage_positions)
         return stage_positions
 

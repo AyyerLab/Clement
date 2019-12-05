@@ -24,7 +24,9 @@ class BaseControls(QtWidgets.QWidget):
         self.box_coordinate = None
         self.refine = False
         self.setContentsMargins(0, 0, 0, 0)
-        
+        self.counter = 0
+        self.anno_list = []
+
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
 
@@ -91,6 +93,11 @@ class BaseControls(QtWidgets.QWidget):
                 point_obj.removeHandle(0)
                 self.imview.addItem(point_obj)
                 self.points_corr.append(point_obj)
+                self.counter += 1
+                annotation_obj = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
+                annotation_obj.setPos(pos.x()+5, pos.y()+5)
+                self.imview.addItem(annotation_obj)
+                self.anno_list.append(annotation_obj)               
                 
                 # Coordinates in clicked image
                 init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
@@ -101,16 +108,32 @@ class BaseControls(QtWidgets.QWidget):
                 point_other.removeHandle(0)
                 self.other.imview.addItem(point_other)
                 self.other.points_corr.append(point_other)
-                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self.points_corr, self.other.points_corr))
-                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other.points_corr, self.points_corr))
+                
+                self.other.counter = self.counter
+                annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
+                annotation_other.setPos(pos.x()+5, pos.y()+5)
+                self.other.imview.addItem(annotation_other)
+                self.other.anno_list.append(annotation_other)
+                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self.points_corr, self.other.points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
+                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other.points_corr, self.points_corr, annotation_other, annotation_obj, self.anno_list, self.other.anno_list))
+ 
         else:
             print('Transform both images before point selection')
 
-    def _remove_correlated_points(self,imv1,imv2,pt1,pt2,pt_list,pt_list2):
+    #def _update_annotations():
+        
+
+
+
+    def _remove_correlated_points(self,imv1,imv2,pt1,pt2,pt_list,pt_list2, anno, anno2, anno_list, anno_list2):
         imv1.removeItem(pt1)
         imv2.removeItem(pt2)
         pt_list.remove(pt1)
         pt_list2.remove(pt2)
+        imv1.removeItem(anno)
+        imv2.removeItem(anno2) 
+        anno_list.remove(anno)
+        anno_list2.remove(anno2)
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
@@ -227,11 +250,18 @@ class BaseControls(QtWidgets.QWidget):
         if check_obj and check_other:
             if checked:
                 print('Select points of interest on %s image'%self.tag)
-                if len(self.points_corr) != 0:
-                    [self.imview.removeItem(point) for point in self.points_corr]
-                    [self.other.imview.removeItem(point) for point in self.other.points_corr]
-                    self.points_corr = []
-                    self.other.points_corr = []
+                if not self.other.select_btn.isChecked():
+                    if len(self.points_corr) != 0:
+                        [self.imview.removeItem(point) for point in self.points_corr]
+                        [self.other.imview.removeItem(point) for point in self.other.points_corr]
+                        [self.imview.removeItem(anno) for anno in self.anno_list]
+                        [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+                        self.points_corr = []
+                        self.other.points_corr = []
+                        self.anno_list = []
+                        self.other.anno_list = []
+                        self.counter = 0
+                        self.other.counter = 0
                 src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
                 dst_sorted = np.array(sorted(self.other.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
                 self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
@@ -324,6 +354,12 @@ class BaseControls(QtWidgets.QWidget):
             self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
             [self.imview.removeItem(point) for point in self.points_corr]
             [self.other.imview.removeItem(point) for point in self.other.points_corr]
+            [self.imview.removeItem(anno) for anno in self.anno_list]
+            [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+            self.anno_list = []
+            self.other.anno_list = []
+            self.counter = 0
+            self.other.counter = 0
             self.points_corr = []
             self.other.points_corr = []
             self.refine = True
