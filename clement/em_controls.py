@@ -190,7 +190,6 @@ class EMControls(BaseControls):
             return
         handle_pen = pg.mkPen('#00000000') 
         if self.show_btn.isChecked(): 
-            print('iii')
             if self.show_boxes:
                 [self.imview.removeItem(box) for box in self.tr_boxes]        
             if len(self.boxes) == 0:

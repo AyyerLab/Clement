@@ -57,14 +57,16 @@ class EM_ops():
             self.old_fname = fname
             self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y])
 
-        self.dimensions = np.array(f.data.shape)
+        self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
         print(self.dimensions)
         if len(self.dimensions) == 3 and self.dimensions[0] > 1:
             self.stacked_data = True
             self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
             self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
             self.pos_x = self._eh[1:10*self.dimensions[0]:10] // step
+            self.pos_x -= self.pos_x.min()
             self.pos_y = self._eh[2:10*self.dimensions[0]:10] // step
+            self.pos_y -= self.pos_y.min()
             self.pos_z = self._eh[3:10*self.dimensions[0]:10]
             self.grid_points = []
             for i in range(len(self.pos_x)):
@@ -268,33 +270,44 @@ class EM_ops():
                 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
-        if not self.transformed:
-            if (0 <= coordinate[0] < self.mcounts.shape[0]) and (0 <= coordinate[1] < self.mcounts.shape[1]):
-                if self.mcounts[coordinate[0],coordinate[1]] > 1:
-                    print('Selected region ambiguous. Try again!')
-                    return
-                else:
-                    counter = 0
-                    my_bool = False
-                    while not my_bool:
-                        x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.dimensions[1])
-                        y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.dimensions[2])
-                        #counter += 1
-                        if coordinate[0] in x_range and coordinate[1] in y_range:
-                            my_bool = True
-                        counter += 1
-                    print('Selected region: ', counter-1)
-                    return counter - 1
-        else:
-            if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (0 <= coordinate[1] < self.tf_count_map.shape[1]):
-                if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
-                    print('Selected region ambiguous. Try again!')
-                    return
-                else:
-                    counter = int(self.tf_count_map[coordinate[0],coordinate[1]])
-                    print('Selected region: ', counter)
-                    return counter
-
+        print(self.pos_x)
+        print(self.pos_y)
+        print(self.dimensions[1],self.dimensions[2])
+        try:
+            if not self.transformed:
+                if (0 <= coordinate[0] < self.mcounts.shape[0]) and (0 <= coordinate[1] < self.mcounts.shape[1]):
+                    if self.mcounts[coordinate[0],coordinate[1]] > 1:
+                        print('Selected region ambiguous. Try again!')
+                        return
+                    else:
+                        counter = 0
+                        my_bool = False
+                        while not my_bool:
+                            x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.dimensions[2])
+                            y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.dimensions[1])
+                            if coordinate[0] in x_range and coordinate[1] in y_range:
+                                my_bool = True
+                            counter += 1
+                        print('Selected region: ', counter-1)
+                        print(coordinate)
+                        print(x_range.min(),x_range.max())
+                        print(y_range.min(),y_range.max())
+                        return counter - 1
+            else:
+                if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (0 <= coordinate[1] < self.tf_count_map.shape[1]):
+                    if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
+                        print('Selected region ambiguous. Try again!')
+                        return
+                    else:
+                        counter = int(self.tf_count_map[coordinate[0],coordinate[1]])
+                        print('Selected region: ', counter)
+                        return counter
+        except(IndexError):
+            print('Watch out, index error. Try again!')
+            print(coordinate)
+            print(x_range.min(),x_range.max())
+            print(y_range.min(),y_range.max())
+                        
     def select_region(self,coordinate,transformed):
         self.assembled = False
         self.selected_region = self.get_selected_region(coordinate, transformed)
