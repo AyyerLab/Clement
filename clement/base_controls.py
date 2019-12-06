@@ -272,6 +272,7 @@ class BaseControls(QtWidgets.QWidget):
                 print('Select and transform both data first')
 
     def _affine_transform(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.show_btn.isChecked():
             grid_box = self.grid_box
         else:
@@ -307,6 +308,7 @@ class BaseControls(QtWidgets.QWidget):
             self.transform_btn.setEnabled(False)
         else:
             print('Define grid box on %s image first!'%self.tag)
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _allow_rotation_only(self, checked):
         if self.ops is not None:
@@ -348,6 +350,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.transform_btn.setEnabled(True)
 
     def _refine(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self.points_corr) > 3:
             src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self.points_corr])
             dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other.points_corr])
@@ -371,4 +374,5 @@ class BaseControls(QtWidgets.QWidget):
             self.rotate.setEnabled(False)
         else:
             print('Select at least 4 points for refinement!')
-        
+        QtWidgets.QApplication.restoreOverrideCursor()
+

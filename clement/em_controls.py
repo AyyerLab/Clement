@@ -151,6 +151,7 @@ class EMControls(BaseControls):
             self.show_boxes = False
 
     def _assemble_mrc(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.step_box.text() is '':
             step = 10
         else:
@@ -184,6 +185,7 @@ class EMControls(BaseControls):
             self.show_grid_btn.setChecked(False)
         else:
             print('You have to choose an .mrc file first!')
+        QtWidgets.QApplication.restoreOverrideCursor()
     
     def _show_boxes(self):
         if self.ops is None:
@@ -225,6 +227,7 @@ class EMControls(BaseControls):
         self.show_boxes = False
 
     def _select_box(self, state=None):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.select_region_btn.isChecked():
             self._show_boxes()
             self.ops.orig_region = None
@@ -253,6 +256,7 @@ class EMControls(BaseControls):
                 self.transform_btn.setEnabled(True)
             else:
                 self._hide_boxes()
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _show_assembled(self):
         if self.ops is None:
@@ -291,6 +295,7 @@ class EMControls(BaseControls):
         self._update_imview()
         
     def _save_mrc_montage(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is None:
             print('No montage to save!')
         else:
@@ -300,5 +305,6 @@ class EMControls(BaseControls):
             self.curr_folder = os.path.dirname(file_name)
             if file_name is not '':
                 self.ops.save_merge(file_name)
+        QtWidgets.QApplication.restoreOverrideCursor()
 
         

@@ -208,12 +208,16 @@ class Merge(QtGui.QMainWindow,):
         self.annotations.remove(anno)
 
     def _show_overlay(self,checked):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.overlay = not self.overlay
         self._update_imview()
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _show_channels(self,checked,my_channel):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.channels[my_channel] = not self.channels[my_channel]
         self._update_imview()
+        QtWidgets.QApplication.restoreOverrideCursor()
  
     def _sel_color(self, index, button):
         color = QtWidgets.QColorDialog.getColor()
@@ -279,10 +283,12 @@ class Merge(QtGui.QMainWindow,):
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder)
         screenshot = self.imview.grab()
         if file_name is not '':
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             screenshot.save(file_name,'tif')
             self._save_merge(file_name)
             self._save_coordinates(file_name)
-    
+            QtWidgets.QApplication.restoreOverrideCursor()
+
     def _save_merge(self, fname):
         try:
             with mrc.new(fname+'.mrc', overwrite=True) as f:

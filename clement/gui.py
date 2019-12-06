@@ -122,17 +122,21 @@ class GUI(QtGui.QMainWindow):
         self.show()
    
     def merge(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
         self.em = self.emcontrols.ops
         if self.fm is not None and self.em is not None:
             if self.fm._tf_data is not None and (self.em._tf_data is not None or self.em.tf_region is not None):
                 self.fm.calc_merge_matrix(self.em.data, self.em.points)
                 self.popup = Merge(self)
+                QtWidgets.QApplication.restoreOverrideCursor()
                 self.popup.show()
             else:
                 print('Transform FM and EM data first!')
+                QtWidgets.QApplication.restoreOverrideCursor()
         else:
             print('Select FM and EM data first!')
+            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _set_theme(self, name):
         if name == 'none':
