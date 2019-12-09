@@ -18,12 +18,12 @@ class EM_ops():
         self.tf_region = None
         self.data_backup = None
         self.transformed = False
-        self.transformed_data = None   
+        self.transformed_data = None
         self.pos_x = None
         self.pos_y = None
         self.pos_z = None
         self.grid_points = []
-        self.tf_grid_points = []      
+        self.tf_grid_points = []
         self._tf_data = None
         self._orig_data = None
         self.side_length = None
@@ -68,7 +68,7 @@ class EM_ops():
             #self.pos_x = self._eh[4:10*self.dimensions[0]:10]// step
             #self.pos_y = self._eh[5:10*self.dimensions[0]:10] // step
             print('pos_x raw: ', self.pos_x)
-            print('pos_y raw: ', self.pos_y) 
+            print('pos_y raw: ', self.pos_y)
             self.pos_x -= self.pos_x.min()
             self.pos_y -= self.pos_y.min()
             print('pos_x : ', self.pos_x)
@@ -77,7 +77,7 @@ class EM_ops():
             self.grid_points = []
             for i in range(len(self.pos_x)):
                 point = np.array((self.pos_x[i], self.pos_y[i], 1))
-                box_points = [point + (0, 0, 0), 
+                box_points = [point + (0, 0, 0),
                               point + (self.dimensions[2], 0, 0),
                               point + (self.dimensions[2], self.dimensions[1], 0),
                               point + (0, self.dimensions[1], 0)]
@@ -90,7 +90,7 @@ class EM_ops():
             self.count_map = np.zeros_like(self.data)
             sys.stdout.write('Assembling images into %s-shaped array...'% (self.data.shape,))
             for i in range(self.dimensions[0]):
-                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)    
+                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
                 np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), f.data[i, ::step, ::step])
                 np.add.at(self.count_map, (cx+self.pos_x[i], cy+self.pos_y[i]), i)
             sys.stdout.write('done\n')
@@ -133,14 +133,14 @@ class EM_ops():
                 if self.tf_points_region is not None:
                     self.points = copy.copy(self.tf_points_region)
                 else:
-                    self.points = None 
+                    self.points = None
             else:
                 self.data = np.copy(self.orig_region)
                 self.points = copy.copy(self.orig_points_region)
 
     def toggle_region(self):
-        self.toggle_original() 
-    
+        self.toggle_original()
+
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)
         print('Input points:\n', my_points)
@@ -150,7 +150,7 @@ class EM_ops():
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
         cen = my_points.mean(0) - np.ones(2)*self.side_length/2.
-        points_tmp = np.zeros_like(my_points) 
+        points_tmp = np.zeros_like(my_points)
         points_tmp[0] = cen + (0, 0)
         points_tmp[1] = cen + (self.side_length, 0)
         points_tmp[2] = cen + (self.side_length, self.side_length)
@@ -181,10 +181,10 @@ class EM_ops():
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
         self.tf_matrix = self.calc_rot_matrix(my_points)
-        
+
         center = np.mean(my_points,axis=0)
         tf_center = (self.tf_matrix @ np.array([center[0],center[1],1]))[:2]
-        
+
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
@@ -203,7 +203,7 @@ class EM_ops():
                 self.orig_points = np.copy(my_points)
             else:
                 self.orig_points_region = np.copy(my_points)
-        self.apply_transform(points_tmp) 
+        self.apply_transform(points_tmp)
         self.rotated = True
         print('New points: \n', self.new_points)
 
@@ -234,36 +234,36 @@ class EM_ops():
             for i in range(len(pts)):
                 angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
             angles_deg = [angle * 180/np.pi for angle in angles]
-            
-            angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg] 
+
+            angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg]
             print('angles_deg: ', angles_deg)
             if self.transformed:
                 theta = (np.pi/180*np.mean(angles_deg))
             else:
                 theta = -(np.pi/180*np.mean(angles_deg))
-            tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]) 
+            tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
             return tf_matrix
 
     def apply_transform(self,pts):
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
-            return 
+            return
         self.transformed = True
-        
-        if len(self.dimensions) == 3 and self.dimensions[0] > 1: 
+
+        if len(self.dimensions) == 3 and self.dimensions[0] > 1:
             self.tf_mcounts = ndi.affine_transform(self.mcounts, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
             self.tf_count_map = ndi.affine_transform(self.count_map, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-        
+
         if self.assembled:
             self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         else:
             self.tf_region = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-            
+
         self.transform_shift = -self.tf_corners.min(1)[:2]
-        pts = np.array([point + self.transform_shift for point in pts]) 
+        pts = np.array([point + self.transform_shift for point in pts])
         if self.assembled:
             self.new_points = np.copy(pts)
-            self.tf_grid_points = [] 
+            self.tf_grid_points = []
             for i in range(len(self.grid_points)):
                 tf_box_points = []
                 for point in self.grid_points[i]:
@@ -271,9 +271,9 @@ class EM_ops():
                     tf_box_points.append(np.array([x_i,y_i,z_i]))
                 self.tf_grid_points.append(tf_box_points)
         else:
-            self.tf_points_region = np.copy(pts)  
+            self.tf_points_region = np.copy(pts)
         self.toggle_original()
-                
+
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
         try:
@@ -307,7 +307,7 @@ class EM_ops():
             print(coordinate)
             print(x_range.min(),x_range.max())
             print(y_range.min(),y_range.max())
-                        
+
     def select_region(self,coordinate,transformed):
         self.assembled = False
         self.selected_region = self.get_selected_region(coordinate, transformed)
@@ -326,7 +326,7 @@ class EM_ops():
         else:
             curr_region = self.selected_region
         self.stage_origin = np.array([stage_x[curr_region],stage_y[curr_region]])
-        
+
         inverse_matrix = np.linalg.inv(self.tf_matrix)
         stage_positions = []
         for i in range(len(clicked_points)):

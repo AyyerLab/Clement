@@ -42,7 +42,7 @@ class FMControls(BaseControls):
         self.overlay = True
         self.ops = None
         self.curr_folder = None
-        self.channels = [True, True, True, True] 
+        self.channels = [True, True, True, True]
         self.ind = 0
         self._current_slice = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
@@ -64,14 +64,14 @@ class FMControls(BaseControls):
         self.max_proj_btn = QtWidgets.QCheckBox('Max projection')
         self.max_proj_btn.stateChanged.connect(self._show_max_projection)
         self.max_proj_btn.setEnabled(False)
-        line.addWidget(self.max_proj_btn) 
+        line.addWidget(self.max_proj_btn)
         self.slice_select_btn = QtWidgets.QSpinBox(self)
         self.slice_select_btn.setRange(0, 0)
         self.slice_select_btn.setEnabled(False)
         #self.slice_select_btn.valueChanged.connect(self._slice_changed)
         self.slice_select_btn.editingFinished.connect(self._slice_changed)
         line.addWidget(self.slice_select_btn)
-        
+
         # ---- Select channels
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -128,7 +128,7 @@ class FMControls(BaseControls):
         line.addWidget(self.c1_btn)
         line.addWidget(self.channel1_btn)
         line.addWidget(self.c2_btn)
-        line.addWidget(self.channel2_btn) 
+        line.addWidget(self.channel2_btn)
         line.addWidget(self.c3_btn)
         line.addWidget(self.channel3_btn)
         line.addWidget(self.c4_btn)
@@ -153,7 +153,7 @@ class FMControls(BaseControls):
         self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
         self.rot_transform_btn.stateChanged.connect(self._allow_rotation_only)
         self.rot_transform_btn.setEnabled(False)
-        line.addWidget(self.rot_transform_btn)              
+        line.addWidget(self.rot_transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
@@ -197,7 +197,7 @@ class FMControls(BaseControls):
         line.addWidget(self.select_btn)
         line.addWidget(self.refine_btn)
         line.addStretch(1)
- 
+
         # ---- Flips and rotates
         label = QtWidgets.QLabel('Flips:', self)
         line.addWidget(label)
@@ -205,7 +205,7 @@ class FMControls(BaseControls):
         #self.fliph = QtWidgets.QPushButton('\u2345', self)
         self.fliph = QtWidgets.QPushButton('', self)
         self.fliph.setObjectName('fliph')
-        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25 
+        width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
         font = self.fliph.font()
         font.setPointSize(24)
         self.fliph.setFixedWidth(width)
@@ -265,13 +265,13 @@ class FMControls(BaseControls):
 
     def _update_imview(self):
         if self.ops is not None:
-            self._calc_color_channels()  
+            self._calc_color_channels()
             #self._show_grid()
             vr = self.imview.getImageItem().getViewBox().targetRect()
             levels = self.imview.getHistogramWidget().item.getLevels()
             self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
-    
+
     def _load_fm_images(self):
         if self.curr_folder is None:
             self.curr_folder = os.getcwd()
@@ -302,9 +302,9 @@ class FMControls(BaseControls):
         if file_name is not '':
             self.fm_fname.setText(file_name + ' [0/%d]'%self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices)
-        
+
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean()*2))
-            self._update_imview()  
+            self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.slice_select_btn.setEnabled(True)
             self.channel1_btn.setEnabled(True)
@@ -317,14 +317,14 @@ class FMControls(BaseControls):
             self.c4_btn.setEnabled(True)
             self.overlay_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
-            self.transform_btn.setEnabled(True) 
+            self.transform_btn.setEnabled(True)
             self.rot_transform_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
 
         QtWidgets.QApplication.restoreOverrideCursor()
-    
+
     def _show_max_projection(self):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
         if self.ops is not None:
@@ -341,14 +341,14 @@ class FMControls(BaseControls):
                 my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
                 rgb = tuple([int(self.colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
                 channels.append(my_channel_rgb * rgb)
-                    
+
         if len(channels) == 0:
             channels.append(np.zeros_like(self.ops.data[:,:,0]))
 
         self.color_data = np.array(channels)
         if self.overlay_btn.isChecked():
             self.color_data = np.sum(self.color_data,axis=0)
-    
+
     def _show_overlay(self,checked):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
@@ -356,11 +356,11 @@ class FMControls(BaseControls):
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _show_channels(self,checked,my_channel):    
+    def _show_channels(self,checked,my_channel):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
-           self.channels[my_channel] = not self.channels[my_channel]          
-           self._update_imview()            
+           self.channels[my_channel] = not self.channels[my_channel]
+           self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _sel_color(self, index, button):
@@ -377,7 +377,7 @@ class FMControls(BaseControls):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             self.ops.flip_horizontal(state)
-            self._recalc_grid() 
+            self._recalc_grid()
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -413,7 +413,7 @@ class FMControls(BaseControls):
 
         num = self.slice_select_btn.value()
         if num != self._current_slice:
-            self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)    
+            self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
             self._update_imview()
             fname, indstr = self.fm_fname.text().split()
             self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))
@@ -443,6 +443,4 @@ class FMControls(BaseControls):
 
         self.align_btn.setEnabled(False)
         '''
-
-
 

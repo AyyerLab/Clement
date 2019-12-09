@@ -18,7 +18,7 @@ class EMControls(BaseControls):
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._init_ui()
-    
+
     def _init_ui(self):
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
@@ -76,7 +76,7 @@ class EMControls(BaseControls):
         self.show_grid_btn.stateChanged.connect(self._show_grid)
         line.addWidget(self.show_grid_btn)
         line.addStretch(1)
-        
+
         # ---- Assembly grid options
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -91,7 +91,7 @@ class EMControls(BaseControls):
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
         line.addWidget(self.select_region_btn)
-        line.addWidget(self.show_assembled_btn) 
+        line.addWidget(self.show_assembled_btn)
         line.addStretch(1)
 
         # ---- Points of interest
@@ -131,7 +131,7 @@ class EMControls(BaseControls):
 
         if file_name is not '':
             self.mrc_fname.setText(file_name)
-            self.assemble_btn.setEnabled(True) 
+            self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
 
     def _update_imview(self):
@@ -165,7 +165,7 @@ class EMControls(BaseControls):
             self.rot_transform_btn.setEnabled(True)
             self.show_btn.setChecked(True)
             self.show_btn.setEnabled(True)
-            self.transform_btn.setEnabled(False) 
+            self.transform_btn.setEnabled(False)
             if self.tr_grid_box is not None:
                 self.imview.removeItem(self.tr_grid_box)
             if self.grid_box is not None:
@@ -173,7 +173,7 @@ class EMControls(BaseControls):
             self.grid_box = None
             self.ops.transformed = False
             self.show_grid_btn.setEnabled(False)
-            
+
             if self.ops.stacked_data:
                 self.select_region_btn.setEnabled(True)
                 self.select_btn.setEnabled(True)
@@ -186,14 +186,14 @@ class EMControls(BaseControls):
         else:
             print('You have to choose an .mrc file first!')
         QtWidgets.QApplication.restoreOverrideCursor()
-    
+
     def _show_boxes(self):
         if self.ops is None:
             return
-        handle_pen = pg.mkPen('#00000000') 
-        if self.show_btn.isChecked(): 
+        handle_pen = pg.mkPen('#00000000')
+        if self.show_btn.isChecked():
             if self.show_boxes:
-                [self.imview.removeItem(box) for box in self.tr_boxes]        
+                [self.imview.removeItem(box) for box in self.tr_boxes]
             if len(self.boxes) == 0:
                 for i in range(len(self.ops.pos_x)):
                     roi = pg.PolyLineROI([], closed=True, movable=False)
@@ -205,7 +205,7 @@ class EMControls(BaseControls):
                 [self.imview.addItem(box) for box in self.boxes]
         else:
             if self.show_boxes:
-                [self.imview.removeItem(box) for box in self.boxes]       
+                [self.imview.removeItem(box) for box in self.boxes]
             if len(self.tr_boxes) == 0:
                 for i in range(len(self.ops.tf_grid_points)):
                     roi = pg.PolyLineROI([], closed=True, movable=False)
@@ -238,20 +238,20 @@ class EMControls(BaseControls):
                     transformed = False
                 else:
                     transformed = True
-                points_obj = (self.box_coordinate.x(),self.box_coordinate.y()) 
+                points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
                 self.ops.select_region(np.array(points_obj),transformed)
                 self._hide_boxes()
                 if self.ops.orig_region is None:
                     print('Ooops, something went wrong. Try again!')
                     return
                 self.show_assembled_btn.setEnabled(True)
-                self.show_assembled_btn.setChecked(False) 
+                self.show_assembled_btn.setChecked(False)
                 self.show_grid_btn.setEnabled(False)
                 self.show_grid_btn.setChecked(False)
                 self.original_help = False
                 self.show_btn.setChecked(True)
                 self.original_help = True
-                self.show_btn.setEnabled(False) 
+                self.show_btn.setEnabled(False)
                 self.box_coordinate = None
                 self.transform_btn.setEnabled(True)
             else:
@@ -272,8 +272,8 @@ class EMControls(BaseControls):
                 self.show_grid_btn.setEnabled(True)
                 self.show_grid_btn.setChecked(True)
 
-            self.select_region_btn.setEnabled(True) 
-                           
+            self.select_region_btn.setEnabled(True)
+
             if self.ops._tf_data is None:
                 self.show_btn.setChecked(True)
                 self.show_btn.setEnabled(False)
@@ -282,7 +282,7 @@ class EMControls(BaseControls):
         else:
             self.ops.assembled = False
             self.select_region_btn.setEnabled(False)
-            if self.ops.tf_region is not None: 
+            if self.ops.tf_region is not None:
                 self.show_btn.setEnabled(True)
             else:
                 self.show_btn.setEnabled(False)
@@ -293,7 +293,7 @@ class EMControls(BaseControls):
         self.ops.toggle_region()
         self._recalc_grid(self.imview)
         self._update_imview()
-        
+
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is None:
@@ -307,4 +307,3 @@ class EMControls(BaseControls):
                 self.ops.save_merge(file_name)
         QtWidgets.QApplication.restoreOverrideCursor()
 
-        

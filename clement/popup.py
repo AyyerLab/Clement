@@ -4,7 +4,7 @@ import warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
-import csv 
+import csv
 import mrcfile as mrc
 
 warnings.simplefilter('ignore', category=FutureWarning)
@@ -12,7 +12,7 @@ warnings.simplefilter('ignore', category=FutureWarning)
 class Merge(QtGui.QMainWindow,):
     def __init__(self, parent):
         super(Merge, self).__init__(parent)
-        self.parent = parent 
+        self.parent = parent
         self.theme = self.parent.theme
         self.channels = [False, False, False, False]
         self.colors = list(np.copy(self.parent.colors))
@@ -34,7 +34,7 @@ class Merge(QtGui.QMainWindow,):
         self.stage_positions = None
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self._init_ui()
-    
+
     def _init_ui(self):
         self.resize(800, 800)
         self.parent._set_theme(self.theme)
@@ -55,21 +55,21 @@ class Merge(QtGui.QMainWindow,):
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
-        filemenu.addAction(action) 
+        filemenu.addAction(action)
         self._set_theme(self.theme)
-        
+
         self.imview = pg.ImageView()
         self.imview.ui.roiBtn.hide()
         self.imview.ui.menuBtn.hide()
         self.imview.scene.sigMouseClicked.connect(lambda evt: self._imview_clicked(evt))
-        self.imview.setImage(np.sum(self.data,axis=2), levels=(self.data.min(), self.data.max()//3))   
+        self.imview.setImage(np.sum(self.data,axis=2), levels=(self.data.min(), self.data.max()//3))
         layout.addWidget(self.imview)
-      
+
         options = QtWidgets.QHBoxLayout()
         options.setContentsMargins(4, 0, 4, 4)
-        layout.addLayout(options) 
-        self._init_options(options)       
-    
+        layout.addLayout(options)
+        self._init_options(options)
+
     def _init_options(self,parent_layout):
         vbox = QtWidgets.QVBoxLayout()
         parent_layout.addLayout(vbox)
@@ -150,7 +150,7 @@ class Merge(QtGui.QMainWindow,):
             self.c5_btn.clicked.connect(lambda: self._sel_color(4, self.c5_btn))
             self.c5_btn.setStyleSheet('background-color: {}'.format(self.colors[4]))
 
-        
+
         line.addWidget(self.c1_btn)
         line.addWidget(self.channel1_btn)
         line.addWidget(self.c2_btn)
@@ -194,7 +194,7 @@ class Merge(QtGui.QMainWindow,):
             point.setPen(0,255,0)
             point.removeHandle(0)
             self.imview.addItem(point)
-            self.clicked_points.append(point) 
+            self.clicked_points.append(point)
             annotation = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
             annotation.setPos(pos.x()+5, pos.y()+5)
             self.annotations.append(annotation)
@@ -218,7 +218,7 @@ class Merge(QtGui.QMainWindow,):
         self.channels[my_channel] = not self.channels[my_channel]
         self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
- 
+
     def _sel_color(self, index, button):
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
@@ -228,7 +228,7 @@ class Merge(QtGui.QMainWindow,):
             self._update_imview()
         else:
             print('Invalid color')
- 
+
     def _calc_color_channels(self):
         channels = []
         for i in range(len(self.channels)):
@@ -277,7 +277,7 @@ class Merge(QtGui.QMainWindow,):
         if self.stage_positions is None:
             print('Confirm selected points first!')
             return
-    
+
         if self.curr_mrc_folder is None:
             self.curr_mrc_folder = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder)
@@ -308,12 +308,12 @@ class Merge(QtGui.QMainWindow,):
         except PermissionError:
             print('Permission error! Choose a different directory!')
             self._save_data()
-            
+
     def _show_max_projection(self):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
         self.parent.fm.calc_max_projection()
         self.parent.fm.apply_merge()
-        self.data = np.copy(self.parent.fm.merged)       
+        self.data = np.copy(self.parent.fm.merged)
         self._update_imview()
 
     def _slice_changed(self):
@@ -325,7 +325,7 @@ class Merge(QtGui.QMainWindow,):
             self._update_imview()
             fname, indstr = self.fm_fname.split()
             self.fm_fname = (fname + ' [%d/%d]'%(num, self.parent.fm.num_slices))
-            self._current_slice = num 
+            self._current_slice = num
             self.slice_select_btn.clearFocus()
 
     def _set_theme(self, name):

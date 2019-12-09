@@ -39,13 +39,13 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         pos = self.imview.getImageItem().mapFromScene(event.pos())
-        
+
         self._size_ops = self.ops.data.shape[0]*0.01
         if self.other.ops is not None:
             self._size_other = self.other.ops.data.shape[0]*0.005
 
         item = self.imview.getImageItem()
-        
+
         pos.setX(pos.x() - self._size_ops/2)
         pos.setY(pos.y() - self._size_ops/2)
 
@@ -65,7 +65,7 @@ class BaseControls(QtWidgets.QWidget):
             # If clicked point is inside image
             if points_obj[0] < self.ops.data.shape[0] and points_obj[1] < self.ops.data.shape[1]:
                 # Get index of selected region
-                ind = self.ops.get_selected_region(np.array(points_obj), not self.show_btn.isChecked())            
+                ind = self.ops.get_selected_region(np.array(points_obj), not self.show_btn.isChecked())
 
                 # If index is non-ambiguous
                 if ind is not None:
@@ -88,7 +88,7 @@ class BaseControls(QtWidgets.QWidget):
 
         if self.ops.transformed and self.other.ops.transformed:
             if self.tr_matrices is not None:
-                point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True) 
+                point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                 point_obj.setPen(0,255,0)
                 point_obj.removeHandle(0)
                 self.imview.addItem(point_obj)
@@ -97,18 +97,18 @@ class BaseControls(QtWidgets.QWidget):
                 annotation_obj = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
                 annotation_obj.setPos(pos.x()+5, pos.y()+5)
                 self.imview.addItem(annotation_obj)
-                self.anno_list.append(annotation_obj)               
-                
+                self.anno_list.append(annotation_obj)
+
                 # Coordinates in clicked image
                 init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
                 transf = np.dot(self.tr_matrices, init)
-                pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)  
+                pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
                 point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                 point_other.setPen(0,255,255)
                 point_other.removeHandle(0)
                 self.other.imview.addItem(point_other)
                 self.other.points_corr.append(point_other)
-                
+
                 self.other.counter = self.counter
                 annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
                 annotation_other.setPos(pos.x()+5, pos.y()+5)
@@ -116,14 +116,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.other.anno_list.append(annotation_other)
                 point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self.points_corr, self.other.points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
                 point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other.points_corr, self.points_corr, annotation_other, annotation_obj, self.anno_list, self.other.anno_list))
- 
+
         else:
             print('Transform both images before point selection')
-
-    #def _update_annotations():
-        
-
-
 
     def _remove_correlated_points(self,imv1,imv2,pt1,pt2,pt_list,pt_list2, anno, anno2, anno_list, anno_list2):
         imv1.removeItem(pt1)
@@ -131,7 +126,7 @@ class BaseControls(QtWidgets.QWidget):
         pt_list.remove(pt1)
         pt_list2.remove(pt2)
         imv1.removeItem(anno)
-        imv2.removeItem(anno2) 
+        imv2.removeItem(anno2)
         anno_list.remove(anno)
         anno_list2.remove(anno2)
 
@@ -183,7 +178,7 @@ class BaseControls(QtWidgets.QWidget):
                 if self.show_btn.isChecked():
                     self.show_grid_box = True
                 else:
-                    self.show_tr_grid_box = True                            
+                    self.show_tr_grid_box = True
             else:
                 print('You have to select exactly 4 points. Try again!')
                 [self.imview.removeItem(roi) for roi in self.clicked_points]
@@ -191,10 +186,10 @@ class BaseControls(QtWidgets.QWidget):
                 self.clicked_points = []
 
     def _recalc_grid(self, toggle_orig=False):
-        if self.ops.points is not None: 
+        if self.ops.points is not None:
             pos = [QtCore.QPointF(point[0], point[1]) for point in self.ops.points]
             poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
-            if self.show_btn.isChecked():     
+            if self.show_btn.isChecked():
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
                         self.imview.removeItem(self.tr_grid_box)
@@ -216,7 +211,7 @@ class BaseControls(QtWidgets.QWidget):
             self._show_grid(None)
 
     def _show_grid(self, state):
-        if self.show_grid_btn.isChecked():    
+        if self.show_grid_btn.isChecked():
             if self.show_btn.isChecked():
                 self.show_grid_box = True
                 self.imview.addItem(self.grid_box)
@@ -228,7 +223,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.imview.addItem(self.tr_grid_box)
                 if self.show_grid_box:
                     self.imview.removeItem(self.grid_box)
-                    self.show_grid_box = False 
+                    self.show_grid_box = False
         else:
             if self.show_btn.isChecked():
                 if self.show_grid_box:
@@ -243,10 +238,10 @@ class BaseControls(QtWidgets.QWidget):
         if self.ops is None or self.other.ops is None:
             print('Select both data first')
             return
-       
+
         check_obj = self.ops._tf_data is not None or (hasattr(self.ops, 'tf_region') and self.ops.tf_region is not None)
         check_other = self.other.ops._tf_data is not None or (hasattr(self.other.ops, 'tf_region') and self.other.ops.tf_region is not None)
-        
+
         if check_obj and check_other:
             if checked:
                 print('Select points of interest on %s image'%self.tag)
@@ -297,8 +292,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.calc_rot_transform(points)
             else:
                 print('Performing affine transformation on %s image'%self.tag)
-                self.ops.calc_affine_transform(points) 
-                                              
+                self.ops.calc_affine_transform(points)
+
             self.original_help = False
             self.show_btn.setEnabled(True)
             self.show_btn.setChecked(False)
@@ -316,7 +311,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.no_shear = True
             else:
                 self.ops.no_shear = False
-            
+
     def _show_original(self, state):
         if self.original_help:
             if self.ops is not None:
@@ -367,7 +362,7 @@ class BaseControls(QtWidgets.QWidget):
             self.other.points_corr = []
             self.refine = True
             self._recalc_grid()
-            self._update_imview() 
+            self._update_imview()
             self.fliph.setEnabled(False)
             self.flipv.setEnabled(False)
             self.transpose.setEnabled(False)

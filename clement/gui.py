@@ -120,7 +120,7 @@ class GUI(QtGui.QMainWindow):
         agroup.addAction(action)
 
         self.show()
-   
+
     def merge(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
