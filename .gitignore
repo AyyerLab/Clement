@@ -8,6 +8,7 @@ __pycache__/
 *.lifext
 data
 old
+projects
 
 # Temp files
 .*.swp

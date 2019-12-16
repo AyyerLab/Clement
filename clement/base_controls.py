@@ -9,12 +9,12 @@ class BaseControls(QtWidgets.QWidget):
         self.tag = 'base'
         self.ops = None
         self.other = None # The other controls object
-
+        
         self.tr_matrices = None
-        self.clicked_points = []
         self.points_corr = []
         self.show_grid_box = False
         self.show_tr_grid_box = False
+        self.clicked_points = []
         self.grid_box = None
         self.tr_grid_box = None
         self.boxes = []
@@ -26,6 +26,7 @@ class BaseControls(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
+
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -86,7 +87,7 @@ class BaseControls(QtWidgets.QWidget):
         if self.other.ops is None:
             print('Select both data first')
 
-        if self.ops.transformed and self.other.ops.transformed:
+        if self.ops._transformed and self.other.ops.transformed:
             if self.tr_matrices is not None:
                 point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                 point_obj.setPen(0,255,0)
@@ -142,7 +143,7 @@ class BaseControls(QtWidgets.QWidget):
             print('Done defining grid on %s image: Manually adjust fine positions'%self.tag)
             if len(self.clicked_points) == 4:
                 self.show_grid_btn.setEnabled(True)
-                if not self.ops.transformed:
+                if not self.ops._transformed:
                     self.transform_btn.setEnabled(True)
                 # Initialize grid_box on original or transformed image
                 if self.show_btn.isChecked():
@@ -164,11 +165,11 @@ class BaseControls(QtWidgets.QWidget):
                     # If assembly is an option (EM image)
                     if hasattr(self, 'show_assembled_btn'):
                         if self.show_assembled_btn.isChecked():
-                            self.ops.orig_points = points
+                            self.ops._orig_points = points
                         else:
-                            self.ops.orig_points_region = points
+                            self.ops._orig_points_region = points
                     else:
-                        self.ops.orig_points = points
+                        self.ops._orig_points = points
                 else:
                     self.tr_grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
                 [self.imview.removeItem(roi) for roi in self.clicked_points]
@@ -315,20 +316,20 @@ class BaseControls(QtWidgets.QWidget):
     def _show_original(self, state):
         if self.original_help:
             if self.ops is not None:
-                self.ops.transformed = not self.ops.transformed
-                if hasattr(self.ops, 'flipv') and not self.ops.transformed:
+                self.ops._transformed = not self.ops._transformed
+                if hasattr(self.ops, 'flipv') and not self.ops._transformed:
                     self.flipv.setEnabled(False)
                     self.fliph.setEnabled(False)
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
-                elif hasattr(self.ops, 'flipv') and self.ops.transformed:
+                elif hasattr(self.ops, 'flipv') and self.ops._transformed:
                     if not self.ops.refined:
                         self.flipv.setEnabled(True)
                         self.fliph.setEnabled(True)
                         self.transpose.setEnabled(True)
                         self.rotate.setEnabled(True)
 
-                print('Transformed?', self.ops.transformed)
+                print('Transformed?', self.ops._transformed)
                 if hasattr(self.ops,'refined'):
                     if self.ops.refined:
                         self.ops.toggle_original(update=False)
@@ -339,7 +340,7 @@ class BaseControls(QtWidgets.QWidget):
                 self._recalc_grid(toggle_orig=True)
 
                 self._update_imview()
-                if self.ops.transformed:
+                if self.ops._transformed:
                     self.transform_btn.setEnabled(False)
                 else:
                     self.transform_btn.setEnabled(True)

@@ -41,14 +41,17 @@ class FMControls(BaseControls):
         self.colors = colors
         self.overlay = True
         self.ops = None
-        self.curr_folder = None
         self.channels = [True, True, True, True]
         self.ind = 0
-        self._current_slice = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
+        self._curr_folder = None
+        self._file_name = None
+        self._series = None
+        self._current_slice = 0
+        
         self._init_ui()
-
+    
     def _init_ui(self):
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
@@ -273,30 +276,31 @@ class FMControls(BaseControls):
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
-        if self.curr_folder is None:
-            self.curr_folder = os.getcwd()
+        if self._curr_folder is None:
+            self._curr_folder = os.getcwd()
 
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+        self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select FM file',
-                                                             self.curr_folder,
+                                                             self._curr_folder,
                                                              '*.lif')
-        if file_name is not '':
-            self.curr_folder = os.path.dirname(file_name)
+        if self._file_name is not '':
+            self._curr_folder = os.path.dirname(self._file_name)
             self._current_slice = self.slice_select_btn.value()
-            self._parse_fm_images(file_name)
-
+            self._parse_fm_images(self._file_name)
+            
     def _parse_fm_images(self, file_name, series=None):
         self.ops = FM_ops()
         retval = self.ops.parse(file_name, z=0, series=series)
         if retval is not None:
             picker = SeriesPicker(self, retval)
             picker.exec_()
-            series = picker.current_series
-            if series < 0:
+            self._series = picker.current_series
+            if self._series < 0:
                 self.ops = None
                 return
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-            self.ops.parse(file_name, z=0, series=series)
+            self.ops.parse(file_name, z=0, series=self._series)
+
         self.num_slices = self.ops.num_slices
 
         if file_name is not '':

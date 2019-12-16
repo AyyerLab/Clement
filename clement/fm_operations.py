@@ -10,6 +10,14 @@ import read_lif
 
 class FM_ops():
     def __init__(self):
+      
+        self._show_max_proj = False
+        self._max_proj_data = None
+        self._orig_points = None
+        self._transformed = False
+        self._tf_points = None
+        
+        self.orig_data = None
         self.num_slices = None
         self.selected_slice = None
         self.data = None
@@ -17,7 +25,6 @@ class FM_ops():
         self.fliph = False
         self.transp = False
         self.rot = False
-        self.transformed = False
         self.flipv_matrix = np.array([[1,0,0],[0,-1,0],[0,0,1]])
         self.fliph_matrix = np.array([[-1,0,0],[0,1,0],[0,0,1]])
         self.transp_matrix = np.array([[0,1,0],[1,0,0],[0,0,1]])
@@ -28,18 +35,13 @@ class FM_ops():
         self.max_shift = 10
         self.matches = []
         self.diff_list = []
-        self._tf_data = None
         self.old_fname = None
         self.points = None
-        self.new_points = None
         self.side_length = None
-        self.orig_points = None
         self.shift = []
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
         self.no_shear = False
-        self.show_max_proj = False
-        self.max_proj_data = None
         self.tf_max_proj_data = None
         self.counter_clockwise = False
         self.rotated = False
@@ -55,7 +57,7 @@ class FM_ops():
     def parse(self, fname, z, series=None, reopen=True):
         ''' Parses file
 
-        Saves parsed file in self._orig_data
+        Saves parsed file in self.orig_data
         self.data is the array to be displayed
         '''
 
@@ -74,11 +76,11 @@ class FM_ops():
 
         # TODO: Look into modifying read_lif to get
         # a single Z-slice with all channels rather than all slices for a single channel
-        self._orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
+        self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
                                     for i in range(self.num_channels)])
-        self._orig_data = self._orig_data.transpose(1,2,0)
-        self._orig_data /= self._orig_data.mean((0, 1))
-        self.data = np.copy(self._orig_data)
+        self.orig_data = self.orig_data.transpose(1,2,0)
+        self.orig_data /= self.orig_data.mean((0, 1))
+        self.data = np.copy(self.orig_data)
         self.selected_slice = z
 
         if self.refined:
@@ -87,22 +89,20 @@ class FM_ops():
         else:
             refined_tmp = False
 
-        if self.transformed:
+        if self._transformed:
             self.apply_transform(shift_points=False)
             self._update_data()
 
-        if refined_tmp and self.transformed:
+        if refined_tmp and self._transformed:
             for i in range(len(self.refine_history)):
-                print(i)
-                print('hello')
                 self.refine_matrix = self.refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
 
     def _update_data(self,update=True,update_points=True):
-        if self.transformed and (self._tf_data is not None or self.tf_max_proj_data is not None):
-            if self.show_max_proj:
+        if self._transformed and (self._tf_data is not None or self.tf_max_proj_data is not None):
+            if self._show_max_proj:
                 if self.refined:
                     self.data = np.copy(self.refined_max_proj)
                 else:
@@ -112,16 +112,16 @@ class FM_ops():
                     self.data = np.copy(self.refined_data)
                 else:
                     self.data = np.copy(self._tf_data)
-            self.points = np.copy(self.new_points)
+            self.points = np.copy(self._tf_points)
         else:
-            if self.show_max_proj and self.max_proj_data is not None:
-                self.data = np.copy(self.max_proj_data)
+            if self._show_max_proj and self._max_proj_data is not None:
+                self.data = np.copy(self._max_proj_data)
             else:
-                self.data = np.copy(self._orig_data)
-            self.points = np.copy(self.orig_points) if self.orig_points is not None else None
+                self.data = np.copy(self.orig_data)
+            self.points = np.copy(self._orig_points) if self._orig_points is not None else None
 
         if update:
-            if self.transformed:
+            if self._transformed:
                 fliph = self.fliph
                 flipv = self.flipv
                 transp = self.transp
@@ -145,7 +145,7 @@ class FM_ops():
                     self.points = self.update_points(self.points)
 
     def update_points(self,points):
-        if self.transformed:
+        if self._transformed:
             fliph = self.fliph
             flipv = self.flipv
             transp = self.transp
@@ -192,24 +192,24 @@ class FM_ops():
         self._update_data(update=update)
 
     def calc_max_projection(self):
-        self.show_max_proj = not self.show_max_proj
+        self._show_max_proj = not self._show_max_proj
         if self.refined:
             refined_tmp = True
             self.refined = False
         else:
             refined_tmp = False
 
-        if self.max_proj_data is None:
-            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
+        if self._max_proj_data is None:
+            self._max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
                                            for i in range(self.num_channels)]).transpose(1,2,0).astype('f4')
-            self.max_proj_data /= self.max_proj_data.mean((0, 1))
-        if self.transformed:
+            self._max_proj_data /= self._max_proj_data.mean((0, 1))
+        if self._transformed:
             if self.tf_max_proj_data is None:
                 self.apply_transform()
             elif self.refined:
                 self.apply_transform()
         self._update_data()
-        if refined_tmp and self.transformed:
+        if refined_tmp and self._transformed:
         #if self.refined:
             for i in range(len(self.refine_history)):
                 self.refine_matrix = self.refine_history[i]
@@ -304,13 +304,13 @@ class FM_ops():
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
         cen = my_points.mean(0) - np.ones(2)*self.side_length/2.
-        self.new_points = np.zeros_like(my_points)
-        self.new_points[0] = cen + (0, 0)
-        self.new_points[1] = cen + (self.side_length, 0)
-        self.new_points[2] = cen + (self.side_length, self.side_length)
-        self.new_points[3] = cen + (0, self.side_length)
+        self._tf_points = np.zeros_like(my_points)
+        self._tf_points[0] = cen + (0, 0)
+        self._tf_points[1] = cen + (self.side_length, 0)
+        self._tf_points[2] = cen + (self.side_length, self.side_length)
+        self._tf_points[3] = cen + (0, self.side_length)
 
-        self.tf_matrix = tf.estimate_transform('affine', my_points, self.new_points).params
+        self.tf_matrix = tf.estimate_transform('affine', my_points, self._tf_points).params
 
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -320,8 +320,8 @@ class FM_ops():
         print('Transform matrix:\n', self.tf_matrix)
 
         self.apply_transform()
-        self.points = np.copy(self.new_points)
-        print('New points: \n', self.new_points)
+        self.points = np.copy(self._tf_points)
+        print('New points: \n', self._tf_points)
 
     def calc_rot_transform(self, my_points):
         print('Input points:\n', my_points)
@@ -342,18 +342,18 @@ class FM_ops():
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
         print('Tf: ', self.tf_matrix)
 
-        self.new_points = np.zeros_like(my_points)
-        self.new_points[0] = tf_center + (-self.side_length/2, -self.side_length/2)
-        self.new_points[1] = tf_center + (self.side_length/2, -self.side_length/2)
-        self.new_points[2] = tf_center + (self.side_length/2, self.side_length/2)
-        self.new_points[3] = tf_center + (-self.side_length/2,self.side_length/2)
+        self._tf_points = np.zeros_like(my_points)
+        self._tf_points[0] = tf_center + (-self.side_length/2, -self.side_length/2)
+        self._tf_points[1] = tf_center + (self.side_length/2, -self.side_length/2)
+        self._tf_points[2] = tf_center + (self.side_length/2, self.side_length/2)
+        self._tf_points[3] = tf_center + (-self.side_length/2,self.side_length/2)
 
-        if not self.transformed:
-            self.orig_points = np.copy(my_points)
+        if not self._transformed:
+            self._orig_points = np.copy(my_points)
         self.apply_transform()
-        self.points = np.copy(self.new_points)
+        self.points = np.copy(self._tf_points)
         self.rotated = True
-        print('New points: \n', self.new_points)
+        print('New points: \n', self._tf_points)
 
     def calc_orientation(self,points):
         my_list = []
@@ -386,7 +386,7 @@ class FM_ops():
 
             angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg]
             print('angles_deg: ', angles_deg)
-            if self.transformed:
+            if self._transformed:
                 theta = (np.pi/180*np.mean(angles_deg))
             else:
                 theta = -(np.pi/180*np.mean(angles_deg))
@@ -394,7 +394,7 @@ class FM_ops():
             return tf_matrix
 
     def apply_transform(self,shift_points=True):
-        if not self.transformed:
+        if not self._transformed:
             self.fliph = False
             self.transp = False
             self.rot = False
@@ -408,40 +408,40 @@ class FM_ops():
         # Calculate transform_shift for point transforms
         self.transform_shift = -self.tf_corners.min(1)[:2]
 
-        if not self.show_max_proj and self.max_proj_data is None:
+        if not self._show_max_proj and self._max_proj_data is None:
             # If max_projection has not yet been selected
             self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self._tf_data[:,:,i] = ndi.affine_transform(self._orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self._tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
             print('\n', self._tf_data.shape)
             if shift_points:
-                self.new_points = np.array([point + self.transform_shift for point in self.new_points])
-        elif self.show_max_proj and self.transformed:
+                self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
+        elif self._show_max_proj and self._transformed:
             # If showing max_projection with image already transformed (???)
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self._max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
             self._update_data(update_points=False)
         else:
             self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self._tf_data[:,:,i] = ndi.affine_transform(self._orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self._tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self._max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
             print('\n', self._tf_data.shape)
-            print(self.max_proj_data.shape)
+            print(self._max_proj_data.shape)
             if shift_points:
-                self.new_points = np.array([point + self.transform_shift for point in self.new_points])
+                self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
 
-        if self.show_max_proj:
+        if self._show_max_proj:
             self.data = np.copy(self.tf_max_proj_data)
         else:
             self.data = np.copy(self._tf_data)
 
-        self.transformed = True
+        self._transformed = True
 
     def calc_refine_matrix(self, source, dst, em_grid_points):
         if self._tf_data is not None:
@@ -458,8 +458,8 @@ class FM_ops():
 
     def refine_grid(self, em_points):
         self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
-        self.new_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
-        self.points = np.copy(self.new_points)
+        self._tf_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
+        self.points = np.copy(self._tf_points)
 
     def apply_refinement(self):
         data_tmp = np.copy(self.data)
@@ -468,7 +468,7 @@ class FM_ops():
             self.data[:,:,i] = ndi.affine_transform(data_tmp[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
             sys.stderr.write('\r%d'%i)
 
-        if self.show_max_proj:
+        if self._show_max_proj:
             self.refined_max_proj = np.copy(self.data)
         else:
             self.refined_data = np.copy(self.data)

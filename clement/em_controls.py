@@ -13,9 +13,13 @@ class EMControls(BaseControls):
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
-        self.curr_folder = None
+        
         self.show_boxes = False
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
+
+        self._curr_folder = None
+        self._file_name = None
+        self._downsampling = None
 
         self._init_ui()
 
@@ -39,6 +43,7 @@ class EMControls(BaseControls):
         self.step_box = QtWidgets.QLineEdit(self)
         self.step_box.setText('10')
         self.step_box.setEnabled(False)
+        self._downsampling = self.step_box.text()
         line.addWidget(step_label)
         line.addWidget(self.step_box)
         line.addStretch(1)
@@ -121,16 +126,16 @@ class EMControls(BaseControls):
         self.show()
 
     def _load_mrc(self):
-        if self.curr_folder is None:
-            self.curr_folder = os.getcwd()
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+        if self._curr_folder is None:
+            self._curr_folder = os.getcwd()
+        self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select .mrc file',
-                                                             self.curr_folder,
+                                                             self._curr_folder,
                                                              '*.mrc')
-        self.curr_folder = os.path.dirname(file_name)
+        self._curr_folder = os.path.dirname(self._file_name)
 
-        if file_name is not '':
-            self.mrc_fname.setText(file_name)
+        if self._file_name is not '':
+            self.mrc_fname.setText(self._file_name)
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
 
@@ -153,13 +158,13 @@ class EMControls(BaseControls):
     def _assemble_mrc(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.step_box.text() is '':
-            step = 10
+            self._downsampling = 10
         else:
-            step = self.step_box.text()
+            self._downsampling = self.step_box.text()
 
         if self.mrc_fname.text() is not '':
             self.ops = EM_ops()
-            self.ops.parse(self.mrc_fname.text(), int(step))
+            self.ops.parse(self.mrc_fname.text(), int(self._downsampling))
             self.imview.setImage(self.ops.data)
             self.define_btn.setEnabled(True)
             self.rot_transform_btn.setEnabled(True)
@@ -299,10 +304,10 @@ class EMControls(BaseControls):
         if self.ops is None:
             print('No montage to save!')
         else:
-            if self.curr_folder is None:
-                self.curr_folder = os.getcwd()
-            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self.curr_folder, '*.mrc')
-            self.curr_folder = os.path.dirname(file_name)
+            if self._curr_folder is None:
+                self._curr_folder = os.getcwd()
+            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self._curr_folder, '*.mrc')
+            self._curr_folder = os.path.dirname(file_name)
             if file_name is not '':
                 self.ops.save_merge(file_name)
         QtWidgets.QApplication.restoreOverrideCursor()

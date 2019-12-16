@@ -9,7 +9,9 @@ import pyqtgraph as pg
 from . import res_styles
 from .em_controls import EMControls
 from .fm_controls import FMControls
+from .project import Project
 from .popup import Merge
+
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -74,6 +76,7 @@ class GUI(QtGui.QMainWindow):
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
+        self.project = Project(self.fmcontrols, self.emcontrols)
         # Menu Bar
         self._init_menubar()
 
@@ -94,6 +97,12 @@ class GUI(QtGui.QMainWindow):
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load &EM montage', self)
         action.triggered.connect(self.emcontrols._load_mrc)
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('Load project', self)
+        action.triggered.connect(self.project._load_project)
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('Save project', self)
+        action.triggered.connect(self.project._save_project)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Save binned montage', self)
         action.triggered.connect(self.emcontrols._save_mrc_montage)
