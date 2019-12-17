@@ -11,9 +11,12 @@ class BaseControls(QtWidgets.QWidget):
         self.ops = None
         self.other = None # The other controls object
         
-        self._points_corr = []
         self._box_coordinate = None
-        
+        self._point_events = []
+        self._points_corr = []
+        self._size_ops = 3
+        self._size_other = 3
+
         self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False
@@ -51,7 +54,7 @@ class BaseControls(QtWidgets.QWidget):
 
         pos.setX(pos.x() - self._size_ops/2)
         pos.setY(pos.y() - self._size_ops/2)
-
+        self._point_events.append(np.array([pos.x(),pos.y()]))
         if self.define_btn.isChecked():
             roi = pg.CircleROI(pos, self._size_ops, parent=item, movable=False)
             roi.setPen(255,0,0)
@@ -89,7 +92,7 @@ class BaseControls(QtWidgets.QWidget):
         if self.other.ops is None:
             print('Select both data first')
 
-        if self.ops._transformed and self.other.ops.transformed:
+        if self.ops._transformed and self.other.ops._transformed:
             if self.tr_matrices is not None:
                 point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                 point_obj.setPen(0,255,0)
@@ -244,8 +247,8 @@ class BaseControls(QtWidgets.QWidget):
             print('Select both data first')
             return
 
-        check_obj = self.ops._tf_data is not None or (hasattr(self.ops, 'tf_region') and self.ops.tf_region is not None)
-        check_other = self.other.ops._tf_data is not None or (hasattr(self.other.ops, 'tf_region') and self.other.ops.tf_region is not None)
+        check_obj = self.ops.tf_data is not None or (hasattr(self.ops, 'tf_region') and self.ops.tf_region is not None)
+        check_other = self.other.ops.tf_data is not None or (hasattr(self.other.ops, 'tf_region') and self.other.ops.tf_region is not None)
 
         if check_obj and check_other:
             if checked:

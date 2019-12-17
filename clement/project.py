@@ -107,7 +107,15 @@ class Project(QtWidgets.QWidget):
                     self.em.show_btn.setChecked(em.attrs['Show original'])
                 except KeyError:
                     pass
-
+            
+                #### Load base variables
+                try:
+                    base = project['BASE']
+                    self.fm.select_btn.setChecked(True)
+                    [self.fm._draw_correlated_points(QtCore.QPointF(point[0],point[1]), base.attrs['Circle size FM'], base.attrs['Circle size EM'], self.fm.imview.getImageItem()) for point in list(base['Correlated points'])]
+                    self.fm.select_btn.setChecked(False)
+                except KeyError:
+                    pass
 
 
         
@@ -159,7 +167,13 @@ class Project(QtWidgets.QWidget):
                             em.create_dataset('Orginal points subregion', data=self.em.ops._orig_points_region)
                         if self.em.ops._tf_points_region is not None:
                             em.create_dataset('Transformed points subregion', data=self.em.ops._tf_points_region)
-        
-        
-        
+                     
+                    base = project.create_group('BASE')
+                    if len(self.fm._point_events) > 0:
+                        print(np.array(self.fm._point_events))
+                        base.create_dataset('Correlated points', data=np.array(self.fm._point_events))
+                        base.attrs['Circle size FM'] = self.fm._size_ops
+                        base.attrs['Circle size EM'] = self.fm._size_other
+                        
+            
         
