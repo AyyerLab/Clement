@@ -14,7 +14,9 @@ class EM_ops():
         self._orig_points = None
         self._transformed = False
         self._tf_points = None
-
+        self._orig_points_region = None
+        self._tf_points_region = None
+ 
         self.orig_data = None
         self.tf_data = None
         self.pixel_size = None
@@ -22,6 +24,7 @@ class EM_ops():
         self.data = None
         self.stacked_data = True
         self.orig_region = None
+        self.selected_region = None       
         self.tf_region = None
         self.data_backup = None
         self.transformed_data = None
@@ -36,15 +39,12 @@ class EM_ops():
         self.count_map = None
         self.tf_count_map = None
         self.tf_matrix = np.identity(3)
-        self.no_shear = False
         self.clockwise = False
         self.rot_angle = None
         self.first_rotation = False
         self.rotated = False
         self.tf_prev = np.identity(3)
-        self.orig_points_region = None
-        self.tf_points_region = None
-        self.selected_region = None
+
         self.stage_origin = None
         self.points = None
         self.assembled = True
@@ -110,8 +110,8 @@ class EM_ops():
     def toggle_original(self):
         if self.assembled:
             if self._transformed:
-                if self._tf_data is not None:
-                    self.data = copy.copy(self._tf_data)
+                if self.tf_data is not None:
+                    self.data = copy.copy(self.tf_data)
                 else:
                     self.data = copy.copy(self.orig_data)
                     self._transformed = False
@@ -126,8 +126,8 @@ class EM_ops():
                 else:
                     self.data = copy.copy(self.orig_region)
                     self._transformed = False
-                if self.tf_points_region is not None:
-                    self.points = copy.copy(self.tf_points_region)
+                if self._tf_points_region is not None:
+                    self.points = copy.copy(self._tf_points_region)
                 else:
                     self.points = None
             else:
@@ -251,7 +251,7 @@ class EM_ops():
             self.tf_count_map = ndi.affine_transform(self.count_map, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
 
         if self.assembled:
-            self._tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+            self.tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
         else:
             self.tf_region = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
 
@@ -267,7 +267,7 @@ class EM_ops():
                     tf_box_points.append(np.array([x_i,y_i,z_i]))
                 self.tf_grid_points.append(tf_box_points)
         else:
-            self.tf_points_region = np.copy(pts)
+            self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
     def get_selected_region(self, coordinate, transformed):

@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 
@@ -10,8 +11,10 @@ class BaseControls(QtWidgets.QWidget):
         self.ops = None
         self.other = None # The other controls object
         
+        self._points_corr = []
+        self._box_coordinate = None
+        
         self.tr_matrices = None
-        self.points_corr = []
         self.show_grid_box = False
         self.show_tr_grid_box = False
         self.clicked_points = []
@@ -21,7 +24,6 @@ class BaseControls(QtWidgets.QWidget):
         self.tr_boxes = []
         self.original_help = True
         self.redo_tr = False
-        self.box_coordinate = None
         self.refine = False
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
@@ -60,8 +62,8 @@ class BaseControls(QtWidgets.QWidget):
             self._draw_correlated_points(pos, self._size_ops, self._size_other, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
             '''EM only: Select individual image from montage'''
-            self.box_coordinate = pos
             points_obj = (pos.x(), pos.y())
+            self._box_coordinate = np.copy(np.array(points_obj))
 
             # If clicked point is inside image
             if points_obj[0] < self.ops.data.shape[0] and points_obj[1] < self.ops.data.shape[1]:
@@ -93,7 +95,7 @@ class BaseControls(QtWidgets.QWidget):
                 point_obj.setPen(0,255,0)
                 point_obj.removeHandle(0)
                 self.imview.addItem(point_obj)
-                self.points_corr.append(point_obj)
+                self._points_corr.append(point_obj)
                 self.counter += 1
                 annotation_obj = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
                 annotation_obj.setPos(pos.x()+5, pos.y()+5)
@@ -108,15 +110,15 @@ class BaseControls(QtWidgets.QWidget):
                 point_other.setPen(0,255,255)
                 point_other.removeHandle(0)
                 self.other.imview.addItem(point_other)
-                self.other.points_corr.append(point_other)
+                self.other._points_corr.append(point_other)
 
                 self.other.counter = self.counter
                 annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
                 annotation_other.setPos(pos.x()+5, pos.y()+5)
                 self.other.imview.addItem(annotation_other)
                 self.other.anno_list.append(annotation_other)
-                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self.points_corr, self.other.points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
-                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other.points_corr, self.points_corr, annotation_other, annotation_obj, self.anno_list, self.other.anno_list))
+                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self._points_corr, self.other._points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
+                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other._points_corr, self._points_corr, annotation_other, annotation_obj, self.anno_list, self.other.anno_list))
 
         else:
             print('Transform both images before point selection')
@@ -188,9 +190,9 @@ class BaseControls(QtWidgets.QWidget):
 
     def _recalc_grid(self, toggle_orig=False):
         if self.ops.points is not None:
-            pos = [QtCore.QPointF(point[0], point[1]) for point in self.ops.points]
-            poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
             if self.show_btn.isChecked():
+                pos =  list(self.ops.points)
+                poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
                         self.imview.removeItem(self.tr_grid_box)
@@ -199,6 +201,8 @@ class BaseControls(QtWidgets.QWidget):
                 print('Recalculating original grid...')
                 self.grid_box = poly_line
             else:
+                pos =  list(self.ops.points)
+                poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
                         self.imview.removeItem(self.grid_box)
@@ -247,13 +251,13 @@ class BaseControls(QtWidgets.QWidget):
             if checked:
                 print('Select points of interest on %s image'%self.tag)
                 if not self.other.select_btn.isChecked():
-                    if len(self.points_corr) != 0:
-                        [self.imview.removeItem(point) for point in self.points_corr]
-                        [self.other.imview.removeItem(point) for point in self.other.points_corr]
+                    if len(self._points_corr) != 0:
+                        [self.imview.removeItem(point) for point in self._points_corr]
+                        [self.other.imview.removeItem(point) for point in self.other._points_corr]
                         [self.imview.removeItem(anno) for anno in self.anno_list]
                         [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
-                        self.points_corr = []
-                        self.other.points_corr = []
+                        self._points_corr = []
+                        self.other._points_corr = []
                         self.anno_list = []
                         self.other.anno_list = []
                         self.counter = 0
@@ -267,7 +271,7 @@ class BaseControls(QtWidgets.QWidget):
             if checked:
                 print('Select and transform both data first')
 
-    def _affine_transform(self):
+    def _affine_transform(self, toggle_orig=True):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.show_btn.isChecked():
             grid_box = self.grid_box
@@ -299,19 +303,13 @@ class BaseControls(QtWidgets.QWidget):
             self.show_btn.setEnabled(True)
             self.show_btn.setChecked(False)
             self.original_help = True
-            self._recalc_grid(toggle_orig=True)
+            self._recalc_grid(toggle_orig=toggle_orig)
             self._update_imview()
             self.transform_btn.setEnabled(False)
+            self.rot_transform_btn.setEnabled(False)
         else:
             print('Define grid box on %s image first!'%self.tag)
         QtWidgets.QApplication.restoreOverrideCursor()
-
-    def _allow_rotation_only(self, checked):
-        if self.ops is not None:
-            if checked:
-                self.ops.no_shear = True
-            else:
-                self.ops.no_shear = False
 
     def _show_original(self, state):
         if self.original_help:
@@ -342,25 +340,27 @@ class BaseControls(QtWidgets.QWidget):
                 self._update_imview()
                 if self.ops._transformed:
                     self.transform_btn.setEnabled(False)
+                    self.rot_transform_btn.setEnabled(False)
                 else:
                     self.transform_btn.setEnabled(True)
+                    self.rot_transform_btn.setEnabled(True)
 
     def _refine(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if len(self.points_corr) > 3:
-            src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self.points_corr])
-            dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other.points_corr])
+        if len(self._points_corr) > 3:
+            src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self._points_corr])
+            dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other._points_corr])
             self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
-            [self.imview.removeItem(point) for point in self.points_corr]
-            [self.other.imview.removeItem(point) for point in self.other.points_corr]
+            [self.imview.removeItem(point) for point in self._points_corr]
+            [self.other.imview.removeItem(point) for point in self.other._points_corr]
             [self.imview.removeItem(anno) for anno in self.anno_list]
             [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
             self.anno_list = []
             self.other.anno_list = []
             self.counter = 0
             self.other.counter = 0
-            self.points_corr = []
-            self.other.points_corr = []
+            self._points_corr = []
+            self.other._points_corr = []
             self.refine = True
             self._recalc_grid()
             self._update_imview()

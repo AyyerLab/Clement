@@ -67,7 +67,6 @@ class EMControls(BaseControls):
         self.transform_btn.setEnabled(False)
         line.addWidget(self.transform_btn)
         self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
-        self.rot_transform_btn.stateChanged.connect(self._allow_rotation_only)
         self.rot_transform_btn.setEnabled(False)
         line.addWidget(self.rot_transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
@@ -236,14 +235,15 @@ class EMControls(BaseControls):
         if self.select_region_btn.isChecked():
             self._show_boxes()
             self.ops.orig_region = None
+            self.show_assembled_btn.setEnabled(False)
             print('Select box!')
         else:
-            if self.box_coordinate is not None:
+            if self._box_coordinate is not None:
                 if self.show_btn.isChecked():
                     transformed = False
                 else:
                     transformed = True
-                points_obj = (self.box_coordinate.x(),self.box_coordinate.y())
+                points_obj = self._box_coordinate
                 self.ops.select_region(np.array(points_obj),transformed)
                 self._hide_boxes()
                 if self.ops.orig_region is None:
@@ -251,13 +251,12 @@ class EMControls(BaseControls):
                     return
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False)
-                self.show_grid_btn.setEnabled(False)
                 self.show_grid_btn.setChecked(False)
+                self.show_grid_btn.setEnabled(False)
                 self.original_help = False
                 self.show_btn.setChecked(True)
                 self.original_help = True
                 self.show_btn.setEnabled(False)
-                self.box_coordinate = None
                 self.transform_btn.setEnabled(True)
             else:
                 self._hide_boxes()
@@ -270,16 +269,15 @@ class EMControls(BaseControls):
         self.imview.removeItem(self.tr_grid_box)
         if self.show_assembled_btn.isChecked():
             self.ops.assembled = True
-            if self.ops.orig_points is None:
+            if self.ops._orig_points is None:
                 self.show_grid_btn.setEnabled(False)
                 self.show_grid_btn.setChecked(False)
             else:
                 self.show_grid_btn.setEnabled(True)
-                self.show_grid_btn.setChecked(True)
 
             self.select_region_btn.setEnabled(True)
 
-            if self.ops._tf_data is None:
+            if self.ops.tf_data is None:
                 self.show_btn.setChecked(True)
                 self.show_btn.setEnabled(False)
             else:
@@ -291,7 +289,7 @@ class EMControls(BaseControls):
                 self.show_btn.setEnabled(True)
             else:
                 self.show_btn.setEnabled(False)
-            if self.ops.orig_points_region is None:
+            if self.ops._orig_points_region is None:
                 self.show_grid_btn.setEnabled(False)
                 self.show_grid_btn.setChecked(False)
 

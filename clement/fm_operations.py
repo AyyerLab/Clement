@@ -18,6 +18,7 @@ class FM_ops():
         self._tf_points = None
         
         self.orig_data = None
+        self.tf_data = None
         self.num_slices = None
         self.selected_slice = None
         self.data = None
@@ -41,7 +42,6 @@ class FM_ops():
         self.shift = []
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
-        self.no_shear = False
         self.tf_max_proj_data = None
         self.counter_clockwise = False
         self.rotated = False
@@ -101,7 +101,7 @@ class FM_ops():
             self.refined = True
 
     def _update_data(self,update=True,update_points=True):
-        if self._transformed and (self._tf_data is not None or self.tf_max_proj_data is not None):
+        if self._transformed and (self.tf_data is not None or self.tf_max_proj_data is not None):
             if self._show_max_proj:
                 if self.refined:
                     self.data = np.copy(self.refined_max_proj)
@@ -111,7 +111,7 @@ class FM_ops():
                 if self.refined:
                     self.data = np.copy(self.refined_data)
                 else:
-                    self.data = np.copy(self._tf_data)
+                    self.data = np.copy(self.tf_data)
             self.points = np.copy(self._tf_points)
         else:
             if self._show_max_proj and self._max_proj_data is not None:
@@ -186,7 +186,7 @@ class FM_ops():
         self._update_data()
 
     def toggle_original(self,update=True):
-        if self._tf_data is None:
+        if self.tf_data is None:
             print('Need to transform data first')
             return
         self._update_data(update=update)
@@ -410,11 +410,11 @@ class FM_ops():
 
         if not self._show_max_proj and self._max_proj_data is None:
             # If max_projection has not yet been selected
-            self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+            self.tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self._tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self.tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
-            print('\n', self._tf_data.shape)
+            print('\n', self.tf_data.shape)
             if shift_points:
                 self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
         elif self._show_max_proj and self._transformed:
@@ -425,13 +425,13 @@ class FM_ops():
                 sys.stderr.write('\r%d'%i)
             self._update_data(update_points=False)
         else:
-            self._tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+            self.tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
             self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
             for i in range(self.data.shape[-1]):
-                self._tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                self.tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self._max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
                 sys.stderr.write('\r%d'%i)
-            print('\n', self._tf_data.shape)
+            print('\n', self.tf_data.shape)
             print(self._max_proj_data.shape)
             if shift_points:
                 self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
@@ -439,12 +439,12 @@ class FM_ops():
         if self._show_max_proj:
             self.data = np.copy(self.tf_max_proj_data)
         else:
-            self.data = np.copy(self._tf_data)
+            self.data = np.copy(self.tf_data)
 
         self._transformed = True
 
     def calc_refine_matrix(self, source, dst, em_grid_points):
-        if self._tf_data is not None:
+        if self.tf_data is not None:
             self.corr_matrix_new = tf.estimate_transform('affine',source,dst).params
             self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix)
             nx, ny = self.data.shape[:-1]

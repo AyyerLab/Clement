@@ -154,7 +154,6 @@ class FMControls(BaseControls):
         self.transform_btn.setEnabled(False)
         line.addWidget(self.transform_btn)
         self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
-        self.rot_transform_btn.stateChanged.connect(self._allow_rotation_only)
         self.rot_transform_btn.setEnabled(False)
         line.addWidget(self.rot_transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
