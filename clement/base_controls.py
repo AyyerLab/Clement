@@ -12,11 +12,13 @@ class BaseControls(QtWidgets.QWidget):
         self.other = None # The other controls object
         
         self._box_coordinate = None
-        self._point_events = []
         self._points_corr = []
+        self._points_corr_indices= []
         self._size_ops = 3
         self._size_other = 3
-
+        self._refined = False
+        self._refine_history = []
+        
         self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False
@@ -27,7 +29,6 @@ class BaseControls(QtWidgets.QWidget):
         self.tr_boxes = []
         self.original_help = True
         self.redo_tr = False
-        self.refine = False
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
@@ -54,7 +55,7 @@ class BaseControls(QtWidgets.QWidget):
 
         pos.setX(pos.x() - self._size_ops/2)
         pos.setY(pos.y() - self._size_ops/2)
-        self._point_events.append(np.array([pos.x(),pos.y()]))
+        #self._point_events.append(np.array([pos.x(),pos.y()]))
         if self.define_btn.isChecked():
             roi = pg.CircleROI(pos, self._size_ops, parent=item, movable=False)
             roi.setPen(255,0,0)
@@ -105,8 +106,11 @@ class BaseControls(QtWidgets.QWidget):
                 self.imview.addItem(annotation_obj)
                 self.anno_list.append(annotation_obj)
 
+                self._points_corr_indices.append(self.counter-1)
+
                 # Coordinates in clicked image
                 init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
+
                 transf = np.dot(self.tr_matrices, init)
                 pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
                 point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
@@ -261,6 +265,7 @@ class BaseControls(QtWidgets.QWidget):
                         [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
                         self._points_corr = []
                         self.other._points_corr = []
+                        self._points_corr_indices = []
                         self.anno_list = []
                         self.other.anno_list = []
                         self.counter = 0
@@ -270,6 +275,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%self.tag)
+                self._refine_history.append([self._points_corr, self._points_corr_indices])
+                self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
         else:
             if checked:
                 print('Select and transform both data first')
@@ -349,28 +356,39 @@ class BaseControls(QtWidgets.QWidget):
                     self.rot_transform_btn.setEnabled(True)
 
     def _refine(self):
+
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
-            src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self._points_corr])
-            dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other._points_corr])
-            self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
-            [self.imview.removeItem(point) for point in self._points_corr]
-            [self.other.imview.removeItem(point) for point in self.other._points_corr]
-            [self.imview.removeItem(anno) for anno in self.anno_list]
-            [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
-            self.anno_list = []
-            self.other.anno_list = []
-            self.counter = 0
-            self.other.counter = 0
-            self._points_corr = []
-            self.other._points_corr = []
-            self.refine = True
-            self._recalc_grid()
-            self._update_imview()
-            self.fliph.setEnabled(False)
-            self.flipv.setEnabled(False)
-            self.transpose.setEnabled(False)
-            self.rotate.setEnabled(False)
+            if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
+                del self._refine_history[-1]
+                del self.other._refine_history[-1]
+                    
+                self._refine_history.append([self._points_corr, self._points_corr_indices])
+                self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
+                print('Refining...')
+                src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self._refine_history[-1][0]])
+                dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other._refine_history[-1][0]])
+                self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
+                [self.imview.removeItem(point) for point in self._points_corr]
+                [self.other.imview.removeItem(point) for point in self.other._points_corr]
+                [self.imview.removeItem(anno) for anno in self.anno_list]
+                [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+                self.anno_list = []
+                self.other.anno_list = []
+                self.counter = 0
+                self.other.counter = 0
+                self._points_corr = []
+                self.other._points_corr = []
+                self._points_corr_indices = []
+                self._refined = True
+                self._recalc_grid()
+                self._update_imview()
+                self.fliph.setEnabled(False)
+                self.flipv.setEnabled(False)
+                self.transpose.setEnabled(False)
+                self.rotate.setEnabled(False)
+            else:
+                print('Confirm point selection! (Uncheck Select points of interest)')
         else:
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()

@@ -454,6 +454,7 @@ class FM_ops():
             self.refine_history.append(self.refine_matrix)
             self.refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
             self.refine_grid(em_grid_points)
+            print(self.refine_matrix)
             self.apply_refinement()
 
     def refine_grid(self, em_points):
