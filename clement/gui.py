@@ -134,8 +134,6 @@ class GUI(QtGui.QMainWindow):
         self.project._save_project()
     
     def _load_p(self):
-        self.fmcontrols.reset_init()
-        self.emcontrols.reset_init()
         self.project._load_project()
         if self.project.merged:
             self.merge()

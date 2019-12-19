@@ -14,8 +14,6 @@ class BaseControls(QtWidgets.QWidget):
         self._box_coordinate = None
         self._points_corr = []
         self._points_corr_indices= []
-        self._size_ops = 3
-        self._size_other = 3
         self._refined = False
         self._refine_history = []
         self._refine_counter = 0 
@@ -34,6 +32,8 @@ class BaseControls(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
+        self.size_ops = 6
+        self.size_other = 6
 
 
     def _init_ui(self):
@@ -49,22 +49,23 @@ class BaseControls(QtWidgets.QWidget):
 
         pos = self.imview.getImageItem().mapFromScene(event.pos())
 
-        self._size_ops = self.ops.data.shape[0]*0.01
+        #self.size_ops = self.ops.data.shape[0]*0.01
         if self.other.ops is not None:
-            self._size_other = self.other.ops.data.shape[0]*0.005
-
+            #self.size_other = self.other.ops.data.shape[0]*0.005
+            #self.size_other = self.size_ops
+            pass
         item = self.imview.getImageItem()
 
-        pos.setX(pos.x() - self._size_ops/2)
-        pos.setY(pos.y() - self._size_ops/2)
+        pos.setX(pos.x() - self.size_ops/2)
+        pos.setY(pos.y() - self.size_ops/2)
         if self.define_btn.isChecked():
-            roi = pg.CircleROI(pos, self._size_ops, parent=item, movable=False)
+            roi = pg.CircleROI(pos, self.size_ops, parent=item, movable=False)
             roi.setPen(255,0,0)
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
         elif self.select_btn.isChecked():
-            self._draw_correlated_points(pos, self._size_ops, self._size_other, item)
+            self._draw_correlated_points(pos, self.size_ops, self.size_other, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
             '''EM only: Select individual image from montage'''
             points_obj = (pos.x(), pos.y())
@@ -366,8 +367,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
                 self._refine_counter += 1
                 print('Refining...')
-                src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self._refine_history[-1][0]])
-                dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other._refine_history[-1][0]])
+                dst = np.array([[point.x()+self.size_other/2,point.y()+self.size_other/2] for point in self.other._refine_history[-1][0]])
+                src = np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._refine_history[-1][0]])
+                
                 self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -380,6 +382,7 @@ class BaseControls(QtWidgets.QWidget):
                 self._points_corr = []
                 self.other._points_corr = []
                 self._points_corr_indices = []
+                self.other._points_corr_indices = []
                 self._refined = True
                 self._recalc_grid()
                 self._update_imview()

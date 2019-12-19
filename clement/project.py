@@ -25,6 +25,8 @@ class Project(QtWidgets.QWidget):
                                                              self._project_folder,
                                                              '*.h5')
         if file_name is not '':
+            self.fm.reset_init()
+            self.em.reset_init()
             self._project_folder = os.path.dirname(file_name)
             with h5.File(file_name,'r') as project:
                 self._load_fm(project)
@@ -177,7 +179,7 @@ class Project(QtWidgets.QWidget):
                     if len(indices_fm) > 0:
                         points_red = list(itemgetter(*indices_fm)(list(points_corr_fm)))
                         roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                        [self.fm._draw_correlated_points(roi, points_corr_fm.attrs['Circle size FM'], points_corr_fm.attrs['Circle size EM'], self.fm.imview.getImageItem()) for roi in roi_list]
+                        [self.fm._draw_correlated_points(roi, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem()) for roi in roi_list]
                 except KeyError:
                     pass
                 try:
@@ -187,7 +189,7 @@ class Project(QtWidgets.QWidget):
                     if len(indices_em) > 0:
                         points_red = list(itemgetter(*indices_em)(list(points_corr_em)))
                         roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                        [self.em._draw_correlated_points(roi, points_corr_em.attrs['Circle size EM'], points_corr_em.attrs['Circle size FM'], self.em.imview.getImageItem()) for roi in roi_list]
+                        [self.em._draw_correlated_points(roi, self.em.size_ops, self.em.size_other, self.em.imview.getImageItem()) for roi in roi_list]
                 except KeyError:
                     pass
                 self.em.select_btn.setChecked(False)
@@ -199,7 +201,7 @@ class Project(QtWidgets.QWidget):
                     if len(indices_fm) > 0:
                         correct_em = list(itemgetter(*indices_fm)(list(points_corr_em)))
                         pt_list_em = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_em)]
-                        roi_list_em = [pg.CircleROI(pt_list_em[i],points_corr_fm.attrs['Circle size EM'], parent=self.em.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_em))]
+                        roi_list_em = [pg.CircleROI(pt_list_em[i],self.em.size_ops, parent=self.em.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_em))]
                         [self.em.imview.removeItem(self.em._points_corr[indices_fm[index]]) for index in indices_fm]
                         for i in range(len(correct_em)):
                             self.em._points_corr[indices_fm[i]] = roi_list_em[i]
@@ -210,7 +212,7 @@ class Project(QtWidgets.QWidget):
                     if len(indices_em) > 0:
                         correct_fm = list(itemgetter(*indices_em)(list(points_corr_fm)))
                         pt_list_fm = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_fm)]
-                        roi_list_fm = [pg.CircleROI(pt_list_fm[i],points_corr_em.attrs['Circle size EM'], parent=self.fm.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_fm))]
+                        roi_list_fm = [pg.CircleROI(pt_list_fm[i], self.fm.size_ops, parent=self.fm.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_fm))]
                         [self.fm.imview.removeItem(self.fm._points_corr[indices_em[index]]) for index in indices_em]
                         for i in range(len(correct_fm)):
                             self.fm._points_corr[indices_em[i]] = roi_list_fm[i]
@@ -293,8 +295,8 @@ class Project(QtWidgets.QWidget):
             for i in range(len(self.fm._refine_history)):
                 points = [[p.pos().x(),p.pos().y()] for p in self.fm._refine_history[i][0]]
                 corr_points = fm.create_dataset('Correlated points {}'.format(i), data=np.array(points))
-                corr_points.attrs['Circle size FM'] = self.fm._size_ops
-                corr_points.attrs['Circle size EM'] = self.fm._size_other
+                #corr_points.attrs['Circle size FM'] = self.fm._size_ops
+                #corr_points.attrs['Circle size EM'] = self.fm._size_other
                 fm.create_dataset('Correlated points indices {}'.format(i), data = np.array(self.fm._refine_history[i][1]))
         fm.attrs['Number of refinements'] = self.fm._refine_counter
         if self.fm._refined:
@@ -329,7 +331,7 @@ class Project(QtWidgets.QWidget):
             for i in range(len(self.em._refine_history)):
                 points = [[p.pos().x(),p.pos().y()] for p in self.em._refine_history[i][0]]
                 points_corr = em.create_dataset('Correlated points {}'.format(i), data=np.array(np.copy(points)))
-                points_corr.attrs['Circle size EM'] = self.em._size_ops
-                points_corr.attrs['Circle size FM'] = self.em._size_other
+                #points_corr.attrs['Circle size EM'] = self.em._size_ops
+                #points_corr.attrs['Circle size FM'] = self.em._size_other
                 em.create_dataset('Correlated points indices {}'.format(i), data = np.array(self.em._refine_history[i][1]))
               
