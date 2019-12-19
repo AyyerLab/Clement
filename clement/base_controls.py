@@ -259,16 +259,16 @@ class BaseControls(QtWidgets.QWidget):
             if checked:
                 print('Select points of interest on %s image'%self.tag)
                 if not self.other.select_btn.isChecked():
-                    if len(self._points_corr) != 0:
+                    print(self._points_corr_indices)
+                    if len(self._points_corr_indices) != 0:
                         [self.imview.removeItem(point) for point in self._points_corr]
                         [self.other.imview.removeItem(point) for point in self.other._points_corr]
                         [self.imview.removeItem(anno) for anno in self.anno_list]
                         [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
-                        
-
                         self._points_corr = []
                         self.other._points_corr = []
                         self._points_corr_indices = []
+                        self.other._points_corr_indices = []
                         self.anno_list = []
                         self.other.anno_list = []
                         self.counter = 0
