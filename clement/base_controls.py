@@ -63,7 +63,6 @@ class BaseControls(QtWidgets.QWidget):
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
-            print('hi') 
         elif self.select_btn.isChecked():
             self._draw_correlated_points(pos, self._size_ops, self._size_other, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():

@@ -20,6 +20,7 @@ class EMControls(BaseControls):
         self._curr_folder = None
         self._file_name = None
         self._downsampling = None
+        self._select_region_original = True
 
         self._init_ui()
 
@@ -238,6 +239,10 @@ class EMControls(BaseControls):
             self.ops.orig_region = None
             self.show_assembled_btn.setEnabled(False)
             print('Select box!')
+            if self.show_btn.isChecked():
+                self._select_region_original = True
+            else:
+                self._select_region_original = False
         else:
             if self._box_coordinate is not None:
                 if self.show_btn.isChecked():
@@ -253,7 +258,10 @@ class EMControls(BaseControls):
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False)
                 self.show_grid_btn.setChecked(False)
-                self.show_grid_btn.setEnabled(False)
+                if self.ops._orig_points_region is not None:
+                    self.show_grid_btn.setEnabled(True)
+                else:
+                    self.show_grid_btn.setEnabled(False)
                 self.original_help = False
                 self.show_btn.setChecked(True)
                 self.original_help = True
@@ -286,6 +294,7 @@ class EMControls(BaseControls):
         else:
             self.ops.assembled = False
             self.select_region_btn.setEnabled(False)
+            self.show_grid_btn.setEnabled(True)
             if self.ops.tf_region is not None:
                 self.show_btn.setEnabled(True)
             else:
