@@ -321,7 +321,35 @@ class EMControls(BaseControls):
         QtWidgets.QApplication.restoreOverrideCursor()
     
     def reset_init(self):
-        self.ops = None
+
+
+        #self.ops = None
+        #self.other = None # The other controls object
+        
+        self._box_coordinate = None
+        self._points_corr = []
+        self._points_corr_indices= []
+        self._size_ops = 3
+        self._size_other = 3
+        self._refined = False
+        self._refine_history = []
+        self._refine_counter = 0 
+        self._merged = False
+        
+        self.tr_matrices = None
+        self.show_grid_box = False
+        self.show_tr_grid_box = False
+        self.clicked_points = []
+        self.grid_box = None
+        self.tr_grid_box = None
+        self.boxes = []
+        self.tr_boxes = []
+        self.original_help = True
+        self.redo_tr = False
+        self.setContentsMargins(0, 0, 0, 0)
+        self.counter = 0
+        self.anno_list = []
+
         self.show_boxes = False
         self._downsampling = None
         

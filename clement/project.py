@@ -166,7 +166,9 @@ class Project(QtWidgets.QWidget):
             fm = project['FM']
             em = project['EM']
             num_refinements = fm.attrs['Number of refinements']
-            for i in range(num_refinements+1):
+            if num_refinements == 0:
+                num_refinements = 1 #make for loop go to draw points without refinement
+            for i in range(num_refinements):
                 print(i)
                 try:
                     self.fm.select_btn.setChecked(True)
@@ -190,8 +192,10 @@ class Project(QtWidgets.QWidget):
                     pass
                 self.em.select_btn.setChecked(False)
                 self.fm.select_btn.setChecked(False)
-                if fm.attrs['Refined']:
-                    #### update/correct points
+                #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
+                try: #do this only when correlated points exist
+                    indices_fm = list(fm['Correlated points indices {}'.format(i)])
+
                     if len(indices_fm) > 0:
                         correct_em = list(itemgetter(*indices_fm)(list(points_corr_em)))
                         pt_list_em = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_em)]
@@ -199,7 +203,10 @@ class Project(QtWidgets.QWidget):
                         [self.em.imview.removeItem(self.em._points_corr[indices_fm[index]]) for index in indices_fm]
                         for i in range(len(correct_em)):
                             self.em._points_corr[indices_fm[i]] = roi_list_em[i]
-                        [print(p.pos()) for p in self.fm._points_corr]
+                except KeyError:
+                    pass
+                try:
+                    indices_em = list(em['Correlated points indices {}'.format(i)])
                     if len(indices_em) > 0:
                         correct_fm = list(itemgetter(*indices_em)(list(points_corr_fm)))
                         pt_list_fm = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_fm)]
@@ -207,8 +214,9 @@ class Project(QtWidgets.QWidget):
                         [self.fm.imview.removeItem(self.fm._points_corr[indices_em[index]]) for index in indices_em]
                         for i in range(len(correct_fm)):
                             self.fm._points_corr[indices_em[i]] = roi_list_fm[i]
-                        [print(p.pos()) for p in self.em._points_corr]
-                    print(np.array(points_corr_em))
+                except KeyError:
+                    pass
+                if fm.attrs['Refined']:    
                     self.fm._refine()
         except KeyError:
             pass    
@@ -288,8 +296,8 @@ class Project(QtWidgets.QWidget):
                 corr_points.attrs['Circle size FM'] = self.fm._size_ops
                 corr_points.attrs['Circle size EM'] = self.fm._size_other
                 fm.create_dataset('Correlated points indices {}'.format(i), data = np.array(self.fm._refine_history[i][1]))
-        fm.attrs['Number of refinements'] = len(self.fm._refine_history)-1 #points_corr are saved in history before refinement --> -1
-        if self.fm._refine:
+        fm.attrs['Number of refinements'] = self.fm._refine_counter
+        if self.fm._refined:
             fm.attrs['Refined'] = self.fm._refined
 
     def _save_em(self, project):     

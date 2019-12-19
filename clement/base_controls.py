@@ -18,6 +18,7 @@ class BaseControls(QtWidgets.QWidget):
         self._size_other = 3
         self._refined = False
         self._refine_history = []
+        self._refine_counter = 0 
         self._merged = False
         
         self.tr_matrices = None
@@ -56,7 +57,6 @@ class BaseControls(QtWidgets.QWidget):
 
         pos.setX(pos.x() - self._size_ops/2)
         pos.setY(pos.y() - self._size_ops/2)
-        #self._point_events.append(np.array([pos.x(),pos.y()]))
         if self.define_btn.isChecked():
             roi = pg.CircleROI(pos, self._size_ops, parent=item, movable=False)
             roi.setPen(255,0,0)
@@ -264,6 +264,8 @@ class BaseControls(QtWidgets.QWidget):
                         [self.other.imview.removeItem(point) for point in self.other._points_corr]
                         [self.imview.removeItem(anno) for anno in self.anno_list]
                         [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+                        
+
                         self._points_corr = []
                         self.other._points_corr = []
                         self._points_corr_indices = []
@@ -362,6 +364,7 @@ class BaseControls(QtWidgets.QWidget):
                     
                 self._refine_history.append([self._points_corr, self._points_corr_indices])
                 self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
+                self._refine_counter += 1
                 print('Refining...')
                 src = np.array([[point.x()+self._size_ops/2,point.y()+self._size_ops/2] for point in self._refine_history[-1][0]])
                 dst = np.array([[point.x()+self._size_other/2,point.y()+self._size_other/2] for point in self.other._refine_history[-1][0]])
