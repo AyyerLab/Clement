@@ -18,6 +18,7 @@ class BaseControls(QtWidgets.QWidget):
         self._size_other = 3
         self._refined = False
         self._refine_history = []
+        self._merged = False
         
         self.tr_matrices = None
         self.show_grid_box = False
@@ -62,6 +63,7 @@ class BaseControls(QtWidgets.QWidget):
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
+            print('hi') 
         elif self.select_btn.isChecked():
             self._draw_correlated_points(pos, self._size_ops, self._size_other, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
@@ -275,8 +277,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%self.tag)
-                self._refine_history.append([self._points_corr, self._points_corr_indices])
-                self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
         else:
             if checked:
                 print('Select and transform both data first')
@@ -360,8 +360,6 @@ class BaseControls(QtWidgets.QWidget):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
-                del self._refine_history[-1]
-                del self.other._refine_history[-1]
                     
                 self._refine_history.append([self._points_corr, self._points_corr_indices])
                 self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])

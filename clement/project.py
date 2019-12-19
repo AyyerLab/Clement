@@ -15,6 +15,7 @@ class Project(QtWidgets.QWidget):
         self._project_folder = None
         self.fm = fm
         self.em = em
+        self.merged = False
 
     def _load_project(self):
         self._project_folder = os.getcwd()
@@ -157,6 +158,10 @@ class Project(QtWidgets.QWidget):
                         print(np.array(points_corr_em))
                         self.fm._refine()                       
 
+                base = project['BASE']
+                self.merged = base.attrs['Merged']
+        return self.merged
+
     def _save_project(self):
         if self.fm.ops is not None or self.em.ops is not None:
             if self.fm.select_btn.isChecked() or self.em.select_btn.isChecked():
@@ -198,6 +203,8 @@ class Project(QtWidgets.QWidget):
                     fm.attrs['Fliph'] = self.fm.fliph.isChecked()
                     fm.attrs['Transpose'] = self.fm.transpose.isChecked()
                     fm.attrs['Rotate'] = self.fm.rotate.isChecked()
+                    if len(self.fm._refine_history) == 0 and len(self.fm._points_corr) > 0:
+                        self.fm._refine_history.append([self.fm._points_corr, self.fm._points_corr_indices])
                     if len(self.fm._refine_history) > 0:
                         for i in range(len(self.fm._refine_history)):
                             points = [[p.pos().x(),p.pos().y()] for p in self.fm._refine_history[i][0]]
@@ -229,6 +236,11 @@ class Project(QtWidgets.QWidget):
                         em.create_dataset('Orginal points subregion', data=self.em.ops._orig_points_region)
                     if self.em.ops._tf_points_region is not None:
                         em.create_dataset('Transformed points subregion', data=self.em.ops._tf_points_region)
+                    
+                    if len(self.em._refine_history) == 0 and len(self.em._points_corr) > 0:
+                        self.em._refine_history.append([self.em._points_corr, self.em._points_corr_indices])
+                    print(self.em._refine_history)
+                    print(self.fm._refine_history)
                     if len(self.em._refine_history) > 0:
                         for i in range(len(self.em._refine_history)):
                             points = [[p.pos().x(),p.pos().y()] for p in self.em._refine_history[i][0]]
@@ -236,4 +248,8 @@ class Project(QtWidgets.QWidget):
                             points_corr.attrs['Circle size EM'] = self.em._size_ops
                             points_corr.attrs['Circle size FM'] = self.em._size_other
                             em.create_dataset('Correlated points indices {}'.format(i), data = np.array(self.em._refine_history[i][1]))
-                            
+                     
+                base = project.create_group('BASE')
+                base.attrs['Merged'] = self.fm._merged
+                    
+                           

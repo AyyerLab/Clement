@@ -283,6 +283,7 @@ class FMControls(BaseControls):
                                                              self._curr_folder,
                                                              '*.lif')
         if self._file_name is not '':
+            self.reset_init()
             self._curr_folder = os.path.dirname(self._file_name)
             self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(self._file_name)
@@ -446,4 +447,45 @@ class FMControls(BaseControls):
 
         self.align_btn.setEnabled(False)
         '''
+    def reset_init(self):
+        self.overlay = True
+        self.ops = None
+        self.channels = [True, True, True, True]
+        self.ind = 0
+        self._curr_folder = None
+        self._series = None
+        self._current_slice = 0
+        self.channel1_btn.setChecked(True)
+        self.channel2_btn.setChecked(True)
+        self.channel3_btn.setChecked(True)
+        self.channel4_btn.setChecked(True)
+        self.overlay_btn.setChecked(True)
+        self.channel1_btn.setEnabled(False)
+        self.channel2_btn.setEnabled(False)
+        self.channel3_btn.setEnabled(False)
+        self.channel4_btn.setEnabled(False)
+        self.overlay_btn.setEnabled(False)
 
+        self.c1_btn.setEnabled(False)
+        self.c2_btn.setEnabled(False)
+        self.c3_btn.setEnabled(False)
+        self.c4_btn.setEnabled(False)
+
+        self.define_btn.setEnabled(False)
+        self.transform_btn.setEnabled(False)
+        self.rot_transform_btn.setEnabled(False)
+        self.show_btn.setEnabled(False)
+        self.show_btn.setChecked(True)
+        self.show_grid_btn.setEnabled(False)
+        self.show_grid_btn.setChecked(False)
+        self.peak_btn.setEnabled(False)
+        self.align_btn.setEnabled(False)
+        self.select_btn.setEnabled(False)
+        self.refine_btn.setEnabled(False)       
+        self.fliph.setEnabled(False)
+        self.flipv.setEnabled(False)
+        self.transpose.setEnabled(False)
+        self.rotate.setEnabled(False)
+        self.merge_btn.setEnabled(False)
+        
+        self.ops.__init__()

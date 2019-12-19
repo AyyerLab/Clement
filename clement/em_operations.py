@@ -58,7 +58,7 @@ class EM_ops():
             self._eh = np.frombuffer(f.extended_header, dtype='i2')
             self.old_fname = fname
             self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y])
-
+        print(f)
         self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
         print(self.dimensions)
         if len(self.dimensions) == 3 and self.dimensions[0] > 1:

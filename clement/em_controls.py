@@ -134,6 +134,7 @@ class EMControls(BaseControls):
         self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name is not '':
+            self.reset_init()
             self.mrc_fname.setText(self._file_name)
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
@@ -309,4 +310,24 @@ class EMControls(BaseControls):
             if file_name is not '':
                 self.ops.save_merge(file_name)
         QtWidgets.QApplication.restoreOverrideCursor()
-
+    
+    def reset_init(self):
+        self.ops = None
+        self.show_boxes = False
+        self._downsampling = None
+        
+        self.step_box.setEnabled(False)   
+        self.assemble_btn.setEnabled(False)
+        self.define_btn.setEnabled(False)
+        self.transform_btn.setEnabled(False)
+        self.rot_transform_btn.setEnabled(False)
+        self.show_btn.setEnabled(False)
+        self.show_btn.setChecked(True)
+        self.show_grid_btn.setEnabled(False)
+        self.show_grid_btn.setChecked(False)
+        self.select_region_btn.setEnabled(False)
+        self.show_assembled_btn.setChecked(True)
+        self.show_assembled_btn.setEnabled(False)
+        self.select_btn.setEnabled(False)
+        
+        self.ops.__init__()

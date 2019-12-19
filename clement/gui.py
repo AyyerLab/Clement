@@ -99,10 +99,10 @@ class GUI(QtGui.QMainWindow):
         action.triggered.connect(self.emcontrols._load_mrc)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load project', self)
-        action.triggered.connect(self.project._load_project)
+        action.triggered.connect(self._load_p)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Save project', self)
-        action.triggered.connect(self.project._save_project)
+        action.triggered.connect(self._save_p)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Save binned montage', self)
         action.triggered.connect(self.emcontrols._save_mrc_montage)
@@ -130,14 +130,26 @@ class GUI(QtGui.QMainWindow):
 
         self.show()
 
+    def _save_p(self):
+        self.project._save_project()
+    
+    def _load_p(self):
+        self.fmcontrols.reset_init()
+        self.emcontrols.reset_init()
+        self.project._load_project()
+        if self.project.merged:
+            self.merge()
+
     def merge(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
         self.em = self.emcontrols.ops
         if self.fm is not None and self.em is not None:
-            if self.fm._tf_data is not None and (self.em._tf_data is not None or self.em.tf_region is not None):
+            if self.fm.tf_data is not None and (self.em.tf_data is not None or self.em.tf_region is not None):
                 self.fm.calc_merge_matrix(self.em.data, self.em.points)
                 self.popup = Merge(self)
+                self.fmcontrols._merged = True
+                self.emcontrols._merged = True
                 QtWidgets.QApplication.restoreOverrideCursor()
                 self.popup.show()
             else:
