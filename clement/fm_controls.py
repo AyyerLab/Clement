@@ -38,13 +38,13 @@ class FMControls(BaseControls):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
-        self.colors = colors
-        self.overlay = True
         self.ops = None
-        self.channels = [True, True, True, True]
         self.ind = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
+        self._colors = colors
+        self._channels = [True, True, True, True]
+        self._overlay = True
         self._curr_folder = None
         self._file_name = None
         self._series = None
@@ -106,22 +106,22 @@ class FMControls(BaseControls):
         width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 24
         self.c1_btn.setFixedWidth(width)
         self.c1_btn.setMaximumHeight(width)
-        self.c1_btn.setStyleSheet('background-color: {}'.format(self.colors[0]))
+        self.c1_btn.setStyleSheet('background-color: {}'.format(self._colors[0]))
         self.c2_btn = QtWidgets.QPushButton(' ', self)
         self.c2_btn.clicked.connect(lambda: self._sel_color(1, self.c2_btn))
         self.c2_btn.setMaximumHeight(width)
         self.c2_btn.setFixedWidth(width)
-        self.c2_btn.setStyleSheet('background-color: {}'.format(self.colors[1]))
+        self.c2_btn.setStyleSheet('background-color: {}'.format(self._colors[1]))
         self.c3_btn = QtWidgets.QPushButton(' ', self)
         self.c3_btn.setMaximumHeight(width)
         self.c3_btn.setFixedWidth(width)
         self.c3_btn.clicked.connect(lambda: self._sel_color(2, self.c3_btn))
-        self.c3_btn.setStyleSheet('background-color: {}'.format(self.colors[2]))
+        self.c3_btn.setStyleSheet('background-color: {}'.format(self._colors[2]))
         self.c4_btn = QtWidgets.QPushButton(' ', self)
         self.c4_btn.setMaximumHeight(width)
         self.c4_btn.setFixedWidth(width)
         self.c4_btn.clicked.connect(lambda: self._sel_color(3, self.c4_btn))
-        self.c4_btn.setStyleSheet('background-color: {}'.format(self.colors[3]))
+        self.c4_btn.setStyleSheet('background-color: {}'.format(self._colors[3]))
 
         self.c1_btn.setEnabled(False)
         self.c2_btn.setEnabled(False)
@@ -339,11 +339,11 @@ class FMControls(BaseControls):
 
     def _calc_color_channels(self):
         channels = []
-        for i in range(len(self.channels)):
-            if self.channels[i]:
+        for i in range(len(self._channels)):
+            if self._channels[i]:
                 my_channel = self.ops.data[:,:,i]
                 my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
-                rgb = tuple([int(self.colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
+                rgb = tuple([int(self._colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
                 channels.append(my_channel_rgb * rgb)
 
         if len(channels) == 0:
@@ -356,14 +356,14 @@ class FMControls(BaseControls):
     def _show_overlay(self,checked):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
-            self.overlay = not self.overlay
+            self._overlay = not self._overlay
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _show_channels(self,checked,my_channel):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
-           self.channels[my_channel] = not self.channels[my_channel]
+           self._channels[my_channel] = not self._channels[my_channel]
            self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -371,7 +371,7 @@ class FMControls(BaseControls):
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
             cname = color.name()
-            self.colors[index] = cname
+            self._colors[index] = cname
             button.setStyleSheet('background-color: {}'.format(cname))
             self._update_imview()
         else:
@@ -477,8 +477,8 @@ class FMControls(BaseControls):
         self.anno_list = []
 
 
-        self.overlay = True
-        self.channels = [True, True, True, True]
+        self._overlay = True
+        self._channels = [True, True, True, True]
         self.ind = 0
         self._curr_folder = None
         self._series = None

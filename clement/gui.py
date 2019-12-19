@@ -148,6 +148,7 @@ class GUI(QtGui.QMainWindow):
                 self.popup = Merge(self)
                 self.fmcontrols._merged = True
                 self.emcontrols._merged = True
+                
                 QtWidgets.QApplication.restoreOverrideCursor()
                 self.popup.show()
             else:

@@ -39,8 +39,23 @@ class Project(QtWidgets.QWidget):
             self.fm._curr_folder = fm.attrs['Directory']
             self.fm._file_name = fm.attrs['File']
             self.fm._current_slice = fm.attrs['Slice']
+            self.fm._colors = [n.decode() for n in list(fm['Colors'])]
+
+            self.fm.c1_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[0]))
+            self.fm.c2_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[1])) 
+            self.fm.c3_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[2])) 
+            self.fm.c4_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[3]))
+            self.fm._channels = list(fm['Channels'])
+
+            self.fm.channel1_btn.setChecked(self.fm._channels[0])
+            self.fm.channel2_btn.setChecked(self.fm._channels[1])
+            self.fm.channel3_btn.setChecked(self.fm._channels[2])
+            self.fm.channel4_btn.setChecked(self.fm._channels[3])
+            self.fm.overlay_btn.setChecked(fm.attrs['Overlay'])
+
             self.fm._series = fm.attrs['Series']
             self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
+
             if fm.attrs['Max projection orig']:
                 self.fm.max_proj_btn.setChecked(fm.attrs['Max projection'])
             else:
@@ -222,8 +237,8 @@ class Project(QtWidgets.QWidget):
                     self.fm._refine()
         except KeyError:
             pass    
-        base = project['BASE']
-        self.merged = base.attrs['Merged']
+        merge = project['MERGE']
+        self.merged = merge.attrs['Merged']
 
 
     
@@ -254,15 +269,18 @@ class Project(QtWidgets.QWidget):
                 if self.em.ops is not None:
                     self._save_em(project)
                 if self.fm.ops is not None:
-                    base = project.create_group('BASE')
-                    base.attrs['Merged'] = self.fm._merged
+                    merged = project.create_group('MERGE')
+                    merged.attrs['Merged'] = self.fm._merged
                 elif self.em.ops is not None:
-                    base = project.create_group('BASE')
-                    base.attrs['Merged'] = self.fm._merged
+                    merged = project.create_group('MERGE')
+                    merged.attrs['Merged'] = self.fm._merged
                     
                     
     def _save_fm(self, project):
         fm = project.create_group('FM')
+        fm.create_dataset('Colors', data = [n.encode('ascii','ignore') for n in self.fm._colors])
+        fm.create_dataset('Channels', data = self.fm._channels)
+        fm.attrs['Overlay'] = self.fm._overlay
         fm.attrs['Directory'] = self.fm._curr_folder
         fm.attrs['File'] = self.fm._file_name
         fm.attrs['Slice'] = self.fm._current_slice

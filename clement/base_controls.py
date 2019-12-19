@@ -32,8 +32,8 @@ class BaseControls(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
-        self.size_ops = 6
-        self.size_other = 6
+        self.size_ops = 10
+        self.size_other = 10
 
 
     def _init_ui(self):
