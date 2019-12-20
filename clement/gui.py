@@ -76,7 +76,8 @@ class GUI(QtGui.QMainWindow):
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
-        self.project = Project(self.fmcontrols, self.emcontrols)
+        self.popup = None
+        self.project = Project(self.fmcontrols, self.emcontrols, self)
         # Menu Bar
         self._init_menubar()
 
@@ -84,6 +85,7 @@ class GUI(QtGui.QMainWindow):
         if self.theme is None:
             self.theme = 'none'
         self._set_theme(self.theme)
+
         self.show()
 
     def _init_menubar(self):
@@ -135,20 +137,23 @@ class GUI(QtGui.QMainWindow):
     
     def _load_p(self):
         self.project._load_project()
-        if self.project.merged:
-            self.merge()
 
-    def merge(self):
+    def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
-        self.em = self.emcontrols.ops
+        self.em = self.emcontrols.ops 
+        
         if self.fm is not None and self.em is not None:
             if self.fm.tf_data is not None and (self.em.tf_data is not None or self.em.tf_region is not None):
                 self.fm.calc_merge_matrix(self.em.data, self.em.points)
+                if self.popup is not None:
+                    self.popup.close()
                 self.popup = Merge(self)
-                self.fmcontrols._merged = True
-                self.emcontrols._merged = True
-                
+                self.project.merged = True
+                self.project.popup = self.popup
+                if self.project.load_merge:
+                    self.project._load_merge(project)
+                    self.project.load_merge = False
                 QtWidgets.QApplication.restoreOverrideCursor()
                 self.popup.show()
             else:

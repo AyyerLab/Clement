@@ -334,7 +334,7 @@ class EMControls(BaseControls):
         self._refined = False
         self._refine_history = []
         self._refine_counter = 0 
-        self._merged = False
+        #self._merged = False
         
         self.tr_matrices = None
         self.show_grid_box = False

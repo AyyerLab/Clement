@@ -39,7 +39,7 @@ class FMControls(BaseControls):
         self.tag = 'FM'
         self.imview = imview
         self.ops = None
-        self.ind = 0
+        #self.ind = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._colors = colors
@@ -362,7 +362,7 @@ class FMControls(BaseControls):
 
     def _show_channels(self,checked,my_channel):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if self.ops is not None:
+        if self.ops is not None and self.ops.data is not None:
            self._channels[my_channel] = not self._channels[my_channel]
            self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
@@ -460,7 +460,7 @@ class FMControls(BaseControls):
         self._refined = False
         self._refine_history = []
         self._refine_counter = 0 
-        self._merged = False
+        #self._merged = False
         
         self.tr_matrices = None
         self.show_grid_box = False
@@ -479,7 +479,7 @@ class FMControls(BaseControls):
 
         self._overlay = True
         self._channels = [True, True, True, True]
-        self.ind = 0
+        #self.ind = 0
         self._curr_folder = None
         self._series = None
         self._current_slice = 0
