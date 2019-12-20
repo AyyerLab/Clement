@@ -12,6 +12,7 @@ dependencies:
   - numexpr
   - pip
   - git
+  - h5py
   - pip:
     - mrcfile
     - read-lif
