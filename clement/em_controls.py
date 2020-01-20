@@ -145,7 +145,7 @@ class EMControls(BaseControls):
         new_shape = self.ops.data.shape
         if old_shape == new_shape:
             vr = self.imview.getImageItem().getViewBox().targetRect()
-        levels = self.imview.getHistogramWidget().item.getLevels()
+        level = self.imview.getHistogramWidget().item.getLevels()
         self.imview.setImage(self.ops.data, levels=levels)
         if old_shape == new_shape:
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
@@ -177,7 +177,7 @@ class EMControls(BaseControls):
             if self.grid_box is not None:
                 self.imview.removeItem(self.grid_box)
             self.grid_box = None
-            self.ops.transformed = False
+            self.ops._transformed = False
             self.show_grid_btn.setEnabled(False)
 
             if self.ops.stacked_data:
@@ -321,11 +321,22 @@ class EMControls(BaseControls):
         QtWidgets.QApplication.restoreOverrideCursor()
     
     def reset_init(self):
-
-
         #self.ops = None
         #self.other = None # The other controls object
-        
+        if self.show_grid_btn.isChecked():
+            if self.ops._transformed:
+                self.imview.removeItem(self.tr_grid_box)
+            else:
+                self.imview.removeItem(self.grid_box)
+        if self.select_region_btn.isChecked():
+            if self.ops._transformed:
+                [self.imview.removeItem(box) for box in self.tr_boxes]
+            else:
+                [self.imview.removeItem(box) for box in self.boxes]
+            self.select_region_btn.setChecked(False)
+            self.select_region_btn.setEnabled(False)
+
+
         self._box_coordinate = None
         self._points_corr = []
         self._points_corr_indices= []
@@ -362,7 +373,6 @@ class EMControls(BaseControls):
         self.show_btn.setChecked(True)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
-        self.select_region_btn.setEnabled(False)
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
