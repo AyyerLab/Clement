@@ -126,8 +126,9 @@ class BaseControls(QtWidgets.QWidget):
                 annotation_other.setPos(pos.x()+5, pos.y()+5)
                 self.other.imview.addItem(annotation_other)
                 self.other.anno_list.append(annotation_other)
+
                 point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self._points_corr, self.other._points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
-                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other._points_corr, self._points_corr, annotation_other, annotation_obj, self.anno_list, self.other.anno_list))
+                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other._points_corr, self._points_corr, annotation_other, annotation_obj, self.other.anno_list, self.anno_list))
 
         else:
             print('Transform both images before point selection')
@@ -369,7 +370,7 @@ class BaseControls(QtWidgets.QWidget):
                 print('Refining...')
                 dst = np.array([[point.x()+self.size_other/2,point.y()+self.size_other/2] for point in self.other._refine_history[-1][0]])
                 src = np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._refine_history[-1][0]])
-                
+   
                 self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]

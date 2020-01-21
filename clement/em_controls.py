@@ -145,7 +145,7 @@ class EMControls(BaseControls):
         new_shape = self.ops.data.shape
         if old_shape == new_shape:
             vr = self.imview.getImageItem().getViewBox().targetRect()
-        level = self.imview.getHistogramWidget().item.getLevels()
+        levels = self.imview.getHistogramWidget().item.getLevels()
         self.imview.setImage(self.ops.data, levels=levels)
         if old_shape == new_shape:
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
