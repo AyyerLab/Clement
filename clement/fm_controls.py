@@ -196,8 +196,13 @@ class FMControls(BaseControls):
         self.refine_btn = QtWidgets.QPushButton('Refinement')
         self.refine_btn.clicked.connect(self._refine)
         self.refine_btn.setEnabled(False)
+
+        self.auto_refine_btn = QtWidgets.QPushButton('Auto-refine')
+        self.auto_refine_btn.clicked.connect(self._autorefine)
+        self.auto_refine_btn.setEnabled(False)
         line.addWidget(self.select_btn)
         line.addWidget(self.refine_btn)
+        line.addWidget(self.auto_refine_btn)
         line.addStretch(1)
 
         # ---- Flips and rotates
@@ -509,7 +514,8 @@ class FMControls(BaseControls):
         self.peak_btn.setEnabled(False)
         self.align_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
-        self.refine_btn.setEnabled(False)       
+        self.refine_btn.setEnabled(False)   
+        self.auto_refine_btn.setEnabled(False)
         self.fliph.setEnabled(False)
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)

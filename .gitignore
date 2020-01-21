@@ -9,6 +9,7 @@ __pycache__/
 data
 old
 projects
+test
 
 # Temp files
 .*.swp
