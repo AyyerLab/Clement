@@ -59,7 +59,7 @@ class Project(QtWidgets.QWidget):
             self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
 
             if fm.attrs['Max projection orig']:
-                self.fm.max_proj_btn.setChecked(fm.attrs['Max projection'])
+                self.fm.max_proj_btn.setChecked(fm.attrs['Max projection orig'])
             else:
                 self.fm.slice_select_btn.setValue(fm.attrs['Slice'])
                 self.fm._slice_changed()
@@ -73,8 +73,9 @@ class Project(QtWidgets.QWidget):
                 try:
                     self.fm.ops._tf_points = np.array(fm['Transformed grid points'])
                     self.fm._affine_transform(toggle_orig=False)
+                    print(fm.attrs['Max projection transformed'])
                     if fm.attrs['Max projection transformed']:
-                        self.fm.max_proj_btn.setChecked(fm.attrs['Max projection'])
+                        self.fm.max_proj_btn.setChecked(fm.attrs['Max projection transformed'])
                     else:
                         self.fm.slice_select_btn.setValue(fm.attrs['Slice'])
                         self.fm._slice_changed()
@@ -83,7 +84,7 @@ class Project(QtWidgets.QWidget):
                     self.fm.transpose.setChecked(fm.attrs['Transpose'])
                     self.fm.rotate.setChecked(fm.attrs['Rotate'])
                 except KeyError:
-                    pass
+                    print('noooo')
             except KeyError:
                 pass
             self.fm.show_btn.setChecked(fm.attrs['Show original'])
@@ -102,7 +103,6 @@ class Project(QtWidgets.QWidget):
             self.em._assemble_mrc()
             try:
                 self.em._select_region_original = em.attrs['Select subregion original']
-                print(self.em._select_region_original)
                 try:
                     self.em.ops._orig_points = np.array(em['Original grid points'])
                     self.em.ops.points = np.copy(self.em.ops._orig_points)
@@ -139,7 +139,6 @@ class Project(QtWidgets.QWidget):
                 except KeyError:
                     pass
             except KeyError:
-                print('hello omg')
                 try:
                     self.em.ops._orig_points = np.array(em['Original grid points'])
                     self.em.ops.points = np.copy(self.em.ops._orig_points)

@@ -3,6 +3,7 @@ import sys
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 import scipy.ndimage as ndi
+import copy
 
 class BaseControls(QtWidgets.QWidget):
     def __init__(self):
@@ -14,6 +15,7 @@ class BaseControls(QtWidgets.QWidget):
         
         self._box_coordinate = None
         self._points_corr = []
+        self.orig_points_corr = []
         self._points_corr_indices= []
         self._refined = False
         self._refine_history = []
@@ -302,6 +304,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.transpose.setEnabled(True)
                 self.rotate.setChecked(False)
                 self.rotate.setEnabled(True)
+                self.auto_opt_btn.setEnabled(True)
 
             points_obj = grid_box.getState()['points']
             points = np.array([list((point[0], point[1])) for point in points_obj])
@@ -363,6 +366,7 @@ class BaseControls(QtWidgets.QWidget):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
+                self._optimize()
                     
                 self._refine_history.append([self._points_corr, self._points_corr_indices])
                 self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
@@ -371,16 +375,13 @@ class BaseControls(QtWidgets.QWidget):
                 dst = np.array([[point.x()+self.size_other/2,point.y()+self.size_other/2] for point in self.other._refine_history[-1][0]])
                 src = np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._refine_history[-1][0]])
 
-                #np.save('em.npy',self.other.ops.data)
-                #np.save('fm.npy',self.ops.data)
-                #np.save('fm_points.npy',np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._points_corr]))
-                #np.save('em_points.npy',np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self.other._points_corr]))
-
                 self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
                 [self.imview.removeItem(anno) for anno in self.anno_list]
                 [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+
+                self.auto_opt_btn.setChecked(False)
                 self.anno_list = []
                 self.other.anno_list = []
                 self.counter = 0
@@ -396,80 +397,45 @@ class BaseControls(QtWidgets.QWidget):
                 self.flipv.setEnabled(False)
                 self.transpose.setEnabled(False)
                 self.rotate.setEnabled(False)
-                self.auto_refine_btn.setEnabled(True)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
         else:
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _autorefine(self):
-        def preprocessing(img, points, size=15, em=False):
-            roi = img[points[0]-size:points[0]+size, points[1]-size:points[1]+size]
-            if em:
-                roi_filtered = ndi.gaussian_filter(roi, sigma=1)
-                inverse = 1/roi_filtered
-                inverse[inverse<0.5*inverse.max()] = 0
-                return inverse
+    def _optimize(self):
+        if self.auto_opt_btn.isChecked():
+            self.orig_points_corr = copy.copy(self._points_corr)
+            self.other.orig_points_corr = copy.copy(self.other._points_corr)
+
+
+            em_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self.other._points_corr])).astype(np.int)
+            fm_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._points_corr])).astype(np.int)
+            if self.ops.data.ndim>2:
+                fm_max = np.max(self.ops.data, axis=-1)
             else:
-                roi[roi<0.5*np.max(roi)] = 0
-                roi_filtered = roi
-                return roi_filtered
-
-        def simple_peak_finding(img):
-            labels, num_obj = ndi.label(img)
-            label_size = np.bincount(labels.ravel())
-            mask = np.where(label_size >= label_min_size, True, False)
-            label_mask = mask[labels.ravel()].reshape(labels.shape)
-            labels = label_mask * labels
-
-            coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
-            return coor
-
-        em_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self.other._points_corr])).astype(np.int)
-        fm_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._points_corr])).astype(np.int)
-        if self.ops.data.ndim>2:
-            fm_max = np.max(self.ops.data, axis=-1)
+                fm_max = self.ops.data
+ 
+            [self.imview.removeItem(point) for point in self._points_corr]
+            [self.other.imview.removeItem(point) for point in self.other._points_corr]         
+            self._points_corr = []
+            self.other._points_corr = []
+            fm_points, em_points = self.ops.optimize(fm_max, self.other.ops.data, fm_points, em_points)         
+            for i in range(len(fm_points)):
+                pos_fm = QtCore.QPointF(fm_points[i][0]-self.size_ops/2, fm_points[i][1]-self.size_ops/2)
+                pos_em = QtCore.QPointF(em_points[i][0]-self.size_ops/2, em_points[i][1]-self.size_ops/2)
+                point_fm = pg.CircleROI(pos_fm, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
+                point_fm.removeHandle(0)
+                point_em = pg.CircleROI(pos_em, self.size_other, parent=self.imview.getImageItem(), movable=False, removable=True)
+                point_em.removeHandle(0)
+                self._points_corr.append(point_fm)
+                self.other._points_corr.append(point_em)
+                self.imview.addItem(point_fm)
+                self.other.imview.addItem(point_em)
         else:
-            fm_max = self.ops.data
-
-        em_roi_list = []
-        fm_roi_list = []
-        size = 15 # actual roi_size = 2*size
-        label_min_size = 10  
-        for i in range(len(em_points)):
-            em_roi_list.append(preprocessing(self.other.ops.data, em_points[i], em=True))
-            fm_roi_list.append(preprocessing(fm_max, fm_points[i]))
-
-        fm_coor_list = []
-        
-        em_coor_list = []
-
-        for i in range(len(em_roi_list)):
-            fm_coor = simple_peak_finding(fm_roi_list[i])
-            print(fm_coor)
-            fm_coor_list.append(list(fm_coor + np.array(fm_points[i] - size)))
-
-            em_coor = simple_peak_finding(em_roi_list[i])
-            em_coor_list.append(list(em_coor + np.array(em_points[i] - size)))
-        
-        [self.imview.removeItem(point) for point in self._points_corr]
-        [self.other.imview.removeItem(point) for point in self.other._points_corr]
-        [self.imview.removeItem(anno) for anno in self.anno_list]
-        [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
-        self.anno_list = []
-        self.other.anno_list = []
-        self.counter = 0
-        self.other.counter = 0
-        self._points_corr = []
-        self.other._points_corr = []
-        self._points_corr_indices = []
-        self.other._points_corr_indices = []
-
-        
-        for i in range(len(fm_coor_list)):
-            pos = QtCore.QPointF(fm_coor_list[i][0]-self.size_ops/2, fm_coor_list[i][1]-self.size_ops/2)
-            self._draw_correlated_points(pos, self.size_ops, self.size_other, self.imview.getImageItem())
-
-
-        self._refine()
+            [self.imview.removeItem(point) for point in self._points_corr]
+            [self.other.imview.removeItem(point) for point in self.other._points_corr]     
+            
+            self._points_corr = copy.copy(self.orig_points_corr)
+            self.other._points_corr = copy.copy(self.other.orig_points_corr)
+            
