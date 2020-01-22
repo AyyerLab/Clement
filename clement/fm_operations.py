@@ -217,39 +217,21 @@ class FM_ops():
         if refined_tmp:
             self.refined = True
 
-    def peak_finding(self):
-        for i in range(1, len(self.data)):
-            img = self.data[i]
-            img_max = ndi.maximum_filter(img, size=3, mode='reflect')
-            maxima = (img == img_max)
-            img_min = ndi.minimum_filter(img, size=3, mode='reflect')
+    def peak_finding(self, img, roi=False, label_min_size=30, label_max_size=200):
 
-            self.threshold = int(np.mean(self.data[i])) + int(np.mean(self.data[i])//3)
-            diff = ((img_max - img_min) > self.threshold)
-            maxima[diff==0] = 0
-
-            labeled, num_objects = ndi.label(maxima)
-            c_i = np.array(ndi.center_of_mass(img, labeled, range(1, num_objects+1)))
-            self.coordinates.append(c_i)
-
-            print('Number of peaks found in channel {}: '.format(i), len(c_i))
-
-        self.coordinates = [np.array(k).astype(np.int16) for k in self.coordinates]
-        if len(self.coordinates[0])<1000:
-            counter = 0
-            for i in range(1, len(self.coordinates)):
-                tmp_list_match = []
-                tmp_list_diff = []
-                for k in range(len(self.coordinates[0])):
-                    for l in range(len(self.coordinates[i])):
-                        diff_norm = np.linalg.norm(self.coordinates[0][k]-self.coordinates[i][l])
-                        if diff_norm < self.max_shift and diff_norm != 0:
-                            tmp_list_diff.append(self.coordinates[0][k]-self.coordinates[i][l])
-                            tmp_list_match.append(self.coordinates[0][k])
-                self.matches.append(tmp_list_match)
-                self.diff_list.append(tmp_list_diff)
+        labels, num_obj = ndi.label(img)
+        label_size = np.bincount(labels.ravel())
+        mask = np.where((label_size >= label_min_size) & (label_size < label_max_size), True, False)
+        label_mask = mask[labels.ravel()].reshape(labels.shape)
+        labels = label_mask * labels
+        
+        if roi:
+            coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
         else:
-            pass
+            coor = np.array(ndi.center_of_mass(img, labels, range(num_obj)))
+            
+        return coor
+
 
     def align(self):
         '''
@@ -487,23 +469,11 @@ class FM_ops():
                 return inverse
             else:
                 roi[roi<0.5*np.max(roi)] = 0
-                roi_filtered = roi
-                return roi_filtered
-
-        def simple_peak_finding(img):
-            labels, num_obj = ndi.label(img)
-            label_size = np.bincount(labels.ravel())
-            mask = np.where(label_size >= label_min_size, True, False)
-            label_mask = mask[labels.ravel()].reshape(labels.shape)
-            labels = label_mask * labels
-
-            coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
-            return coor
+                return roi
 
         em_roi_list = []
         fm_roi_list = []
         size = 15 # actual roi_size = 2*size
-        label_min_size = 10
         for i in range(len(em_points)):
             em_roi_list.append(preprocessing(em_img, em_points[i], em=True))
             fm_roi_list.append(preprocessing(fm_max, fm_points[i]))
@@ -513,11 +483,11 @@ class FM_ops():
         em_coor_list = []
 
         for i in range(len(em_roi_list)):
-            fm_coor = simple_peak_finding(fm_roi_list[i])
+            fm_coor = peak_finding(fm_roi_list[i], roi=True)
             print(fm_coor)
             fm_coor_list.append(list(fm_coor + np.array(fm_points[i] - size)))
 
-            em_coor = simple_peak_finding(em_roi_list[i])
+            em_coor = peak_finding(em_roi_list[i], roi=True)
             em_coor_list.append(list(em_coor + np.array(em_points[i] - size)))
 
         return fm_coor_list, em_coor_list

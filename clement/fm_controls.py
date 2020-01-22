@@ -49,6 +49,7 @@ class FMControls(BaseControls):
         self._file_name = None
         self._series = None
         self._current_slice = 0
+        self._peaks = []
         
         self._init_ui()
     
@@ -144,7 +145,7 @@ class FMControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Grid transform:', self)
         line.addWidget(label)
-        self.define_btn = QtWidgets.QPushButton('Define Grid', self)
+        self.define_btn = QtWidgets.QPushButton('Define grid box', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(self._define_grid_toggled)
         self.define_btn.setEnabled(False)
@@ -153,7 +154,7 @@ class FMControls(BaseControls):
         self.transform_btn.clicked.connect(self._affine_transform)
         self.transform_btn.setEnabled(False)
         line.addWidget(self.transform_btn)
-        self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
+        self.rot_transform_btn = QtWidgets.QCheckBox('Disable shearing', self)
         self.rot_transform_btn.setEnabled(False)
         line.addWidget(self.rot_transform_btn)
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
@@ -174,8 +175,9 @@ class FMControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Peak finding:', self)
         line.addWidget(label)
-        self.peak_btn = QtWidgets.QPushButton('Find peaks', self)
-        self.peak_btn.clicked.connect(self._find_peaks)
+        self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
+        self.peak_btn.setCheckable(True)
+        self.peak_btn.toggled.connect(self._find_peaks)
         self.peak_btn.setEnabled(False)
         self.align_btn = QtWidgets.QPushButton('Align color channels', self)
         self.align_btn.clicked.connect(self._calc_shift)
@@ -331,6 +333,7 @@ class FMControls(BaseControls):
             self.select_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
+            self.peak_btn.setEnabled(True)
 
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -432,7 +435,25 @@ class FMControls(BaseControls):
 
     def _find_peaks(self):
         if self.ops is not None:
-            self.ops.peak_finding()
+            if self.peak_btn.isChecked():
+                if self.ops.data.ndim>2:
+                    fm_max = self.ops.data[:,:,-1]
+                else:
+                    fm_max = self.ops.data
+                
+                fm_max[fm_max<(np.median(fm_max)+np.std(fm_max))] = 0
+
+                coor = self.ops.peak_finding(fm_max)
+                for i in range(len(coor)):
+                    pos = QtCore.QPointF(coor[i][0]-self.size_ops/2, coor[i][1]-self.size_ops/2)
+                    point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
+                    point_obj.removeHandle(0)
+                    self.imview.addItem(point_obj)
+                    self._peaks.append(point_obj)
+            else:
+                [self.imview.removeItem(point) for point in self._peaks]
+                self._peaks = []
+
         else:
             print('You have to select the data first!')
 

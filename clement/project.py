@@ -59,7 +59,7 @@ class Project(QtWidgets.QWidget):
             self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
 
             if fm.attrs['Max projection orig']:
-                self.fm.max_proj_btn.setChecked(fm.attrs['Max projection orig'])
+                self.fm.max_proj_btn.setChecked(True)
             else:
                 self.fm.slice_select_btn.setValue(fm.attrs['Slice'])
                 self.fm._slice_changed()
@@ -73,9 +73,8 @@ class Project(QtWidgets.QWidget):
                 try:
                     self.fm.ops._tf_points = np.array(fm['Transformed grid points'])
                     self.fm._affine_transform(toggle_orig=False)
-                    print(fm.attrs['Max projection transformed'])
                     if fm.attrs['Max projection transformed']:
-                        self.fm.max_proj_btn.setChecked(fm.attrs['Max projection transformed'])
+                        self.fm.max_proj_btn.setChecked(True)
                     else:
                         self.fm.slice_select_btn.setValue(fm.attrs['Slice'])
                         self.fm._slice_changed()
@@ -84,7 +83,11 @@ class Project(QtWidgets.QWidget):
                     self.fm.transpose.setChecked(fm.attrs['Transpose'])
                     self.fm.rotate.setChecked(fm.attrs['Rotate'])
                 except KeyError:
-                    print('noooo')
+                    pass
+            except KeyError:
+                pass
+            try:
+                self.fm.peak_btn.setChecked(fm.attrs['Show peaks'])
             except KeyError:
                 pass
             self.fm.show_btn.setChecked(fm.attrs['Show original'])
@@ -313,6 +316,8 @@ class Project(QtWidgets.QWidget):
         fm.attrs['File'] = self.fm._file_name
         fm.attrs['Slice'] = self.fm._current_slice
         fm.attrs['Series'] = self.fm._series
+        fm.attrs['Show peaks'] = self.fm.peak_btn.isChecked()
+        
         if self.fm.ops._show_max_proj: 
             if self.fm.show_btn.isChecked():
                 fm.attrs['Max projection orig'] = True
