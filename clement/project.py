@@ -103,79 +103,77 @@ class Project(QtWidgets.QWidget):
             try:
                 self.em._select_region_original = em.attrs['Select subregion original']
                 print(self.em._select_region_original)
-                if self.em._select_region_original:
+                try:
+                    self.em.ops._orig_points = np.array(em['Original grid points'])
+                    self.em.ops.points = np.copy(self.em.ops._orig_points)
+                    self.em.show_grid_btn.setEnabled(True)
+                    self.em._recalc_grid()
+                    self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
+                    self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
+                except KeyError:
+                    pass
+                try:
+                    self.em.select_region_btn.setChecked(True)
+                    self.em._box_coordinate = em.attrs['Subregion coordinate']
+                    self.em.select_region_btn.setChecked(False)
+                    self.em.ops._orig_points_region = np.array(em['Orginal points subregion'])
+                    self.em.ops.points = np.copy(self.em.ops._orig_points_region)
+                    self.em._recalc_grid()
+                    self.em.show_grid_btn.setEnabled(True)
+                    self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
+                    self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
                     try:
-                        self.em.ops._orig_points = np.array(em['Original grid points'])
-                        self.em.ops.points = np.copy(self.em.ops._orig_points)
-                        self.em.show_grid_btn.setEnabled(True)
-                        self.em._recalc_grid()
-                        self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
-                        self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
+                        self.em.show_grid_btn.setChecked(False)
+                        self.em.ops._tf_points_region = np.array(em['Transformed points subregion'])
+                        self.em._affine_transform()
                     except KeyError:
                         pass
-                    try:
-                        self.em.select_region_btn.setChecked(True)
-                        self.em._box_coordinate = em.attrs['Subregion coordinate']
-                        self.em.select_region_btn.setChecked(False)
-                        self.em.ops._orig_points_region = np.array(em['Orginal points subregion'])
-                        self.em.ops.points = np.copy(self.em.ops._orig_points_region)
-                        self.em._recalc_grid()
-                        self.em.show_grid_btn.setEnabled(True)
-                        self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
-                        self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
-                        try:
-                            self.em.show_grid_btn.setChecked(False)
-                            self.em.ops._tf_points_region = np.array(em['Transformed points subregion'])
-                            self.em._affine_transform()
-                        except KeyError:
-                            pass
-                         
-                        self.em.show_assembled_btn.setChecked(em.attrs['Show assembled'])
-                        if self.em.show_assembled_btn.isChecked():
-                            try:
-                                self.em.ops._tf_points = np.array(em['Transformed grid points'])
-                                self.em._affine_transform()
-                            except KeyError:
-                                pass                       
-                    except KeyError:
-                        pass
-                else:
-                    try:
-                        self.em.ops._orig_points = np.array(em['Original grid points'])
-                        self.em.ops.points = np.copy(self.em.ops._orig_points)
-                        self.em.show_grid_btn.setEnabled(True)
-                        self.em._recalc_grid()
-                        self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
-                        self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
+                     
+                    self.em.show_assembled_btn.setChecked(em.attrs['Show assembled'])
+                    if self.em.show_assembled_btn.isChecked():
                         try:
                             self.em.ops._tf_points = np.array(em['Transformed grid points'])
                             self.em._affine_transform()
                         except KeyError:
-                            pass
-                    except KeyError:
-                        pass     
+                            pass                       
+                except KeyError:
+                    pass
+            except KeyError:
+                print('hello omg')
+                try:
+                    self.em.ops._orig_points = np.array(em['Original grid points'])
+                    self.em.ops.points = np.copy(self.em.ops._orig_points)
+                    self.em.show_grid_btn.setEnabled(True)
+                    self.em._recalc_grid()
+                    self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
+                    self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
                     try:
-                        self.em.select_region_btn.setChecked(True)
-                        self.em._box_coordinate = em.attrs['Subregion coordinate']
-                        self.em.select_region_btn.setChecked(False)
-                        self.em.ops._orig_points_region = np.array(em['Orginal points subregion'])
-                        self.em.ops.points = np.copy(self.em.ops._orig_points_region)
-                        self.em._recalc_grid()
-                        self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
-                        self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
-                        try:
-                            self.em.ops._tf_points_region = np.array(em['Transformed points subregion'])
-                            self.em._affine_transform()
-                        except KeyError:
-                            pass
+                        self.em.ops._tf_points = np.array(em['Transformed grid points'])
+                        self.em._affine_transform()
                     except KeyError:
                         pass
-                    self.em.show_assembled_btn.setChecked(em.attrs['Show assembled'])
-            except KeyError:
-                pass
-
-
-
+                except KeyError:
+                    pass     
+                try:
+                    self.em._box_coordinate = em.attrs['Subregion coordinate']
+                    self.em.select_region_btn.setChecked(True)
+                    self.em.select_region_btn.setChecked(False)
+                    self.em.ops._orig_points_region = np.array(em['Orginal points subregion'])
+                    self.em.ops.points = np.copy(self.em.ops._orig_points_region)
+                    self.em._recalc_grid()
+                    self.em.show_grid_btn.setChecked(em.attrs['Show grid box'])
+                    self.em.rot_transform_btn.setChecked(em.attrs['Rotation only'])
+                    try:
+                        self.em.ops._tf_points_region = np.array(em['Transformed points subregion'])
+                        self.em._affine_transform()
+                    except KeyError:
+                        pass
+                except KeyError:
+                    if self.em.select_region_btn.isChecked():
+                        self.em.select_region_btn.setChecked(False)
+            
+            self.em.show_assembled_btn.setChecked(em.attrs['Show assembled'])
+            print(em.attrs['Show assembled'])
             self.em.show_btn.setChecked(em.attrs['Show original'])
         except KeyError:
             pass
