@@ -476,6 +476,54 @@ class FM_ops():
         print('\r', self.data.shape)
         self.refined = True
 
+    def optimize(self, fm_max, em_img, fm_points, em_points):
+        
+        def preprocessing(img, points, size=15, em=False):
+            roi = img[points[0]-size:points[0]+size, points[1]-size:points[1]+size]
+            if em:
+                roi_filtered = ndi.gaussian_filter(roi, sigma=1)
+                inverse = 1/roi_filtered
+                inverse[inverse<0.5*inverse.max()] = 0
+                return inverse
+            else:
+                roi[roi<0.5*np.max(roi)] = 0
+                roi_filtered = roi
+                return roi_filtered
+
+        def simple_peak_finding(img):
+            labels, num_obj = ndi.label(img)
+            label_size = np.bincount(labels.ravel())
+            mask = np.where(label_size >= label_min_size, True, False)
+            label_mask = mask[labels.ravel()].reshape(labels.shape)
+            labels = label_mask * labels
+
+            coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
+            return coor
+
+        em_roi_list = []
+        fm_roi_list = []
+        size = 15 # actual roi_size = 2*size
+        label_min_size = 10
+        for i in range(len(em_points)):
+            em_roi_list.append(preprocessing(em_img, em_points[i], em=True))
+            fm_roi_list.append(preprocessing(fm_max, fm_points[i]))
+
+        fm_coor_list = []
+
+        em_coor_list = []
+
+        for i in range(len(em_roi_list)):
+            fm_coor = simple_peak_finding(fm_roi_list[i])
+            print(fm_coor)
+            fm_coor_list.append(list(fm_coor + np.array(fm_points[i] - size)))
+
+            em_coor = simple_peak_finding(em_roi_list[i])
+            em_coor_list.append(list(em_coor + np.array(em_points[i] - size)))
+
+        return fm_coor_list, em_coor_list
+
+
+
     def calc_merge_matrix(self, em_data,em_points):
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         dst = np.array(sorted(em_points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
