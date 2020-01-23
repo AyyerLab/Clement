@@ -64,6 +64,10 @@ class Project(QtWidgets.QWidget):
                 self.fm.slice_select_btn.setValue(fm.attrs['Slice'])
                 self.fm._slice_changed()
             try:
+                self.fm.align_btn.setChecked(fm.attrs['Align colors'])
+            except KeyError:
+                pass
+            try:
                 self.fm.ops._orig_points = np.array(fm['Original grid points'])
                 self.fm.ops.points = np.copy(self.fm.ops._orig_points)
                 self.fm.show_grid_btn.setEnabled(True)
@@ -316,6 +320,7 @@ class Project(QtWidgets.QWidget):
         fm.attrs['File'] = self.fm._file_name
         fm.attrs['Slice'] = self.fm._current_slice
         fm.attrs['Series'] = self.fm._series
+        fm.attrs['Align colors'] = self.fm.align_btn.isChecked()
         fm.attrs['Show peaks'] = self.fm.peak_btn.isChecked()
         
         if self.fm.ops._show_max_proj: 

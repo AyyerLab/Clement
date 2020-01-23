@@ -217,18 +217,18 @@ class FM_ops():
         if refined_tmp:
             self.refined = True
 
-    def peak_finding(self, img, roi=False, label_min_size=30, label_max_size=200):
+    def peak_finding(self, img, roi=False, label_min_size=20, label_max_size=600):
 
         labels, num_obj = ndi.label(img)
         label_size = np.bincount(labels.ravel())
         mask = np.where((label_size >= label_min_size) & (label_size < label_max_size), True, False)
         label_mask = mask[labels.ravel()].reshape(labels.shape)
-        labels = label_mask * labels
+        labels_red, num_red = ndi.label(label_mask * labels)
         
         if roi:
             coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
         else:
-            coor = np.array(ndi.center_of_mass(img, labels, range(num_obj)))
+            coor = np.array(ndi.center_of_mass(img, labels_red, range(num_red)))
             
         return coor
 

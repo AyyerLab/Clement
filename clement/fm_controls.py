@@ -3,6 +3,7 @@ import os
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
+import scipy.ndimage.interpolation as interpol
 
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
@@ -50,7 +51,7 @@ class FMControls(BaseControls):
         self._series = None
         self._current_slice = 0
         self._peaks = []
-        
+        self._shift = None 
         self._init_ui()
     
     def _init_ui(self):
@@ -140,6 +141,12 @@ class FMControls(BaseControls):
         line.addWidget(self.overlay_btn)
         line.addStretch(1)
 
+        self.align_btn = QtWidgets.QCheckBox('Align color channels', self)
+        self.align_btn.stateChanged.connect(self._calc_shift)
+        self.align_btn.setEnabled(False)
+        line.addWidget(self.align_btn)
+        #line.addStretch(1)
+
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -179,11 +186,7 @@ class FMControls(BaseControls):
         self.peak_btn.setCheckable(True)
         self.peak_btn.toggled.connect(self._find_peaks)
         self.peak_btn.setEnabled(False)
-        self.align_btn = QtWidgets.QPushButton('Align color channels', self)
-        self.align_btn.clicked.connect(self._calc_shift)
-        self.align_btn.setEnabled(False)
         line.addWidget(self.peak_btn)
-        line.addWidget(self.align_btn)
         line.addStretch(1)
 
         # Select points
@@ -334,6 +337,7 @@ class FMControls(BaseControls):
             self.refine_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
+            self.align_btn.setEnabled(True)
 
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -435,15 +439,19 @@ class FMControls(BaseControls):
 
     def _find_peaks(self):
         if self.ops is not None:
+            print(self.ops.data.shape)
             if self.peak_btn.isChecked():
                 if self.ops.data.ndim>2:
-                    fm_max = self.ops.data[:,:,-1]
+                    fm_max = np.copy(self.ops.data[:,:,-1])
                 else:
-                    fm_max = self.ops.data
+                    fm_max = np.copy(self.ops.data)
                 
-                fm_max[fm_max<(np.median(fm_max)+np.std(fm_max))] = 0
+                fm_max_sorted = np.sort(fm_max.ravel())
+                avg_max = np.mean(fm_max_sorted[-100:])
+                fm_max[fm_max<0.2*avg_max] = 0
 
                 coor = self.ops.peak_finding(fm_max)
+                print(len(coor))
                 for i in range(len(coor)):
                     pos = QtCore.QPointF(coor[i][0]-self.size_ops/2, coor[i][1]-self.size_ops/2)
                     point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
@@ -459,7 +467,44 @@ class FMControls(BaseControls):
 
     def _calc_shift(self):
         print('Align color channels')
-        return
+        if self.ops is not None:
+            if self.align_btn.isChecked():
+                undo_max_proj = False
+                if not self.max_proj_btn.isChecked():
+                    self.max_proj_btn.setChecked(True)
+                    undo_max_proj = True
+
+                if self._shift is None:
+                    red = np.copy(self.ops.data[:,:,-1])
+                    red_sorted = np.sort(red.ravel())
+                    red_max = np.mean(red_sorted[-100:])
+                    red[red<0.2*red_max] = 0
+                    red_coor = self.ops.peak_finding(red)
+
+                    roi_size = 40
+                    green_coor = []
+                    for i in range(len(red_coor)):
+                        roi_min_0 = int(red_coor[i][0]-roi_size//2) if int(red_coor[i][0]-roi_size//2) > 0 else 0
+                        roi_min_1 = int(red_coor[i][1]-roi_size//2) if int(red_coor[i][1]-roi_size//2) > 0 else 0
+                        roi_max_0 = int(red_coor[i][0]+roi_size//2) if int(red_coor[i][0]+roi_size//2) < red.shape[0] else red.shape[0]
+                        roi_max_1 = int(red_coor[i][1]+roi_size//2) if int(red_coor[i][1]+roi_size//2) < red.shape[1] else red.shape[1]
+                        green_coor_i = self.ops.peak_finding(self.ops.data[:,:,-2][roi_min_0:roi_max_0, roi_min_1:roi_max_1], roi=True)
+                        green_coor_0 = green_coor_i[0]+red_coor[i][0]-roi_size//2 if green_coor_i[0]+red_coor[i][0]-roi_size//2 > 0 else green_coor_i[0] 
+                        green_coor_1 = green_coor_i[1]+red_coor[i][1]-roi_size//2 if green_coor_i[0]+red_coor[i][0]-roi_size//2 > 0 else green_coor_i[1] 
+                        green_coor.append((green_coor_0,green_coor_1))
+
+                    self._shift = np.median((np.array(green_coor)-np.array(red_coor)), axis=0)
+                    if undo_max_proj:
+                        self.max_proj_btn.setChecked(False)
+                
+                print('Color shift: ', self._shift)
+                self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], self._shift)
+            else:
+                self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], -self._shift)
+            self._update_imview()
+        else:
+            print('You have to select the data first!')
+
         # TODO fix this
         '''
         new_list = align_fm.calc_shift(self.flist, self.ops.data)
