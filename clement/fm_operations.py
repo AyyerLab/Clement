@@ -494,11 +494,10 @@ class FM_ops():
 
 
 
-    def calc_merge_matrix(self, em_data,em_points):
+    def calc_merge_matrix(self, em_data, em_points):
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         dst = np.array(sorted(em_points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         self.merge_matrix = tf.estimate_transform('affine', src, dst).params
-
         '''
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -525,7 +524,7 @@ class FM_ops():
         self.merged[self.em_shift[0]:em_data.shape[0]+self.em_shift[0],self.em_shift[1]:em_data.shape[1]+self.em_shift[1],-1] = em_data/np.max(em_data)*np.max(self.data)
         '''
 
-        self.merged = np.zeros(em_data.shape + (self.data.shape[-1]+1,), dtype='f4')
+        self.merged = np.zeros(em_data.shape + (self.data.shape[-1]+1,))
         self.merged[:,:,-1] = em_data / em_data.max() * self.data.max()
         self.apply_merge()
 

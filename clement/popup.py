@@ -20,6 +20,7 @@ class Merge(QtGui.QMainWindow,):
         self.curr_mrc_folder_popup = self.parent.emcontrols.curr_folder
         self.num_slices_popup = self.parent.fmcontrols.num_slices
         self.color_data_popup = None
+        self.color_overlay_popup = None
         self.annotations_popup = []
         self.counter_popup = 0
         self.stage_positions_popup = None
@@ -27,15 +28,15 @@ class Merge(QtGui.QMainWindow,):
         self.max_help = False
 
 
-        self._channels_popup = [False, False, False, False]
+        self._channels_popup = [True, True, True, True]
         self._colors_popup = list(np.copy(self.parent.colors))   
         self._current_slice_popup = self.parent.fmcontrols._current_slice
-        self._overlay_popup = False
+        self._overlay_popup = True
         self._clicked_points_popup = []
         
         if self.parent.fm.merged is not None:
             self.data_popup = np.copy(self.parent.fm.merged)
-            self._channels_popup.append(False)
+            self._channels_popup.append(True)
             self._colors_popup.append('#808080')
         else:
             self.data_popup = np.copy(self.parent.fm.data)
@@ -71,14 +72,19 @@ class Merge(QtGui.QMainWindow,):
         self.imview_popup.ui.roiBtn.hide()
         self.imview_popup.ui.menuBtn.hide()
         self.imview_popup.scene.sigMouseClicked.connect(lambda evt: self._imview_clicked_popup(evt))
-        self.imview_popup.setImage(np.sum(self.data_popup,axis=2), levels=(self.data_popup.min(), self.data_popup.max()//3))
+        #self.imview_popup.setImage(np.sum(self.data_popup,axis=2), levels=(self.data_popup.min(), self.data_popup.max()//3))
         layout.addWidget(self.imview_popup)
 
         options = QtWidgets.QHBoxLayout()
         options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options)
         self._init_options_popup(options)
-
+        self._calc_color_channels_popup()
+        if self.overlay_btn_popup.isChecked():
+            self.imview_popup.setImage(self.color_overlay_popup, levels=(self.data_popup.min(), self.data_popup.mean()))
+        else:
+            self.imview_popup.setImage(self.color_data_popup, levels=(self.data_popup.min(), self.data_popup.mean()))
+                
     def _init_options_popup(self,parent_layout):
         vbox = QtWidgets.QVBoxLayout()
         parent_layout.addLayout(vbox)
@@ -122,6 +128,12 @@ class Merge(QtGui.QMainWindow,):
         self.channel4_btn_popup = QtWidgets.QCheckBox(' ',self)
         self.channel5_btn_popup = QtWidgets.QCheckBox(' ',self)
         self.overlay_btn_popup = QtWidgets.QCheckBox('Overlay',self)
+        self.channel1_btn_popup.setChecked(True)
+        self.channel2_btn_popup.setChecked(True)
+        self.channel3_btn_popup.setChecked(True)
+        self.channel4_btn_popup.setChecked(True)
+        self.channel5_btn_popup.setChecked(True)
+        self.overlay_btn_popup.setChecked(True)
         self.channel1_btn_popup.stateChanged.connect(lambda state, channel=0: self._show_channels_popup(state,channel))
         self.channel2_btn_popup.stateChanged.connect(lambda state, channel=1: self._show_channels_popup(state,channel))
         self.channel3_btn_popup.stateChanged.connect(lambda state, channel=2: self._show_channels_popup(state,channel))
@@ -129,12 +141,7 @@ class Merge(QtGui.QMainWindow,):
 
         self.channel5_btn_popup.stateChanged.connect(lambda state, channel=4: self._show_channels_popup(state,channel))
         self.overlay_btn_popup.stateChanged.connect(self._show_overlay_popup)
-        self.channel1_btn_popup.setChecked(True)
-        self.channel2_btn_popup.setChecked(True)
-        self.channel3_btn_popup.setChecked(True)
-        self.channel4_btn_popup.setChecked(True)
-        self.channel5_btn_popup.setChecked(True)
-        self.overlay_btn_popup.setChecked(True)
+
 
         self.c1_btn_popup = QtWidgets.QPushButton(' ', self)
         self.c1_btn_popup.clicked.connect(lambda: self._sel_color_popup(0, self.c1_btn_popup))
@@ -191,6 +198,8 @@ class Merge(QtGui.QMainWindow,):
         line.addWidget(self.select_btn_popup)
         line.addWidget(self.save_btn_popup)
         line.addStretch(1)
+
+        
 
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -250,25 +259,41 @@ class Merge(QtGui.QMainWindow,):
             print('Invalid color')
 
     def _calc_color_channels_popup(self):
-        channels = []
+        print(self.data_popup[:,:,0].shape)
+        print(len(self._channels_popup))
+        #self.color_data_popup = np.zeros((len(self._channels_popup),) + self.data_popup[:,:,0].shape + (3,))
+        self.color_data_popup = np.zeros((len(self._channels_popup),int(np.ceil(self.data_popup.shape[0]/4)), int(np.ceil(self.data_popup.shape[1]/4)), 3))
+        print(self.color_data_popup.shape)
         for i in range(len(self._channels_popup)):
             if self._channels_popup[i]:
-                my_channel = self.data_popup[:,:,i]
+                my_channel = self.data_popup[::4,::4,i]
                 my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
                 rgb = tuple([int(self._colors_popup[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
-                channels.append(my_channel_rgb * rgb)
-        if len(channels) == 0:
-            channels.append(np.zeros_like(self.data_popup[:,:,0]))
-
-        self.color_data_popup = np.array(channels)
+                self.color_data_popup[i,:,:,:] = my_channel_rgb * rgb
+            else:
+                self.color_data_popup[i,:,:,:] = np.zeros((self.data_popup[::4,::4,0].shape + (3,)))
+                
         if self.overlay_btn_popup.isChecked():
-            self.color_data_popup = np.sum(self.color_data_popup,axis=0)
+            self.color_overlay_popup = np.sum(self.color_data_popup,axis=0)
+
+    def _select_channels(self):
+        data_shown = np.zeros((len(self._channels_popup),int(np.ceil(self.data_popup.shape[0]/4)), int(np.ceil(self.data_popup.shape[1]/4)), 3))
+        counter = 0
+        print(data_shown.shape)
+        for i in range(len(self._channels_popup)):
+            if self._channels_popup[i]:
+                data_shown[counter] = self.color_data_popup[counter]
+            counter += 1
+           
+        if self.overlay_btn_popup.isChecked():
+            data_shown = np.sum(data_shown, axis=0)
+        return data_shown  
 
     def _update_imview_popup(self):
-        color_channels = self._calc_color_channels_popup()
+        data_shown = self._select_channels()
         vr = self.imview_popup.getImageItem().getViewBox().targetRect()
         levels = self.imview_popup.getHistogramWidget().item.getLevels()
-        self.imview_popup.setImage(self.color_data_popup, levels=levels)
+        self.imview_popup.setImage(data_shown, levels=levels)
         self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _calc_stage_positions_popup(self,checked):
@@ -370,6 +395,35 @@ class Merge(QtGui.QMainWindow,):
                 self.setStyleSheet(f.read())
         self.settings.setValue('theme', name)
 
+
+    def _reset_init(self):
+        self.parent = None
+        self.theme = None
+        self.fm_copy = None
+
+        self.curr_mrc_folder_popup = None
+        self.num_slices_popup = None
+        self.color_data_popup = None
+        self.color_overlay_popup = None
+        self.annotations_popup = []
+        self.counter_popup = 0
+        self.stage_positions_popup = None
+        self.settings = None
+        self.max_help = False
+
+
+        self._channels_popup = []
+        self._colors_popup = None  
+        self._current_slice_popup = None
+        self._overlay_popup = True
+        self._clicked_points_popup = []
+        
+        self.data_popup = None
+
+        self.data_orig_popup = None 
+        
+
     def closeEvent(self, event):
+        self._reset_init()
         event.accept()
 

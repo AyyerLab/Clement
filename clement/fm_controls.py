@@ -350,18 +350,16 @@ class FMControls(BaseControls):
             QtWidgets.QApplication.restoreOverrideCursor()
 
     def _calc_color_channels(self):
-        channels = []
+        self.color_data = np.zeros((len(self._channels),) + self.ops.data[:,:,0].shape + (3,))
         for i in range(len(self._channels)):
             if self._channels[i]:
                 my_channel = self.ops.data[:,:,i]
                 my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
                 rgb = tuple([int(self._colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
-                channels.append(my_channel_rgb * rgb)
+                self.color_data[i,:,:,:] = my_channel_rgb * rgb
+            else:
+                self.color_data[i,:,:,:] = np.zeros((self.ops.data[:,:,i].shape + (3,)))
 
-        if len(channels) == 0:
-            channels.append(np.zeros_like(self.ops.data[:,:,0]))
-
-        self.color_data = np.array(channels)
         if self.overlay_btn.isChecked():
             self.color_data = np.sum(self.color_data,axis=0)
 
