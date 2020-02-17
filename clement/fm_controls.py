@@ -572,6 +572,7 @@ class FMControls(BaseControls):
         self.c2_btn.setEnabled(False)
         self.c3_btn.setEnabled(False)
         self.c4_btn.setEnabled(False)
+        self.max_proj_btn.setChecked(False)        
 
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
