@@ -426,6 +426,9 @@ class FM_ops():
         self._transformed = True
 
     def calc_refine_matrix(self, source, dst, em_grid_points):
+        print('em_grid_points: ', em_grid_points)
+        print('source: ', source)
+        print('dst: ', dst)
         if self.tf_data is not None:
             self.corr_matrix_new = tf.estimate_transform('affine',source,dst).params
             self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix)

@@ -97,44 +97,45 @@ class BaseControls(QtWidgets.QWidget):
     def _draw_correlated_points(self, pos, size1, size2, item):
         if self.other.ops is None:
             print('Select both data first')
-
-        if self.ops._transformed and self.other.ops._transformed:
-            if self.tr_matrices is not None:
-                point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
-                point_obj.setPen(0,255,0)
-                point_obj.removeHandle(0)
-                self.imview.addItem(point_obj)
-                self._points_corr.append(point_obj)
-                self.counter += 1
-                annotation_obj = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
-                annotation_obj.setPos(pos.x()+5, pos.y()+5)
-                self.imview.addItem(annotation_obj)
-                self.anno_list.append(annotation_obj)
-
-                self._points_corr_indices.append(self.counter-1)
-
-                # Coordinates in clicked image
-                init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
-
-                transf = np.dot(self.tr_matrices, init)
-                pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
-                point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
-                point_other.setPen(0,255,255)
-                point_other.removeHandle(0)
-                self.other.imview.addItem(point_other)
-                self.other._points_corr.append(point_other)
-
-                self.other.counter = self.counter
-                annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
-                annotation_other.setPos(pos.x()+5, pos.y()+5)
-                self.other.imview.addItem(annotation_other)
-                self.other.anno_list.append(annotation_other)
-
-                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self._points_corr, self.other._points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
-                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other._points_corr, self._points_corr, annotation_other, annotation_obj, self.other.anno_list, self.anno_list))
-
+        
         else:
-            print('Transform both images before point selection')
+            if self.ops._transformed and self.other.ops._transformed:
+                if self.tr_matrices is not None:
+                    point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
+                    point_obj.setPen(0,255,0)
+                    point_obj.removeHandle(0)
+                    self.imview.addItem(point_obj)
+                    self._points_corr.append(point_obj)
+                    self.counter += 1
+                    annotation_obj = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
+                    annotation_obj.setPos(pos.x()+5, pos.y()+5)
+                    self.imview.addItem(annotation_obj)
+                    self.anno_list.append(annotation_obj)
+
+                    self._points_corr_indices.append(self.counter-1)
+
+                    # Coordinates in clicked image
+                    init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
+
+                    transf = np.dot(self.tr_matrices, init)
+                    pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
+                    point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+                    point_other.setPen(0,255,255)
+                    point_other.removeHandle(0)
+                    self.other.imview.addItem(point_other)
+                    self.other._points_corr.append(point_other)
+
+                    self.other.counter = self.counter
+                    annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
+                    annotation_other.setPos(pos.x()+5, pos.y()+5)
+                    self.other.imview.addItem(annotation_other)
+                    self.other.anno_list.append(annotation_other)
+
+                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self._points_corr, self.other._points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
+                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other._points_corr, self._points_corr, annotation_other, annotation_obj, self.other.anno_list, self.anno_list))
+
+            else:
+                print('Transform both images before point selection')
 
     def _remove_correlated_points(self,imv1,imv2,pt1,pt2,pt_list,pt_list2, anno, anno2, anno_list, anno_list2):
         imv1.removeItem(pt1)
@@ -367,7 +368,6 @@ class BaseControls(QtWidgets.QWidget):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
-                self._optimize()
                     
                 self._refine_history.append([self._points_corr, self._points_corr_indices])
                 self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
@@ -408,7 +408,6 @@ class BaseControls(QtWidgets.QWidget):
         if self.auto_opt_btn.isChecked():
             self.orig_points_corr = copy.copy(self._points_corr)
             self.other.orig_points_corr = copy.copy(self.other._points_corr)
-
 
             em_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self.other._points_corr])).astype(np.int)
             fm_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._points_corr])).astype(np.int)
