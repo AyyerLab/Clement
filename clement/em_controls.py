@@ -131,7 +131,7 @@ class EMControls(BaseControls):
         self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select .mrc file',
                                                              self._curr_folder,
-                                                             '*.mrc')
+                                                             '*.mrc;;*.tif;;*tiff')
         self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name is not '':

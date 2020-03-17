@@ -22,6 +22,7 @@ class FM_ops():
         self.num_slices = None
         self.selected_slice = None
         self.data = None
+        self.argmax_map = None
         self.flipv = False
         self.fliph = False
         self.transp = False
@@ -43,6 +44,8 @@ class FM_ops():
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
         self.tf_max_proj_data = None
+        self.hsv_map = None
+        self.max_proj_status = False #status of max_projection before doing the mapping
         self.counter_clockwise = False
         self.rotated = False
         self.corr_matrix = None
@@ -232,6 +235,17 @@ class FM_ops():
             
         return coor
 
+
+    def calc_mapping(self):
+        if self.hsv_map is None:
+            self.argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).T.astype('f4')
+            self.argmax_map /= np.max(np.max(self.argmax_map, axis=0), axis=0)*2
+          
+            self.hsv_map = []
+            self.hsv_map.append(self.argmax_map)
+            self.hsv_map.append(np.ones_like(self.argmax_map))
+            self.hsv_map.append(self.max_proj_data[:,:,-1])
+            self.hsv_map = np.array(self.hsv_map).transpose(1,2,0)
 
     def align(self):
         '''

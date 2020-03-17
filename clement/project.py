@@ -54,8 +54,11 @@ class Project(QtWidgets.QWidget):
             self.fm.channel3_btn.setChecked(self.fm._channels[2])
             self.fm.channel4_btn.setChecked(self.fm._channels[3])
             self.fm.overlay_btn.setChecked(fm.attrs['Overlay'])
-
-            self.fm._series = fm.attrs['Series']
+            
+            try:
+                self.fm._series = fm.attrs['Series']
+            except KeyError:
+                pass
             self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
 
             if fm.attrs['Max projection orig']:
@@ -95,6 +98,7 @@ class Project(QtWidgets.QWidget):
             except KeyError:
                 pass
             self.fm.show_btn.setChecked(fm.attrs['Show original'])
+            self.fm.map_btn.setChecked(fm.attrs['Show z map'])
         except KeyError:
             pass
 
@@ -282,7 +286,6 @@ class Project(QtWidgets.QWidget):
     def _save_project(self):
         if self.fm.ops is not None or self.em.ops is not None:
             if self.fm.select_btn.isChecked() or self.em.select_btn.isChecked():
-                
                 buttonReply = QtWidgets.QMessageBox.question(self, 'Warning', 'Selected points have not been confirmed and will be lost during saving! \r Continue?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
                 if buttonReply == QtWidgets.QMessageBox.Yes:
                     self._do_save()
@@ -296,8 +299,10 @@ class Project(QtWidgets.QWidget):
                                                               'Save project',
                                                               self._project_folder,
                                                               '*.h5')
-            
+ 
         if file_name is not '':
+            file_name = os.path.splitext(file_name)[0]
+            print(file_name)
             self._project_folder = os.path.dirname(file_name)
             with h5.File(file_name+'.h5','w') as project:
                 if self.fm.ops is not None:
@@ -319,9 +324,11 @@ class Project(QtWidgets.QWidget):
         fm.attrs['Directory'] = self.fm._curr_folder
         fm.attrs['File'] = self.fm._file_name
         fm.attrs['Slice'] = self.fm._current_slice
-        fm.attrs['Series'] = self.fm._series
+        if self.fm._series is not None:
+            fm.attrs['Series'] = self.fm._series
         fm.attrs['Align colors'] = self.fm.align_btn.isChecked()
         fm.attrs['Show peaks'] = self.fm.peak_btn.isChecked()
+        fm.attrs['Show z map'] = self.fm.map_btn.isChecked()
         
         if self.fm.ops._show_max_proj: 
             if self.fm.show_btn.isChecked():

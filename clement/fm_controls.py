@@ -5,6 +5,8 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 import scipy.ndimage.interpolation as interpol
 
+from skimage.color import hsv2rgb
+
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
 #import align_fm
@@ -189,6 +191,18 @@ class FMControls(BaseControls):
         line.addWidget(self.peak_btn)
         line.addStretch(1)
 
+        # 3D mapping
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('3D mapping: ', self)
+        line.addWidget(label)
+        self.map_btn = QtWidgets.QPushButton('Z mapping', self)
+        self.map_btn.setCheckable(True)
+        self.map_btn.toggled.connect(self._mapping)
+        self.map_btn.setEnabled(False)
+        line.addWidget(self.map_btn)
+        line.addStretch(1)
+
         # Select points
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -275,14 +289,19 @@ class FMControls(BaseControls):
 
         self.show()
 
-    def _update_imview(self):
+    def _update_imview(self, mapping=False):
         if self.ops is not None:
-            self._calc_color_channels()
-            #self._show_grid()
-            vr = self.imview.getImageItem().getViewBox().targetRect()
-            levels = self.imview.getHistogramWidget().item.getLevels()
-            self.imview.setImage(self.color_data, levels=levels)
-            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+            if mapping:
+                vr = self.imview.getImageItem().getViewBox().targetRect()
+                self.imview.setImage(hsv2rgb(self.ops.hsv_map))
+                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+            else:
+                self._calc_color_channels()
+                #self._show_grid()
+                vr = self.imview.getImageItem().getViewBox().targetRect()
+                levels = self.imview.getHistogramWidget().item.getLevels()
+                self.imview.setImage(self.color_data, levels=levels)
+                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
         if self._curr_folder is None:
@@ -338,6 +357,7 @@ class FMControls(BaseControls):
             self.merge_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
+            self.map_btn.setEnabled(True)
 
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -516,6 +536,25 @@ class FMControls(BaseControls):
 
         self.align_btn.setEnabled(False)
         '''
+
+    def _mapping(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        if self.map_btn.isChecked():
+            self.ops.max_proj_status = self.max_proj_btn.isChecked()
+            if not self.max_proj_btn.isChecked():
+                self.max_proj_btn.setChecked(True)
+            self.ops.calc_mapping()
+            self._update_imview(mapping=True)
+        else: 
+            if not self.ops.max_proj_status:
+                self.max_proj_btn.setChecked(False)
+            self._update_imview(mapping=False)
+        
+        QtWidgets.QApplication.restoreOverrideCursor()
+
+    def _side_view(self):
+        pass
+
     def reset_init(self):
         
         #self.ops = None
@@ -591,5 +630,8 @@ class FMControls(BaseControls):
         self.transpose.setEnabled(False)
         self.rotate.setEnabled(False)
         self.merge_btn.setEnabled(False)
+
+        self.map_btn.setEnabled(False)
+        self.map_btn.setChecked(False)
         
         self.ops.__init__()
