@@ -6,6 +6,7 @@ import pyqtgraph as pg
 from scipy import signal as sc
 from scipy import ndimage as ndi
 from skimage import transform as tf
+from skimage import measure, morphology, io
 import read_lif
 
 class FM_ops():
@@ -16,6 +17,8 @@ class FM_ops():
         self._transformed = False
         self._tf_points = None
         
+        self.reader = None
+        self.tif_data = None
         self.orig_data = None
         self.tf_data = None
         self.max_proj_data = None
@@ -63,28 +66,40 @@ class FM_ops():
         Saves parsed file in self.orig_data
         self.data is the array to be displayed
         '''
+        if '.tif' in fname or '.tiff' in fname:
+            self.tif_data = np.array(io.imread(fname)).astype('f4')
+            self.num_slices = self.tif_data.shape[0]
 
-        if reopen:
-            base_reader = read_lif.Reader(fname)
-            if len(base_reader.getSeries()) == 1:
-                self.reader = base_reader.getSeries()[0]
-            elif series is not None:
-                self.reader = base_reader.getSeries()[series]
-            else:
-                return [s.getName() for s in base_reader.getSeries()]
-
-            self.num_slices = self.reader.getFrameShape()[0]
-            self.num_channels = len(self.reader.getChannels())
+            self.orig_data = self.tif_data[z,:,:,:]
+            self.orig_data = self.orig_data
+            self.orig_data /= self.orig_data.mean((0,1))
+            print(self.orig_data.shape)
+            self.data = np.copy(self.orig_data)
             self.old_fname = fname
+            self.num_channels = self.orig_data.shape[-1]
+            self.selected_slice = z
+        else:
+            if reopen:
+                base_reader = read_lif.Reader(fname)
+                if len(base_reader.getSeries()) == 1:
+                    self.reader = base_reader.getSeries()[0]
+                elif series is not None:
+                    self.reader = base_reader.getSeries()[series]
+                else:
+                    return [s.getName() for s in base_reader.getSeries()]
 
-        # TODO: Look into modifying read_lif to get
-        # a single Z-slice with all channels rather than all slices for a single channel
-        self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
-                                    for i in range(self.num_channels)])
-        self.orig_data = self.orig_data.transpose(1,2,0)
-        self.orig_data /= self.orig_data.mean((0, 1))
-        self.data = np.copy(self.orig_data)
-        self.selected_slice = z
+                self.num_slices = self.reader.getFrameShape()[0]
+                self.num_channels = len(self.reader.getChannels())
+                self.old_fname = fname
+
+            # TODO: Look into modifying read_lif to get
+            # a single Z-slice with all channels rather than all slices for a single channel
+            self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
+                                        for i in range(self.num_channels)])
+            self.orig_data = self.orig_data.transpose(1,2,0)
+            self.orig_data /= self.orig_data.mean((0, 1))
+            self.data = np.copy(self.orig_data)
+            self.selected_slice = z
 
         if self.refined:
             refined_tmp = True
@@ -202,10 +217,16 @@ class FM_ops():
         else:
             refined_tmp = False
 
+
+
         if self.max_proj_data is None:
-            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
-                                           for i in range(self.num_channels)]).transpose(1,2,0).astype('f4')
-            self.max_proj_data /= self.max_proj_data.mean((0, 1))
+            if self.reader is None:
+                self.max_proj_data = self.tif_data.max(0)
+                self.max_proj_data /= self.max_proj_data.mean((0,1))
+            else:
+                self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
+                                               for i in range(self.num_channels)]).transpose(1,2,0).astype('f4')
+                self.max_proj_data /= self.max_proj_data.mean((0, 1))
         if self._transformed:
             if self.tf_max_proj_data is None:
                 self.apply_transform()
@@ -220,32 +241,36 @@ class FM_ops():
         if refined_tmp:
             self.refined = True
 
-    def peak_finding(self, img, roi=False, label_min_size=20, label_max_size=600):
-
+    def peak_finding(self, img, threshold=0, roi=False, label_min_size=1, label_max_size=1000):
+        img[img<threshold] = 0
         labels, num_obj = ndi.label(img)
         label_size = np.bincount(labels.ravel())
         mask = np.where((label_size >= label_min_size) & (label_size < label_max_size), True, False)
         label_mask = mask[labels.ravel()].reshape(labels.shape)
         labels_red, num_red = ndi.label(label_mask * labels)
+        print('num_red: ', num_red)
         
         if roi:
             coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
         else:
             coor = np.array(ndi.center_of_mass(img, labels_red, range(num_red)))
-            
+        
+        return coor
+
+    def wshed_peaks(self, img, threshold=0):
+        labels = morphology.label(img>=threshold, connectivity=1)
+        morphology.remove_small_objects(labels, 50, connectivity=1, in_place=True)
+        print('Number of peaks found: ', labels.max())
+        wshed = morphology.watershed(-img*(labels>0),labels,compactness=0.5, watershed_line=True)
+        coor = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels>0)*wshed, img)]))
         return coor
 
 
     def calc_mapping(self):
         if self.hsv_map is None:
-            self.argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).T.astype('f4')
+            self.argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
             self.argmax_map /= np.max(np.max(self.argmax_map, axis=0), axis=0)*2
-          
-            self.hsv_map = []
-            self.hsv_map.append(self.argmax_map)
-            self.hsv_map.append(np.ones_like(self.argmax_map))
-            self.hsv_map.append(self.max_proj_data[:,:,-1])
-            self.hsv_map = np.array(self.hsv_map).transpose(1,2,0)
+            self.hsv_map = np.array([self.argmax_map, np.ones_like(self.argmax_map), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
 
     def align(self):
         '''

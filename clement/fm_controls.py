@@ -310,7 +310,7 @@ class FMControls(BaseControls):
         self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                              'Select FM file',
                                                              self._curr_folder,
-                                                             '*.lif')
+                                                             '*.lif;;*.tif;;*.tiff')
         if self._file_name is not '':
             self.reset_init()
             self._curr_folder = os.path.dirname(self._file_name)
@@ -447,7 +447,7 @@ class FMControls(BaseControls):
 
         num = self.slice_select_btn.value()
         if num != self._current_slice:
-            self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
+            self.ops.parse(fname=self.ops.old_fname, z=num%self.num_slices, reopen=False)
             self._update_imview()
             fname, indstr = self.fm_fname.text().split()
             self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))
@@ -466,9 +466,11 @@ class FMControls(BaseControls):
                 
                 fm_max_sorted = np.sort(fm_max.ravel())
                 avg_max = np.mean(fm_max_sorted[-100:])
-                fm_max[fm_max<0.2*avg_max] = 0
+                #fm_max[fm_max<0.2*avg_max] = 0
 
-                coor = self.ops.peak_finding(fm_max)
+                #coor = self.ops.peak_finding(fm_max, threshold=0.2*avg_max)
+                coor = self.ops.wshed_peaks(fm_max, threshold=0.35*avg_max)
+
                 print(len(coor))
                 for i in range(len(coor)):
                     pos = QtCore.QPointF(coor[i][0]-self.size_ops/2, coor[i][1]-self.size_ops/2)
@@ -516,9 +518,9 @@ class FMControls(BaseControls):
                         self.max_proj_btn.setChecked(False)
                 
                 print('Color shift: ', self._shift)
-                self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], self._shift)
-            else:
                 self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], -self._shift)
+            else:
+                self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], self._shift)
             self._update_imview()
         else:
             print('You have to select the data first!')
