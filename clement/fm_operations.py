@@ -16,6 +16,8 @@ class FM_ops():
         self._orig_points = None
         self._transformed = False
         self._tf_points = None
+        self._show_mapping = False
+        self._show_no_tilt = False
         
         self.reader = None
         self.tif_data = None
@@ -35,7 +37,9 @@ class FM_ops():
         self.transp_matrix = np.array([[0,1,0],[1,0,0],[0,0,1]])
         self.rot_matrix = np.array([[0,1,0],[-1,0,0],[0,0,1]])
         self.flip_matrix = np.identity(3)
-        self.coordinates = []
+        self.peaks_2d = None
+        self.peaks_3d = None
+        #self.coordinates = []
         self.threshold = 0
         self.max_shift = 10
         self.matches = []
@@ -48,6 +52,9 @@ class FM_ops():
         self.tf_matrix = np.identity(3)
         self.tf_max_proj_data = None
         self.hsv_map = None
+        self.tf_hsv_map = None
+        self.hsv_map_no_tilt = None
+        self.tf_hsv_map_no_tilt = None
         self.max_proj_status = False #status of max_projection before doing the mapping
         self.counter_clockwise = False
         self.rotated = False
@@ -119,8 +126,13 @@ class FM_ops():
             self.refined = True
 
     def _update_data(self,update=True,update_points=True):
-        if self._transformed and (self.tf_data is not None or self.tf_max_proj_data is not None):
-            if self._show_max_proj:
+        if self._transformed and (self.tf_data is not None or self.tf_max_proj_data is not None or self.tf_hsv_map is not None or self.tf_hsv_map_no_tilt is not None):
+            if self._show_mapping:
+                if self._show_no_tilt:
+                    self.data = np.copy(self.tf_hsv_map_no_tilt)
+                else:
+                    self.data = np.copy(self.tf_hsv_map)
+            elif self._show_max_proj:
                 if self.refined:
                     self.data = np.copy(self.refined_max_proj)
                 else:
@@ -132,7 +144,12 @@ class FM_ops():
                     self.data = np.copy(self.tf_data)
             self.points = np.copy(self._tf_points)
         else:
-            if self._show_max_proj and self.max_proj_data is not None:
+            if self._show_mapping and self.hsv_map is not None:
+                if self._show_no_tilt:
+                    self.data = np.copy(self.hsv_map_no_tilt)
+                else:
+                    self.data = np.copy(self.hsv_map)
+            elif self._show_max_proj and self.max_proj_data is not None:
                 self.data = np.copy(self.max_proj_data)
             else:
                 self.data = np.copy(self.orig_data)
@@ -204,9 +221,6 @@ class FM_ops():
         self._update_data()
 
     def toggle_original(self,update=True):
-        if self.tf_data is None:
-            print('Need to transform data first')
-            return
         self._update_data(update=update)
 
     def calc_max_projection(self):
@@ -216,8 +230,6 @@ class FM_ops():
             self.refined = False
         else:
             refined_tmp = False
-
-
 
         if self.max_proj_data is None:
             if self.reader is None:
@@ -252,25 +264,103 @@ class FM_ops():
         
         if roi:
             coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
+            return coor
         else:
-            coor = np.array(ndi.center_of_mass(img, labels_red, range(num_red)))
+            self.peaks_2d = np.array(ndi.center_of_mass(img, labels_red, range(num_red)))
         
-        return coor
 
     def wshed_peaks(self, img, threshold=0):
         labels = morphology.label(img>=threshold, connectivity=1)
         morphology.remove_small_objects(labels, 50, connectivity=1, in_place=True)
         print('Number of peaks found: ', labels.max())
         wshed = morphology.watershed(-img*(labels>0),labels,compactness=0.5, watershed_line=True)
-        coor = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels>0)*wshed, img)]))
-        return coor
+        self.peaks_2d = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels>0)*wshed, img)]))
+
 
 
     def calc_mapping(self):
+        self._show_mapping = not self._show_mapping
+        if self.refined:
+            refined_tmp = True
+            self.refined = False
+        else:
+            refined_tmp = False
         if self.hsv_map is None:
+            if self.max_proj_data is None:
+                if self.reader is None:
+                    self.max_proj_data = self.tif_data.max(0)
+                    self.max_proj_data /= self.max_proj_data.mean((0, 1))
+                else:
+                    self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
+                                                   for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
+                    self.max_proj_data /= self.max_proj_data.mean((0, 1))
             self.argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
             self.argmax_map /= np.max(np.max(self.argmax_map, axis=0), axis=0)*2
             self.hsv_map = np.array([self.argmax_map, np.ones_like(self.argmax_map), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
+
+        if self._transformed:
+            if self.tf_hsv_map is None:
+                self.apply_transform()
+            elif self.refined:
+                self.apply_transform()
+
+        self._update_data()
+
+        if refined_tmp and self._transformed:
+            # if self.refined:
+            for i in range(len(self.refine_history)):
+                self.refine_matrix = self.refine_history[i]
+                self.apply_refinement()
+        if refined_tmp:
+            self.refined = True
+
+    def remove_tilt(self):
+        self._show_no_tilt = not self._show_no_tilt
+        if self.refined:
+            refined_tmp = True
+            self.refined = False
+        else:
+            refined_tmp = False
+        if self.hsv_map_no_tilt is None:
+            if self.peaks_2d is None:
+                avg_max = np.sort(self.max_proj_data.ravel())[-100:].mean()
+                self.wshed_peaks(self.max_proj_data[:,:,-1], threshold=0.35*avg_max)
+
+            red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
+            z_max_peaks = np.argmax(red_channel[self.peaks_2d[:,0].astype(int), self.peaks_2d[:,1].astype(int)], axis=1)
+            self.peaks_3d = np.concatenate((self.peaks_2d, np.expand_dims(z_max_peaks, axis=1)), axis=1)
+            # fit plane to peaks with least squares to remove tilt
+            A = np.array([self.peaks_2d[:,0], self.peaks_2d[:,1], np.ones_like(self.peaks_2d[:,0])]).T #matrix
+            beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_3d[:,2], axis=1)) #params
+
+            point = np.array([0.0, 0.0, beta[2]]) #point on plane
+            normal = np.array(np.cross([1, 0, beta[0][0]], [0, 1, beta[1][0]])) #normal vector of plane
+            d = -point.dot(normal) #distance to origin
+
+            x, y = np.indices((2048, 2048))
+            z_plane = -(normal[0] * x + normal[1] * y + d) / normal[2] #z values of plane for whole image
+            z_max_all = np.argmax(red_channel, axis=2)
+
+            argmax_map_no_tilt = z_max_all - z_plane
+            argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
+            self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
+
+        if self._transformed:
+            if self.tf_hsv_map_no_tilt is None:
+                self.apply_transform()
+            elif self.refined:
+                self.apply_transform()
+
+        self._update_data()
+
+        if refined_tmp and self._transformed:
+            # if self.refined:
+            for i in range(len(self.refine_history)):
+                self.refine_matrix = self.refine_history[i]
+                self.apply_refinement()
+        if refined_tmp:
+            self.refined = True
+
 
     def align(self):
         '''
@@ -429,35 +519,61 @@ class FM_ops():
         # Calculate transform_shift for point transforms
         self.transform_shift = -self.tf_corners.min(1)[:2]
 
-        if not self._show_max_proj and self.max_proj_data is None:
-            # If max_projection has not yet been selected
-            self.tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
-            for i in range(self.data.shape[-1]):
-                self.tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-                sys.stderr.write('\r%d'%i)
-            print('\n', self.tf_data.shape)
-            if shift_points:
-                self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
-        elif self._show_max_proj and self._transformed:
-            # If showing max_projection with image already transformed (???)
-            self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
-            for i in range(self.data.shape[-1]):
-                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-                sys.stderr.write('\r%d'%i)
-            self._update_data(update_points=False)
-        else:
-            self.tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
-            self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
-            for i in range(self.data.shape[-1]):
-                self.tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-                self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-                sys.stderr.write('\r%d'%i)
-            print('\n', self.tf_data.shape)
-            print(self.max_proj_data.shape)
-            if shift_points:
-                self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
+        if self._show_mapping:
+            if self._show_no_tilt:
+                self.tf_hsv_map_no_tilt = np.empty(self._tf_shape + (self.hsv_map_no_tilt.shape[-1],))
+                for i in range(self.tf_hsv_map_no_tilt.shape[-1]):
+                    self.tf_hsv_map_no_tilt[:, :, i] = ndi.affine_transform(self.hsv_map_no_tilt[:, :, i],
+                                                                    np.linalg.inv(self.tf_matrix), order=1,
+                                                                    output_shape=self._tf_shape)
+                    sys.stderr.write('\r%d' % i)
+                self._update_data(update_points=False)
+                print(self.tf_hsv_map_no_tilt.shape)
 
-        if self._show_max_proj:
+            else:
+                self.tf_hsv_map = np.empty(self._tf_shape+(self.hsv_map.shape[-1],))
+                for i in range(self.tf_hsv_map.shape[-1]):
+                    self.tf_hsv_map[:,:,i] = ndi.affine_transform(self.hsv_map[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                    sys.stderr.write('\r%d'%i)
+                self._update_data(update_points=False)
+            if shift_points and not self._transformed:
+                self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
+        else:
+            if not self._show_max_proj and self.max_proj_data is None:
+                # If max_projection has not yet been selected
+                self.tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+                for i in range(self.data.shape[-1]):
+                    self.tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                    sys.stderr.write('\r%d'%i)
+                print('\n', self.tf_data.shape)
+                if shift_points:
+                    self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
+            elif self._show_max_proj and self._transformed:
+                # If showing max_projection with image already transformed (???)
+                self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
+                for i in range(self.data.shape[-1]):
+                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                    sys.stderr.write('\r%d'%i)
+                self._update_data(update_points=False)
+            else:
+                self.tf_data = np.empty(self._tf_shape+(self.data.shape[-1],))
+                self.tf_max_proj_data  = np.empty(self._tf_shape+(self.data.shape[-1],))
+                for i in range(self.data.shape[-1]):
+                    self.tf_data[:,:,i] = ndi.affine_transform(self.orig_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                    self.tf_max_proj_data[:,:,i] = ndi.affine_transform(self.max_proj_data[:,:,i], np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+                    sys.stderr.write('\r%d'%i)
+                print('\n', self.tf_data.shape)
+                print(self.max_proj_data.shape)
+                if shift_points:
+                    self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
+
+        if self._show_mapping:
+            if self._show_no_tilt:
+                print('hello')
+                self.data = np.copy(self.tf_hsv_map_no_tilt)
+            else:
+                self.data = np.copy(self.tf_hsv_map)
+        elif self._show_max_proj:
             self.data = np.copy(self.tf_max_proj_data)
         else:
             self.data = np.copy(self.tf_data)

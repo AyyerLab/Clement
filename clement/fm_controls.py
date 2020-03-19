@@ -200,7 +200,12 @@ class FMControls(BaseControls):
         self.map_btn.setCheckable(True)
         self.map_btn.toggled.connect(self._mapping)
         self.map_btn.setEnabled(False)
+        self.remove_tilt_btn = QtWidgets.QCheckBox('Remove tilt effect', self)
+        self.remove_tilt_btn.setEnabled(False)
+        self.remove_tilt_btn.setChecked(False)
+        self.remove_tilt_btn.stateChanged.connect(self._remove_tilt)
         line.addWidget(self.map_btn)
+        line.addWidget(self.remove_tilt_btn)
         line.addStretch(1)
 
         # Select points
@@ -289,15 +294,15 @@ class FMControls(BaseControls):
 
         self.show()
 
-    def _update_imview(self, mapping=False):
+    def _update_imview(self):
         if self.ops is not None:
-            if mapping:
+            print(self.ops.data.shape)
+            if self.ops._show_mapping:
                 vr = self.imview.getImageItem().getViewBox().targetRect()
-                self.imview.setImage(hsv2rgb(self.ops.hsv_map))
+                self.imview.setImage(hsv2rgb(self.ops.data))
                 self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
             else:
                 self._calc_color_channels()
-                #self._show_grid()
                 vr = self.imview.getImageItem().getViewBox().targetRect()
                 levels = self.imview.getHistogramWidget().item.getLevels()
                 self.imview.setImage(self.color_data, levels=levels)
@@ -358,6 +363,7 @@ class FMControls(BaseControls):
             self.peak_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
+            self.remove_tilt_btn.setEnabled(True)
 
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -459,21 +465,22 @@ class FMControls(BaseControls):
         if self.ops is not None:
             print(self.ops.data.shape)
             if self.peak_btn.isChecked():
-                if self.ops.data.ndim>2:
-                    fm_max = np.copy(self.ops.data[:,:,-1])
-                else:
-                    fm_max = np.copy(self.ops.data)
-                
-                fm_max_sorted = np.sort(fm_max.ravel())
-                avg_max = np.mean(fm_max_sorted[-100:])
-                #fm_max[fm_max<0.2*avg_max] = 0
+                if self.ops.peaks_2d is None:
+                    if self.ops.data.ndim>2:
+                        fm_max = np.copy(self.ops.data[:,:,-1])
+                    else:
+                        fm_max = np.copy(self.ops.data)
 
-                #coor = self.ops.peak_finding(fm_max, threshold=0.2*avg_max)
-                coor = self.ops.wshed_peaks(fm_max, threshold=0.35*avg_max)
+                    fm_max_sorted = np.sort(fm_max.ravel())
+                    avg_max = np.mean(fm_max_sorted[-100:])
+                    #fm_max[fm_max<0.2*avg_max] = 0
 
-                print(len(coor))
-                for i in range(len(coor)):
-                    pos = QtCore.QPointF(coor[i][0]-self.size_ops/2, coor[i][1]-self.size_ops/2)
+                    #self.ops.peak_finding(fm_max, threshold=0.2*avg_max)
+                    self.ops.wshed_peaks(fm_max, threshold=0.35*avg_max)
+
+                print(len(self.ops.peaks_2d))
+                for i in range(len(self.ops.peaks_2d)):
+                    pos = QtCore.QPointF(self.ops.peaks_2d[i][0]-self.size_ops/2, self.ops.peaks_2d[i][1]-self.size_ops/2)
                     point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
                     point_obj.removeHandle(0)
                     self.imview.addItem(point_obj)
@@ -541,18 +548,19 @@ class FMControls(BaseControls):
 
     def _mapping(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if self.map_btn.isChecked():
-            self.ops.max_proj_status = self.max_proj_btn.isChecked()
-            if not self.max_proj_btn.isChecked():
-                self.max_proj_btn.setChecked(True)
-            self.ops.calc_mapping()
-            self._update_imview(mapping=True)
-        else: 
-            if not self.ops.max_proj_status:
-                self.max_proj_btn.setChecked(False)
-            self._update_imview(mapping=False)
-        
+        self.ops.calc_mapping()
+        self._update_imview()
+        if self.remove_tilt_btn.isChecked():
+            self._remove_tilt()
         QtWidgets.QApplication.restoreOverrideCursor()
+
+    def _remove_tilt(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        if self.map_btn.isChecked():
+            self.ops.remove_tilt()
+            self._update_imview()
+        QtWidgets.QApplication.restoreOverrideCursor()
+
 
     def _side_view(self):
         pass
@@ -635,5 +643,7 @@ class FMControls(BaseControls):
 
         self.map_btn.setEnabled(False)
         self.map_btn.setChecked(False)
+        self.remove_tilt_btn.setEnabled(False)
+        self.remove_tilt_btn.setChecked(False)
         
         self.ops.__init__()

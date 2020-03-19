@@ -7,6 +7,7 @@ import pyqtgraph as pg
 import csv
 import mrcfile as mrc
 import copy
+from skimage.color import hsv2rgb
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -262,17 +263,25 @@ class Merge(QtGui.QMainWindow,):
         print(self.data_popup[:,:,0].shape)
         print(len(self._channels_popup))
         #self.color_data_popup = np.zeros((len(self._channels_popup),) + self.data_popup[:,:,0].shape + (3,))
-        self.color_data_popup = np.zeros((len(self._channels_popup),int(np.ceil(self.data_popup.shape[0]/4)), int(np.ceil(self.data_popup.shape[1]/4)), 3))
+        self.color_data_popup = np.zeros((len(self._channels_popup), int(np.ceil(self.data_popup.shape[0] / 4)),
+                                          int(np.ceil(self.data_popup.shape[1] / 4)), 3))
         print(self.color_data_popup.shape)
-        for i in range(len(self._channels_popup)):
-            if self._channels_popup[i]:
-                my_channel = self.data_popup[::4,::4,i]
-                my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
-                rgb = tuple([int(self._colors_popup[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
-                self.color_data_popup[i,:,:,:] = my_channel_rgb * rgb
-            else:
-                self.color_data_popup[i,:,:,:] = np.zeros((self.data_popup[::4,::4,0].shape + (3,)))
-                
+        if not self.parent.fm._show_mapping:
+           for i in range(len(self._channels_popup)):
+                if self._channels_popup[i]:
+                    my_channel = self.data_popup[::4,::4,i]
+                    my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
+                    rgb = tuple([int(self._colors_popup[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
+                    self.color_data_popup[i,:,:,:] = my_channel_rgb * rgb
+                else:
+                    self.color_data_popup[i,:,:,:] = np.zeros((self.data_popup[::4,::4,0].shape + (3,)))
+        else:
+            self.color_data_popup[0,:,:,:] = hsv2rgb(self.data_popup[::4,::4,:3])
+            em_img = self.data_popup[::4,::4,-1]
+            em_img_rgb = np.repeat(em_img[:,:,np.newaxis],3,axis=2)
+            rgb = tuple([int(self._colors_popup[-1][1+2*c:3+2*c], 16)/255. for c in range(3)])
+            self.color_data_popup[-1,:,:,:] = em_img_rgb * rgb
+
         if self.overlay_btn_popup.isChecked():
             self.color_overlay_popup = np.sum(self.color_data_popup,axis=0)
 

@@ -258,10 +258,21 @@ class BaseControls(QtWidgets.QWidget):
             print('Select both data first')
             return
 
-        check_obj = self.ops.tf_data is not None or (hasattr(self.ops, 'tf_region') and self.ops.tf_region is not None)
-        check_other = self.other.ops.tf_data is not None or (hasattr(self.other.ops, 'tf_region') and self.other.ops.tf_region is not None)
+        condition = False
+        if hasattr(self.ops, 'tf_region'):
+            #if self.ops.tf_region is not None or self.ops.tf_data is not None:
+            #    if self.other.ops.tf_data is not None or self.other.ops.tf_max_proj_data is not None or self.other.ops.tf_hsv_map is not None or self.other.ops.tf_hsv_map_no_tilt is not None:
+            if self.ops._tf_points is not None or self.ops._tf_points_region is not None:
+                if self.other.ops._tf_points is not None:
+                    condition = True
+        else:
+            #if self.ops.tf_data is not None or self.ops.tf_max_proj_data is not None or self.ops.tf_hsv_map is not None or self.ops.tf_hsv_map_no_tilt is not None:
+            #    if self.other.ops.tf_region is not None or self.other.ops.tf_data is not None:
+            if self.ops._tf_points is not None:
+                if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
+                    condition = True
 
-        if check_obj and check_other:
+        if condition:
             if checked:
                 print('Select points of interest on %s image'%self.tag)
                 if not self.other.select_btn.isChecked():

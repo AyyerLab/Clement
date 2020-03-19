@@ -99,6 +99,7 @@ class Project(QtWidgets.QWidget):
                 pass
             self.fm.show_btn.setChecked(fm.attrs['Show original'])
             self.fm.map_btn.setChecked(fm.attrs['Show z map'])
+            self.fm.remove_tilt_btn.setChecked(fm.attrs['Remove tilt'])
         except KeyError:
             pass
 
@@ -329,7 +330,8 @@ class Project(QtWidgets.QWidget):
         fm.attrs['Align colors'] = self.fm.align_btn.isChecked()
         fm.attrs['Show peaks'] = self.fm.peak_btn.isChecked()
         fm.attrs['Show z map'] = self.fm.map_btn.isChecked()
-        
+        fm.attrs['Remove tilt'] = self.fm.remove_tilt_btn.isChecked()
+
         if self.fm.ops._show_max_proj: 
             if self.fm.show_btn.isChecked():
                 fm.attrs['Max projection orig'] = True
