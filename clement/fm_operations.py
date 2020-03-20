@@ -5,6 +5,7 @@ import numpy as np
 import pyqtgraph as pg
 from scipy import signal as sc
 from scipy import ndimage as ndi
+from scipy import interpolate
 from skimage import transform as tf
 from skimage import measure, morphology, io
 import read_lif
@@ -27,7 +28,6 @@ class FM_ops():
         self.num_slices = None
         self.selected_slice = None
         self.data = None
-        self.argmax_map = None
         self.flipv = False
         self.fliph = False
         self.transp = False
@@ -51,6 +51,7 @@ class FM_ops():
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
         self.tf_max_proj_data = None
+        self.cmap = None
         self.hsv_map = None
         self.tf_hsv_map = None
         self.hsv_map_no_tilt = None
@@ -277,6 +278,25 @@ class FM_ops():
         self.peaks_2d = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels>0)*wshed, img)]))
 
 
+    def colorize2d(self, brightness, zvals, cmap_funcs):
+        hfunc, sfunc, vfunc = cmap_funcs
+        nb = (brightness-brightness.min()) / (brightness.max()-brightness.min())
+        nz = (zvals-zvals.min()) / (zvals.max() - zvals.min())
+        hsv = np.zeros(brightness.shape + (3,))
+        hsv[:,:,0] = np.fmod(hfunc(nb, nz), 1.)
+        hsv[:,:,1] = np.clip(sfunc(nb, nz), 0., 1.)
+        hsv[:,:,2] = vfunc(nb, nz)
+        return hsv
+
+    def create_cmaps(self, rot=0.):
+        points = np.array([[0,0],[0,1],[0.5,0],[0.5,1],[1,0],[1,1]])
+        hue = (points[:,0]*2+3)/6. + rot
+        sat = np.array([1., 1., 1./3, 1./3, 1., 1.])
+        val = points[:,1]
+        hfunc = interpolate.LinearNDInterpolator(points, hue)
+        sfunc = interpolate.CloughTocher2DInterpolator(points, sat)
+        vfunc = interpolate.LinearNDInterpolator(points, val)
+        return hfunc, sfunc, vfunc
 
     def calc_mapping(self):
         self._show_mapping = not self._show_mapping
@@ -294,9 +314,12 @@ class FM_ops():
                     self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
                                                    for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
                     self.max_proj_data /= self.max_proj_data.mean((0, 1))
-            self.argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
-            self.argmax_map /= np.max(np.max(self.argmax_map, axis=0), axis=0)*2
-            self.hsv_map = np.array([self.argmax_map, np.ones_like(self.argmax_map), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
+            argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
+            #argmax_map /= np.max(np.max(argmax_map, axis=0), axis=0)*2
+            #self.hsv_map = np.array([argmax_map, np.ones_like(argmax_map), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
+
+            self.cmap = self.create_cmaps(rot=1./2)
+            self.hsv_map = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map, self.cmap)
 
         if self._transformed:
             if self.tf_hsv_map is None:
@@ -342,8 +365,10 @@ class FM_ops():
             z_max_all = np.argmax(red_channel, axis=2)
 
             argmax_map_no_tilt = z_max_all - z_plane
-            argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
-            self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
+            #argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
+            #self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
+            self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map_no_tilt, self.cmap)
+
 
         if self._transformed:
             if self.tf_hsv_map_no_tilt is None:
