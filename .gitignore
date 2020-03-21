@@ -6,8 +6,11 @@ __pycache__/
 *.mdoc
 *.lif
 *.lifext
+*.npy
+*.h5
 data
 old
+
 #projects
 test
 
