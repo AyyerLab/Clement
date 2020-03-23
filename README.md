@@ -1,4 +1,5 @@
 # Clement
+[![PyPI version](https://badge.fury.io/py/clement.svg)](https://badge.fury.io/py/clement)
 ## GUI for Correlative Light and Electron Microscopy
 A graphical program to correlate electron microscopy and fluorescent optical images of the same sample.
 
