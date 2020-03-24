@@ -12,7 +12,6 @@ import read_lif
 
 class FM_ops():
     def __init__(self):
-      
         self._show_max_proj = False
         self._orig_points = None
         self._transformed = False
@@ -269,14 +268,12 @@ class FM_ops():
         else:
             self.peaks_2d = np.array(ndi.center_of_mass(img, labels_red, range(num_red)))
         
-
     def wshed_peaks(self, img, threshold=0):
         labels = morphology.label(img>=threshold, connectivity=1)
         morphology.remove_small_objects(labels, 50, connectivity=1, in_place=True)
         print('Number of peaks found: ', labels.max())
         wshed = morphology.watershed(-img*(labels>0),labels,compactness=0.5, watershed_line=True)
         self.peaks_2d = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels>0)*wshed, img)]))
-
 
     def colorize2d(self, brightness, zvals, cmap_funcs):
         hfunc, sfunc, vfunc = cmap_funcs
@@ -289,10 +286,10 @@ class FM_ops():
         return hsv
 
     def create_cmaps(self, rot=0.):
-        points = np.array([[0,0],[0,1],[0.5,0],[0.5,1],[1,0],[1,1]])
-        hue = (points[:,0]*2+3)/6. + rot
+        points = np.array([[0,0],[1,0],[0,0.5],[1,0.5],[0,1],[1,1]])
+        hue = (points[:,1]*2+3)/6. + rot
         sat = np.array([1., 1., 1./3, 1./3, 1., 1.])
-        val = points[:,1]
+        val = points[:,0]
         hfunc = interpolate.LinearNDInterpolator(points, hue)
         sfunc = interpolate.CloughTocher2DInterpolator(points, sat)
         vfunc = interpolate.LinearNDInterpolator(points, val)
