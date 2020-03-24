@@ -13,11 +13,7 @@ from .peak_finding import Peak_finding
 
 class FM_ops(Peak_finding):
     def __init__(self):
-<<<<<<< HEAD
         super(FM_ops, self).__init__()
-      
-=======
->>>>>>> f4abaa60a8bd3094132829c6b006c76b5e03d0f9
         self._show_max_proj = False
         self._orig_points = None
         self._transformed = False
