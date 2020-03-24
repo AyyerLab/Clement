@@ -322,12 +322,11 @@ class FM_ops(Peak_finding):
             refined_tmp = False
         if self.hsv_map_no_tilt is None:
             if self.peaks_2d is None:
-                avg_max = np.sort(self.max_proj_data.ravel())[-100:].mean()
-                self.wshed_peaks(self.max_proj_data[:,:,-1], threshold=0.35*avg_max)
-
+                self.peak_finding(self.max_proj_data[:,:,-1])
             red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
-            z_max_peaks = np.argmax(red_channel[self.peaks_2d[:,0].astype(int), self.peaks_2d[:,1].astype(int)], axis=1)
-            self.peaks_3d = np.concatenate((self.peaks_2d, np.expand_dims(z_max_peaks, axis=1)), axis=1)
+            self.calc_z_position(red_channel)
+            #z_max_peaks = np.argmax(red_channel[self.peaks_2d[:,0].astype(int), self.peaks_2d[:,1].astype(int)], axis=1)
+            #self.peaks_3d = np.concatenate((self.peaks_2d, np.expand_dims(z_max_peaks, axis=1)), axis=1)
             # fit plane to peaks with least squares to remove tilt
             A = np.array([self.peaks_2d[:,0], self.peaks_2d[:,1], np.ones_like(self.peaks_2d[:,0])]).T #matrix
             beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_3d[:,2], axis=1)) #params

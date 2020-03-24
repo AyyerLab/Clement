@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.ndimage as ndi
+from scipy.optimize import curve_fit
 import time
 from skimage import measure, morphology
 import read_lif
@@ -24,7 +25,6 @@ class Peak_finding():
         img[img < self.threshold] = 0
 
         labels, num_objects = ndi.label(img)
-        print(num_objects)
         label_size = np.bincount(labels.ravel())
 
         # single photons and no noise
@@ -44,7 +44,6 @@ class Peak_finding():
             labels_mp = label_mask_mp * labels
             labels_mp, n_m = ndi.label(labels_mp)
             for i in range(1, sum(mask_mp) + 1):
-                print(i)
                 slice_x, slice_y = ndi.find_objects(labels_mp == i)[0]
                 roi_i = np.copy(img[slice_x, slice_y])
                 max_i = np.max(roi_i)
@@ -52,7 +51,6 @@ class Peak_finding():
                 multiple = False
                 coor_tmp = np.array(ndi.center_of_mass(roi_i, ndi.label(roi_i)[0]))
                 for k in range(1, self.flood_steps + 1):
-                    print(k)
                     new_threshold = self.threshold + k * step
                     roi_i[roi_i < new_threshold] = 0
                     labels_roi, n_i = ndi.label(roi_i)
@@ -73,27 +71,47 @@ class Peak_finding():
                     coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
 
         coor = np.array(coor_sp)
-
         if roi:
             return np.round(coor)
         else:
             self.peaks_2d = np.round(coor)
         end = time.time()
         print('duration: ', end-start)
+        print('Number of peaks found: ', self.peaks_2d.shape[0])
 
 
     def wshed_peaks(self, img):
         if self.threshold == 0:
             self.threshold = 0.1 * np.sort(img.ravel())[-100:].mean()
-
         print(self.threshold)
-
         labels = morphology.label(img >= self.threshold, connectivity=1)
         morphology.remove_small_objects(labels, self.pixel_lower_threshold, connectivity=1, in_place=True)
         wshed = morphology.watershed(-img * (labels > 0), labels)
         self.peaks_2d = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels > 0) * wshed, img)]))
 
 
+    def calc_z_position(self, data):
+        gauss = lambda x, a, mu, sigma : a * np.exp(-(x-mu)**2 / (2*sigma**2))
+        z_profile = data[self.peaks_2d[:, 0].astype(int), self.peaks_2d[:, 1].astype(int)]
+        z_max = np.argmax(z_profile, axis=1)
+        z_shifted = np.zeros((z_profile.shape[0], z_profile.shape[1]*2))
+        x = np.arange(z_shifted.shape[1])
+        mean_values = np.zeros((z_shifted.shape[0],1))
+        go = time.time()
+        for i in range(z_profile.shape[0]):
+            start = z_profile.shape[1] - z_max[i]
+            stop = start + z_profile.shape[1]
+            z_shifted[i, start:stop] = (z_profile[i,:] - z_profile[i,:].min()) / (z_profile[i,:].max() - z_profile[i,:].min())
+            for k in range(z_shifted.shape[1]):
+                if z_shifted[i, k] == 0:
+                    z_shifted[i, k] = z_shifted[i, -k]
+            popt_i, pcov_i = curve_fit(gauss, x, z_shifted[i], p0=[1, 31, 1])
+            mean_values[i] = popt_i[1]-start
+
+        self.peaks_3d = np.concatenate((self.peaks_2d, mean_values), axis=1)
+
+        no = time.time()
+        print('Duration:', no-go)
 
 
 if __name__ == '__main__':
