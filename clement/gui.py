@@ -144,7 +144,7 @@ class GUI(QtGui.QMainWindow):
         self.em = self.emcontrols.ops 
         
         if self.fm is not None and self.em is not None:
-            if self.fm._tf_points is not None and self.em._tf_points is not None:
+            if self.fm._tf_points is not None and (self.em._tf_points is not None or self.em._tf_points_region is not None):
                 self.fm.calc_merge_matrix(self.em.data, self.em.points)
                 if self.popup is not None:
                     self.popup.close()
