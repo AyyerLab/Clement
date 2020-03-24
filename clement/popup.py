@@ -315,7 +315,7 @@ class Merge(QtGui.QMainWindow,):
                 self.annotations_popup = []
                 self.counter_popup = 0
                 self.stage_positions_popup = None
-        else:
+        elif self.data_popup is not None:
             size = 0.01 * self.data_popup.shape[0]
             coordinates = [np.array([point.x()+size/2,point.y()+size/2]) for point in self._clicked_points_popup]
             self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates)
