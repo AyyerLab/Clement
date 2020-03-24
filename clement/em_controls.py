@@ -58,7 +58,7 @@ class EMControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Grid transform:', self)
         line.addWidget(label)
-        self.define_btn = QtWidgets.QPushButton('Define Grid', self)
+        self.define_btn = QtWidgets.QPushButton('Define grid box', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(self._define_grid_toggled)
         self.define_btn.setEnabled(False)

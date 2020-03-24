@@ -462,23 +462,20 @@ class FMControls(BaseControls):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _find_peaks(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             print(self.ops.data.shape)
             if self.peak_btn.isChecked():
-                if self.ops.peaks_2d is None:
-                    if self.ops.data.ndim>2:
-                        fm_max = np.copy(self.ops.data[:,:,-1])
-                    else:
-                        fm_max = np.copy(self.ops.data)
+                #if self.ops.peaks_2d is None:
+                if self.ops.data.ndim>2:
+                    fm_max = np.copy(self.ops.data[:,:,-1])
+                else:
+                    fm_max = np.copy(self.ops.data)
 
-                    fm_max_sorted = np.sort(fm_max.ravel())
-                    avg_max = np.mean(fm_max_sorted[-100:])
-                    #fm_max[fm_max<0.2*avg_max] = 0
+                self.ops.peak_finding(fm_max)
+                #self.ops.wshed_peaks(fm_max)
 
-                    #self.ops.peak_finding(fm_max, threshold=0.2*avg_max)
-                    self.ops.wshed_peaks(fm_max, threshold=0.35*avg_max)
-
-                print(len(self.ops.peaks_2d))
+                print(self.ops.peaks_2d.shape)
                 for i in range(len(self.ops.peaks_2d)):
                     pos = QtCore.QPointF(self.ops.peaks_2d[i][0]-self.size_ops/2, self.ops.peaks_2d[i][1]-self.size_ops/2)
                     point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
@@ -491,8 +488,11 @@ class FMControls(BaseControls):
 
         else:
             print('You have to select the data first!')
+        QtWidgets.QApplication.restoreOverrideCursor()
+
 
     def _calc_shift(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         print('Align color channels')
         if self.ops is not None:
             if self.align_btn.isChecked():
@@ -502,25 +502,25 @@ class FMControls(BaseControls):
                     undo_max_proj = True
 
                 if self._shift is None:
-                    red = np.copy(self.ops.data[:,:,-1])
-                    red_sorted = np.sort(red.ravel())
-                    red_max = np.mean(red_sorted[-100:])
-                    red[red<0.2*red_max] = 0
-                    red_coor = self.ops.peak_finding(red)
+                    fm_max = np.copy(self.ops.data[:, :, -1])
+                    if self.ops.peaks_2d is None:
+                        self.ops.peak_finding(fm_max)
+                        #self.ops.wshed_peaks(fm_max)
 
                     roi_size = 40
                     green_coor = []
-                    for i in range(len(red_coor)):
-                        roi_min_0 = int(red_coor[i][0]-roi_size//2) if int(red_coor[i][0]-roi_size//2) > 0 else 0
-                        roi_min_1 = int(red_coor[i][1]-roi_size//2) if int(red_coor[i][1]-roi_size//2) > 0 else 0
-                        roi_max_0 = int(red_coor[i][0]+roi_size//2) if int(red_coor[i][0]+roi_size//2) < red.shape[0] else red.shape[0]
-                        roi_max_1 = int(red_coor[i][1]+roi_size//2) if int(red_coor[i][1]+roi_size//2) < red.shape[1] else red.shape[1]
+                    for i in range(len(self.ops.peaks_2d)):
+                        roi_min_0 = int(self.ops.peaks_2d[i][0]-roi_size//2) if int(self.ops.peaks_2d[i][0]-roi_size//2) > 0 else 0
+                        roi_min_1 = int(self.ops.peaks_2d[i][1]-roi_size//2) if int(self.ops.peaks_2d[i][1]-roi_size//2) > 0 else 0
+                        roi_max_0 = int(self.ops.peaks_2d[i][0]+roi_size//2) if int(self.ops.peaks_2d[i][0]+roi_size//2) < fm_max.shape[0] else fm_max.shape[0]
+                        roi_max_1 = int(self.ops.peaks_2d[i][1]+roi_size//2) if int(self.ops.peaks_2d[i][1]+roi_size//2) < fm_max.shape[1] else fm_max.shape[1]
                         green_coor_i = self.ops.peak_finding(self.ops.data[:,:,-2][roi_min_0:roi_max_0, roi_min_1:roi_max_1], roi=True)
-                        green_coor_0 = green_coor_i[0]+red_coor[i][0]-roi_size//2 if green_coor_i[0]+red_coor[i][0]-roi_size//2 > 0 else green_coor_i[0] 
-                        green_coor_1 = green_coor_i[1]+red_coor[i][1]-roi_size//2 if green_coor_i[0]+red_coor[i][0]-roi_size//2 > 0 else green_coor_i[1] 
+                        #green_coor_i = self.ops.wshed_peaks(self.ops.data[:,:,-2][roi_min_0:roi_max_0, roi_min_1:roi_max_1], roi=True)
+                        green_coor_0 = green_coor_i[0]+self.ops.peaks_2d[i][0]-roi_size//2 if green_coor_i[0]+self.ops.peaks_2d[i][0]-roi_size//2 > 0 else green_coor_i[0]
+                        green_coor_1 = green_coor_i[1]+self.ops.peaks_2d[i][1]-roi_size//2 if green_coor_i[0]+self.ops.peaks_2d[i][0]-roi_size//2 > 0 else green_coor_i[1]
                         green_coor.append((green_coor_0,green_coor_1))
 
-                    self._shift = np.median((np.array(green_coor)-np.array(red_coor)), axis=0)
+                    self._shift = np.median((np.array(green_coor)-np.array(self.ops.peaks_2d)), axis=0)
                     if undo_max_proj:
                         self.max_proj_btn.setChecked(False)
                 
@@ -531,6 +531,7 @@ class FMControls(BaseControls):
             self._update_imview()
         else:
             print('You have to select the data first!')
+        QtWidgets.QApplication.restoreOverrideCursor()
 
         # TODO fix this
         '''

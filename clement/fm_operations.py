@@ -9,9 +9,11 @@ from scipy import interpolate
 from skimage import transform as tf
 from skimage import measure, morphology, io
 import read_lif
+from .peak_finding import Peak_finding
 
-class FM_ops():
+class FM_ops(Peak_finding):
     def __init__(self):
+        super(FM_ops, self).__init__()
       
         self._show_max_proj = False
         self._orig_points = None
@@ -37,9 +39,6 @@ class FM_ops():
         self.transp_matrix = np.array([[0,1,0],[1,0,0],[0,0,1]])
         self.rot_matrix = np.array([[0,1,0],[-1,0,0],[0,0,1]])
         self.flip_matrix = np.identity(3)
-        self.peaks_2d = None
-        self.peaks_3d = None
-        #self.coordinates = []
         self.threshold = 0
         self.max_shift = 10
         self.matches = []
@@ -254,30 +253,6 @@ class FM_ops():
         if refined_tmp:
             self.refined = True
 
-    def peak_finding(self, img, threshold=0, roi=False, label_min_size=1, label_max_size=1000):
-        img[img<threshold] = 0
-        labels, num_obj = ndi.label(img)
-        label_size = np.bincount(labels.ravel())
-        mask = np.where((label_size >= label_min_size) & (label_size < label_max_size), True, False)
-        label_mask = mask[labels.ravel()].reshape(labels.shape)
-        labels_red, num_red = ndi.label(label_mask * labels)
-        print('num_red: ', num_red)
-        
-        if roi:
-            coor = np.array(ndi.center_of_mass(img, labels, labels.max()))
-            return coor
-        else:
-            self.peaks_2d = np.array(ndi.center_of_mass(img, labels_red, range(num_red)))
-        
-
-    def wshed_peaks(self, img, threshold=0):
-        labels = morphology.label(img>=threshold, connectivity=1)
-        morphology.remove_small_objects(labels, 50, connectivity=1, in_place=True)
-        print('Number of peaks found: ', labels.max())
-        wshed = morphology.watershed(-img*(labels>0),labels,compactness=0.5, watershed_line=True)
-        self.peaks_2d = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels>0)*wshed, img)]))
-
-
     def colorize2d(self, brightness, zvals, cmap_funcs):
         hfunc, sfunc, vfunc = cmap_funcs
         nb = (brightness-brightness.min()) / (brightness.max()-brightness.min())
@@ -319,6 +294,8 @@ class FM_ops():
             #self.hsv_map = np.array([argmax_map, np.ones_like(argmax_map), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
 
             self.cmap = self.create_cmaps(rot=1./2)
+            hsv_data = np.array([self.max_proj_data[:,:,-1], argmax_map, self.cmap])
+            np.save('hsv_data.npy', hsv_data)
             self.hsv_map = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map, self.cmap)
 
         if self._transformed:
