@@ -13,8 +13,11 @@ from .peak_finding import Peak_finding
 
 class FM_ops(Peak_finding):
     def __init__(self):
+<<<<<<< HEAD
         super(FM_ops, self).__init__()
       
+=======
+>>>>>>> f4abaa60a8bd3094132829c6b006c76b5e03d0f9
         self._show_max_proj = False
         self._orig_points = None
         self._transformed = False
@@ -264,10 +267,10 @@ class FM_ops(Peak_finding):
         return hsv
 
     def create_cmaps(self, rot=0.):
-        points = np.array([[0,0],[0,1],[0.5,0],[0.5,1],[1,0],[1,1]])
-        hue = (points[:,0]*2+3)/6. + rot
+        points = np.array([[0,0],[1,0],[0,0.5],[1,0.5],[0,1],[1,1]])
+        hue = (points[:,1]*2+3)/6. + rot
         sat = np.array([1., 1., 1./3, 1./3, 1., 1.])
-        val = points[:,1]
+        val = points[:,0]
         hfunc = interpolate.LinearNDInterpolator(points, hue)
         sfunc = interpolate.CloughTocher2DInterpolator(points, sat)
         vfunc = interpolate.LinearNDInterpolator(points, val)
