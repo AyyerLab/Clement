@@ -12,7 +12,7 @@ dependencies:
   - numexpr
   - pip
   - git
-  - h5py
+  - pyyaml
   - pip:
     - mrcfile
     - read-lif
