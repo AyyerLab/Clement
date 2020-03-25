@@ -97,17 +97,23 @@ class Peak_finding():
         z_shifted = np.zeros((z_profile.shape[0], z_profile.shape[1]*2))
         x = np.arange(z_shifted.shape[1])
         mean_values = np.zeros((z_shifted.shape[0],1))
+        shifts = []
         go = time.time()
         for i in range(z_profile.shape[0]):
             start = z_profile.shape[1] - z_max[i]
+            shifts.append(start)
             stop = start + z_profile.shape[1]
             z_shifted[i, start:stop] = (z_profile[i,:] - z_profile[i,:].min()) / (z_profile[i,:].max() - z_profile[i,:].min())
             for k in range(z_shifted.shape[1]):
                 if z_shifted[i, k] == 0:
                     z_shifted[i, k] = z_shifted[i, -k]
-            popt_i, pcov_i = curve_fit(gauss, x, z_shifted[i], p0=[1, 31, 1])
-            mean_values[i] = popt_i[1]-start
-
+        z_avg = z_shifted.mean(0)
+        popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, 31, 1])
+        gauss_stat = lambda x, mu : popt[0] * np.exp(-(x-mu)**2 / (2*popt[2]**2))
+        for i in range(z_shifted.shape[0]):
+            popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=popt[1])
+            mean_values[i] = popt_i[0]-shifts[i]
+        print(mean_values)
         self.peaks_3d = np.concatenate((self.peaks_2d, mean_values), axis=1)
 
         no = time.time()
