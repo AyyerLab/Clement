@@ -340,6 +340,7 @@ class FM_ops(Peak_finding):
             z_max_all = np.argmax(red_channel, axis=2)
 
             argmax_map_no_tilt = z_max_all - z_plane
+            print(argmax_map_no_tilt[self.peaks_2d[:,0].astype(int), self.peaks_2d[:,1].astype(int)])
             #argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
             #self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
             self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map_no_tilt, self.cmap)

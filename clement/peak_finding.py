@@ -109,10 +109,10 @@ class Peak_finding():
                     z_shifted[i, k] = z_shifted[i, -k]
         z_avg = z_shifted.mean(0)
         popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, 31, 1])
-        gauss_stat = lambda x, mu : popt[0] * np.exp(-(x-mu)**2 / (2*popt[2]**2))
+        gauss_stat = lambda x, a, mu : a * np.exp(-(x-mu)**2 / (2*popt[2]**2))
         for i in range(z_shifted.shape[0]):
-            popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=popt[1])
-            mean_values[i] = popt_i[0]-shifts[i]
+            popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
+            mean_values[i] = popt_i[1]-shifts[i]
         print(mean_values)
         self.peaks_3d = np.concatenate((self.peaks_2d, mean_values), axis=1)
 
