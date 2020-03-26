@@ -92,7 +92,7 @@ class GUI(QtGui.QMainWindow):
         self.emcontrols = EMControls(self.tem_imview, vbox_2d)
         self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_2d.addWidget(self.emcontrols)
-        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d)
+        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops)
         self.fibcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_3d.addWidget(self.fibcontrols)
 
@@ -175,9 +175,10 @@ class GUI(QtGui.QMainWindow):
         else:
             self.em_imview.setCurrentIndex(1)
             self.fibcontrols._update_imview()
+            self.fibcontrols.sem_ops = self.emcontrols.ops
             self.fmcontrols.other = self.fibcontrols
             if self.emcontrols.ops is not None:
-                if self.emcontrols.ops._tf_points is not None or self.emcontrols.ops._tf_points_region is not None:
+                if self.emcontrols.ops.points is not None:
                     self.fibcontrols.enable_buttons(enable=True)
                 else:
                     self.fibcontrols.enable_buttons(enable=False)

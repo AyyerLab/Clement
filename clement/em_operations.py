@@ -52,6 +52,8 @@ class EM_ops():
         self.cum_matrix = None
         self.dimension = None
 
+        self.fib_matrix = None
+
     def parse(self, fname, step):
         if '.tif' in fname or '.tiff' in fname:
             self.data = np.array(io.imread(fname))
@@ -115,6 +117,8 @@ class EM_ops():
 
     def transpose(self):
         self.data = self.data.T
+        if self.points is not None:
+            self.points = np.flip(self.points, axis=1)
 
     def toggle_original(self):
         if self.assembled:
@@ -278,6 +282,27 @@ class EM_ops():
         else:
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
+
+    def calc_fib_transform(self, sigma_angle):
+        flat_angle = sigma_angle - 7
+        total_angle = (90 - flat_angle) * np.pi / 180
+        self.fib_matrix = np.array([[np.cos(total_angle), 0, np.sin(total_angle), 0],
+                                    [0, 1, 0, 0],
+                                    [-np.sin(total_angle), 0, np.cos(total_angle), 0],
+                                    [0, 0, 0, 1]])
+
+
+    def apply_fib_transform(self, points):
+        if points.shape[-1] == 2:
+            src = np.zeros((points.shape[0], 4))
+            dst = np.zeros_like(src)
+            for i in range(points.shape[0]):
+                src[i,:] = [points[i,0], points[i,1], 0, 1]
+                dst[i,:] = self.fib_matrix @ src[i,:]
+
+            self.points = np.copy(dst)
+
+
 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)

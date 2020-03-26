@@ -52,6 +52,7 @@ class EMControls(BaseControls):
         line.addWidget(self.assemble_btn)
         self.transp_btn = QtWidgets.QCheckBox('Transpose', self)
         self.transp_btn.clicked.connect(self._transpose)
+        self.transp_btn.setEnabled(False)
         line.addWidget(self.transp_btn)
 
         # ---- Define and align to grid
@@ -174,6 +175,7 @@ class EMControls(BaseControls):
             self.show_btn.setChecked(True)
             self.show_btn.setEnabled(True)
             self.transform_btn.setEnabled(False)
+            self.transp_btn.setEnabled(True)
             if self.tr_grid_box is not None:
                 self.imview.removeItem(self.tr_grid_box)
             if self.grid_box is not None:

@@ -9,11 +9,12 @@ from .base_controls import BaseControls
 from .em_operations import EM_ops
 
 class FIBControls(BaseControls):
-    def __init__(self, imview, vbox):
+    def __init__(self, imview, vbox, sem_ops):
         super(FIBControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
+        self.sem_ops = sem_ops
         self.fib = None
 
         self.show_grid_box = False
@@ -22,8 +23,7 @@ class FIBControls(BaseControls):
 
         self._curr_folder = None
         self._file_name = None
-        self._downsampling = None
-        self._select_region_original = True
+        self._sigma_angle = None
 
         self._init_ui(vbox)
 
@@ -39,11 +39,24 @@ class FIBControls(BaseControls):
 
         self.transp_btn = QtWidgets.QCheckBox('Transpose', self)
         self.transp_btn.clicked.connect(self._transpose)
+        self.transp_btn.setEnabled(False)
         line.addWidget(self.transp_btn)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid transform:', self)
+        label = QtWidgets.QLabel('Angles:', self)
+        line.addWidget(label)
+
+        label = QtWidgets.QLabel('Sigma:', self)
+        line.addWidget(label, stretch=1)
+        self.sigma_btn = QtWidgets.QLineEdit(self)
+        self.sigma_btn.setText('20')
+        self._sigma_angle = int(self.sigma_btn.text())
+        line.addWidget(self.sigma_btn)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Grid box:')
         line.addWidget(label)
         self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
         self.show_grid_btn.setEnabled(False)
@@ -93,7 +106,9 @@ class FIBControls(BaseControls):
             self.ops.parse(self.mrc_fname.text(), step=1)
             self.imview.setImage(self.ops.data)
             self.grid_box = None
-            self.show_grid_btn.setEnabled(False)
+            self.transp_btn.setEnabled(True)
+            if self.sem_ops is not None and self.sem_ops.points is not None:
+                self.show_grid_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
             QtWidgets.QApplication.restoreOverrideCursor()
         else:
@@ -115,17 +130,29 @@ class FIBControls(BaseControls):
         self._update_imview()
 
     def enable_buttons(self, enable=False):
-        self.show_grid_btn.setEnabled(enable)
-        self.select_btn.setEnabled(enable)
+        if self.ops is not None and self.ops.data is not None:
+            self.show_grid_btn.setEnabled(enable)
+            self.select_btn.setEnabled(enable)
 
     def _show_grid(self, state):
-        if self.grid_box is not None:
-            if self.show_grid_btn.isChecked():
-                self.show_grid_box = True
-                self.imview.addItem(self.grid_box)
-            else:
-                self.imview.removeItem(self.grid_box)
-                self.show_grid_box = False
+        if self.show_grid_btn.isChecked():
+            if self.grid_box is None:
+                self._recalc_grid()
+            self.show_grid_box = True
+            self.imview.addItem(self.grid_box)
+        else:
+            self.imview.removeItem(self.grid_box)
+            self.show_grid_box = False
+
+    def _recalc_grid(self):
+        if self.ops.points is None:
+            if self.ops.fib_matrix is None:
+                self.ops.calc_fib_transform(int(self.sigma_btn.text()))
+            self.ops.apply_fib_transform(self.sem_ops._orig_points)
+
+        pos = list(self.ops.points)
+        self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
+        self.imview.addItem(self.grid_box)
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
