@@ -11,7 +11,6 @@ from skimage import io
 
 class EM_ops():
     def __init__(self):
-        
         self._orig_points = None
         self._transformed = False
         self._tf_points = None
@@ -113,6 +112,9 @@ class EM_ops():
         with mrc.new(fname, overwrite=True) as f:
             f.set_data(self.data)
             f.update_header_stats()
+
+    def transpose(self):
+        self.data = self.data.T
 
     def toggle_original(self):
         if self.assembled:

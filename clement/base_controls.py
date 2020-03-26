@@ -43,6 +43,8 @@ class BaseControls(QtWidgets.QWidget):
         print('This message should not be seen. Please override _init_ui')
 
     def _imview_clicked(self, event):
+
+        print(self)
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
             return
@@ -53,15 +55,15 @@ class BaseControls(QtWidgets.QWidget):
         pos = self.imview.getImageItem().mapFromScene(event.pos())
 
         #self.size_ops = self.ops.data.shape[0]*0.01
-        if self.other.ops is not None:
+        #if self.other.ops is not None:
             #self.size_other = self.other.ops.data.shape[0]*0.005
             #self.size_other = self.size_ops
-            pass
+        #   pass
         item = self.imview.getImageItem()
 
         pos.setX(pos.x() - self.size_ops/2)
         pos.setY(pos.y() - self.size_ops/2)
-        if self.define_btn.isChecked():
+        if hasattr(self, 'define_btn') and self.define_btn.isChecked():
             roi = pg.CircleROI(pos, self.size_ops, parent=item, movable=False)
             roi.setPen(255,0,0)
             roi.removeHandle(0)

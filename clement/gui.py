@@ -54,9 +54,15 @@ class GUI(QtGui.QMainWindow):
         splitter_images.addWidget(self.fm_imview)
 
         # -- EM Image view
-        self.em_imview = pg.ImageView()
-        self.em_imview.ui.roiBtn.hide()
-        self.em_imview.ui.menuBtn.hide()
+        self.em_imview = QtWidgets.QStackedWidget()
+        self.tem_imview = pg.ImageView()
+        self.tem_imview.ui.roiBtn.hide()
+        self.tem_imview.ui.menuBtn.hide()
+        self.fib_imview = pg.ImageView()
+        self.fib_imview.ui.roiBtn.hide()
+        self.fib_imview.ui.menuBtn.hide()
+        self.em_imview.addWidget(self.tem_imview)
+        self.em_imview.addWidget(self.fib_imview)
         splitter_images.addWidget(self.em_imview)
 
         # Options
@@ -83,10 +89,10 @@ class GUI(QtGui.QMainWindow):
         self.tab_2d.setLayout(vbox_2d)
         self.tab_3d.setLayout(vbox_3d)
 
-        self.emcontrols = EMControls(self.em_imview, vbox_2d)
+        self.emcontrols = EMControls(self.tem_imview, vbox_2d)
         self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_2d.addWidget(self.emcontrols)
-        self.fibcontrols = FIBControls(self.em_imview, vbox_3d)
+        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d)
         self.fibcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_3d.addWidget(self.fibcontrols)
 
@@ -94,6 +100,8 @@ class GUI(QtGui.QMainWindow):
         # Connect controllers
         self.emcontrols.quit_button.clicked.connect(self.close)
         self.emcontrols.other = self.fmcontrols
+        self.fibcontrols.quit_button.clicked.connect(self.close)
+        self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
@@ -161,10 +169,18 @@ class GUI(QtGui.QMainWindow):
 
     def select_tab(self, idx):
         if idx == 0:
+            self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
+            self.fmcontrols.other = self.emcontrols
         else:
+            self.em_imview.setCurrentIndex(1)
             self.fibcontrols._update_imview()
-
+            self.fmcontrols.other = self.fibcontrols
+            if self.emcontrols.ops is not None:
+                if self.emcontrols.ops._tf_points is not None or self.emcontrols.ops._tf_points_region is not None:
+                    self.fibcontrols.enable_buttons(enable=True)
+                else:
+                    self.fibcontrols.enable_buttons(enable=False)
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -205,7 +221,7 @@ class GUI(QtGui.QMainWindow):
                 c = (0, 0, 255, 80)
                 bc = (0, 0, 0)
 
-            for imview in [self.em_imview, self.fm_imview]:
+            for imview in [self.fib_imview, self.tem_imview, self.fm_imview]:
                 imview.view.setBackgroundColor(bc)
                 hwidget = imview.getHistogramWidget()
                 hwidget.setBackground(bc)
@@ -231,6 +247,7 @@ class GUI(QtGui.QMainWindow):
         self.settings.setValue('geometry', self.geometry())
         self.settings.setValue('fm_folder', self.fmcontrols.curr_folder)
         self.settings.setValue('em_folder', self.emcontrols.curr_folder)
+        self.settings.setValue('fib_folder', self.fibcontrols.curr_folder)
         event.accept()
 
 def main():

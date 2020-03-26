@@ -50,6 +50,9 @@ class EMControls(BaseControls):
         self.assemble_btn.clicked.connect(self._assemble_mrc)
         self.assemble_btn.setEnabled(False)
         line.addWidget(self.assemble_btn)
+        self.transp_btn = QtWidgets.QCheckBox('Transpose', self)
+        self.transp_btn.clicked.connect(self._transpose)
+        line.addWidget(self.transp_btn)
 
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
@@ -139,20 +142,21 @@ class EMControls(BaseControls):
             self.step_box.setEnabled(True)
 
     def _update_imview(self):
-        old_shape = self.imview.image.shape
-        new_shape = self.ops.data.shape
-        if old_shape == new_shape:
-            vr = self.imview.getImageItem().getViewBox().targetRect()
-        levels = self.imview.getHistogramWidget().item.getLevels()
-        self.imview.setImage(self.ops.data, levels=levels)
-        if old_shape == new_shape:
-            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if self.ops is not None and self.ops.data is not None:
+            old_shape = self.imview.image.shape
+            new_shape = self.ops.data.shape
+            if old_shape == new_shape:
+                vr = self.imview.getImageItem().getViewBox().targetRect()
+            levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.setImage(self.ops.data, levels=levels)
+            if old_shape == new_shape:
+                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-        if self.show_assembled_btn.isChecked():
-            if self.show_boxes:
-                self._show_boxes()
-        else:
-            self.show_boxes = False
+            if self.show_assembled_btn.isChecked():
+                if self.show_boxes:
+                    self._show_boxes()
+            else:
+                self.show_boxes = False
 
     def _assemble_mrc(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -188,8 +192,14 @@ class EMControls(BaseControls):
             self.boxes = []
             self.show_grid_btn.setChecked(False)
         else:
-            print('You have to choose an .mrc file first!')
+            print('You have to choose a file first!')
         QtWidgets.QApplication.restoreOverrideCursor()
+
+
+    def _transpose(self):
+        self.ops.transpose()
+        self._update_imview()
+
 
     def _show_boxes(self):
         if self.ops is None:
