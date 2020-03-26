@@ -255,16 +255,17 @@ class FM_ops(Peak_finding):
     def colorize2d(self, brightness, zvals, cmap_funcs):
         hfunc, sfunc, vfunc = cmap_funcs
         nb = (brightness-brightness.min()) / (brightness.max()-brightness.min())
+        nb2 = (brightness-brightness.min()) * (0.8-0.2) / (brightness.max()-brightness.min()) + 0.2
         nz = (zvals-zvals.min()) / (zvals.max() - zvals.min())
         hsv = np.zeros(brightness.shape + (3,))
-        hsv[:,:,0] = np.fmod(hfunc(nb, nz), 1.)
+        hsv[:,:,0] = np.fmod(hfunc(np.clip(nb2, 0, 1), nz), 1.)
         hsv[:,:,1] = np.clip(sfunc(nb, nz), 0., 1.)
         hsv[:,:,2] = vfunc(nb, nz)
         return hsv
 
     def create_cmaps(self, rot=0.):
         points = np.array([[0,0],[1,0],[0,0.5],[1,0.5],[0,1],[1,1]])
-        hue = (points[:,1]*2+3)/6. + rot
+        hue = (points[:,1]*1.5+3)/6. + rot
         sat = np.array([1., 1., 1./3, 1./3, 1., 1.])
         val = points[:,0]
         hfunc = interpolate.LinearNDInterpolator(points, hue)
