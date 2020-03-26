@@ -9,6 +9,7 @@ import pyqtgraph as pg
 from . import res_styles
 from .em_controls import EMControls
 from .fm_controls import FMControls
+from .fib_controls import FIBControls
 from .project import Project
 from .popup import Merge
 
@@ -66,10 +67,30 @@ class GUI(QtGui.QMainWindow):
         self.fmcontrols = FMControls(self.fm_imview, self.colors)
         self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fmcontrols)
-        self.emcontrols = EMControls(self.em_imview)
-        self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
-        options.addWidget(self.emcontrols)
 
+        vbox = QtWidgets.QVBoxLayout()
+        options.addLayout(vbox)
+        self.tabs = QtWidgets.QTabWidget()
+        self.tab_2d = QtWidgets.QWidget()
+        self.tab_3d = QtWidgets.QWidget()
+        self.tabs.resize(300, 200)
+        self.tabs.addTab(self.tab_2d, 'TEM/SEM')
+        self.tabs.addTab(self.tab_3d, 'FIB')
+        vbox.addWidget(self.tabs)
+
+        vbox_2d = QtWidgets.QVBoxLayout()
+        vbox_3d = QtWidgets.QVBoxLayout()
+        self.tab_2d.setLayout(vbox_2d)
+        self.tab_3d.setLayout(vbox_3d)
+
+        self.emcontrols = EMControls(self.em_imview, vbox_2d)
+        self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
+        vbox_2d.addWidget(self.emcontrols)
+        self.fibcontrols = FIBControls(self.em_imview, vbox_3d)
+        self.fibcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
+        vbox_3d.addWidget(self.fibcontrols)
+
+        self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
         self.emcontrols.quit_button.clicked.connect(self.close)
         self.emcontrols.other = self.fmcontrols
@@ -137,6 +158,13 @@ class GUI(QtGui.QMainWindow):
     
     def _load_p(self):
         self.project._load_project()
+
+    def select_tab(self, idx):
+        if idx == 0:
+            self.emcontrols._update_imview()
+        else:
+            self.fibcontrols._update_imview()
+
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

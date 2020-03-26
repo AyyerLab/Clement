@@ -7,9 +7,9 @@ import pyqtgraph as pg
 from .base_controls import BaseControls
 from .em_operations import EM_ops
 
-class EMControls(BaseControls):
+class FIBControls(BaseControls):
     def __init__(self, imview, vbox):
-        super(EMControls, self).__init__()
+        super(FIBControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
@@ -139,20 +139,21 @@ class EMControls(BaseControls):
             self.step_box.setEnabled(True)
 
     def _update_imview(self):
-        old_shape = self.imview.image.shape
-        new_shape = self.ops.data.shape
-        if old_shape == new_shape:
-            vr = self.imview.getImageItem().getViewBox().targetRect()
-        levels = self.imview.getHistogramWidget().item.getLevels()
-        self.imview.setImage(self.ops.data, levels=levels)
-        if old_shape == new_shape:
-            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if self.ops is not None and self.ops.data is not None:
+            old_shape = self.imview.image.shape
+            new_shape = self.ops.data.shape
+            if old_shape == new_shape:
+                vr = self.imview.getImageItem().getViewBox().targetRect()
+            levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.setImage(self.ops.data, levels=levels)
+            if old_shape == new_shape:
+                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-        if self.show_assembled_btn.isChecked():
-            if self.show_boxes:
-                self._show_boxes()
-        else:
-            self.show_boxes = False
+            if self.show_assembled_btn.isChecked():
+                if self.show_boxes:
+                    self._show_boxes()
+            else:
+                self.show_boxes = False
 
     def _assemble_mrc(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -317,7 +318,7 @@ class EMControls(BaseControls):
             if file_name is not '':
                 self.ops.save_merge(file_name)
         QtWidgets.QApplication.restoreOverrideCursor()
-    
+
     def reset_init(self):
         #self.ops = None
         #self.other = None # The other controls object
@@ -342,9 +343,9 @@ class EMControls(BaseControls):
         self._size_other = 3
         self._refined = False
         self._refine_history = []
-        self._refine_counter = 0 
+        self._refine_counter = 0
         #self._merged = False
-        
+
         self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False
@@ -361,8 +362,8 @@ class EMControls(BaseControls):
 
         self.show_boxes = False
         self._downsampling = None
-        
-        self.step_box.setEnabled(False)   
+
+        self.step_box.setEnabled(False)
         self.assemble_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
@@ -374,5 +375,5 @@ class EMControls(BaseControls):
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
-        
+
         self.ops.__init__()
