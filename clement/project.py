@@ -28,6 +28,7 @@ class Project(QtWidgets.QWidget):
         if file_name is not '':
             self.fm.reset_init()
             self.em.reset_init()
+            self.fib.reset_init()
             self._project_folder = os.path.dirname(file_name)
             with open(file_name, 'r') as f:
                 project = yaml.load(f, Loader=yaml.FullLoader)
@@ -192,7 +193,11 @@ class Project(QtWidgets.QWidget):
         self.fib._file_name = fibdict['File']
         self.fib.mrc_fname.setText(self.fib._file_name)
         self.fib._load_mrc(jump=True)
-        self.fib.transp_btn.setChecked(fibdict['Transpose'])
+        if fibdict['Transpose']:
+            print('hello')
+            self.fib.transp_btn.setEnabled(True)
+            self.fib.transp_btn.setChecked(True)
+            self.fib._transpose() # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
 

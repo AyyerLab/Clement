@@ -22,7 +22,7 @@ class EM_ops():
         self.pixel_size = None
         self.old_fname = None
         self.data = None
-        self.stacked_data = True
+        self.stacked_data = False
         self.orig_region = None
         self.selected_region = None       
         self.tf_region = None
@@ -53,6 +53,8 @@ class EM_ops():
         self.dimension = None
 
         self.fib_matrix = None
+        self.fib_shift = None
+        self.transposed= False
 
     def parse(self, fname, step):
         if '.tif' in fname or '.tiff' in fname:
@@ -116,9 +118,11 @@ class EM_ops():
             f.update_header_stats()
 
     def transpose(self):
+        self.transposed = True
         self.data = self.data.T
         if self.points is not None:
-            self.points = np.flip(self.points, axis=1)
+            self.points = [np.flip(point) for point in self.points]
+
 
     def toggle_original(self):
         if self.assembled:
@@ -283,33 +287,59 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, sigma_angle):
+    def calc_fib_transform(self, sigma_angle, sem_shape):
         flat_angle = sigma_angle - 7
-        total_angle = -(90 - flat_angle) * np.pi / 180
+        total_angle = (90 - flat_angle) * np.pi / 180
         #self.fib_matrix = np.array([[np.cos(total_angle), 0, np.sin(total_angle), 0],
         #                            [0, 1, 0, 0],
         #                            [-np.sin(total_angle), 0, np.cos(total_angle), 0],
         #                            [0, 0, 0, 1]])
-        self.fib_matrix = np.array([[1,0,0,0],
-                                    [0, np.cos(total_angle), -np.sin(total_angle), 0],
-                                    [0, np.sin(total_angle), np.cos(total_angle), 0],
+        #self.fib_matrix = np.array([[1,0,0,0],
+        #                            [0, np.cos(total_angle), -np.sin(total_angle), 0],
+        #                            [0, np.sin(total_angle), np.cos(total_angle), 0],
+        #                            [0,0,0,1]])
+
+        self.fib_matrix = np.array([[np.cos(total_angle), -np.sin(total_angle), 0,0],
+                                    [np.sin(total_angle), np.cos(total_angle), 0, 0],
+                                    [0,0,1,0],
                                     [0,0,0,1]])
 
-
+        print('Fib matrix: ', self.fib_matrix)
+        nx, ny = sem_shape
+        corners = np.array([[0, 0, 1, 1], [nx, 0, 1, 1], [nx, ny, 1, 1], [0, ny, 1, 1]]).T
+        fib_corners = np.dot(self.fib_matrix, corners)
+        print('Corners: ', corners)
+        print('Fib corners: ', fib_corners)
+        self.fib_shift = -fib_corners.min(1)[:3]
+        self.fib_matrix[:3, 3] += self.fib_shift
+        print('Shifted fib matrix: ', self.fib_matrix)
 
     def apply_fib_transform(self, points):
+        print('src points', points)
         if points.shape[-1] == 2:
             src = np.zeros((points.shape[0], 4))
             dst = np.zeros_like(src)
             for i in range(points.shape[0]):
-                src[i,:] = [points[i,0], points[i,1], 0, 1]
+                src[i,:] = [points[i,0], points[i,1], 1, 1]
                 dst[i,:] = self.fib_matrix @ src[i,:]
-            self.points = dst
+            self.points = dst[:, :3]
             self.project_points(dst)
 
     def project_points(self, points):
-       pass
+        px_src = 8.43 * 1e-8
+        py_src = 8.43 * 1e-8
+        px_dst = 5.41 * 1e-8
+        py_dst = 5.41 * 1e-8
+        stretch_factor = np.array([px_dst/px_src, py_dst/py_src,1])
+        self.points *= stretch_factor
+        print('Projected points: ', self.points)
+        self.points[:,0] = self.data.shape[0] - self.points[:,0]
+        self.points[:,1] = self.data.shape[1] - self.points[:,1]
+#        if self.transposed:
+#            self.points = [np.flip(point) for point in self.points]
 
+    # self.transform_shift = -self.tf_corners.min(1)[:2]
+    # pts = np.array([point + self.transform_shift for point in pts])
 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)

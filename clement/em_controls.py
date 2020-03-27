@@ -174,7 +174,7 @@ class EMControls(BaseControls):
             self.define_btn.setEnabled(True)
             self.rot_transform_btn.setEnabled(True)
             self.show_btn.setChecked(True)
-            self.show_btn.setEnabled(True)
+            #self.show_btn.setEnabled(True)
             self.transform_btn.setEnabled(False)
             self.transp_btn.setEnabled(True)
             if self.tr_grid_box is not None:

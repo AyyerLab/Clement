@@ -138,8 +138,7 @@ class FIBControls(BaseControls):
 
     def _show_grid(self, state):
         if self.show_grid_btn.isChecked():
-            if self.grid_box is None:
-                self._recalc_grid()
+            self._recalc_grid()
             self.show_grid_box = True
             self.imview.addItem(self.grid_box)
         else:
@@ -147,10 +146,16 @@ class FIBControls(BaseControls):
             self.show_grid_box = False
 
     def _recalc_grid(self):
-        if self.ops.points is None:
-            if self.ops.fib_matrix is None:
-                self.ops.calc_fib_transform(int(self.sigma_btn.text()))
+        if self.ops.fib_matrix is None:
+            self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape)
+
+        print('sem_ops.points: ', self.sem_ops.points)
+        if self.sem_ops.points is None:
             self.ops.apply_fib_transform(self.sem_ops._orig_points)
+        else:
+            print('hello again')
+            self.ops.apply_fib_transform(self.sem_ops.points)
+
 
         pos = list(self.ops.points)
         self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
@@ -170,40 +175,16 @@ class FIBControls(BaseControls):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def reset_init(self):
-        #self.ops = None
-        #self.other = None # The other controls object
         if self.show_grid_btn.isChecked():
-            if self.ops._transformed:
-                self.imview.removeItem(self.tr_grid_box)
-            else:
-                self.imview.removeItem(self.grid_box)
+           self.imview.removeItem(self.grid_box)
 
-        self._box_coordinate = None
         self._points_corr = []
         self._points_corr_indices= []
-        self._size_ops = 3
-        self._size_other = 3
-        self._refined = False
-        self._refine_history = []
-        self._refine_counter = 0
 
-        self.tr_matrices = None
         self.show_grid_box = False
-        self.show_tr_grid_box = False
-        self.clicked_points = []
         self.grid_box = None
-        self.tr_grid_box = None
-        self.boxes = []
-        self.tr_boxes = []
-        self.original_help = True
-        self.redo_tr = False
-        self.setContentsMargins(0, 0, 0, 0)
-        self.counter = 0
-        self.anno_list = []
-
-        self.show_boxes = False
-        self._downsampling = None
-
+        self.transp_btn.setEnabled(False)
+        self.transp_btn.setChecked(False)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.select_btn.setEnabled(False)

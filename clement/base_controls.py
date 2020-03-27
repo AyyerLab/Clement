@@ -180,6 +180,7 @@ class BaseControls(QtWidgets.QWidget):
                 # If original image
                 if self.show_btn.isChecked():
                     self.grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
+                    self.grid_box.sigRegionChangeFinished.connect(self.store_grid_box_points)
                     # If assembly is an option (EM image)
                     if hasattr(self, 'show_assembled_btn'):
                         if self.show_assembled_btn.isChecked():
@@ -188,6 +189,7 @@ class BaseControls(QtWidgets.QWidget):
                             self.ops._orig_points_region = points
                     else:
                         self.ops._orig_points = points
+                    self.ops.points = points
                 else:
                     self.tr_grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
                 [self.imview.removeItem(roi) for roi in self.clicked_points]
@@ -230,6 +232,19 @@ class BaseControls(QtWidgets.QWidget):
                 print('Recalculating transformed grid...')
                 self.tr_grid_box = poly_line
             self._show_grid(None)
+
+    def store_grid_box_points(self):
+        points_obj = self.grid_box.getState()['points']
+        points = np.array([list((point[0], point[1])) for point in points_obj])
+        if self.show_btn.isChecked():
+            if hasattr(self, 'show_assembled_btn'):
+                if self.show_assembled_btn.isChecked():
+                    self.ops._orig_points = points
+                else:
+                    self.ops._orig_points_region = points
+            else:
+                self.ops._orig_points = points
+            self.ops.points = points
 
     def _show_grid(self, state):
         if self.show_grid_btn.isChecked():

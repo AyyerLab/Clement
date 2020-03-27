@@ -178,7 +178,7 @@ class GUI(QtGui.QMainWindow):
             self.fibcontrols.sem_ops = self.emcontrols.ops
             self.fmcontrols.other = self.fibcontrols
             if self.emcontrols.ops is not None:
-                if self.emcontrols.ops.points is not None:
+                if self.emcontrols.ops._orig_points is not None:
                     self.fibcontrols.enable_buttons(enable=True)
                 else:
                     self.fibcontrols.enable_buttons(enable=False)
