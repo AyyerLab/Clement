@@ -106,7 +106,7 @@ class GUI(QtGui.QMainWindow):
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
         self.popup = None
-        self.project = Project(self.fmcontrols, self.emcontrols, self)
+        self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self)
         # Menu Bar
         self._init_menubar()
 

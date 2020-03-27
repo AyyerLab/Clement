@@ -19,6 +19,7 @@ class FIBControls(BaseControls):
 
         self.show_grid_box = False
         self.grid_box = None
+        self.mrc_fname = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._curr_folder = None
@@ -48,11 +49,11 @@ class FIBControls(BaseControls):
         line.addWidget(label)
 
         label = QtWidgets.QLabel('Sigma:', self)
-        line.addWidget(label, stretch=1)
+        line.addWidget(label)
         self.sigma_btn = QtWidgets.QLineEdit(self)
         self.sigma_btn.setText('20')
         self._sigma_angle = int(self.sigma_btn.text())
-        line.addWidget(self.sigma_btn)
+        line.addWidget(self.sigma_btn, stretch=1)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -87,14 +88,15 @@ class FIBControls(BaseControls):
 
         self.show()
 
-    def _load_mrc(self):
-        if self._curr_folder is None:
-            self._curr_folder = os.getcwd()
-        self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                             'Select .mrc file',
-                                                             self._curr_folder,
-                                                             '*.mrc;;*.tif;;*tiff')
-        self._curr_folder = os.path.dirname(self._file_name)
+    def _load_mrc(self, jump=False):
+        if not jump:
+            if self._curr_folder is None:
+                self._curr_folder = os.getcwd()
+            self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                                 'Select .mrc file',
+                                                                 self._curr_folder,
+                                                                 '*.mrc;;*.tif;;*tiff')
+            self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name is not '':
             self.reset_init()
@@ -107,7 +109,7 @@ class FIBControls(BaseControls):
             self.imview.setImage(self.ops.data)
             self.grid_box = None
             self.transp_btn.setEnabled(True)
-            if self.sem_ops is not None and self.sem_ops.points is not None:
+            if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
             QtWidgets.QApplication.restoreOverrideCursor()

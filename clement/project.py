@@ -7,11 +7,12 @@ from operator import itemgetter
 import yaml
 
 class Project(QtWidgets.QWidget):
-    def __init__(self, fm, em, parent):
+    def __init__(self, fm, em, fib, parent):
         super(Project,self).__init__()
         self._project_folder = None
         self.fm = fm
         self.em = em
+        self.fib = fib
         self.merged = False
         self.popup = None
         self.parent = parent
@@ -32,6 +33,7 @@ class Project(QtWidgets.QWidget):
                 project = yaml.load(f, Loader=yaml.FullLoader)
             self._load_fm(project)
             self._load_em(project)
+            self._load_fib(project)
             self._load_base(project)
 
     def _load_fm(self, project):
@@ -180,6 +182,24 @@ class Project(QtWidgets.QWidget):
         self.em.show_assembled_btn.setChecked(emdict['Show assembled'])
         self.em.show_btn.setChecked(emdict['Show original'])
 
+    def _load_fib(self, project):
+        if 'FIB' not in project:
+            return
+        fibdict = project['FIB']
+        self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
+        self.fib.sem_ops = self.em.ops
+        self.fib._curr_folder = fibdict['Directory']
+        self.fib._file_name = fibdict['File']
+        self.fib.mrc_fname.setText(self.fib._file_name)
+        self.fib._load_mrc(jump=True)
+        self.fib.transp_btn.setChecked(fibdict['Transpose'])
+
+        self.fib.sigma_btn.setText(fibdict['Sigma angle'])
+
+        if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
+            if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
+                self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
+
     def _load_base(self, project):
         try:
             fmdict = project['FM']
@@ -295,11 +315,15 @@ class Project(QtWidgets.QWidget):
                                                              '*.yml')
 
         if file_name is not '':
+            if not '.yml' in file_name:
+                file_name += '.yml'
             project = {}
             if self.fm.ops is not None:
                 self._save_fm(project)
             if self.em.ops is not None:
                 self._save_em(project)
+            if self.fib.ops is not None:
+                self._save_fib(project)
             if self.fm.ops is not None or self.em.ops is not None:
                 project['MERGE'] = {}
                 project['MERGE']['Merged'] = self.merged
@@ -388,10 +412,20 @@ class Project(QtWidgets.QWidget):
         if len(self.em._refine_history) > 0:
             for i in range(len(self.em._refine_history)):
                 points = [[p.pos().x(),p.pos().y()] for p in self.em._refine_history[i][0]]
-                points_corr = emdict['Correlated points {}'.format(i)] = points
+                emdict['Correlated points {}'.format(i)] = points
                 #points_corr.attrs['Circle size EM'] = self.em._size_ops
                 #points_corr.attrs['Circle size FM'] = self.em._size_other
                 emdict['Correlated points indices {}'.format(i)] = self.em._refine_history[i][1]
+
+    def _save_fib(self, project):
+        fibdict = {}
+        project['FIB'] = fibdict
+        fibdict['Tab index'] = self.parent.em_imview.currentIndex()
+        fibdict['Directory'] = self.fib._curr_folder
+        fibdict['File'] = self.fib._file_name
+        fibdict['Sigma angle'] = self.fib.sigma_btn.text()
+        fibdict['Transpose'] = self.fib.transp_btn.isChecked()
+        fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

@@ -285,11 +285,16 @@ class EM_ops():
 
     def calc_fib_transform(self, sigma_angle):
         flat_angle = sigma_angle - 7
-        total_angle = (90 - flat_angle) * np.pi / 180
-        self.fib_matrix = np.array([[np.cos(total_angle), 0, np.sin(total_angle), 0],
-                                    [0, 1, 0, 0],
-                                    [-np.sin(total_angle), 0, np.cos(total_angle), 0],
-                                    [0, 0, 0, 1]])
+        total_angle = -(90 - flat_angle) * np.pi / 180
+        #self.fib_matrix = np.array([[np.cos(total_angle), 0, np.sin(total_angle), 0],
+        #                            [0, 1, 0, 0],
+        #                            [-np.sin(total_angle), 0, np.cos(total_angle), 0],
+        #                            [0, 0, 0, 1]])
+        self.fib_matrix = np.array([[1,0,0,0],
+                                    [0, np.cos(total_angle), -np.sin(total_angle), 0],
+                                    [0, np.sin(total_angle), np.cos(total_angle), 0],
+                                    [0,0,0,1]])
+
 
 
     def apply_fib_transform(self, points):
@@ -299,9 +304,11 @@ class EM_ops():
             for i in range(points.shape[0]):
                 src[i,:] = [points[i,0], points[i,1], 0, 1]
                 dst[i,:] = self.fib_matrix @ src[i,:]
+            self.points = dst
+            self.project_points(dst)
 
-            self.points = np.copy(dst)
-
+    def project_points(self, points):
+       pass
 
 
     def get_selected_region(self, coordinate, transformed):

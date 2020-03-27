@@ -16,6 +16,7 @@ class EMControls(BaseControls):
         self.fib = None
 
         self.show_boxes = False
+        self.mrc_fname = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._curr_folder = None
