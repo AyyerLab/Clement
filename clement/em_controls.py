@@ -201,6 +201,7 @@ class EMControls(BaseControls):
 
     def _transpose(self):
         self.ops.transpose()
+        self._recalc_grid()
         self._update_imview()
 
 

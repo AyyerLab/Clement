@@ -129,6 +129,7 @@ class FIBControls(BaseControls):
 
     def _transpose(self):
         self.ops.transpose()
+        self._recalc_grid()
         self._update_imview()
 
     def enable_buttons(self, enable=False):
@@ -138,28 +139,36 @@ class FIBControls(BaseControls):
 
     def _show_grid(self, state):
         if self.show_grid_btn.isChecked():
-            self._recalc_grid()
+            self._calc_grid()
             self.show_grid_box = True
             self.imview.addItem(self.grid_box)
         else:
             self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
 
-    def _recalc_grid(self):
+    def _calc_grid(self):
         if self.ops.fib_matrix is None:
             self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape)
 
-        print('sem_ops.points: ', self.sem_ops.points)
         if self.sem_ops.points is None:
-            self.ops.apply_fib_transform(self.sem_ops._orig_points)
+            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
         else:
-            print('hello again')
-            self.ops.apply_fib_transform(self.sem_ops.points)
-
+            self.ops.apply_fib_transform(self.sem_ops.points, self.sem_ops.data.shape)
 
         pos = list(self.ops.points)
         self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
         self.imview.addItem(self.grid_box)
+
+    def _recalc_grid(self, toggle_orig=False):
+        if self.ops.points is not None:
+            if self.show_grid_btn.isChecked():
+                self.imview.removeItem(self.grid_box)
+
+            pos = list(self.ops.points)
+            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
+            if self.show_grid_btn.isChecked():
+                self.imview.addItem(self.grid_box)
+
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

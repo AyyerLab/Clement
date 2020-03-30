@@ -54,6 +54,7 @@ class EM_ops():
 
         self.fib_matrix = None
         self.fib_shift = None
+        self.fib_angle = None #angle relative to xy-plane
         self.transposed= False
 
     def parse(self, fname, step):
@@ -120,9 +121,11 @@ class EM_ops():
     def transpose(self):
         self.transposed = True
         self.data = self.data.T
+        print('TRANSPOSE')
+        print(self.points)
         if self.points is not None:
-            self.points = [np.flip(point) for point in self.points]
-
+            self.points = np.array([np.flip(point)for point in self.points])
+        print(self.points)
 
     def toggle_original(self):
         if self.assembled:
@@ -288,58 +291,70 @@ class EM_ops():
         self.toggle_original()
 
     def calc_fib_transform(self, sigma_angle, sem_shape):
-        flat_angle = sigma_angle - 7
-        total_angle = (90 - flat_angle) * np.pi / 180
-        #self.fib_matrix = np.array([[np.cos(total_angle), 0, np.sin(total_angle), 0],
-        #                            [0, 1, 0, 0],
-        #                            [-np.sin(total_angle), 0, np.cos(total_angle), 0],
-        #                            [0, 0, 0, 1]])
-        #self.fib_matrix = np.array([[1,0,0,0],
-        #                            [0, np.cos(total_angle), -np.sin(total_angle), 0],
-        #                            [0, np.sin(total_angle), np.cos(total_angle), 0],
+
+        #phi = -90 * np.pi / 180
+        #self.fib_matrix = np.array([[np.cos(phi), -np.sin(phi), 0,0],
+        #                            [np.sin(phi), np.cos(phi), 0, 0],
+        #                            [0,0,1,0],
         #                            [0,0,0,1]])
 
-        self.fib_matrix = np.array([[np.cos(total_angle), -np.sin(total_angle), 0,0],
-                                    [np.sin(total_angle), np.cos(total_angle), 0, 0],
-                                    [0,0,1,0],
+        #rotate by 77 degrees
+        self.fib_angle = sigma_angle - 7
+        total_angle = (90-self.fib_angle) * np.pi / 180
+        #total_angle = 13 * np.pi/180
+        self.fib_matrix = np.array([[1,0,0,0],
+                                    [0, np.cos(total_angle), -np.sin(total_angle), 0],
+                                    [0, np.sin(total_angle), np.cos(total_angle), 0],
                                     [0,0,0,1]])
 
-        print('Fib matrix: ', self.fib_matrix)
         nx, ny = sem_shape
-        corners = np.array([[0, 0, 1, 1], [nx, 0, 1, 1], [nx, ny, 1, 1], [0, ny, 1, 1]]).T
+        corners = np.array([[0, 0, 0, 1], [nx, 0, 0, 1], [nx, ny, 0, 1], [0, ny, 0, 1]]).T
         fib_corners = np.dot(self.fib_matrix, corners)
         print('Corners: ', corners)
         print('Fib corners: ', fib_corners)
         self.fib_shift = -fib_corners.min(1)[:3]
         self.fib_matrix[:3, 3] += self.fib_shift
         print('Shifted fib matrix: ', self.fib_matrix)
+        print('FIB shift: ', self.fib_shift)
 
-    def apply_fib_transform(self, points):
-        print('src points', points)
+    def apply_fib_transform(self, points, sem_shape):
+        #rotate in-plane by 90 degrees to the left
+        points = np.copy(points)
+        temp = sem_shape[0] - points[:,1]
+        points[:,1] = points[:,0]
+        points[:,0] = temp
+        points[:,0] = sem_shape[0] - points[:,0]
+
+        #3d rotation
+        print('Orig points: \n', points)
         if points.shape[-1] == 2:
             src = np.zeros((points.shape[0], 4))
             dst = np.zeros_like(src)
             for i in range(points.shape[0]):
-                src[i,:] = [points[i,0], points[i,1], 1, 1]
+                src[i,:] = [points[i,0], points[i,1], 0, 1]
                 dst[i,:] = self.fib_matrix @ src[i,:]
-            self.points = dst[:, :3]
-            self.project_points(dst)
+            print('Rotated points: \n', dst[:,:3])
+            self.project_points(dst[:,:3], sem_shape)
 
-    def project_points(self, points):
+    def project_points(self, points, sem_shape):
+        #v1 = np.array([1,0,0])
+        #v2 = np.array([0, np.sin(self.fib_angle*np.pi/180), np.cos(self.fib_angle*np.pi/180)])
+        #normal_vector = np.cross(v1,v2)
+        #normal_vector /= np.linalg.norm(normal_vector)
+        #for i in range(points.shape[0]):
+        #    dist = np.dot(normal_vector, points[i])
+        #    points[i] = points[i] - dist * normal_vector
+
         px_src = 8.43 * 1e-8
         py_src = 8.43 * 1e-8
         px_dst = 5.41 * 1e-8
         py_dst = 5.41 * 1e-8
-        stretch_factor = np.array([px_dst/px_src, py_dst/py_src,1])
-        self.points *= stretch_factor
+        stretch_factor = np.array([px_dst/px_src, py_dst/py_src])
+        self.points = points[:,:2] * stretch_factor
         print('Projected points: ', self.points)
-        self.points[:,0] = self.data.shape[0] - self.points[:,0]
-        self.points[:,1] = self.data.shape[1] - self.points[:,1]
-#        if self.transposed:
-#            self.points = [np.flip(point) for point in self.points]
+        #for i in range(self.points.shape[0]):
+        #    self.points[i,1] += self.data.shape[1]//2
 
-    # self.transform_shift = -self.tf_corners.min(1)[:2]
-    # pts = np.array([point + self.transform_shift for point in pts])
 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
