@@ -172,7 +172,9 @@ class GUI(QtGui.QMainWindow):
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
             self.fmcontrols.other = self.emcontrols
+            self.fibcontrols.fib = False
         else:
+            self.fibcontrols.fib = True
             self.em_imview.setCurrentIndex(1)
             self.fibcontrols._update_imview()
             self.fibcontrols.sem_ops = self.emcontrols.ops
@@ -182,6 +184,10 @@ class GUI(QtGui.QMainWindow):
                     self.fibcontrols.enable_buttons(enable=True)
                 else:
                     self.fibcontrols.enable_buttons(enable=False)
+                if self.emcontrols.ops._tf_points is not None or self.emcontrols.ops._tf_points_region is not None:
+                    if self.fibcontrols.ops is not None:
+                        self.fibcontrols.ops._transformed = True
+                        self.fibcontrols.ops._tf_points = 1
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

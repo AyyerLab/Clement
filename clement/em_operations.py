@@ -291,21 +291,30 @@ class EM_ops():
         self.toggle_original()
 
     def calc_fib_transform(self, sigma_angle, sem_shape):
+        #rotate by 90 degrees in plane
+        phi = 90 * np.pi / 180
+        self.fib_matrix = np.array([[np.cos(phi), -np.sin(phi), 0,0],
+                                    [np.sin(phi), np.cos(phi), 0, 0],
+                                    [0,0,1,0],
+                                    [0,0,0,1]])
 
-        #phi = -90 * np.pi / 180
-        #self.fib_matrix = np.array([[np.cos(phi), -np.sin(phi), 0,0],
-        #                            [np.sin(phi), np.cos(phi), 0, 0],
-        #                            [0,0,1,0],
-        #                            [0,0,0,1]])
+        #flip and scale
+        px_src = 8.43 * 1e-8
+        py_src = 8.43 * 1e-8
+        px_dst = 5.41 * 1e-8
+        py_dst = 5.41 * 1e-8
+        self.fib_matrix = np.array([[-px_dst/px_src, 0, 0, 0],
+                                    [0, py_dst/py_src, 0, 0],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]]) @ self.fib_matrix
 
         #rotate by 77 degrees
         self.fib_angle = sigma_angle - 7
         total_angle = (90-self.fib_angle) * np.pi / 180
-        #total_angle = 13 * np.pi/180
         self.fib_matrix = np.array([[1,0,0,0],
                                     [0, np.cos(total_angle), -np.sin(total_angle), 0],
                                     [0, np.sin(total_angle), np.cos(total_angle), 0],
-                                    [0,0,0,1]])
+                                    [0,0,0,1]]) @ self.fib_matrix
 
         nx, ny = sem_shape
         corners = np.array([[0, 0, 0, 1], [nx, 0, 0, 1], [nx, ny, 0, 1], [0, ny, 0, 1]]).T
@@ -319,11 +328,11 @@ class EM_ops():
 
     def apply_fib_transform(self, points, sem_shape):
         #rotate in-plane by 90 degrees to the left
-        points = np.copy(points)
-        temp = sem_shape[0] - points[:,1]
-        points[:,1] = points[:,0]
-        points[:,0] = temp
-        points[:,0] = sem_shape[0] - points[:,0]
+        #points = np.copy(points)
+        #temp = sem_shape[0] - points[:,1]
+        #points[:,1] = points[:,0]
+        #points[:,0] = temp
+        #points[:,0] = sem_shape[0] - points[:,0]
 
         #3d rotation
         print('Orig points: \n', points)
@@ -334,9 +343,11 @@ class EM_ops():
                 src[i,:] = [points[i,0], points[i,1], 0, 1]
                 dst[i,:] = self.fib_matrix @ src[i,:]
             print('Rotated points: \n', dst[:,:3])
+            self.points = dst[:,:2]
             self.project_points(dst[:,:3], sem_shape)
 
     def project_points(self, points, sem_shape):
+        pass
         #v1 = np.array([1,0,0])
         #v2 = np.array([0, np.sin(self.fib_angle*np.pi/180), np.cos(self.fib_angle*np.pi/180)])
         #normal_vector = np.cross(v1,v2)
@@ -345,13 +356,7 @@ class EM_ops():
         #    dist = np.dot(normal_vector, points[i])
         #    points[i] = points[i] - dist * normal_vector
 
-        px_src = 8.43 * 1e-8
-        py_src = 8.43 * 1e-8
-        px_dst = 5.41 * 1e-8
-        py_dst = 5.41 * 1e-8
-        stretch_factor = np.array([px_dst/px_src, py_dst/py_src])
-        self.points = points[:,:2] * stretch_factor
-        print('Projected points: ', self.points)
+
         #for i in range(self.points.shape[0]):
         #    self.points[i,1] += self.data.shape[1]//2
 
@@ -425,3 +430,9 @@ class EM_ops():
             print('Point length do not match')
             return
         return tf.estimate_transform('affine', source, dest).params
+
+    def get_fib_transform(self, source, dest, sem_transform):
+        fm_to_sem = tf.estimate_transform('affine', source, dest).params
+        inv_tf_sem = np.linalg.inv(sem_transform)
+        return self.fib_matrix[:3,:3] @ inv_tf_sem @ fm_to_sem
+

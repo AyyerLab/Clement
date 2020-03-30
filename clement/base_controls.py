@@ -308,8 +308,15 @@ class BaseControls(QtWidgets.QWidget):
                         self.counter = 0
                         self.other.counter = 0
                 src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-                dst_sorted = np.array(sorted(self.other.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
-                self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+
+                if hasattr(self.other, 'fib') and self.other.fib:
+                    dst_sorted = np.array(
+                        sorted(self.other.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    self.tr_matrices = self.other.ops.get_fib_transform(src_sorted, dst_sorted, self.other.sem_ops.tf_matrix)
+                else:
+                    dst_sorted = np.array(
+                        sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
                 print('Done selecting points of interest on %s image'%self.tag)
         else:

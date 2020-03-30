@@ -15,7 +15,7 @@ class FIBControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.sem_ops = sem_ops
-        self.fib = None
+        self.fib = False
 
         self.show_grid_box = False
         self.grid_box = None
@@ -150,10 +150,7 @@ class FIBControls(BaseControls):
         if self.ops.fib_matrix is None:
             self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape)
 
-        if self.sem_ops.points is None:
-            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
-        else:
-            self.ops.apply_fib_transform(self.sem_ops.points, self.sem_ops.data.shape)
+        self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
 
         pos = list(self.ops.points)
         self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
