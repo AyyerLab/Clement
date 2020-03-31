@@ -331,15 +331,14 @@ class EM_ops():
     def apply_fib_transform(self, points, sem_shape):
         #3d rotation
         print('Orig points: \n', points)
-        if points.shape[-1] == 2:
-            src = np.zeros((points.shape[0], 4))
-            dst = np.zeros_like(src)
-            for i in range(points.shape[0]):
-                src[i,:] = [points[i,0], points[i,1], 0, 1]
-                dst[i,:] = self.fib_matrix @ src[i,:]
-            print('Rotated points: \n', dst[:,:3])
-            self.points = dst[:,:2]
-            self.project_points(dst[:,:3], sem_shape)
+        src = np.zeros((points.shape[0], 4))
+        dst = np.zeros_like(src)
+        for i in range(points.shape[0]):
+            src[i,:] = [points[i,0], points[i,1], 0, 1]
+            dst[i,:] = self.fib_matrix @ src[i,:]
+        print('Rotated points: \n', dst[:,:3])
+        self.points = dst[:,:2]
+        self.project_points(dst[:,:3], sem_shape)
 
     def project_points(self, points, sem_shape):
         pass

@@ -24,6 +24,7 @@ class FM_ops(Peak_finding):
         self.reader = None
         self.tif_data = None
         self.orig_data = None
+        self.channel = None
         self.tf_data = None
         self.max_proj_data = None
         self.num_slices = None
@@ -231,13 +232,7 @@ class FM_ops(Peak_finding):
             refined_tmp = False
 
         if self.max_proj_data is None:
-            if self.reader is None:
-                self.max_proj_data = self.tif_data.max(0)
-                self.max_proj_data /= self.max_proj_data.mean((0,1))
-            else:
-                self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
-                                               for i in range(self.num_channels)]).transpose(1,2,0).astype('f4')
-                self.max_proj_data /= self.max_proj_data.mean((0, 1))
+            self.calc_max_proj_data()
         if self._transformed:
             if self.tf_max_proj_data is None:
                 self.apply_transform()
@@ -251,6 +246,15 @@ class FM_ops(Peak_finding):
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
+
+    def calc_max_proj_data(self):
+        if self.reader is None:
+            self.max_proj_data = self.tif_data.max(0)
+            self.max_proj_data /= self.max_proj_data.mean((0, 1))
+        else:
+            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
+                                           for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
+            self.max_proj_data /= self.max_proj_data.mean((0, 1))
 
     def colorize2d(self, brightness, zvals, cmap_funcs):
         hfunc, sfunc, vfunc = cmap_funcs
@@ -282,17 +286,8 @@ class FM_ops(Peak_finding):
             refined_tmp = False
         if self.hsv_map is None:
             if self.max_proj_data is None:
-                if self.reader is None:
-                    self.max_proj_data = self.tif_data.max(0)
-                    self.max_proj_data /= self.max_proj_data.mean((0, 1))
-                else:
-                    self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
-                                                   for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
-                    self.max_proj_data /= self.max_proj_data.mean((0, 1))
+               self.calc_max_proj_data()
             argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
-            #argmax_map /= np.max(np.max(argmax_map, axis=0), axis=0)*2
-            #self.hsv_map = np.array([argmax_map, np.ones_like(argmax_map), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
-
             self.cmap = self.create_cmaps(rot=1./2)
             hsv_data = np.array([self.max_proj_data[:,:,-1], argmax_map, self.cmap])
             np.save('hsv_data.npy', hsv_data)
@@ -326,8 +321,6 @@ class FM_ops(Peak_finding):
                 self.peak_finding(self.max_proj_data[:,:,-1])
             red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
             self.calc_z_position(red_channel)
-            #z_max_peaks = np.argmax(red_channel[self.peaks_2d[:,0].astype(int), self.peaks_2d[:,1].astype(int)], axis=1)
-            #self.peaks_3d = np.concatenate((self.peaks_2d, np.expand_dims(z_max_peaks, axis=1)), axis=1)
             # fit plane to peaks with least squares to remove tilt
             A = np.array([self.peaks_2d[:,0], self.peaks_2d[:,1], np.ones_like(self.peaks_2d[:,0])]).T #matrix
             beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_3d[:,2], axis=1)) #params
@@ -377,6 +370,24 @@ class FM_ops(Peak_finding):
             print('Selection ambiguous. Try again!')
         else:
             return ind_arr[0]
+
+    def calc_local_z(self, ind, pos, size):
+        z = None
+        if self.peaks_3d is not None:
+            if ind is None:
+                ind = self.check_peak_index(np.array((pos.x(), pos.y())), size)
+            if ind is not None:  # do not replace by else-statement!!!
+                z = self.peaks_3d[ind, 2]
+        if z is None:
+            print('WARNING! Calculation of the z-position might be inaccurate!')
+            z = self.calc_local_z_max(self.channel, np.array((pos.x(), pos.y())))
+        return z
+
+    def load_channel(self, ind):
+        self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4'))
+
+    def clear_channel(self):
+        self.channel = None
 
     def align(self):
         '''

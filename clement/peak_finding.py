@@ -112,12 +112,16 @@ class Peak_finding():
         for i in range(z_shifted.shape[0]):
             popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
             mean_values[i] = popt_i[1]-shifts[i]
-        print(mean_values)
         self.peaks_3d = np.concatenate((self.peaks_2d, mean_values), axis=1)
 
         no = time.time()
         print('Duration:', no-go)
 
+    def calc_local_z_max(self, data, point):
+        z_profile = data[point[0].astype(int), point[1].astype(int)]
+        z_max = np.argmax(z_profile)
+        print('Local z max: ', z_max)
+        return z_max
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt

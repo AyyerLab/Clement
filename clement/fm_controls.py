@@ -485,7 +485,6 @@ class FMControls(BaseControls):
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []
-
         else:
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()

@@ -101,6 +101,7 @@ class BaseControls(QtWidgets.QWidget):
         
         else:
             if self.ops._transformed and self.other.ops._transformed:
+                ind = None
                 if self.tr_matrices is not None:
                     if hasattr(self, 'peak_btn') and self.peak_btn.isChecked():
                         ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1)
@@ -121,8 +122,13 @@ class BaseControls(QtWidgets.QWidget):
 
                     self._points_corr_indices.append(self.counter-1)
 
-                    # Coordinates in clicked image
-                    init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
+                    #Calc z position
+                    if hasattr(self.other, 'fib') and self.other.fib:
+                        z = self.ops.calc_local_z(ind, pos, size1)
+                        #init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, z])
+                        init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
+                    else:
+                        init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
 
                     transf = np.dot(self.tr_matrices, init)
                     pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
@@ -276,8 +282,11 @@ class BaseControls(QtWidgets.QWidget):
                     self.show_tr_grid_box = False
 
     def _define_corr_toggled(self, checked):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+
         if self.ops is None or self.other.ops is None:
             print('Select both data first')
+            QtWidgets.QApplication.restoreOverrideCursor()
             return
 
         condition = False
@@ -293,6 +302,12 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops._tf_points is not None:
                 if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
                     condition = True
+
+        if hasattr(self.other, 'fib') and self.other.fib:
+            if self.other.ops.fib_matrix is None:
+                print('You have to calculate the grid box for the FIB view first!')
+                QtWidgets.QApplication.restoreOverrideCursor()
+                return
 
         if condition:
             if checked:
@@ -318,15 +333,31 @@ class BaseControls(QtWidgets.QWidget):
                     dst_sorted = np.array(
                         sorted(self.other.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.other.ops.get_fib_transform(src_sorted, dst_sorted, self.other.sem_ops.tf_matrix)
+
+                    if self.ops.peaks_3d is None:
+                        print('I will do you a favor and calculate the 3d peak positions. This might take a few seconds ...')
+                        if self.ops.peaks_2d is None:
+                            if self.ops.max_proj_data is None:
+                                self.ops.calc_max_proj_data()
+                            self.ops.peak_finding(self.ops.max_proj_data[:,:,-1])
+                        self.ops.load_channel(ind=3)
+                        self.ops.calc_z_position(self.ops.channel)
+                        self.ops.clear_channel()
+                        print('Done.')
+                    self.ops.load_channel(ind=2)
                 else:
                     dst_sorted = np.array(
                         sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
+                if hasattr(self.other, 'fib') and self.ops.channel is not None:
+                    self.ops.clear_channel()
                 print('Done selecting points of interest on %s image'%self.tag)
         else:
             if checked:
                 print('Select and transform both data first')
+        QtWidgets.QApplication.restoreOverrideCursor()
+
 
     def _affine_transform(self, toggle_orig=True):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

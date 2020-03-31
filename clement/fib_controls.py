@@ -59,7 +59,7 @@ class FIBControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Grid box:')
         line.addWidget(label)
-        self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
+        self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid box',self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
