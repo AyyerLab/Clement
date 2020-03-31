@@ -490,7 +490,6 @@ class FMControls(BaseControls):
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-
     def _calc_shift(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         print('Align color channels')

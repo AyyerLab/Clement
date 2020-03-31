@@ -38,7 +38,6 @@ class BaseControls(QtWidgets.QWidget):
         self.size_ops = 10
         self.size_other = 10
 
-
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
 
@@ -103,6 +102,12 @@ class BaseControls(QtWidgets.QWidget):
         else:
             if self.ops._transformed and self.other.ops._transformed:
                 if self.tr_matrices is not None:
+                    if hasattr(self, 'peak_btn') and self.peak_btn.isChecked():
+                        ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1)
+                        if ind is not None:
+                            pos.setX(self.ops.peaks_2d[ind,0] - size1 / 2)
+                            pos.setY(self.ops.peaks_2d[ind,1] - size1 / 2)
+
                     point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                     point_obj.setPen(0,255,0)
                     point_obj.removeHandle(0)

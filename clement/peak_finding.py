@@ -68,7 +68,6 @@ class Peak_finding():
                                 break
                 if not multiple:
                     coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
-                    coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
 
         coor = np.array(coor_sp)
         if roi:

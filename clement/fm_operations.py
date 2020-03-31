@@ -363,6 +363,20 @@ class FM_ops(Peak_finding):
         if refined_tmp:
             self.refined = True
 
+    def check_peak_index(self, point, size):
+        point += size / 2
+        print(point)
+        diff = self.peaks_2d - point
+        diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
+        ind_arr = np.where(diff_err < size/2)[0]
+        for i in range(len(ind_arr)):
+            print(ind_arr[i])
+        if len(ind_arr) == 0:
+            return None
+        elif len(ind_arr) > 1:
+            print('Selection ambiguous. Try again!')
+        else:
+            return ind_arr[0]
 
     def align(self):
         '''

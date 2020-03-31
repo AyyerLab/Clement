@@ -303,6 +303,8 @@ class EM_ops():
         py_src = 8.43 * 1e-8
         px_dst = 5.41 * 1e-8
         py_dst = 5.41 * 1e-8
+        print('SEM shape: ', sem_shape)
+        print('FIB shape: ', self.data.shape)
         self.fib_matrix = np.array([[-px_dst/px_src, 0, 0, 0],
                                     [0, py_dst/py_src, 0, 0],
                                     [0, 0, 1, 0],
@@ -327,13 +329,6 @@ class EM_ops():
         print('FIB shift: ', self.fib_shift)
 
     def apply_fib_transform(self, points, sem_shape):
-        #rotate in-plane by 90 degrees to the left
-        #points = np.copy(points)
-        #temp = sem_shape[0] - points[:,1]
-        #points[:,1] = points[:,0]
-        #points[:,0] = temp
-        #points[:,0] = sem_shape[0] - points[:,0]
-
         #3d rotation
         print('Orig points: \n', points)
         if points.shape[-1] == 2:
