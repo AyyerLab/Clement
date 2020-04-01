@@ -8,16 +8,26 @@ import read_lif
 
 class Peak_finding():
     def __init__(self, threshold=0, plt=50, put=200):
-        self.peaks_2d = None
+        self.num_slices = None
+        self.peak_slices = None
+        self.tf_peak_slices = None
         self.peaks_3d = None
+        self.tf_peaks_3d = None
         self.pixel_lower_threshold = plt
         self.pixel_upper_threshold = put
         self.flood_steps = 10
         self.threshold = threshold
         self.roi_min_size = 10
 
-    def peak_finding(self, im, roi=False):
+    def peak_finding(self, im, transformed, roi=False, curr_slice=None):
         start = time.time()
+        if not roi:
+            if transformed:
+                if self.tf_peak_slices is None:
+                    self.tf_peak_slices = [None] * (self.num_slices + 1)
+            else:
+                if self.peak_slices is None:
+                    self.peak_slices = [None] * (self.num_slices + 1)
         img = np.copy(im)
         if self.threshold == 0:
             self.threshold = 0.1 * np.sort(img.ravel())[-100:].mean()
@@ -73,10 +83,20 @@ class Peak_finding():
         if roi:
             return np.round(coor)
         else:
-            self.peaks_2d = np.round(coor)
+            peaks_2d = np.round(coor)
+            if transformed:
+                if curr_slice is None:
+                    self.tf_peak_slices[-1] = np.copy(peaks_2d)
+                else:
+                    self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
+            else:
+                if curr_slice is None:
+                    self.peak_slices[-1] = np.copy(peaks_2d)
+                else:
+                    self.peak_slices[curr_slice] = np.copy(peaks_2d)
         end = time.time()
         print('duration: ', end-start)
-        print('Number of peaks found: ', self.peaks_2d.shape[0])
+        print('Number of peaks found: ', peaks_2d.shape[0])
 
 
     def wshed_peaks(self, img):
@@ -88,10 +108,83 @@ class Peak_finding():
         wshed = morphology.watershed(-img * (labels > 0), labels)
         self.peaks_2d = np.round(np.array([r.weighted_centroid for r in measure.regionprops((labels > 0) * wshed, img)]))
 
+    def calc_original_coordinates(self, point, tf_mat, flip, tf_shape):
+        if len(point) == 2:
+            point = np.array([point[0], point[1], 1])
+        if flip is None:
+            flip = [False, False, False, False]  # transp, rot, fliph, flipv
+        transp, rot, fliph, flipv = flip
+        if flipv:
+            point[1] = tf_shape[1] - point[1]
+        if fliph:
+            point[0] = tf_shape[0] - point[0]
+        if rot:
+            temp = tf_shape[0] - 1 - point[0]
+            point[0] = point[1]
+            point[1] = temp
+        if transp:
+            point = np.array([point[1], point[0], 1])
+        inv_point = (np.linalg.inv(tf_mat) @ point)[:2]
+        return inv_point
 
-    def calc_z_position(self, data):
+    def calc_transformed_coordinates(self, tf_mat, flip, tf_shape, slice=None):
+        if self.tf_peak_slices is None:
+            self.tf_peak_slices = [None] * self.num_slices
+        if flip is None:
+            flip = [False, False, False, False]  # transp, rot, fliph, flipv
+        transp, rot, fliph, flipv = flip
+
+        if slice is None:
+            peaks_2d = self.peak_slices[-1]
+        else:
+            peaks_2d = self.peak_slices[slice]
+
+        tf_peaks_2d = np.zeros_like(peaks_2d)
+        for i in range(peaks_2d.shape[0]):
+            point = np.array([peaks_2d[i,0], peaks_2d[i,1], 1])
+            tf_point = (tf_mat @ point)[:2]
+            if transp:
+                tf_point = np.array([tf_point[1], tf_point[0], 1])
+            if rot:
+                temp = tf_shape[0] - 1 - tf_point[1]
+                tf_point[1] = tf_point[0]
+                tf_point[0] = temp
+            if fliph:
+                tf_point[0] = tf_shape[0] - tf_point[0]
+            if flipv:
+                tf_point[1] = tf_shape[1] - tf_point[1]
+
+        if slice is None:
+            self.tf_peak_slices[-1] = tf_peaks_2d
+        else:
+            self.tf_peak_slices[slice] = tf_peaks_2d
+
+    def calc_z_position(self, data, transformed, curr_slice=None, tf_matrix=None, flips=None, shape=None):
+        if transformed:
+            if tf_matrix is None:
+                print('You have to parse the tf_matrix!')
+                return
+            if curr_slice is None:
+                tf_peaks = self.tf_peak_slices[-1]
+            else:
+                tf_peaks = self.tf_peak_slices[curr_slice]
+            peaks_2d = np.zeros_like(tf_peaks)
+            for k in range(tf_peaks.shape[0]):
+                point = np.array([tf_peaks[k, 0], tf_peaks[k, 1], 1])
+                orig_point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
+                peaks_2d[k] = orig_point
+        else:
+            if curr_slice is None:
+                peaks_2d = self.peak_slices[-1]
+            else:
+                peaks_2d = self.peak_slices[curr_slice]
+
+        if peaks_2d is None:
+            print('Calculate 2d peaks first!')
+            return
+
         gauss = lambda x, a, mu, sigma : a * np.exp(-(x-mu)**2 / (2*sigma**2))
-        z_profile = data[self.peaks_2d[:, 0].astype(int), self.peaks_2d[:, 1].astype(int)]
+        z_profile = data[peaks_2d[:, 0].astype(int), peaks_2d[:, 1].astype(int)]
         z_max = np.argmax(z_profile, axis=1)
         z_shifted = np.zeros((z_profile.shape[0], z_profile.shape[1]*2))
         x = np.arange(z_shifted.shape[1])
@@ -112,12 +205,18 @@ class Peak_finding():
         for i in range(z_shifted.shape[0]):
             popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
             mean_values[i] = popt_i[1]-shifts[i]
-        self.peaks_3d = np.concatenate((self.peaks_2d, mean_values), axis=1)
+
+        if transformed:
+            self.tf_peaks_3d = np.concatenate((peaks_2d, mean_values), axis=1)
+        else:
+            self.peaks_3d = np.concatenate((peaks_2d, mean_values), axis=1)
 
         no = time.time()
         print('Duration:', no-go)
 
-    def calc_local_z_max(self, data, point):
+    def calc_local_z_max(self, data, point, transformed, tf_matrix = None, flips=None, shape=None):
+        if transformed:
+            point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
         z_profile = data[point[0].astype(int), point[1].astype(int)]
         z_max = np.argmax(z_profile)
         print('Local z max: ', z_max)

@@ -104,10 +104,11 @@ class BaseControls(QtWidgets.QWidget):
                 ind = None
                 if self.tr_matrices is not None:
                     if hasattr(self, 'peak_btn') and self.peak_btn.isChecked():
-                        ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1)
+                        ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1, transformed=True)
                         if ind is not None:
-                            pos.setX(self.ops.peaks_2d[ind,0] - size1 / 2)
-                            pos.setY(self.ops.peaks_2d[ind,1] - size1 / 2)
+                            peaks_2d = self.ops.tf_peak_slices[-1] if self.max_proj_btn.isChecked() else self.ops.tf_peak_slices[self._current_slice]
+                            pos.setX(peaks_2d[ind,0] - size1 / 2)
+                            pos.setY(peaks_2d[ind,1] - size1 / 2)
 
                     point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                     point_obj.setPen(0,255,0)
@@ -334,14 +335,17 @@ class BaseControls(QtWidgets.QWidget):
                         sorted(self.other.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.other.ops.get_fib_transform(src_sorted, dst_sorted, self.other.sem_ops.tf_matrix)
 
-                    if self.ops.peaks_3d is None:
+                    if self.ops.tf_peaks_3d is None:
                         print('I will do you a favor and calculate the 3d peak positions. This might take a few seconds ...')
-                        if self.ops.peaks_2d is None:
+                        if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
                             if self.ops.max_proj_data is None:
                                 self.ops.calc_max_proj_data()
-                            self.ops.peak_finding(self.ops.max_proj_data[:,:,-1])
+                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                                self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
                         self.ops.load_channel(ind=3)
-                        self.ops.calc_z_position(self.ops.channel)
+                        flip_list = [self.ops.transp, self.ops.rot, self.ops.fliph, self.ops.flipv]
+                        self.ops.calc_z_position(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
+                                                 flips=flip_list, shape=self.ops.data.shape[:-1])
                         self.ops.clear_channel()
                         print('Done.')
                     self.ops.load_channel(ind=2)
@@ -404,6 +408,7 @@ class BaseControls(QtWidgets.QWidget):
         if self.original_help:
             if self.ops is not None:
                 self.ops._transformed = not self.ops._transformed
+                print('Transformed: ',self.ops._transformed)
                 if hasattr(self.ops, 'flipv') and not self.ops._transformed:
                     self.flipv.setEnabled(False)
                     self.fliph.setEnabled(False)
@@ -426,6 +431,12 @@ class BaseControls(QtWidgets.QWidget):
                     self.ops.toggle_original()
                 self._recalc_grid(toggle_orig=True)
 
+                show_peaks = False
+                if hasattr(self, 'peak_btn'):
+                    if self.peak_btn.isChecked():
+                        show_peaks = True
+                        self.peak_btn.setChecked(False)
+
                 self._update_imview()
                 if self.ops._transformed:
                     self.transform_btn.setEnabled(False)
@@ -433,6 +444,9 @@ class BaseControls(QtWidgets.QWidget):
                 else:
                     self.transform_btn.setEnabled(True)
                     self.rot_transform_btn.setEnabled(True)
+
+                if show_peaks:
+                    self.peak_btn.setChecked(True)
 
     def _refine(self):
 

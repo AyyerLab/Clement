@@ -466,18 +466,28 @@ class FMControls(BaseControls):
         if self.ops is not None:
             print(self.ops.data.shape)
             if self.peak_btn.isChecked():
-                #if self.ops.peaks_2d is None:
-                if self.ops.data.ndim>2:
-                    fm_max = np.copy(self.ops.data[:,:,-1])
+                if self.max_proj_btn.isChecked():
+                    if self.ops._transformed:
+                        if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
+                        peaks_2d = self.ops.tf_peak_slices[-1]
+                    else:
+                        if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                            self.ops.peak_finding(self.ops.data[:, :, -1], transformed=False)
+                        peaks_2d = self.ops.peak_slices[-1]
                 else:
-                    fm_max = np.copy(self.ops.data)
+                    if self.ops._transformed:
+                        if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
+                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True, curr_slice=self._current_slice)
+                        peaks_2d = self.ops.tf_peak_slices[self._current_slice]
+                    else:
+                        if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
+                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=False, curr_slice=self._current_slice)
+                        peaks_2d = self.ops.peak_slices[self._current_slice]
 
-                self.ops.peak_finding(fm_max)
-                #self.ops.wshed_peaks(fm_max)
-
-                print(self.ops.peaks_2d.shape)
-                for i in range(len(self.ops.peaks_2d)):
-                    pos = QtCore.QPointF(self.ops.peaks_2d[i][0]-self.size_ops/2, self.ops.peaks_2d[i][1]-self.size_ops/2)
+                print(peaks_2d.shape)
+                for i in range(len(peaks_2d)):
+                    pos = QtCore.QPointF(peaks_2d[i][0]-self.size_ops/2, peaks_2d[i][1]-self.size_ops/2)
                     point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
                     point_obj.removeHandle(0)
                     self.imview.addItem(point_obj)

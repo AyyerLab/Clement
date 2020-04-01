@@ -27,7 +27,6 @@ class FM_ops(Peak_finding):
         self.channel = None
         self.tf_data = None
         self.max_proj_data = None
-        self.num_slices = None
         self.selected_slice = None
         self.data = None
         self.flipv = False
@@ -194,7 +193,7 @@ class FM_ops(Peak_finding):
         if transp:
             points = np.array([np.flip(point) for point in points])
         if rot:
-            temp = self.data.shape[0] - points[:,1]
+            temp = self.data.shape[0] - 1 - points[:,1]
             points[:,1] = points[:,0]
             points[:,0] = temp
         if fliph:
@@ -317,12 +316,14 @@ class FM_ops(Peak_finding):
         else:
             refined_tmp = False
         if self.hsv_map_no_tilt is None:
-            if self.peaks_2d is None:
-                self.peak_finding(self.max_proj_data[:,:,-1])
+            if self.peak_slices is None or self.peak_slices[-1] == 0:
+                self.peak_finding(self.max_proj_data[:,:,-1], transformed=False)
             red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
-            self.calc_z_position(red_channel)
+            self.calc_z_position(red_channel, transformed=False)
             # fit plane to peaks with least squares to remove tilt
-            A = np.array([self.peaks_2d[:,0], self.peaks_2d[:,1], np.ones_like(self.peaks_2d[:,0])]).T #matrix
+            peaks_2d = self.peak_slices[-1]
+
+            A = np.array([peaks_2d[:,0], peaks_2d[:,1], np.ones_like(peaks_2d[:,0])]).T #matrix
             beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_3d[:,2], axis=1)) #params
 
             point = np.array([0.0, 0.0, beta[2]]) #point on plane
@@ -334,15 +335,17 @@ class FM_ops(Peak_finding):
             z_max_all = np.argmax(red_channel, axis=2)
 
             argmax_map_no_tilt = z_max_all - z_plane
-            print(argmax_map_no_tilt[self.peaks_2d[:,0].astype(int), self.peaks_2d[:,1].astype(int)])
+            print(argmax_map_no_tilt[peaks_2d[:,0].astype(int), peaks_2d[:,1].astype(int)])
             #argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
             #self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
             self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map_no_tilt, self.cmap)
 
-
         if self._transformed:
             if self.tf_hsv_map_no_tilt is None:
                 self.apply_transform()
+                #if self.tf_peak_slices is None or self.tf_peak_slices[-1] is None:
+                #    flip_list = [self.transp, self.rot, self.fliph, self.flipv]
+                #self.calc_transformed_coordinates(self.tf_matrix, flip_list, self.data.shape[:-1])
             elif self.refined:
                 self.apply_transform()
 
@@ -356,10 +359,11 @@ class FM_ops(Peak_finding):
         if refined_tmp:
             self.refined = True
 
-    def check_peak_index(self, point, size):
+    def check_peak_index(self, point, size, transformed=True, curr_slice=None):
         point += size / 2
         print(point)
-        diff = self.peaks_2d - point
+        peaks_2d = self.tf_peak_slices[-1] if curr_slice is None else self.tf_peak_slices[curr_slice]
+        diff = peaks_2d - point
         diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
         ind_arr = np.where(diff_err < size/2)[0]
         for i in range(len(ind_arr)):
@@ -373,14 +377,23 @@ class FM_ops(Peak_finding):
 
     def calc_local_z(self, ind, pos, size):
         z = None
-        if self.peaks_3d is not None:
-            if ind is None:
-                ind = self.check_peak_index(np.array((pos.x(), pos.y())), size)
-            if ind is not None:  # do not replace by else-statement!!!
-                z = self.peaks_3d[ind, 2]
+        if self._transformed:
+            if self.tf_peaks_3d is not None:
+                if ind is None:
+                    ind = self.check_peak_index(np.array((pos.x(), pos.y())), size)
+                if ind is not None:  # do not replace by else-statement!!!
+                    z = self.tf_peaks_3d[ind, 2]
+        else:
+            if self.peaks_3d is not None:
+                if ind is None:
+                    ind = self.check_peak_index(np.array((pos.x(), pos.y())), size)
+                if ind is not None:  # do not replace by else-statement!!!
+                    z = self.peaks_3d[ind, 2]
         if z is None:
             print('WARNING! Calculation of the z-position might be inaccurate!')
-            z = self.calc_local_z_max(self.channel, np.array((pos.x(), pos.y())))
+            flip_list = [self.transp, self.rot, self.fliph, self.flipv]
+            z = self.calc_local_z_max(self.channel, np.array((pos.x(), pos.y())), self._transformed,
+                                      self.tf_matrix, flip_list, self.data.shape[:-1])
         return z
 
     def load_channel(self, ind):
@@ -452,6 +465,7 @@ class FM_ops(Peak_finding):
 
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+        self.corners = np.copy(corners)
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
@@ -477,7 +491,7 @@ class FM_ops(Peak_finding):
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
-        self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+        self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
         print('Tf: ', self.tf_matrix)
 
         self._tf_points = np.zeros_like(my_points)
