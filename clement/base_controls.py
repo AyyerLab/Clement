@@ -101,11 +101,11 @@ class BaseControls(QtWidgets.QWidget):
         
         else:
             condition = False
-            if hasattr(self.other, 'fib'):
+            if hasattr(self.other, 'fib') and self.other.fib:
                 if self.ops._transformed and self.other.sem_ops._transformed:
                     condition = True
             else:
-                if self.ops_tranformed and self.other.ops._transformed:
+                if self.ops._transformed and self.other.ops._transformed:
                     condition = True
 
             if condition:
