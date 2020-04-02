@@ -566,7 +566,7 @@ class FMControls(BaseControls):
     def _remove_tilt(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.map_btn.isChecked():
-            self.ops.remove_tilt()
+            self.ops.remove_tilt(self.remove_tilt_btn.isChecked())
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 

@@ -308,8 +308,8 @@ class FM_ops(Peak_finding):
         if refined_tmp:
             self.refined = True
 
-    def remove_tilt(self):
-        self._show_no_tilt = not self._show_no_tilt
+    def remove_tilt(self, remove_tilt):
+        self._show_no_tilt = remove_tilt
         if self.refined:
             refined_tmp = True
             self.refined = False
@@ -335,7 +335,6 @@ class FM_ops(Peak_finding):
             z_max_all = np.argmax(red_channel, axis=2)
 
             argmax_map_no_tilt = z_max_all - z_plane
-            print(argmax_map_no_tilt[peaks_2d[:,0].astype(int), peaks_2d[:,1].astype(int)])
             #argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
             #self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
             self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map_no_tilt, self.cmap)
@@ -366,8 +365,6 @@ class FM_ops(Peak_finding):
         diff = peaks_2d - point
         diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
         ind_arr = np.where(diff_err < size/2)[0]
-        for i in range(len(ind_arr)):
-            print(ind_arr[i])
         if len(ind_arr) == 0:
             return None
         elif len(ind_arr) > 1:
