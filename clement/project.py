@@ -194,7 +194,6 @@ class Project(QtWidgets.QWidget):
         self.fib.mrc_fname.setText(self.fib._file_name)
         self.fib._load_mrc(jump=True)
         if fibdict['Transpose']:
-            print('hello')
             self.fib.transp_btn.setEnabled(True)
             self.fib.transp_btn.setChecked(True)
             self.fib._transpose() # Why has this function to be called expilicitely???

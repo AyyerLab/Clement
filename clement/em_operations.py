@@ -428,5 +428,7 @@ class EM_ops():
     def get_fib_transform(self, source, dest, sem_transform):
         fm_to_sem = tf.estimate_transform('affine', source, dest).params
         inv_tf_sem = np.linalg.inv(sem_transform)
-        return self.fib_matrix[:3,:3] @ inv_tf_sem @ fm_to_sem
+        print('FM_to_SEM: \n', fm_to_sem)
+        print('inv_tf_sem: \n', inv_tf_sem)
+        return inv_tf_sem @ fm_to_sem
 

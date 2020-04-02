@@ -22,6 +22,7 @@ class FM_ops(Peak_finding):
         self._show_no_tilt = False
         
         self.reader = None
+        self.voxel_size = None
         self.tif_data = None
         self.orig_data = None
         self.channel = None
@@ -96,6 +97,8 @@ class FM_ops(Peak_finding):
 
                 self.num_slices = self.reader.getFrameShape()[0]
                 self.num_channels = len(self.reader.getChannels())
+                md = self.reader.getMetadata()
+                self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
                 self.old_fname = fname
 
             # TODO: Look into modifying read_lif to get
@@ -391,6 +394,12 @@ class FM_ops(Peak_finding):
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
             z = self.calc_local_z_max(self.channel, np.array((pos.x(), pos.y())), self._transformed,
                                       self.tf_matrix, flip_list, self.data.shape[:-1])
+
+        if z is None:
+            print('Oops, something went wrong. Try again!')
+            return None
+        #scale z slice number by voxel size ratio
+        z *= self.voxel_size[2] / self.voxel_size[0]
         return z
 
     def load_channel(self, ind):

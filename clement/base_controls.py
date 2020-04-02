@@ -100,7 +100,15 @@ class BaseControls(QtWidgets.QWidget):
             print('Select both data first')
         
         else:
-            if self.ops._transformed and self.other.ops._transformed:
+            condition = False
+            if hasattr(self.other, 'fib'):
+                if self.ops._transformed and self.other.sem_ops._transformed:
+                    condition = True
+            else:
+                if self.ops_tranformed and self.other.ops._transformed:
+                    condition = True
+
+            if condition:
                 ind = None
                 if self.tr_matrices is not None:
                     if hasattr(self, 'peak_btn') and self.peak_btn.isChecked():
@@ -109,6 +117,15 @@ class BaseControls(QtWidgets.QWidget):
                             peaks_2d = self.ops.tf_peak_slices[-1] if self.max_proj_btn.isChecked() else self.ops.tf_peak_slices[self._current_slice]
                             pos.setX(peaks_2d[ind,0] - size1 / 2)
                             pos.setY(peaks_2d[ind,1] - size1 / 2)
+
+                    #Calc z position
+                    if hasattr(self.other, 'fib') and self.other.fib:
+                        z = self.ops.calc_local_z(ind, pos, size1)
+                        if z is None:
+                            return
+                        init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
+                    else:
+                        init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
 
                     point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                     point_obj.setPen(0,255,0)
@@ -123,15 +140,13 @@ class BaseControls(QtWidgets.QWidget):
 
                     self._points_corr_indices.append(self.counter-1)
 
-                    #Calc z position
-                    if hasattr(self.other, 'fib') and self.other.fib:
-                        z = self.ops.calc_local_z(ind, pos, size1)
-                        #init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, z])
-                        init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
-                    else:
-                        init = np.array([point_obj.x()+size1/2,point_obj.y()+size1/2, 1])
-
                     transf = np.dot(self.tr_matrices, init)
+                    if hasattr(self.other, 'fib') and self.other.fib:
+                        print('Clicked point: ', np.array([init[0], init[1], z]))
+                        #transf[-1] = z
+                        transf = self.other.ops.fib_matrix[:3,:3] @ transf
+
+                    print('Transformed point: ', transf)
                     pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
                     point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                     point_other.setPen(0,255,255)
@@ -301,7 +316,8 @@ class BaseControls(QtWidgets.QWidget):
             #if self.ops.tf_data is not None or self.ops.tf_max_proj_data is not None or self.ops.tf_hsv_map is not None or self.ops.tf_hsv_map_no_tilt is not None:
             #    if self.other.ops.tf_region is not None or self.other.ops.tf_data is not None:
             if self.ops._tf_points is not None:
-                if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
+                if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None \
+                        or self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
                     condition = True
 
         if hasattr(self.other, 'fib') and self.other.fib:

@@ -215,12 +215,19 @@ class Peak_finding():
         print('Duration:', no-go)
 
     def calc_local_z_max(self, data, point, transformed, tf_matrix = None, flips=None, shape=None):
-        if transformed:
-            point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
-        z_profile = data[point[0].astype(int), point[1].astype(int)]
-        z_max = np.argmax(z_profile)
-        print('Local z max: ', z_max)
-        return z_max
+        try:
+            if transformed:
+                point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
+                print('Orig point: ', point)
+                if point[0] < 0 or point[1] < 0:
+                    raise IndexError
+            z_profile = data[point[0].astype(int), point[1].astype(int)]
+            z_max = np.argmax(z_profile)
+            print('Local z max: ', z_max)
+            return z_max
+        except IndexError:
+            print('You should select a point within the bounds of the image!')
+            return None
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
