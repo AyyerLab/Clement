@@ -466,24 +466,34 @@ class FMControls(BaseControls):
         if self.ops is not None:
             print(self.ops.data.shape)
             if self.peak_btn.isChecked():
-                if self.max_proj_btn.isChecked():
+                if self.map_btn.isChecked():
                     if self.ops._transformed:
                         if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
+                            self.ops.peak_finding(self.ops.tf_max_proj_data[:,:,-1], transformed=True)
                         peaks_2d = self.ops.tf_peak_slices[-1]
                     else:
                         if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.data[:, :, -1], transformed=False)
+                            self.ops.peak_finding(self.ops.max_proj_data[:, :, -1], transformed=False)
                         peaks_2d = self.ops.peak_slices[-1]
                 else:
-                    if self.ops._transformed:
-                        if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
-                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True, curr_slice=self._current_slice)
-                        peaks_2d = self.ops.tf_peak_slices[self._current_slice]
+                    if self.max_proj_btn.isChecked():
+                        if self.ops._transformed:
+                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                                self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
+                            peaks_2d = self.ops.tf_peak_slices[-1]
+                        else:
+                            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                                self.ops.peak_finding(self.ops.data[:, :, -1], transformed=False)
+                            peaks_2d = self.ops.peak_slices[-1]
                     else:
-                        if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
-                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=False, curr_slice=self._current_slice)
-                        peaks_2d = self.ops.peak_slices[self._current_slice]
+                        if self.ops._transformed:
+                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
+                                self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True, curr_slice=self._current_slice)
+                            peaks_2d = self.ops.tf_peak_slices[self._current_slice]
+                        else:
+                            if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
+                                self.ops.peak_finding(self.ops.data[:,:,-1], transformed=False, curr_slice=self._current_slice)
+                            peaks_2d = self.ops.peak_slices[self._current_slice]
 
                 print(peaks_2d.shape)
                 for i in range(len(peaks_2d)):
