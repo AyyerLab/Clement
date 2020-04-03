@@ -187,8 +187,7 @@ class Project(QtWidgets.QWidget):
         if 'FIB' not in project:
             return
         fibdict = project['FIB']
-        self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
-        self.fib.sem_ops = self.em.ops
+        #self.fib.sem_ops = self.em.ops
         self.fib._curr_folder = fibdict['Directory']
         self.fib._file_name = fibdict['File']
         self.fib.mrc_fname.setText(self.fib._file_name)
@@ -200,9 +199,12 @@ class Project(QtWidgets.QWidget):
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
 
+        self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
+
         if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
             if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
                 self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
+
 
     def _load_base(self, project):
         try:

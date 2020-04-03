@@ -184,10 +184,15 @@ class GUI(QtGui.QMainWindow):
                     self.fibcontrols.enable_buttons(enable=True)
                 else:
                     self.fibcontrols.enable_buttons(enable=False)
-                if self.emcontrols.ops._tf_points is not None or self.emcontrols.ops._tf_points_region is not None:
-                    if self.fibcontrols.ops is not None:
-                        self.fibcontrols.ops._transformed = True
-                        self.fibcontrols.ops._tf_points = 1
+                #if self.emcontrols.ops._tf_points is not None or self.emcontrols.ops._tf_points_region is not None:
+                #    if self.fibcontrols.ops is not None:
+                #        self.fibcontrols.ops._transformed = True
+                #        self.fibcontrols.ops._tf_points = 1
+
+                #print('Check FIB: ', self.fibcontrols.ops._transformed)
+                #print(self.fibcontrols.ops._tf_points)
+
+
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

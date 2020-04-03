@@ -688,11 +688,11 @@ class FM_ops(Peak_finding):
         em_coor_list = []
 
         for i in range(len(em_roi_list)):
-            fm_coor = self.peak_finding(fm_roi_list[i], roi=True)
+            fm_coor = self.peak_finding(fm_roi_list[i], None, roi=True)
             print(fm_coor)
             fm_coor_list.append(list(fm_coor + np.array(fm_points[i] - size)))
 
-            em_coor = self.peak_finding(em_roi_list[i], roi=True)
+            em_coor = self.peak_finding(em_roi_list[i], None, roi=True)
             em_coor_list.append(list(em_coor + np.array(em_points[i] - size)))
 
         return fm_coor_list, em_coor_list

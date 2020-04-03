@@ -53,7 +53,8 @@ class FIBControls(BaseControls):
         self.sigma_btn = QtWidgets.QLineEdit(self)
         self.sigma_btn.setText('20')
         self._sigma_angle = int(self.sigma_btn.text())
-        line.addWidget(self.sigma_btn, stretch=1)
+        line.addWidget(self.sigma_btn)
+        line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -67,16 +68,16 @@ class FIBControls(BaseControls):
         line.addStretch(1)
 
         # ---- Points of interest
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Point transform:', self)
-        line.addWidget(label)
+        #line = QtWidgets.QHBoxLayout()
+        #vbox.addLayout(line)
+        #label = QtWidgets.QLabel('Point transform:', self)
+        #line.addWidget(label)
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
         self.select_btn.setEnabled(False)
         self.select_btn.toggled.connect(self._define_corr_toggled)
-        line.addWidget(self.select_btn)
-        line.addStretch(1)
+        #line.addWidget(self.select_btn)
+        #line.addStretch(1)
 
         # ---- Quit button
         vbox.addStretch(1)
@@ -112,6 +113,8 @@ class FIBControls(BaseControls):
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
+            #if self.sem_ops is not None and (self.sem_ops._tf_points is not None or self.sem_ops._tf_points_region is not None):
+            #    self.select_btn.setEnabled(True)
             QtWidgets.QApplication.restoreOverrideCursor()
         else:
             print('You have to choose a file first!')
@@ -135,7 +138,7 @@ class FIBControls(BaseControls):
     def enable_buttons(self, enable=False):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
-            self.select_btn.setEnabled(enable)
+            #self.select_btn.setEnabled(enable)
 
     def _show_grid(self, state):
         if self.show_grid_btn.isChecked():
@@ -193,6 +196,6 @@ class FIBControls(BaseControls):
         self.transp_btn.setChecked(False)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
-        self.select_btn.setEnabled(False)
+        #self.select_btn.setEnabled(False)
 
         self.ops.__init__()

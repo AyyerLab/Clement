@@ -104,6 +104,9 @@ class BaseControls(QtWidgets.QWidget):
             if hasattr(self.other, 'fib') and self.other.fib:
                 if self.ops._transformed and self.other.sem_ops._transformed:
                     condition = True
+            #elif hasattr(self, 'fib') and self.fib:
+            #    if self.sem_ops._transformed and self.other.ops._transformed:
+            #        condition = True
             else:
                 if self.ops._transformed and self.other.ops._transformed:
                     condition = True
@@ -123,9 +126,8 @@ class BaseControls(QtWidgets.QWidget):
                         z = self.ops.calc_local_z(ind, pos, size1)
                         if z is None:
                             return
-                        init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
-                    else:
-                        init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
+
+                    init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
 
                     point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                     point_obj.setPen(0,255,0)
@@ -140,12 +142,21 @@ class BaseControls(QtWidgets.QWidget):
 
                     self._points_corr_indices.append(self.counter-1)
 
-                    transf = np.dot(self.tr_matrices, init)
                     if hasattr(self.other, 'fib') and self.other.fib:
                         print('Clicked point: ', np.array([init[0], init[1], z]))
-                        #transf[-1] = z
+                        transf = np.dot(self.tr_matrices, init)
+                        transf[-1] = z
                         transf = self.other.ops.fib_matrix[:3,:3] @ transf
+#                    elif hasattr(self, 'fib') and self.fib:
+#                        init = np.array([init[0], init[1], 1000, 1])
+#                        transf = np.linalg.inv(self.ops.fib_matrix) @ init
+#                        transf = np.array([transf[0], transf[1], 1])
+#                        transf = self.sem_ops.tf_matrix @ transf
+#                        transf = self.tr_matrices @ transf
+                    else:
+                        transf = np.dot(self.tr_matrices, init)
 
+                    print('Clicked point: ', init)
                     print('Transformed point: ', transf)
                     pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
                     point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
@@ -306,19 +317,22 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         condition = False
-        if hasattr(self.ops, 'tf_region'):
-            #if self.ops.tf_region is not None or self.ops.tf_data is not None:
-            #    if self.other.ops.tf_data is not None or self.other.ops.tf_max_proj_data is not None or self.other.ops.tf_hsv_map is not None or self.other.ops.tf_hsv_map_no_tilt is not None:
+        if hasattr(self, 'fib') and not self.fib:
             if self.ops._tf_points is not None or self.ops._tf_points_region is not None:
                 if self.other.ops._tf_points is not None:
                     condition = True
+        #elif hasattr(self, 'fib') and self.fib:
+        #    if self.sem_ops._tf_points is not None or self.sem_ops._tf_points_region is not None:
+        #        if self.other.ops._tf_points is not None:
+        #            condition = True
         else:
-            #if self.ops.tf_data is not None or self.ops.tf_max_proj_data is not None or self.ops.tf_hsv_map is not None or self.ops.tf_hsv_map_no_tilt is not None:
-            #    if self.other.ops.tf_region is not None or self.other.ops.tf_data is not None:
             if self.ops._tf_points is not None:
-                if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None \
-                        or self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
-                    condition = True
+                if self.other.fib:
+                    if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
+                        condition = True
+                else:
+                    if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
+                        condition = True
 
         if hasattr(self.other, 'fib') and self.other.fib:
             if self.other.ops.fib_matrix is None:
@@ -344,9 +358,10 @@ class BaseControls(QtWidgets.QWidget):
                         self.other.anno_list = []
                         self.counter = 0
                         self.other.counter = 0
-                src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
 
                 if hasattr(self.other, 'fib') and self.other.fib:
+                    src_sorted = np.array(
+                        sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     dst_sorted = np.array(
                         sorted(self.other.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.other.ops.get_fib_transform(src_sorted, dst_sorted, self.other.sem_ops.tf_matrix)
@@ -365,7 +380,16 @@ class BaseControls(QtWidgets.QWidget):
                         self.ops.clear_channel()
                         print('Done.')
                     self.ops.load_channel(ind=2)
+                #elif (hasattr(self, 'fib') and self.fib):
+                #    src_sorted = np.array(
+                #        sorted(self.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                #    dst_sorted = np.array(
+                #        sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                #    self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+                #    #self.tr_matrices = self.other.ops.get_fib_transform(src_sorted, dst_sorted, self.other.sem_ops.tf_matrix)
                 else:
+                    src_sorted = np.array(
+                        sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     dst_sorted = np.array(
                         sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
