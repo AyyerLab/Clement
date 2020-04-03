@@ -223,7 +223,7 @@ class FMControls(BaseControls):
 
         self.auto_opt_btn = QtWidgets.QCheckBox('Auto-optimize', self)
         self.auto_opt_btn.setEnabled(False)
-        self.auto_opt_btn.stateChanged.connect(self._optimize)
+        #self.auto_opt_btn.stateChanged.connect(self._optimize)
         line.addWidget(self.select_btn)
         line.addWidget(self.auto_opt_btn)
         line.addWidget(self.refine_btn)
