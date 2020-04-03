@@ -159,28 +159,34 @@ class Peak_finding():
         else:
             self.tf_peak_slices[slice] = tf_peaks_2d
 
-    def calc_z_position(self, data, transformed, curr_slice=None, tf_matrix=None, flips=None, shape=None):
-        if transformed:
-            if tf_matrix is None:
-                print('You have to parse the tf_matrix!')
-                return
-            if curr_slice is None:
-                tf_peaks = self.tf_peak_slices[-1]
+    def fit_z(self, data, transformed, curr_slice=None, tf_matrix=None, flips=None, shape=None, local=False, point=None):
+        if not local:
+            if transformed:
+                if tf_matrix is None:
+                    print('You have to parse the tf_matrix!')
+                    return
+                if curr_slice is None:
+                    tf_peaks = self.tf_peak_slices[-1]
+                else:
+                    tf_peaks = self.tf_peak_slices[curr_slice]
+                peaks_2d = np.zeros_like(tf_peaks)
+                for k in range(tf_peaks.shape[0]):
+                    point = np.array([tf_peaks[k, 0], tf_peaks[k, 1], 1])
+                    orig_point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
+                    peaks_2d[k] = orig_point
             else:
-                tf_peaks = self.tf_peak_slices[curr_slice]
-            peaks_2d = np.zeros_like(tf_peaks)
-            for k in range(tf_peaks.shape[0]):
-                point = np.array([tf_peaks[k, 0], tf_peaks[k, 1], 1])
-                orig_point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
-                peaks_2d[k] = orig_point
+                if curr_slice is None:
+                    peaks_2d = self.peak_slices[-1]
+                else:
+                    peaks_2d = self.peak_slices[curr_slice]
         else:
-            if curr_slice is None:
-                peaks_2d = self.peak_slices[-1]
-            else:
-                peaks_2d = self.peak_slices[curr_slice]
+            peaks_2d = point
 
         if peaks_2d is None:
-            print('Calculate 2d peaks first!')
+            if local:
+                print('You have to parse a point!')
+            else:
+                print('Calculate 2d peaks first!')
             return
 
         gauss = lambda x, a, mu, sigma : a * np.exp(-(x-mu)**2 / (2*sigma**2))
@@ -200,34 +206,64 @@ class Peak_finding():
                 if z_shifted[i, k] == 0:
                     z_shifted[i, k] = z_shifted[i, -k]
         z_avg = z_shifted.mean(0)
-        popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, 31, 1])
-        gauss_stat = lambda x, a, mu : a * np.exp(-(x-mu)**2 / (2*popt[2]**2))
-        for i in range(z_shifted.shape[0]):
-            popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
-            mean_values[i] = popt_i[1]-shifts[i]
-
-        if transformed:
-            self.tf_peaks_3d = np.concatenate((peaks_2d, mean_values), axis=1)
-        else:
-            self.peaks_3d = np.concatenate((peaks_2d, mean_values), axis=1)
-
-        no = time.time()
-        print('Duration:', no-go)
-
-    def calc_local_z_max(self, data, point, transformed, tf_matrix = None, flips=None, shape=None):
         try:
-            if transformed:
-                point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
-                print('Orig point: ', point)
-                if point[0] < 0 or point[1] < 0:
-                    raise IndexError
-            z_profile = data[point[0].astype(int), point[1].astype(int)]
-            z_max = np.argmax(z_profile)
-            print('Local z max: ', z_max)
-            return z_max
+            popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, z_profile.shape[1], 1])
+            gauss_stat = lambda x, a, mu : a * np.exp(-(x-mu)**2 / (2*popt[2]**2))
+            if local:
+                return popt[1] - shifts[-1]
+            else:
+                for i in range(z_shifted.shape[0]):
+                    popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
+                    mean_values[i] = popt_i[1]-shifts[i]
+
+                if transformed:
+                    self.tf_peaks_3d = np.concatenate((tf_peaks, mean_values), axis=1)
+                    print(self.tf_peaks_3d)
+                else:
+                    self.peaks_3d = np.concatenate((peaks_2d, mean_values), axis=1)
+
+                no = time.time()
+                print('Duration:', no-go)
+        except RuntimeError:
+            if local:
+                print('Unable to fit z profile. Calculate argmax(z).')
+                print('WARNING! Calculation of the z-position might be inaccurate!')
+                return np.argmax(z_profile[-1])
+            else:
+                print('Unable to fit z profile. Contact developers!')
+                return
+
+    def calc_local_z(self, data, point, transformed, tf_matrix = None, flips=None, shape=None):
+        if transformed:
+            point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
+            print('Orig point: ', point)
+        z = None
+        #profile = None
+        try:
+            if point[0] < 0 or point[1] < 0:
+                raise IndexError
+            point = np.expand_dims(point, axis=0)
+            z = self.fit_z(data, transformed, local=True, point=point)
         except IndexError:
             print('You should select a point within the bounds of the image!')
+        finally:
+            return z
+
+
+    def check_peak_index(self, point, size):
+        point += size / 2
+        #peaks_2d = self.tf_peak_slices[-1]
+        peaks_2d = self.tf_peaks_3d[:,:2]
+        diff = peaks_2d - point
+        diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
+        ind_arr = np.where(diff_err < size/2)[0]
+        if len(ind_arr) == 0:
             return None
+        elif len(ind_arr) > 1:
+            print('Selection ambiguous. Try again!')
+        else:
+            return ind_arr[0]
+
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt

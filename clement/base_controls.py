@@ -114,16 +114,17 @@ class BaseControls(QtWidgets.QWidget):
             if condition:
                 ind = None
                 if self.tr_matrices is not None:
-                    if hasattr(self, 'peak_btn') and self.peak_btn.isChecked():
-                        ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1, transformed=True)
+                    if hasattr(self, 'peak_btn'):
+                        ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1)
                         if ind is not None:
-                            peaks_2d = self.ops.tf_peak_slices[-1] if self.max_proj_btn.isChecked() else self.ops.tf_peak_slices[self._current_slice]
+                            peaks_2d = self.ops.tf_peak_slices[-1]
                             pos.setX(peaks_2d[ind,0] - size1 / 2)
                             pos.setY(peaks_2d[ind,1] - size1 / 2)
 
                     #Calc z position
                     if hasattr(self.other, 'fib') and self.other.fib:
-                        z = self.ops.calc_local_z(ind, pos, size1)
+                        #z = self.ops.calc_local_z(ind, pos) #size1
+                        z = self.ops.calc_z(ind, pos) #size1
                         if z is None:
                             return
 
@@ -376,7 +377,7 @@ class BaseControls(QtWidgets.QWidget):
                                 self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
                         self.ops.load_channel(ind=3)
                         flip_list = [self.ops.transp, self.ops.rot, self.ops.fliph, self.ops.flipv]
-                        self.ops.calc_z_position(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
+                        self.ops.fit_z(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
                                                  flips=flip_list, shape=self.ops.data.shape[:-1])
                         self.ops.clear_channel()
                         print('Done.')
@@ -395,7 +396,9 @@ class BaseControls(QtWidgets.QWidget):
                         sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
-                #np.save('points.npy', np.array(self._points_corr))
+                points = [[point.x(), point.y()] for point in self._points_corr]
+                np.save('tf_matrix.npy', self.ops.tf_matrix)
+                np.save('points.npy', np.array(points))
                 if hasattr(self.other, 'fib') and self.ops.channel is not None:
                     self.ops.clear_channel()
                 print('Done selecting points of interest on %s image'%self.tag)

@@ -322,7 +322,7 @@ class FM_ops(Peak_finding):
             if self.peak_slices is None or self.peak_slices[-1] == 0:
                 self.peak_finding(self.max_proj_data[:,:,-1], transformed=False)
             red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
-            self.calc_z_position(red_channel, transformed=False)
+            self.fit_z(red_channel, transformed=False)
             # fit plane to peaks with least squares to remove tilt
             peaks_2d = self.peak_slices[-1]
 
@@ -361,38 +361,22 @@ class FM_ops(Peak_finding):
         if refined_tmp:
             self.refined = True
 
-    def check_peak_index(self, point, size, transformed=True, curr_slice=None):
-        point += size / 2
-        print(point)
-        peaks_2d = self.tf_peak_slices[-1] if curr_slice is None else self.tf_peak_slices[curr_slice]
-        diff = peaks_2d - point
-        diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
-        ind_arr = np.where(diff_err < size/2)[0]
-        if len(ind_arr) == 0:
-            return None
-        elif len(ind_arr) > 1:
-            print('Selection ambiguous. Try again!')
-        else:
-            return ind_arr[0]
-
-    def calc_local_z(self, ind, pos, size):
+    def calc_z(self, ind, pos): #size
         z = None
         if self._transformed:
             if self.tf_peaks_3d is not None:
-                if ind is None:
-                    ind = self.check_peak_index(np.array((pos.x(), pos.y())), size)
                 if ind is not None:  # do not replace by else-statement!!!
                     z = self.tf_peaks_3d[ind, 2]
+            if z is not None:
+                print('Index found! ind, z:', ind, z)
         else:
             if self.peaks_3d is not None:
-                if ind is None:
-                    ind = self.check_peak_index(np.array((pos.x(), pos.y())), size)
                 if ind is not None:  # do not replace by else-statement!!!
                     z = self.peaks_3d[ind, 2]
         if z is None:
-            print('WARNING! Calculation of the z-position might be inaccurate!')
+            print('Index not found. Calculate local z position!')
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
-            z = self.calc_local_z_max(self.channel, np.array((pos.x(), pos.y())), self._transformed,
+            z = self.calc_local_z(self.channel, np.array((pos.x(), pos.y())), self._transformed,
                                       self.tf_matrix, flip_list, self.data.shape[:-1])
 
         if z is None:
@@ -404,6 +388,7 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4'))
+        print('Load channel {}'.format(ind))
 
     def clear_channel(self):
         self.channel = None
