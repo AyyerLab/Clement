@@ -328,8 +328,9 @@ class BaseControls(QtWidgets.QWidget):
         else:
             if self.ops._tf_points is not None:
                 if self.other.fib:
-                    if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
-                        condition = True
+                    if self.other.sem_ops is not None:
+                        if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
+                            condition = True
                 else:
                     if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
                         condition = True
@@ -394,6 +395,7 @@ class BaseControls(QtWidgets.QWidget):
                         sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
+                #np.save('points.npy', np.array(self._points_corr))
                 if hasattr(self.other, 'fib') and self.ops.channel is not None:
                     self.ops.clear_channel()
                 print('Done selecting points of interest on %s image'%self.tag)
