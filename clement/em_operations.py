@@ -399,7 +399,7 @@ class EM_ops():
             with mrc.open(self.old_fname, 'r', permissive=True) as f:
                 self.orig_region = np.copy(f.data[self.selected_region].T)
 
-    def calc_stage_positions(self, clicked_points):
+    def calc_stage_positions(self, clicked_points, downsampling):
         stage_x = self._eh[4:10*self.dimensions[0]:10]
         stage_y = self._eh[5:10*self.dimensions[0]:10]
         if self.assembled or self.selected_region is None:
@@ -412,7 +412,7 @@ class EM_ops():
         stage_positions = []
         for i in range(len(clicked_points)):
             point = np.array([clicked_points[i][0],clicked_points[i][1],1])
-            coordinate_angstrom = (inverse_matrix @ point)[:2] * self.pixel_size[:2]
+            coordinate_angstrom = (inverse_matrix @ point)[:2] * self.pixel_size[:2] * downsampling
             coordinate_microns = coordinate_angstrom * 10**-4
             stage_positions.append(coordinate_microns + self.stage_origin)       #stage position in microns
         print(stage_positions)

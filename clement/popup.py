@@ -20,6 +20,7 @@ class Merge(QtGui.QMainWindow,):
 
         self.curr_mrc_folder_popup = self.parent.emcontrols.curr_folder
         self.num_slices_popup = self.parent.fmcontrols.num_slices
+        self.downsampling = 4 #per dimension
         self.color_data_popup = None
         self.color_overlay_popup = None
         self.annotations_popup = []
@@ -263,21 +264,21 @@ class Merge(QtGui.QMainWindow,):
         print(self.data_popup[:,:,0].shape)
         print(len(self._channels_popup))
         #self.color_data_popup = np.zeros((len(self._channels_popup),) + self.data_popup[:,:,0].shape + (3,))
-        self.color_data_popup = np.zeros((len(self._channels_popup), int(np.ceil(self.data_popup.shape[0] / 4)),
-                                          int(np.ceil(self.data_popup.shape[1] / 4)), 3))
+        self.color_data_popup = np.zeros((len(self._channels_popup), int(np.ceil(self.data_popup.shape[0] / self.downsampling)),
+                                          int(np.ceil(self.data_popup.shape[1] / self.downsampling)), 3))
         print(self.color_data_popup.shape)
         if not self.parent.fm._show_mapping:
            for i in range(len(self._channels_popup)):
                 if self._channels_popup[i]:
-                    my_channel = self.data_popup[::4,::4,i]
+                    my_channel = self.data_popup[::self.downsampling, ::self.downsampling, i]
                     my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
                     rgb = tuple([int(self._colors_popup[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
                     self.color_data_popup[i,:,:,:] = my_channel_rgb * rgb
                 else:
-                    self.color_data_popup[i,:,:,:] = np.zeros((self.data_popup[::4,::4,0].shape + (3,)))
+                    self.color_data_popup[i,:,:,:] = np.zeros((self.data_popup[::self.downsampling,::self.downsampling,0].shape + (3,)))
         else:
-            self.color_data_popup[0,:,:,:] = hsv2rgb(self.data_popup[::4,::4,:3])
-            em_img = self.data_popup[::4,::4,-1]
+            self.color_data_popup[0,:,:,:] = hsv2rgb(self.data_popup[::self.downsampling,::self.downsampling,:3])
+            em_img = self.data_popup[::self.downsampling,::self.downsampling,-1]
             em_img_rgb = np.repeat(em_img[:,:,np.newaxis],3,axis=2)
             rgb = tuple([int(self._colors_popup[-1][1+2*c:3+2*c], 16)/255. for c in range(3)])
             self.color_data_popup[-1,:,:,:] = em_img_rgb * rgb
@@ -286,7 +287,7 @@ class Merge(QtGui.QMainWindow,):
             self.color_overlay_popup = np.sum(self.color_data_popup,axis=0)
 
     def _select_channels(self):
-        data_shown = np.zeros((len(self._channels_popup),int(np.ceil(self.data_popup.shape[0]/4)), int(np.ceil(self.data_popup.shape[1]/4)), 3))
+        data_shown = np.zeros((len(self._channels_popup),int(np.ceil(self.data_popup.shape[0]/self.downsampling)), int(np.ceil(self.data_popup.shape[1]/self.downsampling)), 3))
         counter = 0
         print(data_shown.shape)
         for i in range(len(self._channels_popup)):
@@ -318,7 +319,7 @@ class Merge(QtGui.QMainWindow,):
         elif self.data_popup is not None:
             size = 0.01 * self.data_popup.shape[0]
             coordinates = [np.array([point.x()+size/2,point.y()+size/2]) for point in self._clicked_points_popup]
-            self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates)
+            self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates, self.downsampling)
             print('Done selecting points of interest!')
 
     def _save_data_popup(self):
