@@ -16,7 +16,10 @@ class EM_ops():
         self._tf_points = None
         self._orig_points_region = None
         self._tf_points_region = None
- 
+
+
+        self.h = None
+        self.eh = None
         self.orig_data = None
         self.tf_data = None
         self.pixel_size = None
@@ -65,8 +68,8 @@ class EM_ops():
         else:
             f = mrc.open(fname, 'r', permissive=True)
             if fname != self.old_fname:
-                self._h = f.header
-                self._eh = np.frombuffer(f.extended_header, dtype='i2')
+                self.h = f.header
+                self.eh = np.frombuffer(f.extended_header, dtype='i2')
                 self.old_fname = fname
                 self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y])
             print(f)
@@ -76,11 +79,11 @@ class EM_ops():
                 self.stacked_data = True
                 self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
                 self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
-                self.pos_x = self._eh[1:10*self.dimensions[0]:10] // step
-                self.pos_y = self._eh[2:10*self.dimensions[0]:10] // step
+                self.pos_x = self.eh[1:10*self.dimensions[0]:10] // step
+                self.pos_y = self.eh[2:10*self.dimensions[0]:10] // step
                 self.pos_x -= self.pos_x.min()
                 self.pos_y -= self.pos_y.min()
-                self.pos_z = self._eh[3:10*self.dimensions[0]:10]
+                self.pos_z = self.eh[3:10*self.dimensions[0]:10]
                 self.grid_points = []
                 for i in range(len(self.pos_x)):
                     point = np.array((self.pos_x[i], self.pos_y[i], 1))
@@ -400,14 +403,17 @@ class EM_ops():
                 self.orig_region = np.copy(f.data[self.selected_region].T)
 
     def calc_stage_positions(self, clicked_points, downsampling):
-        stage_x = self._eh[4:10*self.dimensions[0]:10]
-        stage_y = self._eh[5:10*self.dimensions[0]:10]
-        if self.assembled or self.selected_region is None:
-            curr_region = 0
+        if self.eh is not None:
+            stage_x = self.eh[4:10*self.dimensions[0]:10]
+            stage_y = self.eh[5:10*self.dimensions[0]:10]
+            if self.assembled or self.selected_region is None:
+                curr_region = 0
+            else:
+                curr_region = self.selected_region
+            self.stage_origin = np.array([stage_x[curr_region],stage_y[curr_region]])
         else:
-            curr_region = self.selected_region
-        self.stage_origin = np.array([stage_x[curr_region],stage_y[curr_region]])
-
+            self.stage_origin = 0
+            self.pixel_size = np.array([1,1])
         inverse_matrix = np.linalg.inv(self.tf_matrix)
         stage_positions = []
         for i in range(len(clicked_points)):

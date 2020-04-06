@@ -285,25 +285,13 @@ class Merge(QtGui.QMainWindow,):
 
         if self.overlay_btn_popup.isChecked():
             self.color_overlay_popup = np.sum(self.color_data_popup,axis=0)
-
-    def _select_channels(self):
-        data_shown = np.zeros((len(self._channels_popup),int(np.ceil(self.data_popup.shape[0]/self.downsampling)), int(np.ceil(self.data_popup.shape[1]/self.downsampling)), 3))
-        counter = 0
-        print(data_shown.shape)
-        for i in range(len(self._channels_popup)):
-            if self._channels_popup[i]:
-                data_shown[counter] = self.color_data_popup[counter]
-            counter += 1
-           
-        if self.overlay_btn_popup.isChecked():
-            data_shown = np.sum(data_shown, axis=0)
-        return data_shown  
+            self.color_data_popup = np.sum(self.color_data_popup,axis=0)
 
     def _update_imview_popup(self):
-        data_shown = self._select_channels()
+        self._calc_color_channels_popup()
         vr = self.imview_popup.getImageItem().getViewBox().targetRect()
         levels = self.imview_popup.getHistogramWidget().item.getLevels()
-        self.imview_popup.setImage(data_shown, levels=levels)
+        self.imview_popup.setImage(self.color_data_popup, levels=levels)
         self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _calc_stage_positions_popup(self,checked):
@@ -316,7 +304,7 @@ class Merge(QtGui.QMainWindow,):
                 self.annotations_popup = []
                 self.counter_popup = 0
                 self.stage_positions_popup = None
-        elif self.data_popup is not None:
+        else:
             size = 0.01 * self.data_popup.shape[0]
             coordinates = [np.array([point.x()+size/2,point.y()+size/2]) for point in self._clicked_points_popup]
             self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates, self.downsampling)

@@ -271,7 +271,6 @@ class Project(QtWidgets.QWidget):
             self.parent.merge(mdict)
 
     def _load_merge(self, mdict):
-        self.popup.close()
         self.popup._colors_popup = mdict['Colors']
 
         self.popup.c1_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[0]))
@@ -293,6 +292,8 @@ class Project(QtWidgets.QWidget):
             self.popup.slice_select_btn_popup.setValue(mdict['Slice'])
             self.popup._slice_changed_popup()
 
+        self.popup._update_imview_popup()
+
         self.popup.select_btn_popup.setChecked(True)
         points  = np.array(mdict['Selected points'])
         if len(points) > 0:
@@ -300,8 +301,7 @@ class Project(QtWidgets.QWidget):
             [self.popup._draw_correlated_points_popup(pt, 10, self.popup.imview_popup.getImageItem()) for pt in qpoint_list]
 
         self.popup.select_btn_popup.setChecked(False)
-        print('Data Popup:', self.popup.data_popup)
-        #self.popup._update_imview_popup()
+        print('Data Popup:', self.popup.data_popup.shape)
 
     def _save_project(self):
         if self.fm.ops is not None or self.em.ops is not None:
