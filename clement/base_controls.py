@@ -114,10 +114,10 @@ class BaseControls(QtWidgets.QWidget):
             if condition:
                 ind = None
                 if self.tr_matrices is not None:
-                    if hasattr(self, 'peak_btn'):
+                    if hasattr(self, 'peak_btn') and self.ops.tf_peaks_3d is not None:
                         ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1)
                         if ind is not None:
-                            peaks_2d = self.ops.tf_peak_slices[-1]
+                            peaks_2d = self.ops.tf_peaks_3d
                             pos.setX(peaks_2d[ind,0] - size1 / 2)
                             pos.setY(peaks_2d[ind,1] - size1 / 2)
 
