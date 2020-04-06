@@ -308,12 +308,12 @@ class EM_ops():
                                     [0,0,0,1]])
 
         #flip and scale
-        px_src, py_src = sem_pixel_size
-        px_dst, py_dst = self.pixel_size
+        scale = sem_pixel_size / self.pixel_size
         print('SEM shape: ', sem_shape)
         print('FIB shape: ', self.data.shape)
-        self.fib_matrix = np.array([[-px_dst/px_src, 0, 0, 0],
-                                    [0, py_dst/py_src, 0, 0],
+        print('Scale: ', scale)
+        self.fib_matrix = np.array([[-scale[0], 0, 0, 0],
+                                    [0, scale[1], 0, 0],
                                     [0, 0, 1, 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 

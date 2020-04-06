@@ -156,7 +156,7 @@ class FIBControls(BaseControls):
         self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
 
         pos = list(self.ops.points)
-        self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
+        self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True)
         self.imview.addItem(self.grid_box)
 
     def _recalc_grid(self, toggle_orig=False):

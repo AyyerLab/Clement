@@ -30,6 +30,7 @@ setuptools.setup(
         'numexpr',
         'mrcfile',
         'read-lif',
+        'tifffile',
         #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=pyqtgraph',
         'pyqtgraph',
     ],
