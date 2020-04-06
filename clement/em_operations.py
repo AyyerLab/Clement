@@ -8,6 +8,7 @@ from scipy import ndimage as ndi
 from scipy import signal as sc
 from skimage import transform as tf
 from skimage import io
+import tifffile
 
 class EM_ops():
     def __init__(self):
@@ -65,6 +66,11 @@ class EM_ops():
             self.data = np.array(io.imread(fname))
             self.dimensions = self.data.shape
             self.old_fname = fname
+            try:
+                md = tifffile.TiffFile(fname).fei_metadata
+                self.pixel_size = np.array([md['Scan']['PixelWidth'], md['Scan']['PixelHeight']])
+            except KeyError:
+                print('No pixel size found! This might cause the program to crash at some point...')
         else:
             f = mrc.open(fname, 'r', permissive=True)
             if fname != self.old_fname:
@@ -293,7 +299,7 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, sigma_angle, sem_shape):
+    def calc_fib_transform(self, sigma_angle, sem_shape, sem_pixel_size):
         #rotate by 90 degrees in plane
         phi = 90 * np.pi / 180
         self.fib_matrix = np.array([[np.cos(phi), -np.sin(phi), 0,0],
@@ -302,10 +308,8 @@ class EM_ops():
                                     [0,0,0,1]])
 
         #flip and scale
-        px_src = 8.43 * 1e-8
-        py_src = 8.43 * 1e-8
-        px_dst = 5.41 * 1e-8
-        py_dst = 5.41 * 1e-8
+        px_src, py_src = sem_pixel_size
+        px_dst, py_dst = self.pixel_size
         print('SEM shape: ', sem_shape)
         print('FIB shape: ', self.data.shape)
         self.fib_matrix = np.array([[-px_dst/px_src, 0, 0, 0],
@@ -346,9 +350,10 @@ class EM_ops():
     def project_points(self, points, sem_shape):
         pass
         #v1 = np.array([1,0,0])
-        #v2 = np.array([0, np.sin(self.fib_angle*np.pi/180), np.cos(self.fib_angle*np.pi/180)])
-        #normal_vector = np.cross(v1,v2)
-        #normal_vector /= np.linalg.norm(normal_vector)
+        #v2 = np.array([0, np.cos(self.fib_angle*np.pi/180), np.sin(self.fib_angle*np.pi/180)])
+        #self.normal_vector = np.cross(v1,v2)
+        #self.normal_vector /= np.linalg.norm(self.normal_vector)
+        #print('normal vector: ', self.normal_vector)
         #for i in range(points.shape[0]):
         #    dist = np.dot(normal_vector, points[i])
         #    points[i] = points[i] - dist * normal_vector

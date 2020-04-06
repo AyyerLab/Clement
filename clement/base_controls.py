@@ -143,6 +143,7 @@ class BaseControls(QtWidgets.QWidget):
 
                     self._points_corr_indices.append(self.counter-1)
 
+                    print('2d init: ', init)
                     if hasattr(self.other, 'fib') and self.other.fib:
                         print('Clicked point: ', np.array([init[0], init[1], z]))
                         transf = np.dot(self.tr_matrices, init)
@@ -157,7 +158,6 @@ class BaseControls(QtWidgets.QWidget):
                     else:
                         transf = np.dot(self.tr_matrices, init)
 
-                    print('Clicked point: ', init)
                     print('Transformed point: ', transf)
                     pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
                     point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)

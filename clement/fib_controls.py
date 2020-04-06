@@ -151,7 +151,7 @@ class FIBControls(BaseControls):
 
     def _calc_grid(self):
         if self.ops.fib_matrix is None:
-            self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape)
+            self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
 
         self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
 
