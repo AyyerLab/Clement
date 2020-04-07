@@ -345,6 +345,8 @@ class EM_ops():
             dst[i,:] = self.fib_matrix @ src[i,:]
         print('Rotated points: \n', dst[:,:3])
         self.points = dst[:,:2]
+        if self._orig_points is None:
+            self._orig_points = np.copy(self.points)
         self.project_points(dst[:,:3], sem_shape)
 
     def project_points(self, points, sem_shape):
@@ -428,6 +430,16 @@ class EM_ops():
             stage_positions.append(coordinate_microns + self.stage_origin)       #stage position in microns
         print(stage_positions)
         return stage_positions
+
+
+
+    def calc_refine_matrix(self, points):
+        self.points = points
+        shift = (points - self._orig_points).mean(0)
+        print('Grid box shift: ', shift)
+        self.fib_matrix[:2, 3] = shift
+
+        print('Fib matrix shifted: \n', self.fib_matrix)
 
     @classmethod
     def get_transform(self, source, dest):

@@ -21,10 +21,13 @@ class FIBControls(BaseControls):
         self.grid_box = None
         self.mrc_fname = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
+        self.peaks = []
 
         self._curr_folder = None
         self._file_name = None
         self._sigma_angle = None
+
+
 
         self._init_ui(vbox)
 
@@ -58,13 +61,18 @@ class FIBControls(BaseControls):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid box:')
+        label = QtWidgets.QLabel('Corr references:')
         line.addWidget(label)
         self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid box',self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
+        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
+        self.show_peaks_btn.setEnabled(True)
+        self.show_peaks_btn.setChecked(False)
+        self.show_peaks_btn.stateChanged.connect(self._show_peaks)
         line.addWidget(self.show_grid_btn)
+        line.addWidget(self.show_peaks_btn)
         line.addStretch(1)
 
         # ---- Points of interest
@@ -77,6 +85,16 @@ class FIBControls(BaseControls):
         self.select_btn.setEnabled(False)
         self.select_btn.toggled.connect(self._define_corr_toggled)
         #line.addWidget(self.select_btn)
+        #line.addStretch(1)
+
+        #line = QtWidgets.QHBoxLayout()
+        #vbox.addLayout(line)
+        #label = QtWidgets.QLabel('Refinement:', self)
+        #line.addWidget(label)
+        self.refine_btn = QtWidgets.QPushButton('Refine', self)
+        self.refine_btn.setEnabled(False)
+        self.refine_btn.clicked.connect(self._refine)
+        #line.addWidget(self.refine_btn)
         #line.addStretch(1)
 
         # ---- Quit button
@@ -152,11 +170,12 @@ class FIBControls(BaseControls):
     def _calc_grid(self):
         if self.ops.fib_matrix is None:
             self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
-
-        self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
+            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
 
         pos = list(self.ops.points)
         self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True)
+        self.grid_box.sigRegionChangeFinished.connect(self._refine_grid)
+        self.refine_btn.setEnabled(True)
         self.imview.addItem(self.grid_box)
 
     def _recalc_grid(self, toggle_orig=False):
@@ -165,9 +184,45 @@ class FIBControls(BaseControls):
                 self.imview.removeItem(self.grid_box)
 
             pos = list(self.ops.points)
-            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
+            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True)
             if self.show_grid_btn.isChecked():
                 self.imview.addItem(self.grid_box)
+
+    def _show_peaks(self):
+        if self.show_peaks_btn.isChecked():
+            if self.other.ops is None:
+                print('Select FM data first')
+            else:
+                if self.other.ops.tf_peaks_3d is None:
+                    print('Calculate 3d FM peaks first!')
+                else:
+                    if len(self.peaks) != 0:
+                        self.peaks = []
+                    for i in range(self.other.ops.tf_peaks_3d.shape[0]):
+                        init = np.array([self.other.ops.tf_peaks_3d[i,0], self.other.ops.tf_peaks_3d[i,1], 1])
+                        transf = np.dot(self.other.tr_matrices, init)
+                        transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], self.other.ops.tf_peaks_3d[i,2], 1])
+                        pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
+                        point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=True,
+                                                   removable=False)
+                        point.setPen(0, 255, 255)
+                        point.removeHandle(0)
+                        self.peaks.append(point)
+                        self.imview.addItem(point)
+        else:
+            [self.imview.removeItem(point) for point in self.peaks]
+
+    def _refine_grid(self):
+        points_obj = self.grid_box.getState()['points']
+        points = np.array([list((point[0], point[1])) for point in points_obj])
+        print('Orig Points: \n', self.ops._orig_points)
+        print('Points: \n', points)
+        self.ops.calc_refine_matrix(points)
+
+    def _refine(self):
+        pass
+
+
 
 
     def _save_mrc_montage(self):

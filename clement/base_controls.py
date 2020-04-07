@@ -147,8 +147,7 @@ class BaseControls(QtWidgets.QWidget):
                     if hasattr(self.other, 'fib') and self.other.fib:
                         print('Clicked point: ', np.array([init[0], init[1], z]))
                         transf = np.dot(self.tr_matrices, init)
-                        transf[-1] = z
-                        transf = self.other.ops.fib_matrix[:3,:3] @ transf
+                        transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
 #                    elif hasattr(self, 'fib') and self.fib:
 #                        init = np.array([init[0], init[1], 1000, 1])
 #                        transf = np.linalg.inv(self.ops.fib_matrix) @ init
