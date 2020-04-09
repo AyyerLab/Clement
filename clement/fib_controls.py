@@ -149,7 +149,7 @@ class FIBControls(BaseControls):
 
     def _transpose(self):
         self.ops.transpose()
-        self._calc_grid()
+        self._calc_grid(transpose=True)
         self._update_imview()
 
     def enable_buttons(self, enable=False):
@@ -166,11 +166,12 @@ class FIBControls(BaseControls):
             self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
 
-    def _calc_grid(self):
-        if self.sem_ops is not None:
-            if self.ops.fib_matrix is None:
-                self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
-                self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
+    def _calc_grid(self, transpose=False):
+        if not transpose:
+            if self.sem_ops is not None:
+                if self.ops.fib_matrix is None:
+                    self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
+                    self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
 
         if self.ops.points is not None:
             if self.show_grid_btn.isChecked():
@@ -227,7 +228,7 @@ class FIBControls(BaseControls):
             print('You have to select at least 4 points!')
         else:
             self._refine()
-            self.ops.apply_refinement(self.ops.points)
+            #self.ops.apply_refinement(self.ops.points)
             self._calc_grid()
         QtWidgets.QApplication.restoreOverrideCursor()
 

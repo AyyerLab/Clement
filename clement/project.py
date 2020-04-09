@@ -36,7 +36,7 @@ class Project(QtWidgets.QWidget):
             self._load_fm(project)
             self._load_em(project)
             self._load_fib(project)
-            self._load_base(project)
+            #self._load_base(project)
 
     def _load_fm(self, project):
         if 'FM' not in project:
@@ -99,6 +99,15 @@ class Project(QtWidgets.QWidget):
         self.fm.show_btn.setChecked(fmdict['Show original'])
         self.fm.map_btn.setChecked(fmdict['Show z map'])
         self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
+
+        self.fm._refined = fmdict['Refined']
+        if self.fm._refined:
+            self.fm.ops._refine_shape = tuple(fmdict['Refine shape'])
+            self.fm.ops._refine_matrix = np.array(fmdict['Refine matrix'])
+            self.fm.ops.refine_history.append(self.fm.ops._refine_matrix)
+            self.fm.ops.apply_refinement()
+
+        self.fm._update_imview()
 
     def _load_em(self, project):
         if 'EM' not in project:
@@ -188,7 +197,6 @@ class Project(QtWidgets.QWidget):
         if 'FIB' not in project:
             return
         fibdict = project['FIB']
-        #self.fib.sem_ops = self.em.ops
         self.fib._curr_folder = fibdict['Directory']
         self.fib._file_name = fibdict['File']
         self.fib.mrc_fname.setText(self.fib._file_name)
@@ -202,24 +210,32 @@ class Project(QtWidgets.QWidget):
         self.fib.sem_ops = self.em.ops
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
+
         try:
             new_points = fibdict['Grid points']
-
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            self.fib.ops.points = new_points
+            self.fib.ops.points = np.copy(new_points)
             self.fib._calc_grid()
             self.fib.ops.calc_grid_shift(new_points)
         except KeyError:
             pass
 
+        if fibdict['Refined']:
+            self.fib._refined = fibdict['Refined']
+            self.fib.ops._refine_matrix = np.array(fibdict['Refine matrix'])
+            self.fib.ops.apply_refinement(self.fib.ops.points)
+            self.fib.ops.refine_grid()
+            self.fib._calc_grid()
+
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index']:
+            self.fib.show_fib = True
             self.show_fib = True
 
         if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
             if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
                 self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-
+            self.fib.show_peaks_btn.setChecked(fibdict['Show peaks'])
 
     def _load_base(self, project):
         try:
@@ -231,37 +247,30 @@ class Project(QtWidgets.QWidget):
             else:
                 emdict = project['EM']
                 em = self.em
-            num_refinements = fmdict['Number of refinements']
-            if num_refinements == 0:
-                num_refinements = 1 #make for loop go to draw points without refinement
-            for i in range(num_refinements):
-                try:
-                    self.fm.select_btn.setChecked(True)
-                    points_corr_fm = fmdict['Correlated points {}'.format(i)]
-                    indices_fm = list(fmdict['Correlated points indices {}'.format(i)])
-                    if len(indices_fm) > 0:
-                        points_red = list(itemgetter(*indices_fm)(list(points_corr_fm)))
-                        roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                        [self.fm._draw_correlated_points(roi, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem()) for roi in roi_list]
-                except KeyError:
-                    pass
-                try:
-                    em.select_btn.setChecked(True)
-                    points_corr_em = emdict['Correlated points {}'.format(i)]
-                    indices_em = list(emdict['Correlated points indices {}'.format(i)])
-                    if len(indices_em) > 0:
-                        points_red = list(itemgetter(*indices_em)(list(points_corr_em)))
-                        roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                        [em._draw_correlated_points(roi, em.size_ops, em.size_other, em.imview.getImageItem()) for roi in roi_list]
-                except KeyError:
-                    pass
-                em.select_btn.setChecked(False)
+                self.fm.select_btn.setChecked(True)
+                points_corr_fm = fmdict['Correlated points']
+                indices_fm = fmdict['Correlated points indices']
+                if len(indices_fm) > 0:
+                    points_red = list(itemgetter(*indices_fm)(list(points_corr_fm)))
+                    roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
+                    [self.fm._draw_correlated_points(roi, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem()) for roi in roi_list]
+                if not self.show_fib:
+                    try:
+                        em.select_btn.setChecked(True)
+                        points_corr_em = emdict['Correlated points']
+                        indices_em = list(emdict['Correlated points indices'])
+                        if len(indices_em) > 0:
+                            points_red = list(itemgetter(*indices_em)(list(points_corr_em)))
+                            roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
+                            [em._draw_correlated_points(roi, em.size_ops, em.size_other, em.imview.getImageItem()) for roi in roi_list]
+                    except KeyError:
+                        pass
+                    em.select_btn.setChecked(False)
                 self.fm.select_btn.setChecked(False)
 
                 #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
                 try: #do this only when correlated points exist
                     indices_fm = list(fmdict['Correlated points indices {}'.format(i)])
-
                     if len(indices_fm) > 0:
                         correct_em = list(itemgetter(*indices_fm)(list(points_corr_em)))
                         pt_list_em = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_em)]
@@ -287,8 +296,6 @@ class Project(QtWidgets.QWidget):
                 except KeyError:
                     pass
 
-                if fmdict['Refined']:
-                    self.fm._refine()
         except KeyError:
             pass
         mdict = project['MERGE']
@@ -404,18 +411,17 @@ class Project(QtWidgets.QWidget):
         fmdict['Fliph'] = self.fm.fliph.isChecked()
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
-        if len(self.fm._refine_history) == 0 and len(self.fm._points_corr) > 0:
-            self.fm._refine_history.append([self.fm._points_corr, self.fm._points_corr_indices])
-        if len(self.fm._refine_history) > 0:
-            for i in range(len(self.fm._refine_history)):
-                points = [[p.pos().x(),p.pos().y()] for p in self.fm._refine_history[i][0]]
-                fmdict['Correlated points {}'.format(i)] = points
-                #corr_points.attrs['Circle size FM'] = self.fm._size_ops
-                #corr_points.attrs['Circle size EM'] = self.fm._size_other
-                fmdict['Correlated points indices {}'.format(i)] = self.fm._refine_history[i][1]
-        fmdict['Number of refinements'] = self.fm._refine_counter
-        if self.fm._refined:
-            fmdict['Refined'] = self.fm._refined
+        points = [[p.pos().x(),p.pos().y()] for p in self.fm._points_corr]
+        fmdict['Correlated points'] = points
+        fmdict['Original correlated points'] = self.fm._orig_points_corr
+        fmdict['Correlated points indices'] = self.fm._points_corr_indices
+
+        total_refine_matrix = np.identity(3)
+        for i in range(len(self.fm.ops.refine_history)):
+            total_refine_matrix = self.fm.ops.refine_history[i] @ total_refine_matrix
+        fmdict['Refine matrix'] = total_refine_matrix.tolist()
+        fmdict['Refine shape'] = list(self.fm.ops._refine_shape) if self.fm.ops._refine_shape is not None else None
+        fmdict['Refined'] = self.fm._refined
 
     def _save_em(self, project):
         emdict = {}
@@ -440,15 +446,11 @@ class Project(QtWidgets.QWidget):
         if self.em.ops._tf_points_region is not None:
             emdict['Transformed points subregion'] = self.em.ops._tf_points_region.tolist()
         emdict['Show assembled'] = self.em.show_assembled_btn.isChecked()
-        if len(self.em._refine_history) == 0 and len(self.em._points_corr) > 0:
-            self.em._refine_history.append([self.em._points_corr, self.em._points_corr_indices])
-        if len(self.em._refine_history) > 0:
-            for i in range(len(self.em._refine_history)):
-                points = [[p.pos().x(),p.pos().y()] for p in self.em._refine_history[i][0]]
-                emdict['Correlated points {}'.format(i)] = points
-                #points_corr.attrs['Circle size EM'] = self.em._size_ops
-                #points_corr.attrs['Circle size FM'] = self.em._size_other
-                emdict['Correlated points indices {}'.format(i)] = self.em._refine_history[i][1]
+
+        points = [[p.pos().x(),p.pos().y()] for p in self.em._points_corr]
+        emdict['Correlated points'] = points
+        emdict['Original correlated points '] = self.em._orig_points_corr
+        emdict['Correlated points indices'] = self.em._points_corr_indices
 
     def _save_fib(self, project):
         fibdict = {}
@@ -459,18 +461,18 @@ class Project(QtWidgets.QWidget):
         fibdict['Sigma angle'] = self.fib.sigma_btn.text()
         fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
+        fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
         if self.fib.ops.points is not None:
-            fibdict['Grid points'] = self.fib.ops.points
+            fibdict['Grid points'] = self.fib.ops._grid_points_tmp.tolist() if self.fib.ops._grid_points_tmp is not None else None
 
-        if len(self.fib._refine_history) == 0 and len(self.fib._points_corr) > 0:
-            self.fib._refine_history.append([self.fib._points_corr, self.fib._points_corr_indices])
-        if len(self.fib._refine_history) > 0:
-            for i in range(len(self.fib._refine_history)):
-                points = [[p.pos().x(), p.pos().y()] for p in self.fib._refine_history[i][0]]
-                fibdict['Correlated points {}'.format(i)] = points
-                # points_corr.attrs['Circle size EM'] = self.em._size_ops
-                # points_corr.attrs['Circle size FM'] = self.em._size_other
-                fibdict['Correlated points indices {}'.format(i)] = self.fib._refine_history[i][1]
+        points = [[p.pos().x(),p.pos().y()] for p in self.fib._points_corr]
+        fibdict['Correlated points'] = points
+        fibdict['Original correlated points {}'] = self.fib._orig_points_corr
+        fibdict['Correlated points indices'] = self.fib._points_corr_indices
+
+        fibdict['Refined'] = self.fib._refined
+        if self.fib._refined:
+            fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

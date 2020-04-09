@@ -13,11 +13,12 @@ import tifffile
 class EM_ops():
     def __init__(self):
         self._orig_points = None
+        self._grid_points_tmp = None
         self._transformed = False
         self._tf_points = None
         self._orig_points_region = None
         self._tf_points_region = None
-
+        self._refine_matrix = None
 
         self.h = None
         self.eh = None
@@ -59,8 +60,7 @@ class EM_ops():
         self.fib_matrix = None
         self.fib_shift = None
         self.fib_angle = None #angle relative to xy-plane
-        self.transposed= False
-        self.refine_matrix = None
+        self.transposed = False
 
     def parse(self, fname, step):
         if '.tif' in fname or '.tiff' in fname:
@@ -433,33 +433,32 @@ class EM_ops():
         return stage_positions
 
     def calc_grid_shift(self, points):
-        self.points = np.array(points)
-        shift = (points - self._orig_points).mean(0)
-        print('Grid box shift: ', shift)
-        self.fib_matrix[:2, 3] = shift
-        print('Fib matrix shifted: \n', self.fib_matrix)
+        if len(self._orig_points) == len(points):
+            self.points = np.array(points)
+            self._grid_points_tmp = np.copy(self.points)
+            shift = (points - self._orig_points).mean(0)
+            print('Grid box shift: ', shift)
+            self.fib_matrix[:2, 3] = shift
+            print('Fib matrix shifted: \n', self.fib_matrix)
+        else:
+            print('Ooops, something went wrong!')
+            print('Have you accidentally clicked on a grid line? This is not allowed')
 
     def calc_refine_matrix(self, src, dst):
         print('Source: \n', src)
         print('Dest: \n', dst)
         refine_matrix = tf.estimate_transform('affine', src, dst).params
-        if self.refine_matrix is None:
-            self.refine_matrix = refine_matrix
+        if self._refine_matrix is None:
+            self._refine_matrix = refine_matrix
         else:
-            self.refine_matrix = refine_matrix @ self.refine_matrix
-
-
+            self._refine_matrix = refine_matrix @ self._refine_matrix
 
     def apply_refinement(self, points=None):
         if points is None:
             points = self.points
         for i in range(points.shape[0]):
             point = np.array([points[i,0], points[i,1], 1])
-            points[i] = (self.refine_matrix @ point)[:2]
-
-        #self.fib_matrix = self.refine_matrix @ self.fib_matrix
-        #self.apply_fib_transform(sem_points)
-
+            points[i] = (self._refine_matrix @ point)[:2]
 
     @classmethod
     def get_transform(self, source, dest):

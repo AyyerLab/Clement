@@ -20,7 +20,9 @@ class FM_ops(Peak_finding):
         self._tf_points = None
         self._show_mapping = False
         self._show_no_tilt = False
-        
+        self._refine_matrix = None
+        self._refine_shape = None
+
         self.reader = None
         self.voxel_size = None
         self.tif_data = None
@@ -59,12 +61,11 @@ class FM_ops(Peak_finding):
         self.counter_clockwise = False
         self.rotated = False
         self.corr_matrix = None
-        self.refine_matrix = None
         self.refine_points = None
+        self.refine_history = []
         self.refined = False
         self.refined_max_proj = None
         self.refined_data = None
-        self.refine_history = []
         self.merged = None
 
     def parse(self, fname, z, series=None, reopen=True):
@@ -110,6 +111,7 @@ class FM_ops(Peak_finding):
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
 
+
         if self.refined:
             refined_tmp = True
             self.refined = False
@@ -120,9 +122,10 @@ class FM_ops(Peak_finding):
             self.apply_transform(shift_points=False)
             self._update_data()
 
+        print('Refined?: ', self.refined)
         if refined_tmp and self._transformed:
             for i in range(len(self.refine_history)):
-                self.refine_matrix = self.refine_history[i]
+                self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -244,7 +247,7 @@ class FM_ops(Peak_finding):
         if refined_tmp and self._transformed:
         #if self.refined:
             for i in range(len(self.refine_history)):
-                self.refine_matrix = self.refine_history[i]
+                self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -306,7 +309,7 @@ class FM_ops(Peak_finding):
         if refined_tmp and self._transformed:
             # if self.refined:
             for i in range(len(self.refine_history)):
-                self.refine_matrix = self.refine_history[i]
+                self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -356,7 +359,7 @@ class FM_ops(Peak_finding):
         if refined_tmp and self._transformed:
             # if self.refined:
             for i in range(len(self.refine_history)):
-                self.refine_matrix = self.refine_history[i]
+                self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -601,7 +604,6 @@ class FM_ops(Peak_finding):
 
         if self._show_mapping:
             if self._show_no_tilt:
-                print('hello')
                 self.data = np.copy(self.tf_hsv_map_no_tilt)
             else:
                 self.data = np.copy(self.tf_hsv_map)
@@ -612,35 +614,23 @@ class FM_ops(Peak_finding):
 
         self._transformed = True
 
-    def calc_refine_matrix(self, source, dst, em_grid_points):
-        print('em_grid_points: ', em_grid_points)
-        print('source: ', source)
-        print('dst: ', dst)
+    def calc_refine_matrix(self, src, dst):
         if self.tf_data is not None:
-            self.corr_matrix_new = tf.estimate_transform('affine',source,dst).params
-            self.refine_matrix = self.corr_matrix_new @ np.linalg.inv(self.corr_matrix)
+            self._refine_matrix = tf.estimate_transform('affine', src, dst).params
             nx, ny = self.data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            refine_corners = np.dot(self.refine_matrix, corners)
-            self.refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
-            self.refine_history.append(self.refine_matrix)
-            self.refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
-            self.refine_grid(em_grid_points)
-            print(self.refine_matrix)
-            self.apply_refinement()
-
-    def refine_grid(self, em_points):
-        self.grid_matrix = self.refine_matrix @ np.linalg.inv(self.corr_matrix_new)
-        self._tf_points = np.array([(self.grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
-        self.points = np.copy(self._tf_points)
+            refine_corners = np.dot(self._refine_matrix, corners)
+            self._refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
+            self.refine_history.append(self._refine_matrix)
+            self._refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
+            print(self._refine_matrix)
 
     def apply_refinement(self):
         data_tmp = np.copy(self.data)
-        self.data = np.empty(self.refine_shape+(self.data.shape[-1],))
+        self.data = np.empty(self._refine_shape+(self.data.shape[-1],))
         for i in range(self.data.shape[-1]):
-            self.data[:,:,i] = ndi.affine_transform(data_tmp[:,:,i], np.linalg.inv(self.refine_matrix), order=1, output_shape=self.refine_shape)
+            self.data[:,:,i] = ndi.affine_transform(data_tmp[:,:,i], np.linalg.inv(self._refine_matrix), order=1, output_shape=self._refine_shape)
             sys.stderr.write('\r%d'%i)
-
         if self._show_max_proj:
             self.refined_max_proj = np.copy(self.data)
         else:
@@ -648,8 +638,14 @@ class FM_ops(Peak_finding):
         print('\r', self.data.shape)
         self.refined = True
 
+    def refine_grid(self, src, dst, em_points):
+        print('refine grid')
+        corr_matrix_new = tf.estimate_transform('affine',src,dst).params
+        grid_matrix = self._refine_matrix @ np.linalg.inv(corr_matrix_new)
+        self._tf_points = np.array([(grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
+        self.points = np.copy(self._tf_points)
+
     def optimize(self, fm_max, em_img, fm_points, em_points):
-        
         def preprocessing(img, points, size=15, em=False):
             roi = img[points[0]-size:points[0]+size, points[1]-size:points[1]+size]
             if em:
