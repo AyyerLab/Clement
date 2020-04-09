@@ -564,3 +564,21 @@ class BaseControls(QtWidgets.QWidget):
             self._points_corr = copy.copy(self.orig_points_corr)
             self.other._points_corr = copy.copy(self.other.orig_points_corr)
             
+    def reset_base(self):
+        [self.imview.removeItem(point) for point in self._points_corr]
+        [self.other.imview.removeItem(point) for point in self.other._points_corr]
+        [self.imview.removeItem(anno) for anno in self.anno_list]
+        [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+
+        self.anno_list = []
+        self.other.anno_list = []
+        self.counter = 0
+        self.other.counter = 0
+        self._points_corr = []
+        self.other._points_corr = []
+        self._points_corr_z = []
+        self.other._points_corr_z = []
+        self._orig_points_corr = []
+        self.other._orig_points_corr = []
+        self._points_corr_indices = []
+        self.other._points_corr_indices = []

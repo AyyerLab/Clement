@@ -27,6 +27,7 @@ class Project(QtWidgets.QWidget):
                                                              self._project_folder,
                                                              '*.yml')
         if file_name is not '':
+            self.fm.reset_base()
             self.fm.reset_init()
             self.em.reset_init()
             self.fib.reset_init()
