@@ -13,6 +13,7 @@ class Project(QtWidgets.QWidget):
         self.fm = fm
         self.em = em
         self.fib = fib
+        self.show_fib = False
         self.merged = False
         self.popup = None
         self.parent = parent
@@ -198,8 +199,22 @@ class Project(QtWidgets.QWidget):
             self.fib._transpose() # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
+        self.fib.sem_ops = self.em.ops
+        if self.fib.sem_ops._orig_points is not None:
+            self.fib.enable_buttons(True)
+        try:
+            new_points = fibdict['Grid points']
+
+            self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
+            self.fib.ops.points = new_points
+            self.fib._calc_grid()
+            self.fib.ops.calc_grid_shift(new_points)
+        except KeyError:
+            pass
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
+        if fibdict['Tab index']:
+            self.show_fib = True
 
         if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
             if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
@@ -209,7 +224,13 @@ class Project(QtWidgets.QWidget):
     def _load_base(self, project):
         try:
             fmdict = project['FM']
-            emdict = project['EM']
+            print('show fib: ', self.show_fib)
+            if self.show_fib:
+                emdict = project['FIB']
+                em = self.fib
+            else:
+                emdict = project['EM']
+                em = self.em
             num_refinements = fmdict['Number of refinements']
             if num_refinements == 0:
                 num_refinements = 1 #make for loop go to draw points without refinement
@@ -225,17 +246,18 @@ class Project(QtWidgets.QWidget):
                 except KeyError:
                     pass
                 try:
-                    self.em.select_btn.setChecked(True)
+                    em.select_btn.setChecked(True)
                     points_corr_em = emdict['Correlated points {}'.format(i)]
                     indices_em = list(emdict['Correlated points indices {}'.format(i)])
                     if len(indices_em) > 0:
                         points_red = list(itemgetter(*indices_em)(list(points_corr_em)))
                         roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                        [self.em._draw_correlated_points(roi, self.em.size_ops, self.em.size_other, self.em.imview.getImageItem()) for roi in roi_list]
+                        [em._draw_correlated_points(roi, em.size_ops, em.size_other, em.imview.getImageItem()) for roi in roi_list]
                 except KeyError:
                     pass
-                self.em.select_btn.setChecked(False)
+                em.select_btn.setChecked(False)
                 self.fm.select_btn.setChecked(False)
+
                 #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
                 try: #do this only when correlated points exist
                     indices_fm = list(fmdict['Correlated points indices {}'.format(i)])
@@ -243,10 +265,12 @@ class Project(QtWidgets.QWidget):
                     if len(indices_fm) > 0:
                         correct_em = list(itemgetter(*indices_fm)(list(points_corr_em)))
                         pt_list_em = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_em)]
-                        roi_list_em = [pg.CircleROI(pt_list_em[i],self.em.size_ops, parent=self.em.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_em))]
-                        [self.em.imview.removeItem(self.em._points_corr[indices_fm[index]]) for index in indices_fm]
+                        roi_list_em = [pg.CircleROI(pt_list_em[i],em.size_ops, parent=em.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_em))]
+                        [roi.setPen(0,255,255) for roi in roi_list_em]
+                        [roi.removeHandle(0) for roi in roi_list_em]
+                        [em.imview.removeItem(em._points_corr[indices_fm[index]]) for index in indices_fm]
                         for i in range(len(correct_em)):
-                            self.em._points_corr[indices_fm[i]] = roi_list_em[i]
+                            em._points_corr[indices_fm[i]] = roi_list_em[i]
                 except KeyError:
                     pass
                 try:
@@ -255,11 +279,14 @@ class Project(QtWidgets.QWidget):
                         correct_fm = list(itemgetter(*indices_em)(list(points_corr_fm)))
                         pt_list_fm = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_fm)]
                         roi_list_fm = [pg.CircleROI(pt_list_fm[i], self.fm.size_ops, parent=self.fm.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_fm))]
+                        [roi.setPen(0,255,255) for roi in roi_list_fm]
+                        [roi.removeHandle(0) for roi in roi_list_fm]
                         [self.fm.imview.removeItem(self.fm._points_corr[indices_em[index]]) for index in indices_em]
                         for i in range(len(correct_fm)):
                             self.fm._points_corr[indices_em[i]] = roi_list_fm[i]
                 except KeyError:
                     pass
+
                 if fmdict['Refined']:
                     self.fm._refine()
         except KeyError:
@@ -432,6 +459,18 @@ class Project(QtWidgets.QWidget):
         fibdict['Sigma angle'] = self.fib.sigma_btn.text()
         fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
+        if self.fib.ops.points is not None:
+            fibdict['Grid points'] = self.fib.ops.points
+
+        if len(self.fib._refine_history) == 0 and len(self.fib._points_corr) > 0:
+            self.fib._refine_history.append([self.fib._points_corr, self.fib._points_corr_indices])
+        if len(self.fib._refine_history) > 0:
+            for i in range(len(self.fib._refine_history)):
+                points = [[p.pos().x(), p.pos().y()] for p in self.fib._refine_history[i][0]]
+                fibdict['Correlated points {}'.format(i)] = points
+                # points_corr.attrs['Circle size EM'] = self.em._size_ops
+                # points_corr.attrs['Circle size FM'] = self.em._size_other
+                fibdict['Correlated points indices {}'.format(i)] = self.fib._refine_history[i][1]
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

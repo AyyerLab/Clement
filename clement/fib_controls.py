@@ -8,6 +8,7 @@ from .base_controls import BaseControls
 #from .fib_operations import FIB_ops
 from .em_operations import EM_ops
 
+
 class FIBControls(BaseControls):
     def __init__(self, imview, vbox, sem_ops):
         super(FIBControls, self).__init__()
@@ -26,9 +27,7 @@ class FIBControls(BaseControls):
         self._curr_folder = None
         self._file_name = None
         self._sigma_angle = None
-
-
-
+        self._refined = False
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
@@ -87,15 +86,15 @@ class FIBControls(BaseControls):
         #line.addWidget(self.select_btn)
         #line.addStretch(1)
 
-        #line = QtWidgets.QHBoxLayout()
-        #vbox.addLayout(line)
-        #label = QtWidgets.QLabel('Refinement:', self)
-        #line.addWidget(label)
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Refinement:', self)
+        line.addWidget(label)
         self.refine_btn = QtWidgets.QPushButton('Refine', self)
         self.refine_btn.setEnabled(False)
-        self.refine_btn.clicked.connect(self._refine)
-        #line.addWidget(self.refine_btn)
-        #line.addStretch(1)
+        self.refine_btn.clicked.connect(self._refine_fib)
+        line.addWidget(self.refine_btn)
+        line.addStretch(1)
 
         # ---- Quit button
         vbox.addStretch(1)
@@ -150,7 +149,7 @@ class FIBControls(BaseControls):
 
     def _transpose(self):
         self.ops.transpose()
-        self._recalc_grid()
+        self._calc_grid()
         self._update_imview()
 
     def enable_buttons(self, enable=False):
@@ -168,23 +167,18 @@ class FIBControls(BaseControls):
             self.show_grid_box = False
 
     def _calc_grid(self):
-        if self.ops.fib_matrix is None:
-            self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
-            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
+        if self.sem_ops is not None:
+            if self.ops.fib_matrix is None:
+                self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
+                self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
 
-        pos = list(self.ops.points)
-        self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True)
-        self.grid_box.sigRegionChangeFinished.connect(self._refine_grid)
-        self.refine_btn.setEnabled(True)
-        self.imview.addItem(self.grid_box)
-
-    def _recalc_grid(self, toggle_orig=False):
         if self.ops.points is not None:
             if self.show_grid_btn.isChecked():
                 self.imview.removeItem(self.grid_box)
-
             pos = list(self.ops.points)
-            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True)
+            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
+            self.grid_box.sigRegionChangeFinished.connect(self._refine_grid)
+            self.refine_btn.setEnabled(True)
             if self.show_grid_btn.isChecked():
                 self.imview.addItem(self.grid_box)
 
@@ -198,14 +192,22 @@ class FIBControls(BaseControls):
                 else:
                     if len(self.peaks) != 0:
                         self.peaks = []
+                    src_sorted = np.array(
+                        sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    dst_sorted = np.array(
+                        sorted(self.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    tr_matrix = self.ops.get_fib_transform(src_sorted, dst_sorted, self.sem_ops.tf_matrix)
+
                     for i in range(self.other.ops.tf_peaks_3d.shape[0]):
                         init = np.array([self.other.ops.tf_peaks_3d[i,0], self.other.ops.tf_peaks_3d[i,1], 1])
-                        transf = np.dot(self.other.tr_matrices, init)
+                        transf = np.dot(tr_matrix, init)
                         transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], self.other.ops.tf_peaks_3d[i,2], 1])
+                        if self._refined:
+                            transf = self.ops.refine_matrix @ np.array([transf[0], transf[1], 1])
                         pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
-                        point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=True,
+                        point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False,
                                                    removable=False)
-                        point.setPen(0, 255, 255)
+                        point.setPen(255, 0, 0)
                         point.removeHandle(0)
                         self.peaks.append(point)
                         self.imview.addItem(point)
@@ -217,13 +219,17 @@ class FIBControls(BaseControls):
         points = np.array([list((point[0], point[1])) for point in points_obj])
         print('Orig Points: \n', self.ops._orig_points)
         print('Points: \n', points)
-        self.ops.calc_refine_matrix(points)
+        self.ops.calc_grid_shift(points)
 
-    def _refine(self):
-        pass
-
-
-
+    def _refine_fib(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        if len(self._points_corr) < 4:
+            print('You have to select at least 4 points!')
+        else:
+            self._refine()
+            self.ops.apply_refinement(self.ops.points)
+            self._calc_grid()
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -244,7 +250,6 @@ class FIBControls(BaseControls):
 
         self._points_corr = []
         self._points_corr_indices= []
-
         self.show_grid_box = False
         self.grid_box = None
         self.transp_btn.setEnabled(False)

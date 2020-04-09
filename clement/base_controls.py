@@ -15,6 +15,8 @@ class BaseControls(QtWidgets.QWidget):
         
         self._box_coordinate = None
         self._points_corr = []
+        self._points_corr_z = []
+        self._orig_points_corr_fib = []
         self.orig_points_corr = []
         self._points_corr_indices= []
         self._refined = False
@@ -127,6 +129,7 @@ class BaseControls(QtWidgets.QWidget):
                         z = self.ops.calc_z(ind, pos) #size1
                         if z is None:
                             return
+                        self._points_corr_z.append(z)
 
                     init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
 
@@ -148,12 +151,9 @@ class BaseControls(QtWidgets.QWidget):
                         print('Clicked point: ', np.array([init[0], init[1], z]))
                         transf = np.dot(self.tr_matrices, init)
                         transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-#                    elif hasattr(self, 'fib') and self.fib:
-#                        init = np.array([init[0], init[1], 1000, 1])
-#                        transf = np.linalg.inv(self.ops.fib_matrix) @ init
-#                        transf = np.array([transf[0], transf[1], 1])
-#                        transf = self.sem_ops.tf_matrix @ transf
-#                        transf = self.tr_matrices @ transf
+                        self.other._points_corr_z.append(transf[2])
+                        if self.other._refined:
+                            transf[:2] = (self.other.ops.refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                     else:
                         transf = np.dot(self.tr_matrices, init)
 
@@ -164,6 +164,7 @@ class BaseControls(QtWidgets.QWidget):
                     point_other.removeHandle(0)
                     self.other.imview.addItem(point_other)
                     self.other._points_corr.append(point_other)
+                    self.other._orig_points_corr_fib.append(np.array([pos.x()+size2/2,pos.y()+size2/2]))
 
                     self.other.counter = self.counter
                     annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
@@ -171,8 +172,12 @@ class BaseControls(QtWidgets.QWidget):
                     self.other.imview.addItem(annotation_other)
                     self.other.anno_list.append(annotation_other)
 
-                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview, point_obj, point_other, self._points_corr, self.other._points_corr, annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
-                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview, point_other, point_obj, self.other._points_corr, self._points_corr, annotation_other, annotation_obj, self.other.anno_list, self.anno_list))
+                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview,
+                                                point_obj, point_other, self._points_corr, self.other._points_corr,
+                                                annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
+                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview,
+                                                point_other, point_obj, self.other._points_corr, self._points_corr,
+                                                annotation_other, annotation_obj, self.other.anno_list, self.anno_list))
 
             else:
                 print('Transform both images before point selection')
@@ -353,6 +358,10 @@ class BaseControls(QtWidgets.QWidget):
                         [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
                         self._points_corr = []
                         self.other._points_corr = []
+                        self._points_corr_z = []
+                        self.other._points_corr_z = []
+                        self._orig_points_corr_fib = []
+                        self.other._orig_points_corr_fib = []
                         self._points_corr_indices = []
                         self.other._points_corr_indices = []
                         self.anno_list = []
@@ -395,9 +404,6 @@ class BaseControls(QtWidgets.QWidget):
                         sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
-                points = [[point.x(), point.y()] for point in self._points_corr]
-                np.save('tf_matrix.npy', self.ops.tf_matrix)
-                np.save('points.npy', np.array(points))
                 if hasattr(self.other, 'fib') and self.ops.channel is not None:
                     self.ops.clear_channel()
                 print('Done selecting points of interest on %s image'%self.tag)
@@ -493,40 +499,50 @@ class BaseControls(QtWidgets.QWidget):
                     self.peak_btn.setChecked(True)
 
     def _refine(self):
-
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
-                    
-                self._refine_history.append([self._points_corr, self._points_corr_indices])
-                self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices])
+                self._refine_history.append([self._points_corr, self._points_corr_indices, self._points_corr_z])
+                self.other._refine_history.append([self.other._points_corr, self.other._points_corr_indices, self.other._points_corr_z])
                 self._refine_counter += 1
                 print('Refining...')
-                dst = np.array([[point.x()+self.size_other/2,point.y()+self.size_other/2] for point in self.other._refine_history[-1][0]])
-                src = np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._refine_history[-1][0]])
-                
-                self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
+                if hasattr(self,'fib') and self.fib:
+                    dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
+                                    self._refine_history[-1][0]])
+                    src = np.array([[point[0], point[1]] for point in self._orig_points_corr_fib])
+                    self.ops.calc_refine_matrix(src, dst)
+                else:
+                    dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
+                                    self.other._refine_history[-1][0]])
+                    src = np.array([[point.x() + self.size_ops / 2, point.y() + self.size_ops / 2] for point in
+                                    self._refine_history[-1][0]])
+                    self.ops.calc_refine_matrix(src, dst,self.other.ops.points)
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
                 [self.imview.removeItem(anno) for anno in self.anno_list]
                 [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
 
-                self.auto_opt_btn.setChecked(False)
                 self.anno_list = []
                 self.other.anno_list = []
                 self.counter = 0
                 self.other.counter = 0
                 self._points_corr = []
                 self.other._points_corr = []
+                self._points_corr_z = []
+                self.other._points_corr_z = []
+                self._orig_points_corr_fib = []
+                self.other._orig_points_corr_fib = []
                 self._points_corr_indices = []
                 self.other._points_corr_indices = []
                 self._refined = True
-                self._recalc_grid()
+                if hasattr(self, 'rot_btn'):
+                    self._recalc_grid()
+                    self.fliph.setEnabled(False)
+                    self.flipv.setEnabled(False)
+                    self.auto_opt_btn.setChecked(False)
+                    self.transpose.setEnabled(False)
+                    self.rotate.setEnabled(False)
                 self._update_imview()
-                self.fliph.setEnabled(False)
-                self.flipv.setEnabled(False)
-                self.transpose.setEnabled(False)
-                self.rotate.setEnabled(False)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
         else:

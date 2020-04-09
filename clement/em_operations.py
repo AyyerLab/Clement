@@ -28,7 +28,7 @@ class EM_ops():
         self.data = None
         self.stacked_data = False
         self.orig_region = None
-        self.selected_region = None       
+        self.selected_region = None
         self.tf_region = None
         self.data_backup = None
         self.transformed_data = None
@@ -60,6 +60,7 @@ class EM_ops():
         self.fib_shift = None
         self.fib_angle = None #angle relative to xy-plane
         self.transposed= False
+        self.refine_matrix = None
 
     def parse(self, fname, step):
         if '.tif' in fname or '.tiff' in fname:
@@ -335,7 +336,7 @@ class EM_ops():
         print('Shifted fib matrix: ', self.fib_matrix)
         print('FIB shift: ', self.fib_shift)
 
-    def apply_fib_transform(self, points, sem_shape):
+    def apply_fib_transform(self, points, sem_shape=None):
         #3d rotation
         print('Orig points: \n', points)
         src = np.zeros((points.shape[0], 4))
@@ -344,10 +345,10 @@ class EM_ops():
             src[i,:] = [points[i,0], points[i,1], 0, 1]
             dst[i,:] = self.fib_matrix @ src[i,:]
         print('Rotated points: \n', dst[:,:3])
-        self.points = dst[:,:2]
+        self.points = np.array(dst[:,:2])
         if self._orig_points is None:
             self._orig_points = np.copy(self.points)
-        self.project_points(dst[:,:3], sem_shape)
+        #self.project_points(dst[:,:3], sem_shape)
 
     def project_points(self, points, sem_shape):
         pass
@@ -431,15 +432,34 @@ class EM_ops():
         print(stage_positions)
         return stage_positions
 
-
-
-    def calc_refine_matrix(self, points):
-        self.points = points
+    def calc_grid_shift(self, points):
+        self.points = np.array(points)
         shift = (points - self._orig_points).mean(0)
         print('Grid box shift: ', shift)
         self.fib_matrix[:2, 3] = shift
-
         print('Fib matrix shifted: \n', self.fib_matrix)
+
+    def calc_refine_matrix(self, src, dst):
+        print('Source: \n', src)
+        print('Dest: \n', dst)
+        refine_matrix = tf.estimate_transform('affine', src, dst).params
+        if self.refine_matrix is None:
+            self.refine_matrix = refine_matrix
+        else:
+            self.refine_matrix = refine_matrix @ self.refine_matrix
+
+
+
+    def apply_refinement(self, points=None):
+        if points is None:
+            points = self.points
+        for i in range(points.shape[0]):
+            point = np.array([points[i,0], points[i,1], 1])
+            points[i] = (self.refine_matrix @ point)[:2]
+
+        #self.fib_matrix = self.refine_matrix @ self.fib_matrix
+        #self.apply_fib_transform(sem_points)
+
 
     @classmethod
     def get_transform(self, source, dest):
