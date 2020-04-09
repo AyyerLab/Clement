@@ -130,6 +130,7 @@ class FIBControls(BaseControls):
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
+            self.show_peaks_btn.setEnabled(True)
             #if self.sem_ops is not None and (self.sem_ops._tf_points is not None or self.sem_ops._tf_points_region is not None):
             #    self.select_btn.setEnabled(True)
             QtWidgets.QApplication.restoreOverrideCursor()
@@ -257,6 +258,9 @@ class FIBControls(BaseControls):
         self.transp_btn.setChecked(False)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
+        self.show_peaks_btn.setEnabled(False)
+        self.show_peaks_btn.setChecked(False)
+
         #self.select_btn.setEnabled(False)
 
         self.ops.__init__()

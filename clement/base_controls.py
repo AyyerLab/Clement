@@ -155,7 +155,7 @@ class BaseControls(QtWidgets.QWidget):
                     point_other.removeHandle(0)
                     self.other.imview.addItem(point_other)
                     self.other._points_corr.append(point_other)
-                    self.other._orig_points_corr.append(np.array([pos.x()+size2/2,pos.y()+size2/2]))
+                    self.other._orig_points_corr.append([pos.x()+size2/2,pos.y()+size2/2])
 
                     self.other.counter = self.counter
                     annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))

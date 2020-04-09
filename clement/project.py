@@ -36,7 +36,7 @@ class Project(QtWidgets.QWidget):
             self._load_fm(project)
             self._load_em(project)
             self._load_fib(project)
-            #self._load_base(project)
+            self._load_base(project)
 
     def _load_fm(self, project):
         if 'FM' not in project:
@@ -242,12 +242,18 @@ class Project(QtWidgets.QWidget):
             fmdict = project['FM']
             print('show fib: ', self.show_fib)
             if self.show_fib:
-                emdict = project['FIB']
-                em = self.fib
+                self.fm.select_btn.setChecked(True)
+                points_corr_fm = fmdict['Correlated points']
+                qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
+                [self.fm._draw_correlated_points(point, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem())
+                for point in qpoints]
+                self.fm.select_btn.setChecked(False)
+
             else:
                 emdict = project['EM']
                 em = self.em
                 self.fm.select_btn.setChecked(True)
+
                 points_corr_fm = fmdict['Correlated points']
                 indices_fm = fmdict['Correlated points indices']
                 if len(indices_fm) > 0:
@@ -270,27 +276,29 @@ class Project(QtWidgets.QWidget):
 
                 #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
                 try: #do this only when correlated points exist
-                    indices_fm = list(fmdict['Correlated points indices {}'.format(i)])
+                    indices_fm = list(fmdict['Correlated points indices'])
                     if len(indices_fm) > 0:
                         correct_em = list(itemgetter(*indices_fm)(list(points_corr_em)))
                         pt_list_em = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_em)]
                         roi_list_em = [pg.CircleROI(pt_list_em[i],em.size_ops, parent=em.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_em))]
                         [roi.setPen(0,255,255) for roi in roi_list_em]
                         [roi.removeHandle(0) for roi in roi_list_em]
-                        [em.imview.removeItem(em._points_corr[indices_fm[index]]) for index in indices_fm]
+                        #[em.imview.removeItem(em._points_corr[indices_fm[index]]) for index in indices_fm]
+                        [em.imview.removeItem(em._points_corr[index]) for index in indices_fm]
                         for i in range(len(correct_em)):
                             em._points_corr[indices_fm[i]] = roi_list_em[i]
                 except KeyError:
                     pass
                 try:
-                    indices_em = list(emdict['Correlated points indices {}'.format(i)])
+                    indices_em = list(emdict['Correlated points indices'])
                     if len(indices_em) > 0:
                         correct_fm = list(itemgetter(*indices_em)(list(points_corr_fm)))
                         pt_list_fm = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_fm)]
                         roi_list_fm = [pg.CircleROI(pt_list_fm[i], self.fm.size_ops, parent=self.fm.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_fm))]
                         [roi.setPen(0,255,255) for roi in roi_list_fm]
                         [roi.removeHandle(0) for roi in roi_list_fm]
-                        [self.fm.imview.removeItem(self.fm._points_corr[indices_em[index]]) for index in indices_em]
+                        #[self.fm.imview.removeItem(self.fm._points_corr[indices_em[index]]) for index in indices_em]
+                        [self.fm.imview.removeItem(self.fm._points_corr[index]) for index in indices_em]
                         for i in range(len(correct_fm)):
                             self.fm._points_corr[indices_em[i]] = roi_list_fm[i]
                 except KeyError:
