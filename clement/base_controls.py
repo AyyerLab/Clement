@@ -35,6 +35,8 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list = []
         self.size_ops = 10
         self.size_other = 10
+        self.err = None
+        self.rms = None
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -504,6 +506,8 @@ class BaseControls(QtWidgets.QWidget):
                     #self.auto_opt_btn.setChecked(False)
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
+                else:
+                    self._estimate_precision()
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -528,6 +532,28 @@ class BaseControls(QtWidgets.QWidget):
         else:
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()
+
+    def _estimate_precision(self):
+        sel_points = [[point.x() + self.size_ops/2, point.y()+self.size_ops/2] for point in self._points_corr]
+        orig_fm_points = np.copy(self.other._points_corr)
+        orig_fm_points_z = np.copy(self.other._points_corr_z)
+        calc_points = []
+        for i in range(len(orig_fm_points)):
+            orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
+            z = orig_fm_points_z[i]
+            init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
+            transf = np.dot(self.other.tr_matrices, init)
+            transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+            transf[:2] = (self.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
+            calc_points.append(transf[:2])
+
+        diff = np.array(sel_points) - np.array(calc_points)
+        self.err = diff
+        self.rms = np.sqrt(1/len(diff) * np.sum((diff[:,0]**2 + diff[:,1]**2)))
+        np.save('sel.npy', sel_points)
+        np.save('calc.npy', calc_points)
+        print('Selected points: ', np.array(sel_points))
+        print('Calculated points: ', np.array(calc_points))
 
     def _optimize(self):
         if self.auto_opt_btn.isChecked():

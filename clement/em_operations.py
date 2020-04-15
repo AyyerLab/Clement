@@ -19,6 +19,7 @@ class EM_ops():
         self._orig_points_region = None
         self._tf_points_region = None
         self._refine_matrix = None
+        self._total_shift = None
 
         self.h = None
         self.eh = None
@@ -446,6 +447,10 @@ class EM_ops():
 
     def calc_grid_shift(self, shift_x, shift_y):
         shift = np.array([shift_x, shift_y])
+        if self._total_shift is None:
+            self._total_shift = shift
+        else:
+            self._total_shift += shift
         self.points += shift
         print('Grid box shift: ', shift)
         self.fib_matrix[:2, 3] = shift

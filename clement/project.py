@@ -129,6 +129,7 @@ class Project(QtWidgets.QWidget):
                 self.em.show_grid_btn.setEnabled(True)
                 self.em._recalc_grid()
                 self.em.show_grid_btn.setChecked(emdict['Show grid box'])
+                self.em.transform_btn.setEnabled(True)
                 self.em.rot_transform_btn.setChecked(emdict['Rotation only'])
             except KeyError:
                 pass
@@ -165,6 +166,7 @@ class Project(QtWidgets.QWidget):
                 self.em.show_grid_btn.setEnabled(True)
                 self.em._recalc_grid()
                 self.em.show_grid_btn.setChecked(emdict['Show grid box'])
+                self.em.transform_btn.setEnabled(True)
                 self.em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
                     self.em.ops._tf_points = np.array(emdict['Transformed grid points'])
@@ -213,10 +215,12 @@ class Project(QtWidgets.QWidget):
             self.fib.enable_buttons(True)
 
         try:
-            new_points = fibdict['Grid points']
+            self.fib.ops._orig_points = np.array(fibdict['Original points'])
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            self.fib.ops.points = np.copy(new_points)
-            self.fib._calc_grid()
+            self.fib.ops.points = np.copy(self.fib.ops._orig_points)
+            self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
+            self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
+            self.fib._refine_grid()
             #self.fib.ops.calc_grid_shift(new_points)
         except KeyError:
             pass
@@ -473,7 +477,8 @@ class Project(QtWidgets.QWidget):
         fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
         #if self.fib.ops.points is not None:
         #    fibdict['Grid points'] = self.fib.ops._grid_points_tmp.tolist() if self.fib.ops._grid_points_tmp is not None else None
-        fibdict['Grid points'] = self.fib.ops.points.tolist()
+        fibdict['Original points'] = self.fib.ops._orig_points.tolist()
+        fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [0.0,0.0]
 
         points = [[p.pos().x(),p.pos().y()] for p in self.fib._points_corr]
         fibdict['Correlated points'] = points

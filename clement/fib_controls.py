@@ -66,8 +66,8 @@ class FIBControls(BaseControls):
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
-        self.shift_x_label = QtWidgets.QLabel('Shift x:')
-        self.shift_y_label = QtWidgets.QLabel('Shift y:')
+        shift_x_label = QtWidgets.QLabel('Shift x:')
+        shift_y_label = QtWidgets.QLabel('Shift y:')
         self.shift_x_btn = QtWidgets.QLineEdit(self)
         self.shift_y_btn = QtWidgets.QLineEdit(self)
         self.shift_x_btn.setText('-1000')
@@ -78,16 +78,16 @@ class FIBControls(BaseControls):
         self.shift_btn.clicked.connect(self._refine_grid)
         self.shift_btn.setEnabled(False)
         line.addWidget(self.show_grid_btn)
-        line.addWidget(self.shift_x_label)
+        line.addWidget(shift_x_label)
         line.addWidget(self.shift_x_btn)
-        line.addWidget(self.shift_y_label)
+        line.addWidget(shift_y_label)
         line.addWidget(self.shift_y_btn)
         line.addWidget(self.shift_btn)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Peaks')
+        label = QtWidgets.QLabel('Peaks:')
         line.addWidget(label)
         self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
         self.show_peaks_btn.setEnabled(True)
@@ -115,7 +115,14 @@ class FIBControls(BaseControls):
         self.refine_btn = QtWidgets.QPushButton('Refine', self)
         self.refine_btn.setEnabled(False)
         self.refine_btn.clicked.connect(self._refine_fib)
+        mean_label = QtWidgets.QLabel('Precision [nm]:')
+        self.err_btn = QtWidgets.QLabel('0')
+        self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
+        self.err_plt_btn.clicked.connect(self._scatter_plot)
         line.addWidget(self.refine_btn)
+        line.addWidget(mean_label)
+        line.addWidget(self.err_btn)
+        line.addWidget(self.err_plt_btn)
         line.addStretch(1)
 
         # ---- Quit button
@@ -260,7 +267,11 @@ class FIBControls(BaseControls):
             self._refine()
             #self.ops.apply_refinement(self.ops.points)
             self._calc_grid()
+            self.err_btn.setText('{:.2f}'.format(self.rms*self.ops.pixel_size[0]*1e9))
         QtWidgets.QApplication.restoreOverrideCursor()
+
+    def _scatter_plot(self):
+        pg.plot(self.err[:, 0], self.err[:, 1], pen=None, symbol='o')
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -293,3 +304,6 @@ class FIBControls(BaseControls):
         #self.select_btn.setEnabled(False)
 
         self.ops.__init__()
+
+
+
