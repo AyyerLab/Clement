@@ -217,7 +217,7 @@ class Project(QtWidgets.QWidget):
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
             self.fib.ops.points = np.copy(new_points)
             self.fib._calc_grid()
-            self.fib.ops.calc_grid_shift(new_points)
+            #self.fib.ops.calc_grid_shift(new_points)
         except KeyError:
             pass
 
@@ -471,8 +471,9 @@ class Project(QtWidgets.QWidget):
         fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
         fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
-        if self.fib.ops.points is not None:
-            fibdict['Grid points'] = self.fib.ops._grid_points_tmp.tolist() if self.fib.ops._grid_points_tmp is not None else None
+        #if self.fib.ops.points is not None:
+        #    fibdict['Grid points'] = self.fib.ops._grid_points_tmp.tolist() if self.fib.ops._grid_points_tmp is not None else None
+        fibdict['Grid points'] = self.fib.ops.points.tolist()
 
         points = [[p.pos().x(),p.pos().y()] for p in self.fib._points_corr]
         fibdict['Correlated points'] = points

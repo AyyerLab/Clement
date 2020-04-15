@@ -60,17 +60,39 @@ class FIBControls(BaseControls):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Corr references:')
+        label = QtWidgets.QLabel('Grid box:')
         line.addWidget(label)
         self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid box',self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
+        self.shift_x_label = QtWidgets.QLabel('Shift x:')
+        self.shift_y_label = QtWidgets.QLabel('Shift y:')
+        self.shift_x_btn = QtWidgets.QLineEdit(self)
+        self.shift_y_btn = QtWidgets.QLineEdit(self)
+        self.shift_x_btn.setText('-1000')
+        self.shift_y_btn.setText('250')
+        self.shift_x = int(self.shift_x_btn.text())
+        self.shift_y = int(self.shift_y_btn.text())
+        self.shift_btn = QtWidgets.QPushButton('Shift box')
+        self.shift_btn.clicked.connect(self._refine_grid)
+        self.shift_btn.setEnabled(False)
+        line.addWidget(self.show_grid_btn)
+        line.addWidget(self.shift_x_label)
+        line.addWidget(self.shift_x_btn)
+        line.addWidget(self.shift_y_label)
+        line.addWidget(self.shift_y_btn)
+        line.addWidget(self.shift_btn)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Peaks')
+        line.addWidget(label)
         self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
         self.show_peaks_btn.setEnabled(True)
         self.show_peaks_btn.setChecked(False)
         self.show_peaks_btn.stateChanged.connect(self._show_peaks)
-        line.addWidget(self.show_grid_btn)
         line.addWidget(self.show_peaks_btn)
         line.addStretch(1)
 
@@ -129,6 +151,7 @@ class FIBControls(BaseControls):
             self.transp_btn.setEnabled(True)
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
+                self.shift_btn.setEnabled((True))
             self.show_grid_btn.setChecked(False)
             self.show_peaks_btn.setEnabled(True)
             #if self.sem_ops is not None and (self.sem_ops._tf_points is not None or self.sem_ops._tf_points_region is not None):
@@ -156,6 +179,7 @@ class FIBControls(BaseControls):
     def enable_buttons(self, enable=False):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
+            self.shift_btn.setEnabled(enable)
             #self.select_btn.setEnabled(enable)
 
     def _show_grid(self, state):
@@ -179,7 +203,7 @@ class FIBControls(BaseControls):
                 self.imview.removeItem(self.grid_box)
             pos = list(self.ops.points)
             self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
-            self.grid_box.sigRegionChangeFinished.connect(self._refine_grid)
+            #self.grid_box.sigRegionChangeFinished.connect(self._refine_grid)
             self.refine_btn.setEnabled(True)
             if self.show_grid_btn.isChecked():
                 self.imview.addItem(self.grid_box)
@@ -217,11 +241,16 @@ class FIBControls(BaseControls):
             [self.imview.removeItem(point) for point in self.peaks]
 
     def _refine_grid(self):
-        points_obj = self.grid_box.getState()['points']
-        points = np.array([list((point[0], point[1])) for point in points_obj])
-        print('Orig Points: \n', self.ops._orig_points)
-        print('Points: \n', points)
-        self.ops.calc_grid_shift(points)
+        #points_obj = self.grid_box.getState()['points']
+        #points = np.array([list((point[0], point[1])) for point in points_obj])
+        print('Orig Points: \n', self.ops.points)
+        xshift = int(self.shift_x_btn.text())
+        yshift = int(self.shift_y_btn.text())
+        self.ops.calc_grid_shift(xshift, yshift)
+        print('New Points: \n', self.ops.points)
+        self._calc_grid()
+        self.shift_x_btn.setText('0')
+        self.shift_y_btn.setText('0')
 
     def _refine_fib(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

@@ -432,17 +432,24 @@ class EM_ops():
         print(stage_positions)
         return stage_positions
 
-    def calc_grid_shift(self, points):
-        if len(self._orig_points) == len(points):
-            self.points = np.array(points)
-            self._grid_points_tmp = np.copy(self.points)
-            shift = (points - self._orig_points).mean(0)
-            print('Grid box shift: ', shift)
-            self.fib_matrix[:2, 3] = shift
-            print('Fib matrix shifted: \n', self.fib_matrix)
-        else:
-            print('Ooops, something went wrong!')
-            print('Have you accidentally clicked on a grid line? This is not allowed')
+    #def calc_grid_shift(self, points):
+    #    if len(self._orig_points) == len(points):
+    #        self.points = np.array(points)
+    #        self._grid_points_tmp = np.copy(self.points)
+    #        shift = (points - self._orig_points).mean(0)
+    #        print('Grid box shift: ', shift)
+    #        self.fib_matrix[:2, 3] = shift
+    #        print('Fib matrix shifted: \n', self.fib_matrix)
+    #    else:
+    #        print('Ooops, something went wrong!')
+    #        print('Have you accidentally clicked on a grid line? This is not allowed')
+
+    def calc_grid_shift(self, shift_x, shift_y):
+        shift = np.array([shift_x, shift_y])
+        self.points += shift
+        print('Grid box shift: ', shift)
+        self.fib_matrix[:2, 3] = shift
+        print('Fib matrix shifted: \n', self.fib_matrix)
 
     def calc_refine_matrix(self, src, dst):
         print('Source: \n', src)
