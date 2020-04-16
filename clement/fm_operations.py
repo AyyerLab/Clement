@@ -387,10 +387,9 @@ class FM_ops(Peak_finding):
             return None
         #scale z slice number by voxel size ratio
         z = 30 - z
-        scaling = self.voxel_size[0] / self.voxel_size[2]
+        scaling = self.voxel_size[2] / self.voxel_size[0]
         print('Z value before scaling: ', z)
-        #z *= 1/scaling * 2
-        z *= 1/scaling
+        z *= scaling
         print('Scaling: ', scaling)
         return z
 
