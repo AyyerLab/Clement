@@ -120,6 +120,7 @@ class BaseControls(QtWidgets.QWidget):
                     #Calc z position
                     if hasattr(self.other, 'fib') and self.other.fib:
                         z = self.ops.calc_z(ind, pos)
+                        #z = self.ops.calc_z(ind, pos)
                         if z is None:
                             return
                         self._points_corr_z.append(z)

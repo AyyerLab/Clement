@@ -339,7 +339,7 @@ class FMControls(BaseControls):
 
         if file_name is not '':
             self.fm_fname.setText(file_name + ' [0/%d]'%self.num_slices)
-            self.slice_select_btn.setRange(0, self.num_slices)
+            self.slice_select_btn.setRange(0, self.num_slices-1)
 
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean()*2))
             self._update_imview()
@@ -453,7 +453,8 @@ class FMControls(BaseControls):
 
         num = self.slice_select_btn.value()
         if num != self._current_slice:
-            self.ops.parse(fname=self.ops.old_fname, z=num%self.num_slices, reopen=False)
+            #self.ops.parse(fname=self.ops.old_fname, z=num%self.num_slices, reopen=False)
+            self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
             self._update_imview()
             fname, indstr = self.fm_fname.text().split()
             self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))

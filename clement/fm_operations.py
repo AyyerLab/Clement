@@ -386,7 +386,12 @@ class FM_ops(Peak_finding):
             print('Oops, something went wrong. Try again!')
             return None
         #scale z slice number by voxel size ratio
-        z *= self.voxel_size[2] / self.voxel_size[0]
+        z = 30 - z
+        scaling = self.voxel_size[0] / self.voxel_size[2]
+        print('Z value before scaling: ', z)
+        #z *= 1/scaling * 2
+        z *= 1/scaling
+        print('Scaling: ', scaling)
         return z
 
     def load_channel(self, ind):
