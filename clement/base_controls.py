@@ -22,7 +22,6 @@ class BaseControls(QtWidgets.QWidget):
         self._err = None
         self._rms = None
 
-
         self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False
@@ -168,25 +167,40 @@ class BaseControls(QtWidgets.QWidget):
                     self.other.imview.addItem(annotation_other)
                     self.other.anno_list.append(annotation_other)
 
-                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.imview, self.other.imview,
-                                                point_obj, point_other, self._points_corr, self.other._points_corr,
-                                                annotation_obj, annotation_other, self.anno_list, self.other.anno_list))
-                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(self.other.imview, self.imview,
-                                                point_other, point_obj, self.other._points_corr, self._points_corr,
-                                                annotation_other, annotation_obj, self.other.anno_list, self.anno_list))
+                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
+                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
+
 
             else:
                 print('Transform both images before point selection')
 
-    def _remove_correlated_points(self,imv1,imv2,pt1,pt2,pt_list,pt_list2, anno, anno2, anno_list, anno_list2):
-        imv1.removeItem(pt1)
-        imv2.removeItem(pt2)
-        pt_list.remove(pt1)
-        pt_list2.remove(pt2)
-        imv1.removeItem(anno)
-        imv2.removeItem(anno2)
-        anno_list.remove(anno)
-        anno_list2.remove(anno2)
+    def _remove_correlated_points(self, point):
+        for i in range(len(self._points_corr)):
+            if self._points_corr[i] == point or self.other._points_corr[i] == point:
+                break
+        self.imview.removeItem(point)
+        self.imview.removeItem(self.anno_list[i])
+        self.other.imview.removeItem(self.other._points_corr[i])
+        self.other.imview.removeItem(self.other.anno_list[i])
+
+        self._points_corr.remove(point)
+        self.other._points_corr.remove(self.other._points_corr[i])
+
+        self.anno_list.remove(self.anno_list[i])
+        self.other.anno_list.remove(self.other.anno_list[i])
+
+        self._points_corr_indices.remove(self._points_corr_indices[i])
+
+        if hasattr(self, 'fib') and self.fib:
+            self._points_corr_z.remove(self._points_corr_z[i])
+            self.other._points_corr_z.remove(self.other._points_corr_z[i])
+            self._orig_points_corr.remove(self._orig_points_corr[i])
+        elif hasattr(self.other, 'fib') and self.other.fib:
+            self.other._orig_points_corr.remove(self.other._orig_points_corr[i])
+        else:
+            self.other._orig_points_corr.remove(self.other._orig_points_corr[i])
+
+
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
