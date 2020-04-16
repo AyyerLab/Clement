@@ -229,8 +229,11 @@ class Project(QtWidgets.QWidget):
             self.fib._refined = fibdict['Refined']
             self.fib.ops._refine_matrix = np.array(fibdict['Refine matrix'])
             self.fib.ops.apply_refinement(self.fib.ops.points)
-            self.fib.ops.refine_grid()
             self.fib._calc_grid()
+            self.fib._err = np.array(fibdict['Error distribution'])
+            self.fib._rms = float(fibdict['RMS'])
+            self.fib.err_btn.setText('{:.2f}'.format(self.fib._rms*self.fib.ops.pixel_size[0]*1e9))
+
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index']:
@@ -308,7 +311,6 @@ class Project(QtWidgets.QWidget):
                             self.fm._points_corr[indices_em[i]] = roi_list_fm[i]
                 except KeyError:
                     pass
-
         except KeyError:
             pass
         mdict = project['MERGE']
@@ -488,6 +490,9 @@ class Project(QtWidgets.QWidget):
         fibdict['Refined'] = self.fib._refined
         if self.fib._refined:
             fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
+
+        fibdict['Error distribution'] = self.fib._err.tolist()
+        fibdict['RMS'] = str(self.fib._rms)
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

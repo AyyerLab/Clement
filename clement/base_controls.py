@@ -19,6 +19,9 @@ class BaseControls(QtWidgets.QWidget):
         self._orig_points_corr = []
         self._points_corr_indices = []
         self._refined = False
+        self._err = None
+        self._rms = None
+
 
         self.tr_matrices = None
         self.show_grid_box = False
@@ -35,8 +38,7 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list = []
         self.size_ops = 10
         self.size_other = 10
-        self.err = None
-        self.rms = None
+
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -549,8 +551,11 @@ class BaseControls(QtWidgets.QWidget):
             calc_points.append(transf[:2])
 
         diff = np.array(sel_points) - np.array(calc_points)
-        self.err = diff
-        self.rms = np.sqrt(1/len(diff) * np.sum((diff[:,0]**2 + diff[:,1]**2)))
+        self._err = diff
+        if len(diff) > 0:
+            self._rms = np.sqrt(1/len(diff) * np.sum((diff[:,0]**2 + diff[:,1]**2)))
+        else:
+            self._rms = 0.0
         np.save('sel.npy', sel_points)
         np.save('calc.npy', calc_points)
         print('Selected points: ', np.array(sel_points))

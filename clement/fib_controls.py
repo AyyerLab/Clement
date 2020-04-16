@@ -236,7 +236,7 @@ class FIBControls(BaseControls):
                         transf = np.dot(tr_matrix, init)
                         transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], self.other.ops.tf_peaks_3d[i,2], 1])
                         if self._refined:
-                            transf = self.ops.refine_matrix @ np.array([transf[0], transf[1], 1])
+                            transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
                         pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
                         point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False,
                                                    removable=False)
@@ -267,11 +267,11 @@ class FIBControls(BaseControls):
             self._refine()
             #self.ops.apply_refinement(self.ops.points)
             self._calc_grid()
-            self.err_btn.setText('{:.2f}'.format(self.rms*self.ops.pixel_size[0]*1e9))
+            self.err_btn.setText('{:.2f}'.format(self._rms*self.ops.pixel_size[0]*1e9))
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _scatter_plot(self):
-        pg.plot(self.err[:, 0], self.err[:, 1], pen=None, symbol='o')
+        pg.plot(self._err[:, 0], self._err[:, 1], pen=None, symbol='o')
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
