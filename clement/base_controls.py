@@ -501,19 +501,21 @@ class BaseControls(QtWidgets.QWidget):
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
                 print('Refining...')
-                if hasattr(self,'fib') and self.fib:
+                if hasattr(self.other,'fib') and self.other.fib:
                     dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
-                                    self._points_corr])
-                    src = np.array([[point[0], point[1]] for point in self._orig_points_corr])
+                                    self.other._points_corr])
+                    src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
                 else:
                     dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
                                     self.other._points_corr])
                     src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
-                self.ops.calc_refine_matrix(src,dst)
-                self.ops.apply_refinement()
-                self._refined = True
-                if hasattr(self, 'rotate'):
+
+                #if hasattr(self, 'rotate'):
+                if not self.other.fib:
+                    self.ops.calc_refine_matrix(src, dst)
+                    self.ops.apply_refinement()
+                    self._refined = True
                     fm_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self._points_corr])
                     em_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self.other._points_corr])
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
@@ -524,7 +526,12 @@ class BaseControls(QtWidgets.QWidget):
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
                 else:
+                    self.other.ops.calc_refine_matrix(src,dst)
+                    self.other.ops.apply_refinement()
+                    self.other._refined = True
+                    self.other._calc_grid()
                     self._estimate_precision()
+                    self.other.err_btn.setText('{:.2f}'.format(self._rms * self.other.ops.pixel_size[0] * 1e9))
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -551,17 +558,17 @@ class BaseControls(QtWidgets.QWidget):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _estimate_precision(self):
-        sel_points = [[point.x() + self.size_ops/2, point.y()+self.size_ops/2] for point in self._points_corr]
-        orig_fm_points = np.copy(self.other._points_corr)
-        orig_fm_points_z = np.copy(self.other._points_corr_z)
+        sel_points = [[point.x() + self.size_ops/2, point.y()+self.size_ops/2] for point in self.other._points_corr]
+        orig_fm_points = np.copy(self._points_corr)
+        orig_fm_points_z = np.copy(self._points_corr_z)
         calc_points = []
         for i in range(len(orig_fm_points)):
             orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
             z = orig_fm_points_z[i]
             init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
-            transf = np.dot(self.other.tr_matrices, init)
-            transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-            transf[:2] = (self.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
+            transf = np.dot(self.tr_matrices, init)
+            transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+            transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
             calc_points.append(transf[:2])
 
         diff = np.array(sel_points) - np.array(calc_points)
