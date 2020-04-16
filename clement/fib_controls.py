@@ -232,9 +232,10 @@ class FIBControls(BaseControls):
                     tr_matrix = self.ops.get_fib_transform(src_sorted, dst_sorted, self.sem_ops.tf_matrix)
 
                     for i in range(self.other.ops.tf_peaks_3d.shape[0]):
+                        z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_3d[i,:2])
                         init = np.array([self.other.ops.tf_peaks_3d[i,0], self.other.ops.tf_peaks_3d[i,1], 1])
                         transf = np.dot(tr_matrix, init)
-                        transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], self.other.ops.tf_peaks_3d[i,2], 1])
+                        transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                         if self._refined:
                             transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
                         pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
