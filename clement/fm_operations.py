@@ -67,6 +67,11 @@ class FM_ops(Peak_finding):
         self.refined_max_proj = None
         self.refined_data = None
         self.merged = None
+        self.color_matrix = None
+        self.tf_color_matrix = None
+        self.aligned = False
+        self.aligned_channel = None
+        self.tf_aligned_channel = None
 
     def parse(self, fname, z, series=None, reopen=True):
         ''' Parses file
@@ -147,6 +152,9 @@ class FM_ops(Peak_finding):
                     self.data = np.copy(self.refined_data)
                 else:
                     self.data = np.copy(self.tf_data)
+            if self.aligned and not self._show_mapping:
+                self.apply_alignment()
+
             self.points = np.copy(self._tf_points)
         else:
             if self._show_mapping and self.hsv_map is not None:
@@ -158,8 +166,11 @@ class FM_ops(Peak_finding):
                 self.data = np.copy(self.max_proj_data)
             else:
                 self.data = np.copy(self.orig_data)
+            if self.aligned and not self._show_mapping:
+                self.apply_alignment()
             self.points = np.copy(self._orig_points) if self._orig_points is not None else None
 
+        print('Aligned?', self.aligned)
         if update:
             if self._transformed:
                 fliph = self.fliph
@@ -368,7 +379,7 @@ class FM_ops(Peak_finding):
         z = None
         if self._transformed:
             if self.tf_peaks_3d is not None:
-                if ind is not None:  # do not replace by else-statement!!!
+                if ind is not None:
                     z = self.tf_peaks_3d[ind, 2]
             if z is not None:
                 print('Index found! ind, z:', ind, z)
@@ -379,7 +390,11 @@ class FM_ops(Peak_finding):
         if z is None:
             print('Index not found. Calculate local z position!')
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
-            z = self.calc_local_z(self.channel, np.array((pos.x(), pos.y())), self._transformed,
+            if self.aligned:
+                point_green = np.linalg.inv(self.color_matrix) @ np.array((pos.x(), pos.y()))
+            else:
+                point_green = np.array((pos.x(), pos.y()))
+            z = self.calc_local_z(self.channel, point_green, self._transformed,
                                       self.tf_matrix, flip_list, self.data.shape[:-1])
 
         if z is None:
@@ -400,47 +415,45 @@ class FM_ops(Peak_finding):
     def clear_channel(self):
         self.channel = None
 
-    def align(self):
-        '''
-        if len(self.diff_list[0]) != 0:
-            shift1_arr = np.array(self.diff_list[0])
-            shift1 = (np.median(shift1_arr[:, 0], axis=0), np.median(shift1_arr[:, 1], axis=0))
+    def estimate_alignment(self, peaks_2d):
+        roi_size = 20
+        green = []
+        red = []
+        for i in range(len(peaks_2d)):
+            roi_min_0 = int(peaks_2d[i][0] - roi_size // 2) if int(peaks_2d[i][0] - roi_size // 2) > 0 else 0
+            roi_min_1 = int(peaks_2d[i][1] - roi_size // 2) if int(peaks_2d[i][1] - roi_size // 2) > 0 else 0
+            roi_max_0 = int(peaks_2d[i][0] + roi_size // 2) if int(peaks_2d[i][0] + roi_size // 2) < self.data.shape[
+                0] else self.data.shape[0]
+            roi_max_1 = int(peaks_2d[i][1] + roi_size // 2) if int(peaks_2d[i][1] + roi_size // 2) < self.data.shape[
+                1] else self.data.shape[1]
+            green_coor_i = self.peak_finding(self.data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
+                                                 self._transformed, roi=True)
+            if green_coor_i is not None:
+                green_coor_0 = green_coor_i[0] + peaks_2d[i][0] - roi_size // 2 if green_coor_i[0] + peaks_2d[i][0] \
+                                                                                - roi_size // 2 > 0 else green_coor_i[0]
+                green_coor_1 = green_coor_i[1] + peaks_2d[i][1] - roi_size // 2 if green_coor_i[1] + peaks_2d[i][1]\
+                                                                                - roi_size // 2 > 0 else green_coor_i[1]
+                green_i = np.array((green_coor_0, green_coor_1))
+                diff = np.array(green_i - peaks_2d[i])
+                if np.linalg.norm(diff) < roi_size:
+                    green.append(green_i)
+                    red.append(peaks_2d[i])
+        if self._transformed:
+            self.tf_color_matrix = tf.estimate_transform('affine', np.array(green), np.array(red)).params
+            print('Align matrix: ', self.tf_color_matrix)
         else:
-            shift1 = np.zeros((2))
+            self.color_matrix = tf.estimate_transform('affine', np.array(green), np.array(red)).params
+            print('Align matrix: ', self.color_matrix)
 
-        if len(self.diff_list[1]) != 0:
-            shift2_arr = np.array(self.diff_list[1])
-            shift2 = (np.median(shift2_arr[:, 0], axis=0), np.median(shift2_arr[:, 1], axis=0))
+        self._update_data()
+
+    def apply_alignment(self):
+        print(self.data.shape)
+        if self._transformed:
+            aligned = ndi.affine_transform(self.data[:, :, 2], np.linalg.inv(self.tf_color_matrix), order=1)
         else:
-            shift2 = np.zeros((2))
-
-        shift.append(shift1)
-        shift.append(shift2)
-        data_shifted = np.zeros_like(self.data[1:])
-        data_shifted[0] = self.data[1]
-        data_shifted[1] = ndi.shift(self.data[2], np.array(self.shift[0]))
-        data_shifted[2] = ndi.shift(self.data[3], np.array(self.shift[1]))
-
-        if not os.path.isdir('../pascale/shifted_data'):
-            os.mkdir('../pascale/shifted_data')
-
-        name_list = []
-        for i in range(data_shifted.shape[0]):
-            if os.path.isfile('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif'):
-                os.remove('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif')
-            print(i)
-            img = Image.fromarray(data_shifted[i])
-            img.save('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif')
-            name_list.append('../pascale/shifted_data/'+names_order[1+i][:-4]+'_shifted.tif')
-
-        print('Done')
-        for i in range(data_shifted.shape[0]):
-            print(data_shifted[i].shape)
-
-        return name_list
-        #return data[1], ndi.shift(data[2], shift1), ndi.shift(data[2], shift2), coordinates
-        '''
-        pass
+            aligned = ndi.affine_transform(self.data[:, :, 2], np.linalg.inv(self.color_matrix), order=1)
+        self.data[:, :, 2] = aligned[:self.data.shape[0], :self.data.shape[1]]
 
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)

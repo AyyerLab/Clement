@@ -53,7 +53,6 @@ class FMControls(BaseControls):
         self._series = None
         self._current_slice = 0
         self._peaks = []
-        self._shift = None 
         self._init_ui()
     
     def _init_ui(self):
@@ -144,7 +143,7 @@ class FMControls(BaseControls):
         line.addStretch(1)
 
         self.align_btn = QtWidgets.QCheckBox('Align color channels', self)
-        self.align_btn.stateChanged.connect(self._calc_shift)
+        self.align_btn.stateChanged.connect(self._align_colors)
         self.align_btn.setEnabled(False)
         line.addWidget(self.align_btn)
         #line.addStretch(1)
@@ -510,63 +509,55 @@ class FMControls(BaseControls):
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _calc_shift(self):
+    def _align_colors(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        print('Align color channels')
         if self.ops is not None:
             if self.align_btn.isChecked():
-                undo_max_proj = False
-                if not self.max_proj_btn.isChecked():
-                    self.max_proj_btn.setChecked(True)
-                    undo_max_proj = True
-
-                if self._shift is None:
+                print('Align color channels')
+                condition = False
+                if self.ops._transformed and self.ops.tf_color_matrix is None:
+                    condition = True
+                elif not self.ops._transformed and self.ops.color_matrix is None:
+                    condition = True
+                if condition:
+                    undo_max_proj = False
+                    if not self.max_proj_btn.isChecked():
+                        self.max_proj_btn.setChecked(True)
+                        undo_max_proj = True
                     fm_max = np.copy(self.ops.data[:, :, -1])
-                    if self.ops.peaks_2d is None:
-                        self.ops.peak_finding(fm_max)
-                        #self.ops.wshed_peaks(fm_max)
-
-                    roi_size = 40
-                    green_coor = []
-                    for i in range(len(self.ops.peaks_2d)):
-                        roi_min_0 = int(self.ops.peaks_2d[i][0]-roi_size//2) if int(self.ops.peaks_2d[i][0]-roi_size//2) > 0 else 0
-                        roi_min_1 = int(self.ops.peaks_2d[i][1]-roi_size//2) if int(self.ops.peaks_2d[i][1]-roi_size//2) > 0 else 0
-                        roi_max_0 = int(self.ops.peaks_2d[i][0]+roi_size//2) if int(self.ops.peaks_2d[i][0]+roi_size//2) < fm_max.shape[0] else fm_max.shape[0]
-                        roi_max_1 = int(self.ops.peaks_2d[i][1]+roi_size//2) if int(self.ops.peaks_2d[i][1]+roi_size//2) < fm_max.shape[1] else fm_max.shape[1]
-                        green_coor_i = self.ops.peak_finding(self.ops.data[:,:,-2][roi_min_0:roi_max_0, roi_min_1:roi_max_1], roi=True)
-                        #green_coor_i = self.ops.wshed_peaks(self.ops.data[:,:,-2][roi_min_0:roi_max_0, roi_min_1:roi_max_1], roi=True)
-                        green_coor_0 = green_coor_i[0]+self.ops.peaks_2d[i][0]-roi_size//2 if green_coor_i[0]+self.ops.peaks_2d[i][0]-roi_size//2 > 0 else green_coor_i[0]
-                        green_coor_1 = green_coor_i[1]+self.ops.peaks_2d[i][1]-roi_size//2 if green_coor_i[0]+self.ops.peaks_2d[i][0]-roi_size//2 > 0 else green_coor_i[1]
-                        green_coor.append((green_coor_0,green_coor_1))
-
-                    self._shift = np.median((np.array(green_coor)-np.array(self.ops.peaks_2d)), axis=0)
+                    if self.ops._transformed:
+                        if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                            peaks_2d = None
+                        else:
+                            peaks_2d = self.ops.tf_peak_slices[-1]
+                    else:
+                        if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                            peaks_2d = None
+                        else:
+                            peaks_2d = self.ops.peak_slices[-1]
+                    if peaks_2d is None:
+                        self.ops.peak_finding(fm_max, self.ops._transformed)
+                        if self.ops._transformed:
+                            peaks_2d = self.ops.tf_peak_slices[-1]
+                        else:
+                            peaks_2d = self.ops.peak_slices[-1]
+                    self.ops.aligned = True
+                    self.ops.estimate_alignment(peaks_2d)
                     if undo_max_proj:
                         self.max_proj_btn.setChecked(False)
-                
-                print('Color shift: ', self._shift)
-                self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], -self._shift)
+                else:
+                    self.ops.aligned = True
             else:
-                self.ops.data[:,:,-2] = interpol.shift(self.ops.data[:,:,-2], self._shift)
+                self.ops.aligned = False
+            self.ops._update_data()
             self._update_imview()
+
         else:
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-        # TODO fix this
-        '''
-        new_list = align_fm.calc_shift(self.flist, self.ops.data)
-
-        self.fselector.addItems(new_list)
-        self.fselector.currentIndexChanged.connect(self._file_changed)
-
-        data_shifted = [np.array(Image.open(fname)) for fname in new_list]
-        for i in range(len(data_shifted)):
-            self.ops.data.append(data_shifted[i])
-
-        self.align_btn.setEnabled(False)
-        '''
-
     def _mapping(self):
+        self.align_btn.setEnabled(not self.map_btn.isChecked())
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.ops.calc_mapping()
         self._update_imview()

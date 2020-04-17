@@ -121,7 +121,6 @@ class BaseControls(QtWidgets.QWidget):
                     #Calc z position
                     if hasattr(self.other, 'fib') and self.other.fib:
                         z = self.ops.calc_z(ind, pos)
-                        #z = self.ops.calc_z(ind, pos)
                         if z is None:
                             return
                         self._points_corr_z.append(z)
@@ -421,6 +420,11 @@ class BaseControls(QtWidgets.QWidget):
 
         if grid_box is not None:
             if hasattr(self, 'fliph'):
+                if self.align_btn.isChecked():
+                    aligned = True
+                    self.align_btn.setChecked(False)
+                else:
+                    aligned = False
                 self.fliph.setChecked(False)
                 self.fliph.setEnabled(True)
                 self.flipv.setChecked(False)
@@ -448,6 +452,9 @@ class BaseControls(QtWidgets.QWidget):
             self._update_imview()
             self.transform_btn.setEnabled(False)
             self.rot_transform_btn.setEnabled(False)
+
+            if hasattr(self, 'align_btn') and aligned:
+                self.align_btn.setChecked(True)
         else:
             print('Define grid box on %s image first!'%self.tag)
         QtWidgets.QApplication.restoreOverrideCursor()
@@ -457,7 +464,11 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops is not None:
                 self.ops._transformed = not self.ops._transformed
                 print('Transformed: ',self.ops._transformed)
+                align = False
                 if hasattr(self.ops, 'flipv') and not self.ops._transformed:
+                    if self.align_btn.isChecked() and self.ops.color_matrix is None:
+                        self.align_btn.setChecked(False)
+                        align = True
                     self.flipv.setEnabled(False)
                     self.fliph.setEnabled(False)
                     self.transpose.setEnabled(False)
@@ -495,6 +506,8 @@ class BaseControls(QtWidgets.QWidget):
 
                 if show_peaks:
                     self.peak_btn.setChecked(True)
+                if align:
+                    self.align_btn.setChecked(True)
 
     def _refine(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

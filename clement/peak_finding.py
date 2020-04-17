@@ -20,68 +20,77 @@ class Peak_finding():
         self.roi_min_size = 10
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None):
-        start = time.time()
-        if not roi:
-            if transformed:
-                if self.tf_peak_slices is None:
-                    self.tf_peak_slices = [None] * (self.num_slices + 1)
+        try:
+            start = time.time()
+            if not roi:
+                if transformed:
+                    if self.tf_peak_slices is None:
+                        self.tf_peak_slices = [None] * (self.num_slices + 1)
+                else:
+                    if self.peak_slices is None:
+                        self.peak_slices = [None] * (self.num_slices + 1)
+            img = np.copy(im)
+            if self.threshold == 0:
+                self.threshold = 0.1 * np.sort(img.ravel())[-100:].mean()
+                print('Threshold: ', self.threshold)
+            img[img < self.threshold] = 0
+
+            labels, num_objects = ndi.label(img)
+            label_size = np.bincount(labels.ravel())
+
+            # single photons and no noise
+            mask_sp = np.where((label_size >= self.pixel_lower_threshold) & (label_size < self.pixel_upper_threshold), True, False)
+            if sum(mask_sp) == 0:
+                coor_sp = []
             else:
-                if self.peak_slices is None:
-                    self.peak_slices = [None] * (self.num_slices + 1)
-        img = np.copy(im)
-        if self.threshold == 0:
-            self.threshold = 0.1 * np.sort(img.ravel())[-100:].mean()
-            print('Threshold: ', self.threshold)
-        img[img < self.threshold] = 0
+                label_mask_sp = mask_sp[labels.ravel()].reshape(labels.shape)
+                labels_sp = label_mask_sp * labels
+                labels_sp, n_s = ndi.label(labels_sp)
+                coor_sp = ndi.center_of_mass(img, labels_sp, range(1, labels_sp.max() + 1))
 
-        labels, num_objects = ndi.label(img)
-        label_size = np.bincount(labels.ravel())
-
-        # single photons and no noise
-        mask_sp = np.where((label_size >= self.pixel_lower_threshold) & (label_size < self.pixel_upper_threshold), True, False)
-        if sum(mask_sp) == 0:
-            coor_sp = []
-        else:
-            label_mask_sp = mask_sp[labels.ravel()].reshape(labels.shape)
-            labels_sp = label_mask_sp * labels
-            labels_sp, n_s = ndi.label(labels_sp)
-            coor_sp = ndi.center_of_mass(img, labels_sp, range(1, labels_sp.max() + 1))
-
-        # multiple photons
-        mask_mp = np.where((label_size >= self.pixel_upper_threshold) & (label_size < np.max(label_size)), True, False)
-        if sum(mask_mp) > 0:
-            label_mask_mp = mask_mp[labels.ravel()].reshape(labels.shape)
-            labels_mp = label_mask_mp * labels
-            labels_mp, n_m = ndi.label(labels_mp)
-            for i in range(1, sum(mask_mp) + 1):
-                slice_x, slice_y = ndi.find_objects(labels_mp == i)[0]
-                roi_i = np.copy(img[slice_x, slice_y])
-                max_i = np.max(roi_i)
-                step = (0.95*max_i - self.threshold) / self.flood_steps
-                multiple = False
-                coor_tmp = np.array(ndi.center_of_mass(roi_i, ndi.label(roi_i)[0]))
-                for k in range(1, self.flood_steps + 1):
-                    new_threshold = self.threshold + k * step
-                    roi_i[roi_i < new_threshold] = 0
-                    labels_roi, n_i = ndi.label(roi_i)
-                    if n_i > 1:
-                        roi_label_size = np.bincount(labels_roi.ravel())
-                        if (np.max(roi_label_size[1:]) <= self.pixel_upper_threshold):  # if label_size == self.pixel_upper_threshold + 1 and is single hit not multiple
-                            if len(roi_label_size) == 3 and roi_label_size.min() < self.roi_min_size:
-                                break
-                            else:
-                                multiple = True
-                                # print('multiple hits!')
-                                coordinates_roi = np.array(ndi.center_of_mass(roi_i, labels_roi, range(1, n_i + 1)))
-                                [coor_sp.append(coordinates_roi[j] + np.array((slice_x.start, slice_y.start))) for j in
-                                 range(len(coordinates_roi))]
-                                break
-                if not multiple:
-                    coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
+            # multiple photons
+            mask_mp = np.where((label_size >= self.pixel_upper_threshold) & (label_size < np.max(label_size)), True, False)
+            if sum(mask_mp) > 0:
+                label_mask_mp = mask_mp[labels.ravel()].reshape(labels.shape)
+                labels_mp = label_mask_mp * labels
+                labels_mp, n_m = ndi.label(labels_mp)
+                for i in range(1, sum(mask_mp) + 1):
+                    slice_x, slice_y = ndi.find_objects(labels_mp == i)[0]
+                    roi_i = np.copy(img[slice_x, slice_y])
+                    max_i = np.max(roi_i)
+                    step = (0.95*max_i - self.threshold) / self.flood_steps
+                    multiple = False
+                    coor_tmp = np.array(ndi.center_of_mass(roi_i, ndi.label(roi_i)[0]))
+                    for k in range(1, self.flood_steps + 1):
+                        new_threshold = self.threshold + k * step
+                        roi_i[roi_i < new_threshold] = 0
+                        labels_roi, n_i = ndi.label(roi_i)
+                        if n_i > 1:
+                            roi_label_size = np.bincount(labels_roi.ravel())
+                            if (np.max(roi_label_size[1:]) <= self.pixel_upper_threshold):  # if label_size == self.pixel_upper_threshold + 1 and is single hit not multiple
+                                if len(roi_label_size) == 3 and roi_label_size.min() < self.roi_min_size:
+                                    break
+                                else:
+                                    multiple = True
+                                    # print('multiple hits!')
+                                    coordinates_roi = np.array(ndi.center_of_mass(roi_i, labels_roi, range(1, n_i + 1)))
+                                    [coor_sp.append(coordinates_roi[j] + np.array((slice_x.start, slice_y.start))) for j in
+                                     range(len(coordinates_roi))]
+                                    break
+                    if not multiple:
+                        coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
+        except IndexError:
+            if roi:
+                return None
+            else:
+                pass
 
         coor = np.array(coor_sp)
         if roi:
-            return np.round(coor)
+            try:
+                return np.round(coor)[0]
+            except IndexError:
+                return None
         else:
             peaks_2d = np.round(coor)
             if transformed:
@@ -238,7 +247,6 @@ class Peak_finding():
             point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
             print('Orig point: ', point)
         z = None
-        #profile = None
         try:
             if point[0] < 0 or point[1] < 0:
                 raise IndexError
