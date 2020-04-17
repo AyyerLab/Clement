@@ -68,8 +68,6 @@ class Project(QtWidgets.QWidget):
             self.fm.slice_select_btn.setValue(fmdict['Slice'])
             self.fm._slice_changed()
 
-        if 'Align colors' in fmdict:
-            self.fm.align_btn.setChecked(fmdict['Align colors'])
 
         try:
             self.fm.ops._orig_points = np.array(fmdict['Original grid points'])
@@ -107,6 +105,8 @@ class Project(QtWidgets.QWidget):
             self.fm.ops._refine_matrix = np.array(fmdict['Refine matrix'])
             self.fm.ops.refine_history.append(self.fm.ops._refine_matrix)
             self.fm.ops.apply_refinement()
+        if 'Align colors' in fmdict:
+            self.fm.align_btn.setChecked(fmdict['Align colors'])
 
         self.fm._update_imview()
 
@@ -490,9 +490,8 @@ class Project(QtWidgets.QWidget):
         fibdict['Refined'] = self.fib._refined
         if self.fib._refined:
             fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
-
-        fibdict['Error distribution'] = self.fib._err.tolist()
-        fibdict['RMS'] = str(self.fib._rms)
+            fibdict['Error distribution'] = self.fib._err.tolist()
+            fibdict['RMS'] = str(self.fib._rms)
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

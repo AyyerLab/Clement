@@ -11,6 +11,7 @@ class Peak_finding():
         self.num_slices = None
         self.peak_slices = None
         self.tf_peak_slices = None
+        self.orig_tf_peak_slices = None
         self.peaks_3d = None
         self.tf_peaks_3d = None
         self.pixel_lower_threshold = plt
@@ -79,7 +80,7 @@ class Peak_finding():
                                     break
                     if not multiple:
                         coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
-        except IndexError:
+        except (IndexError, ValueError):
             if roi:
                 return None
             else:
@@ -98,6 +99,7 @@ class Peak_finding():
                     self.tf_peak_slices[-1] = np.copy(peaks_2d)
                 else:
                     self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
+                self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
             else:
                 if curr_slice is None:
                     self.peak_slices[-1] = np.copy(peaks_2d)

@@ -249,16 +249,17 @@ class FIBControls(BaseControls):
             [self.imview.removeItem(point) for point in self.peaks]
 
     def _refine_grid(self):
-        #points_obj = self.grid_box.getState()['points']
-        #points = np.array([list((point[0], point[1])) for point in points_obj])
-        print('Orig Points: \n', self.ops.points)
-        xshift = int(self.shift_x_btn.text())
-        yshift = int(self.shift_y_btn.text())
-        self.ops.calc_grid_shift(xshift, yshift)
-        print('New Points: \n', self.ops.points)
-        self._calc_grid()
-        self.shift_x_btn.setText('0')
-        self.shift_y_btn.setText('0')
+        if self.ops.points is not None:
+            print('Orig Points: \n', self.ops.points)
+            xshift = int(self.shift_x_btn.text())
+            yshift = int(self.shift_y_btn.text())
+            self.ops.calc_grid_shift(xshift, yshift)
+            print('New Points: \n', self.ops.points)
+            self._calc_grid()
+            self.shift_x_btn.setText('0')
+            self.shift_y_btn.setText('0')
+        else:
+            print('You have to calculate the grid box first!')
 
     def _refine_fib(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -272,7 +273,10 @@ class FIBControls(BaseControls):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _scatter_plot(self):
-        pg.plot(self._err[:, 0], self._err[:, 1], pen=None, symbol='o')
+        if self._err is not None:
+            pg.plot(self._err[:, 0], self._err[:, 1], pen=None, symbol='o')
+        else:
+            print('Data not refined yet!')
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

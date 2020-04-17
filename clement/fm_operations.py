@@ -196,7 +196,14 @@ class FM_ops(Peak_finding):
                     self.points = self.update_points(self.points)
 
     def update_points(self,points):
+        print('Updating points \n', points)
+        peaks = None
         if self._transformed:
+            if self.tf_peak_slices is not None:
+                if self._show_max_proj:
+                    peaks = np.array(self.orig_tf_peak_slices[-1])
+                else:
+                    peaks = np.array(self.orig_tf_peak_slices[self.selected_slice])
             fliph = self.fliph
             flipv = self.flipv
             transp = self.transp
@@ -217,7 +224,25 @@ class FM_ops(Peak_finding):
             points[:,0] = self.data.shape[0] - points[:,0]
         if flipv:
             points[:,1] = self.data.shape[1] - points[:,1]
-        print('Updating points \n', points)
+
+        if peaks is not None and self._transformed:
+            print('Update peaks!')
+            if transp:
+                peaks = np.array([np.flip(point) for point in peaks])
+            if rot:
+                temp = self.data.shape[0] - 1 - peaks[:, 1]
+                peaks[:, 1] = peaks[:, 0]
+                peaks[:, 0] = temp
+            if fliph:
+                peaks[:, 0] = self.data.shape[0] - peaks[:, 0]
+            if flipv:
+                peaks[:, 1] = self.data.shape[1] - peaks[:, 1]
+
+            if self._show_max_proj:
+                self.tf_peak_slices[-1] = np.copy(peaks)
+            else:
+                self.tf_peak_slices[self.selected_slice] = np.copy(peaks)
+
         return points
 
     def flip_horizontal(self, do_flip):
@@ -391,7 +416,7 @@ class FM_ops(Peak_finding):
             print('Index not found. Calculate local z position!')
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
             if self.aligned:
-                point_green = np.linalg.inv(self.color_matrix) @ np.array((pos.x(), pos.y()))
+                point_green = (np.linalg.inv(self.tf_color_matrix) @ np.array((pos.x(), pos.y(), 1)))[:2]
             else:
                 point_green = np.array((pos.x(), pos.y()))
             z = self.calc_local_z(self.channel, point_green, self._transformed,
@@ -416,6 +441,18 @@ class FM_ops(Peak_finding):
         self.channel = None
 
     def estimate_alignment(self, peaks_2d):
+        if self._transformed:
+            if self._show_max_proj:
+                if self.refined:
+                    data = np.copy(self.refined_max_proj)
+                else:
+                    data = np.copy(self.tf_max_proj_data)
+
+            else:
+                if self.refined:
+                    data = np.copy(self.refined_data)
+                else:
+                    data = np.copy(self.tf_data)
         roi_size = 20
         green = []
         red = []
@@ -426,7 +463,11 @@ class FM_ops(Peak_finding):
                 0] else self.data.shape[0]
             roi_max_1 = int(peaks_2d[i][1] + roi_size // 2) if int(peaks_2d[i][1] + roi_size // 2) < self.data.shape[
                 1] else self.data.shape[1]
-            green_coor_i = self.peak_finding(self.data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
+            if self._transformed:
+                green_coor_i = self.peak_finding(data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
+                                                 self._transformed, roi=True)
+            else:
+                green_coor_i = self.peak_finding(self.data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
                                                  self._transformed, roi=True)
             if green_coor_i is not None:
                 green_coor_0 = green_coor_i[0] + peaks_2d[i][0] - roi_size // 2 if green_coor_i[0] + peaks_2d[i][0] \

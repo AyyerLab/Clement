@@ -296,6 +296,9 @@ class FMControls(BaseControls):
     def _update_imview(self):
         if self.ops is not None:
             print(self.ops.data.shape)
+            if self.peak_btn.isChecked():
+                self.peak_btn.setChecked(False)
+                self.peak_btn.setChecked(True)
             if self.ops._show_mapping:
                 vr = self.imview.getImageItem().getViewBox().targetRect()
                 self.imview.setImage(hsv2rgb(self.ops.data))
@@ -466,6 +469,15 @@ class FMControls(BaseControls):
         if self.ops is not None:
             print(self.ops.data.shape)
             if self.peak_btn.isChecked():
+                flip = False
+                if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
+                    fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
+                    self.fliph.setChecked(False)
+                    self.flipv.setChecked(False)
+                    self.transpose.setChecked(False)
+                    self.rotate.setChecked(False)
+                    flip = True
+
                 if self.map_btn.isChecked():
                     if self.ops._transformed:
                         if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
@@ -494,7 +506,6 @@ class FMControls(BaseControls):
                             if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
                                 self.ops.peak_finding(self.ops.data[:,:,-1], transformed=False, curr_slice=self._current_slice)
                             peaks_2d = self.ops.peak_slices[self._current_slice]
-
                 print(peaks_2d.shape)
                 for i in range(len(peaks_2d)):
                     pos = QtCore.QPointF(peaks_2d[i][0]-self.size_ops/2, peaks_2d[i][1]-self.size_ops/2)
@@ -502,6 +513,11 @@ class FMControls(BaseControls):
                     point_obj.removeHandle(0)
                     self.imview.addItem(point_obj)
                     self._peaks.append(point_obj)
+                if flip:
+                    self.fliph.setChecked(fliph)
+                    self.flipv.setChecked(flipv)
+                    self.transpose.setChecked(transp)
+                    self.rotate.setChecked(rot)
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []
@@ -524,7 +540,6 @@ class FMControls(BaseControls):
                     if not self.max_proj_btn.isChecked():
                         self.max_proj_btn.setChecked(True)
                         undo_max_proj = True
-                    fm_max = np.copy(self.ops.data[:, :, -1])
                     if self.ops._transformed:
                         if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
                             peaks_2d = None
@@ -535,10 +550,13 @@ class FMControls(BaseControls):
                             peaks_2d = None
                         else:
                             peaks_2d = self.ops.peak_slices[-1]
-                    if peaks_2d is None:
-                        self.ops.peak_finding(fm_max, self.ops._transformed)
+                    if peaks_2d is None or peaks_2d is not None:
+                        self.peak_btn.setChecked(True)
+                        self.peak_btn.setChecked(False)
+                        #fm_max = np.copy(self.ops.data[:, :, -1])
+                        #self.ops.peak_finding(fm_max, self.ops._transformed)
                         if self.ops._transformed:
-                            peaks_2d = self.ops.tf_peak_slices[-1]
+                            peaks_2d = self.ops.orig_tf_peak_slices[-1]
                         else:
                             peaks_2d = self.ops.peak_slices[-1]
                     self.ops.aligned = True
