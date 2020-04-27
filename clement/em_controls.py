@@ -104,7 +104,7 @@ class EMControls(BaseControls):
 
         # ---- Points of interest
         line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        #vbox.addLayout(line)
         label = QtWidgets.QLabel('Point transform:', self)
         line.addWidget(label)
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
@@ -116,6 +116,24 @@ class EMControls(BaseControls):
         line.addWidget(self.select_btn)
         #line.addWidget(self.refine_btn)
         line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Refinement precision [nm]:', self)
+        line.addWidget(label)
+        self.refine_btn = QtWidgets.QPushButton('Refine', self)
+        self.refine_btn.setEnabled(False)
+        #self.refine_btn.clicked.connect(self._refine_fib)
+        mean_label = QtWidgets.QLabel('Precision [nm]:')
+        self.err_btn = QtWidgets.QLabel('0')
+        self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
+        self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=0))
+        #line.addWidget(self.refine_btn)
+        #line.addWidget(mean_label)
+        line.addWidget(self.err_btn)
+        line.addWidget(self.err_plt_btn)
+        line.addStretch(1)
+
 
         # ---- Quit button
         vbox.addStretch(1)

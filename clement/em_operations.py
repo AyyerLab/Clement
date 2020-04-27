@@ -25,7 +25,7 @@ class EM_ops():
         self.eh = None
         self.orig_data = None
         self.tf_data = None
-        self.pixel_size = None
+        self.pixel_size = None #should be in nanometer
         self.old_fname = None
         self.data = None
         self.stacked_data = False
@@ -70,7 +70,7 @@ class EM_ops():
             self.old_fname = fname
             try:
                 md = tifffile.TiffFile(fname).fei_metadata
-                self.pixel_size = np.array([md['Scan']['PixelWidth'], md['Scan']['PixelHeight']])
+                self.pixel_size = np.array([md['Scan']['PixelWidth'], md['Scan']['PixelHeight']]) * 1e9
             except KeyError:
                 print('No pixel size found! This might cause the program to crash at some point...')
         else:
@@ -79,7 +79,7 @@ class EM_ops():
                 self.h = f.header
                 self.eh = np.frombuffer(f.extended_header, dtype='i2')
                 self.old_fname = fname
-                self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y])
+                self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y]) / 10
             print(f)
             self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
             print(self.dimensions)

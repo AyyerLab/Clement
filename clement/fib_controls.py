@@ -118,7 +118,7 @@ class FIBControls(BaseControls):
         mean_label = QtWidgets.QLabel('Precision [nm]:')
         self.err_btn = QtWidgets.QLabel('0')
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
-        self.err_plt_btn.clicked.connect(self._scatter_plot)
+        self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=1))
         #line.addWidget(self.refine_btn)
         #line.addWidget(mean_label)
         line.addWidget(self.err_btn)
@@ -271,12 +271,6 @@ class FIBControls(BaseControls):
             self._calc_grid()
             self.err_btn.setText('{:.2f}'.format(self._rms*self.ops.pixel_size[0]*1e9))
         QtWidgets.QApplication.restoreOverrideCursor()
-
-    def _scatter_plot(self):
-        if self._err is not None:
-            pg.plot(self._err[:, 0], self._err[:, 1], pen=None, symbol='o')
-        else:
-            print('Data not refined yet!')
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

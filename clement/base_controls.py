@@ -19,8 +19,8 @@ class BaseControls(QtWidgets.QWidget):
         self._orig_points_corr = []
         self._points_corr_indices = []
         self._refined = False
-        self._err = None
-        self._rms = None
+        self._err = [None, None]
+        self._rms = [None, None]
 
         self.tr_matrices = None
         self.show_grid_box = False
@@ -523,8 +523,6 @@ class BaseControls(QtWidgets.QWidget):
                                     self.other._points_corr])
                     src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
-
-                #if hasattr(self, 'rotate'):
                 if not self.other.fib:
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
@@ -538,13 +536,16 @@ class BaseControls(QtWidgets.QWidget):
                     #self.auto_opt_btn.setChecked(False)
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
+                    self._estimate_precision(idx=0)
+                    print(self.other.ops.pixel_size[0])
+                    self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
                 else:
                     self.other.ops.calc_refine_matrix(src,dst)
                     self.other.ops.apply_refinement()
                     self.other._refined = True
                     self.other._calc_grid()
-                    self._estimate_precision()
-                    self.other.err_btn.setText('{:.2f}'.format(self._rms * self.other.ops.pixel_size[0] * 1e9))
+                    self._estimate_precision(idx=1)
+                    self.other.err_btn.setText('{:.2f}'.format(self._rms[1] * self.other.ops.pixel_size[0]))
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -570,30 +571,49 @@ class BaseControls(QtWidgets.QWidget):
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _estimate_precision(self):
+    def _estimate_precision(self, idx):
         sel_points = [[point.x() + self.size_ops/2, point.y()+self.size_ops/2] for point in self.other._points_corr]
         orig_fm_points = np.copy(self._points_corr)
-        orig_fm_points_z = np.copy(self._points_corr_z)
+
         calc_points = []
-        for i in range(len(orig_fm_points)):
-            orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
-            z = orig_fm_points_z[i]
-            init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
-            transf = np.dot(self.tr_matrices, init)
-            transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-            transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
-            calc_points.append(transf[:2])
+        if idx == 0:
+            src_sorted = np.array(
+                sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+            dst_sorted = np.array(
+                sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+            tr_matrix = self.ops.get_transform(src_sorted, dst_sorted)
+            for i in range(len(orig_fm_points)):
+                orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
+                init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
+                transf = tr_matrix @ self.ops._refine_matrix @ init
+                calc_points.append(transf[:2])
+        else:
+            orig_fm_points_z = np.copy(self._points_corr_z)
+            for i in range(len(orig_fm_points)):
+                orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
+                z = orig_fm_points_z[i]
+                init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
+                transf = np.dot(self.tr_matrices, init)
+                transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+                transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
+                calc_points.append(transf[:2])
 
         diff = np.array(sel_points) - np.array(calc_points)
-        self._err = diff
+        self._err[idx] = diff
         if len(diff) > 0:
-            self._rms = np.sqrt(1/len(diff) * np.sum((diff[:,0]**2 + diff[:,1]**2)))
+            self._rms[idx] = np.sqrt(1/len(diff) * np.sum((diff[:,0]**2 + diff[:,1]**2)))
         else:
-            self._rms = 0.0
+            self._rms[idx] = 0.0
         np.save('sel.npy', sel_points)
         np.save('calc.npy', calc_points)
         print('Selected points: ', np.array(sel_points))
         print('Calculated points: ', np.array(calc_points))
+
+    def _scatter_plot(self, idx):
+        if self.other._err[idx] is not None:
+            pg.plot(self.other._err[idx][:, 0], self.other._err[idx][:, 1], pen=None, symbol='o')
+        else:
+            print('Data not refined yet!')
 
     def _optimize(self):
         if self.auto_opt_btn.isChecked():
