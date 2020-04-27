@@ -452,6 +452,7 @@ class EM_ops():
         else:
             self._total_shift += shift
         self.points += shift
+        self._orig_points = np.copy(self.points)
         print('Grid box shift: ', shift)
         self.fib_matrix[:2, 3] = shift
         print('Fib matrix shifted: \n', self.fib_matrix)
@@ -460,17 +461,25 @@ class EM_ops():
         print('Source: \n', src)
         print('Dest: \n', dst)
         refine_matrix = tf.estimate_transform('affine', src, dst).params
+        print('Refine matrix i: \n', refine_matrix)
+
         if self._refine_matrix is None:
             self._refine_matrix = refine_matrix
         else:
             self._refine_matrix = refine_matrix @ self._refine_matrix
 
+        print('Refine matrix: \n', self._refine_matrix)
+
     def apply_refinement(self, points=None):
+        update_points = False
         if points is None:
-            points = self.points
+            points = np.copy(self._orig_points)
+            update_points = True
         for i in range(points.shape[0]):
             point = np.array([points[i,0], points[i,1], 1])
             points[i] = (self._refine_matrix @ point)[:2]
+        if update_points:
+            self.points = points
 
     @classmethod
     def get_transform(self, source, dest):
