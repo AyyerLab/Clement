@@ -48,10 +48,13 @@ class GUI(QtGui.QMainWindow):
         layout.addWidget(splitter_images, stretch=1)
 
         # -- FM Image view
+        #self.fm_imview = pg.ImageView()
+        self.fm_stacked_imview = QtWidgets.QStackedWidget()
         self.fm_imview = pg.ImageView()
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
-        splitter_images.addWidget(self.fm_imview)
+        self.fm_stacked_imview.addWidget(self.fm_imview)
+        splitter_images.addWidget(self.fm_stacked_imview)
 
         # -- EM Image view
         self.em_imview = QtWidgets.QStackedWidget()
