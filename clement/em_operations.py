@@ -7,8 +7,9 @@ import mrcfile as mrc
 from scipy import ndimage as ndi
 from scipy import signal as sc
 from skimage import transform as tf
-from skimage import io
+from skimage import io, measure, feature
 import tifffile
+from . ransac import Ransac
 
 class EM_ops():
     def __init__(self):
@@ -480,6 +481,42 @@ class EM_ops():
             points[i] = (self._refine_matrix @ point)[:2]
         if update_points:
             self.points = points
+
+    def fit_circles(self, points, bead_size):
+        points_model = []
+        successfull = False
+        roi_size = int(np.round(bead_size * 1000 / self.pixel_size[0] + bead_size * 1000 / (2 * self.pixel_size[0])) / 2)
+        for i in range(len(points)):
+            x = int(np.round(points[i, 0]))
+            y = int(np.round(points[i, 1]))
+            roi = self.data[x - roi_size:x + roi_size, y - roi_size:y + roi_size]
+            np.save('roi_{}.npy'.format(i), roi)
+            edges = feature.canny(roi, 3).astype(np.float32)
+            coor_x, coor_y = np.where(edges!=0)
+            if len(coor_x) != 0:
+                rad = bead_size * 1e3 / self.pixel_size[0] / 2 #bead size is supposed to be in microns
+                ransac = Ransac(coor_x, coor_y, 100, rad)
+                counter = 0
+                while True:
+                    try:
+                        ransac.run()
+                        print('yes')
+                        successfull = True
+                        break
+                    except np.linalg.LinAlgError:
+                        counter += 1
+                        if counter % 1 == 0:
+                            print('LinAlgError: ', counter)
+                        if counter == 100:
+                            break
+            if successfull:
+                cx, cy = ransac.best_fit[0], ransac.best_fit[1]
+                coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
+                points_model.append(coor)
+            else:
+                print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                points_model.append(np.array([x,y]))
+        return np.array(points_model)
 
     @classmethod
     def get_transform(self, source, dest):

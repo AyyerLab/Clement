@@ -4,6 +4,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 import scipy.ndimage as ndi
 import copy
+from skimage import io, measure, feature, color, draw
 
 class BaseControls(QtWidgets.QWidget):
     def __init__(self):
@@ -433,7 +434,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.transpose.setEnabled(True)
                 self.rotate.setChecked(False)
                 self.rotate.setEnabled(True)
-                #self.auto_opt_btn.setEnabled(True)
+                self.size_box.setEnabled(True)
+                self.auto_opt_btn.setEnabled(True)
 
             points_obj = grid_box.getState()['points']
             points = np.array([list((point[0], point[1])) for point in points_obj])
@@ -515,6 +517,8 @@ class BaseControls(QtWidgets.QWidget):
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
                 print('Refining...')
                 if hasattr(self.other,'fib') and self.other.fib:
+                    #if self.auto_opt_btn.isChecked():
+                    #    self.fit_circles()
                     dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
                                     self.other._points_corr])
                     src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
@@ -537,7 +541,6 @@ class BaseControls(QtWidgets.QWidget):
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
                     self._estimate_precision(idx=0)
-                    print(self.other.ops.pixel_size[0])
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
                 else:
                     self.other.ops.calc_refine_matrix(src,dst)
@@ -614,6 +617,24 @@ class BaseControls(QtWidgets.QWidget):
             pg.plot(self.other._err[idx][:, 0], self.other._err[idx][:, 1], pen=None, symbol='o')
         else:
             print('Data not refined yet!')
+
+    def fit_circles(self):
+        if self.other.fib:
+            bead_size = float(self.size_box.text())
+            points = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self.other._points_corr])
+
+            points_fitted = self.other.ops.fit_circles(points, bead_size)
+            print(points_fitted.shape)
+            self.other._points_corr = []
+            [self.other.imview.removeItem(point) for point in self.other._points_corr]
+            circle_size = bead_size * 1e3 / self.other.ops.pixel_size[0] / 2
+            for i in range(len(points_fitted)):
+                pos = QtCore.QPointF(points_fitted[i,0] - circle_size, points_fitted[i,1] - circle_size)
+                point = pg.CircleROI(pos, circle_size*2, parent=self.other.imview.getImageItem(), movable=False, removable=True)
+                point.setPen(0, 255, 255)
+                point.removeHandle(0)
+                self.other._points_corr.append(point)
+                self.other.imview.addItem(point)
 
     def _optimize(self):
         if self.auto_opt_btn.isChecked():
