@@ -217,10 +217,10 @@ class Project(QtWidgets.QWidget):
         try:
             self.fib.ops._orig_points = np.array(fibdict['Original points'])
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            self.fib.ops.points = np.copy(self.fib.ops._orig_points)
             self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
             self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
             self.fib._refine_grid()
+            #self.fib.ops.points = np.copy(self.fib.ops._orig_points)
             #self.fib.ops.calc_grid_shift(new_points)
         except KeyError:
             pass
