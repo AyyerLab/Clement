@@ -41,6 +41,7 @@ class EMControls(BaseControls):
         step_label = QtWidgets.QLabel(self)
         step_label.setText('Downsampling factor:')
         self.step_box = QtWidgets.QLineEdit(self)
+        self.step_box.setMaximumWidth(30)
         self.step_box.setText('10')
         self.step_box.setEnabled(False)
         self._downsampling = self.step_box.text()
@@ -56,16 +57,28 @@ class EMControls(BaseControls):
         self.transp_btn.setEnabled(False)
         line.addWidget(self.transp_btn)
 
-        # ---- Define and align to grid
+        # ---- Define grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid transform:', self)
+        label = QtWidgets.QLabel('Grid:', self)
         line.addWidget(label)
         self.define_btn = QtWidgets.QPushButton('Define grid box', self)
         self.define_btn.setCheckable(True)
         self.define_btn.toggled.connect(self._define_grid_toggled)
         self.define_btn.setEnabled(False)
         line.addWidget(self.define_btn)
+        self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
+        self.show_grid_btn.setEnabled(False)
+        self.show_grid_btn.setChecked(False)
+        self.show_grid_btn.stateChanged.connect(self._show_grid)
+        line.addWidget(self.show_grid_btn)
+        line.addStretch(1)
+
+        # ---- Transformations
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Transformations:', self)
+        line.addWidget(label)
         self.transform_btn = QtWidgets.QPushButton('Transform image', self)
         self.transform_btn.clicked.connect(self._affine_transform)
         self.transform_btn.setEnabled(False)
@@ -78,12 +91,8 @@ class EMControls(BaseControls):
         self.show_btn.setChecked(True)
         self.show_btn.stateChanged.connect(self._show_original)
         line.addWidget(self.show_btn)
-        self.show_grid_btn = QtWidgets.QCheckBox('Show grid box',self)
-        self.show_grid_btn.setEnabled(False)
-        self.show_grid_btn.setChecked(False)
-        self.show_grid_btn.stateChanged.connect(self._show_grid)
-        line.addWidget(self.show_grid_btn)
         line.addStretch(1)
+
 
         # ---- Assembly grid options
         line = QtWidgets.QHBoxLayout()

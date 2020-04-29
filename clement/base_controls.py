@@ -527,28 +527,28 @@ class BaseControls(QtWidgets.QWidget):
                                     self.other._points_corr])
                     src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
+                self._refined = True
                 if not self.other.fib:
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
-                    self._refined = True
                     fm_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self._points_corr])
                     em_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self.other._points_corr])
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
                     self._recalc_grid()
-                    self.fliph.setEnabled(False)
-                    self.flipv.setEnabled(False)
-                    #self.auto_opt_btn.setChecked(False)
-                    self.transpose.setEnabled(False)
-                    self.rotate.setEnabled(False)
                     self._estimate_precision(idx=0)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
                 else:
                     self.other.ops.calc_refine_matrix(src,dst)
                     self.other.ops.apply_refinement()
-                    self.other._refined = True
                     self.other._calc_grid()
                     self._estimate_precision(idx=1)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[1] * self.other.ops.pixel_size[0]))
+
+                self.fliph.setEnabled(False)
+                self.flipv.setEnabled(False)
+                self.auto_opt_btn.setChecked(False)
+                self.transpose.setEnabled(False)
+                self.rotate.setEnabled(False)
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -619,58 +619,23 @@ class BaseControls(QtWidgets.QWidget):
             print('Data not refined yet!')
 
     def fit_circles(self):
-        if self.other.fib:
+        if self.auto_opt_btn.isChecked():
+            #if self.other.fib:
             bead_size = float(self.size_box.text())
             points = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self.other._points_corr])
 
             points_fitted = self.other.ops.fit_circles(points, bead_size)
-            print(points_fitted.shape)
-            self.other._points_corr = []
             [self.other.imview.removeItem(point) for point in self.other._points_corr]
+            self.other._points_corr = []
             circle_size = bead_size * 1e3 / self.other.ops.pixel_size[0] / 2
             for i in range(len(points_fitted)):
                 pos = QtCore.QPointF(points_fitted[i,0] - circle_size, points_fitted[i,1] - circle_size)
-                point = pg.CircleROI(pos, circle_size*2, parent=self.other.imview.getImageItem(), movable=False, removable=True)
+                point = pg.CircleROI(pos, circle_size*2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                 point.setPen(0, 255, 255)
                 point.removeHandle(0)
                 self.other._points_corr.append(point)
                 self.other.imview.addItem(point)
 
-    def _optimize(self):
-        if self.auto_opt_btn.isChecked():
-            self.orig_points_corr = copy.copy(self._points_corr)
-            self.other.orig_points_corr = copy.copy(self.other._points_corr)
-
-            em_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self.other._points_corr])).astype(np.int)
-            fm_points = np.round(np.array([[point.x()+self.size_ops/2,point.y()+self.size_ops/2] for point in self._points_corr])).astype(np.int)
-            if self.ops.data.ndim>2:
-                fm_max = np.max(self.ops.data, axis=-1)
-            else:
-                fm_max = self.ops.data
- 
-            [self.imview.removeItem(point) for point in self._points_corr]
-            [self.other.imview.removeItem(point) for point in self.other._points_corr]         
-            self._points_corr = []
-            self.other._points_corr = []
-            fm_points, em_points = self.ops.optimize(fm_max, self.other.ops.data, fm_points, em_points)         
-            for i in range(len(fm_points)):
-                pos_fm = QtCore.QPointF(fm_points[i][0]-self.size_ops/2, fm_points[i][1]-self.size_ops/2)
-                pos_em = QtCore.QPointF(em_points[i][0]-self.size_ops/2, em_points[i][1]-self.size_ops/2)
-                point_fm = pg.CircleROI(pos_fm, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
-                point_fm.removeHandle(0)
-                point_em = pg.CircleROI(pos_em, self.size_other, parent=self.imview.getImageItem(), movable=False, removable=True)
-                point_em.removeHandle(0)
-                self._points_corr.append(point_fm)
-                self.other._points_corr.append(point_em)
-                self.imview.addItem(point_fm)
-                self.other.imview.addItem(point_em)
-        else:
-            [self.imview.removeItem(point) for point in self._points_corr]
-            [self.other.imview.removeItem(point) for point in self.other._points_corr]     
-            
-            self._points_corr = copy.copy(self.orig_points_corr)
-            self.other._points_corr = copy.copy(self.other.orig_points_corr)
-            
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]
         [self.other.imview.removeItem(point) for point in self.other._points_corr]
