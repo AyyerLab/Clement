@@ -528,6 +528,7 @@ class BaseControls(QtWidgets.QWidget):
                     src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
                 self._refined = True
+                self.other._refined = True
                 if not self.other.fib:
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
