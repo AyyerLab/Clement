@@ -103,12 +103,19 @@ class BaseControls(QtWidgets.QWidget):
         
         else:
             condition = False
-            if hasattr(self.other, 'fib') and self.other.fib:
-                if self.ops._transformed and self.other.sem_ops._transformed:
-                    condition = True
+            if hasattr(self, 'fib') and not self.fib:
+                if self.ops._tf_points is not None or self.ops._tf_points_region is not None:
+                    if self.other.ops._tf_points is not None:
+                        condition = True
             else:
-                if self.ops._transformed and self.other.ops._transformed:
-                    condition = True
+                if self.ops._tf_points is not None:
+                    if self.other.fib:
+                        if self.other.sem_ops is not None:
+                            if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
+                                condition = True
+                    else:
+                        if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
+                            condition = True
             if condition:
                 ind = None
                 if self.tr_matrices is not None:
@@ -621,7 +628,6 @@ class BaseControls(QtWidgets.QWidget):
 
     def fit_circles(self):
         if self.auto_opt_btn.isChecked():
-            #if self.other.fib:
             bead_size = float(self.size_box.text())
             points = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self.other._points_corr])
 
@@ -636,6 +642,20 @@ class BaseControls(QtWidgets.QWidget):
                 point.removeHandle(0)
                 self.other._points_corr.append(point)
                 self.other.imview.addItem(point)
+
+    def merge_3d(self):
+        pass
+        #green = np.array(self.reader.getFrame(channel=2, dtype='u2').astype('f4'))
+        #merge
+        #for i in range(green.shape[2]):
+        #    transf = ndi.affine_transform(green[:,:,i], np.linalg.inv())
+        #    transf = np.dot(self.tr_matrices, init)
+        #    transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+        #    self.other._points_corr_z.append(transf[2])
+        #    if self.other._refined:
+        #        transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
+        #else:
+        #    transf = np.dot(self.tr_matrices, init)
 
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]
