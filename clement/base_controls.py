@@ -622,7 +622,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _scatter_plot(self, idx):
         if self.other._err[idx] is not None:
-            pg.plot(self.other._err[idx][:, 0], self.other._err[idx][:, 1], pen=None, symbol='o')
+            pg.plot(self.other._err[idx][:, 0] * self.ops.pixel_size[0], self.other._err[idx][:, 1] * self.ops.pixel_size[1], pen=None, symbol='o')
         else:
             print('Data not refined yet!')
 

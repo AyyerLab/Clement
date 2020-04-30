@@ -742,32 +742,6 @@ class FM_ops(Peak_finding):
         src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         dst = np.array(sorted(em_points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
         self.merge_matrix = tf.estimate_transform('affine', src, dst).params
-        '''
-        nx, ny = self.data.shape[:-1]
-        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-        self.merge_fm_corners = np.dot(self.merge_matrix, corners)
-        self._merge_fm_shape = tuple([int(i) for i in (self.merge_fm_corners.max(1) - self.merge_fm_corners.min(1))[:2]])
-        shift = self.merge_fm_corners.min(1)[:2]
-        self.merge_matrix[:2, 2] -= shift
-
-        self.fm_shift = np.zeros(2).astype(int)
-        self.em_shift = np.zeros(2).astype(int)
-        if shift[0] < 0:
-            self.em_shift[0] = np.abs(int(shift[0]))
-        else:
-            self.fm_shift[0] = int(shift[0])
-        if shift[1] < 0:
-            self.em_shift[1] = np.abs(int(shift[1]))
-        else:
-            self.fm_shift[1] = int(shift[1])
-
-        self.merge_fm_data = np.empty(self._merge_fm_shape+(self.data.shape[-1],))
-        x_shape = np.max([em_data.shape[0]+self.em_shift[0],self.merge_fm_data.shape[0]+self.fm_shift[0]]).astype(int)
-        y_shape = np.max([em_data.shape[1]+self.em_shift[1],self.merge_fm_data.shape[1]+self.fm_shift[1]]).astype(int)
-        self.merged = np.zeros((x_shape,y_shape,self.data.shape[-1]+1))
-        self.merged[self.em_shift[0]:em_data.shape[0]+self.em_shift[0],self.em_shift[1]:em_data.shape[1]+self.em_shift[1],-1] = em_data/np.max(em_data)*np.max(self.data)
-        '''
-
         self.merged = np.zeros(em_data.shape + (self.data.shape[-1]+1,))
         self.merged[:,:,-1] = em_data / em_data.max() * self.data.max()
         self.apply_merge()

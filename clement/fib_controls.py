@@ -62,7 +62,7 @@ class FIBControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Grid box:')
         line.addWidget(label)
-        self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid box',self)
+        self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid square',self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
@@ -245,6 +245,10 @@ class FIBControls(BaseControls):
                         point.removeHandle(0)
                         self.peaks.append(point)
                         self.imview.addItem(point)
+
+                    print(tr_matrix)
+                    print(self.ops.fib_matrix)
+                    print(self.ops._refine_matrix)
         else:
             [self.imview.removeItem(point) for point in self.peaks]
 
