@@ -527,11 +527,10 @@ class BaseControls(QtWidgets.QWidget):
                                     self.other._points_corr])
                     src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
-                self._refined = True
-                self.other._refined = True
                 if not self.other.fib:
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
+                    self._refined = True
                     fm_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self._points_corr])
                     em_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self.other._points_corr])
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
@@ -541,6 +540,7 @@ class BaseControls(QtWidgets.QWidget):
                 else:
                     self.other.ops.calc_refine_matrix(src,dst)
                     self.other.ops.apply_refinement()
+                    self.other._refined = True
                     self.other._calc_grid()
                     self._estimate_precision(idx=1)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[1] * self.other.ops.pixel_size[0]))
