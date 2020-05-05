@@ -758,34 +758,39 @@ class FM_ops(Peak_finding):
         #self.merged[self.fm_shift[0]:self._merge_fm_shape[0]+self.fm_shift[0],self.fm_shift[1]:self._merge_fm_shape[1]+self.fm_shift[1],:-1] = self.merge_fm_data
 
     def merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values, corr_points_fib, channel):
+        rot_matrix = np.identity(3)
+        if self.transp:
+            rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
+        if self.rot:
+            rot_matrix = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
+        if self.fliph:
+            rot_matrix = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]) @ np.array(
+                [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
+        if self.flipv:
+            rot_matrix = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]]) @ np.array(
+                [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
+
+        p0 = np.array([0, 0, 0, 1])
+        p1 = np.array([0, 0, self.voxel_size[2] / self.voxel_size[0], 1])
+        z_shift = (fib_matrix @ p1)[:2] - (fib_matrix @ p0)[:2]
+        print('Z shift: ', z_shift)
+        fib_2d = np.zeros((3, 3))
+        fib_2d[:2, :2] = fib_matrix[:2, :2]
+        fib_2d[:2, 2] = fib_matrix[:2, 3]
+        fib_2d[2, 2] = 1
+
+        if refine_matrix is None:
+            refine_matrix = np.identity(3)
+        tf_matrix = np.copy(self.tf_matrix)
+        tf_matrix[:2, 2] += self.tf_corners.min(1)[:2]
+
+        total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
+        nx, ny = self.channel[:, :, 0].shape
+        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+        tf_corners = total_matrix @ corners
+        tf_shape = tuple([int(i) for i in (tf_corners.max(1) - tf_corners.min(1))[:2]])
+
         if channel == 0:
-            rot_matrix = np.identity(3)
-            if self.transp:
-                rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-            if self.rot:
-                rot_matrix = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
-            if self.fliph:
-                rot_matrix = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]) @ np.array(
-                    [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
-            if self.flipv:
-                rot_matrix = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]]) @ np.array(
-                    [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
-
-            p0 = np.array([0, 0, 0, 1])
-            p1 = np.array([0, 0, self.voxel_size[2] / self.voxel_size[0], 1])
-            z_shift = (fib_matrix @ p1)[1] - (fib_matrix @ p0)[1]
-            fib_2d = np.zeros((3, 3))
-            fib_2d[:2, :2] = fib_matrix[:2, :2]
-            fib_2d[:2, 2] = fib_matrix[:2, 3]
-            fib_2d[2, 2] = 1
-
-            if refine_matrix is None:
-                refine_matrix = np.identity(3)
-            tf_matrix = np.copy(self.tf_matrix)
-            tf_matrix[:2, 2] += self.tf_corners.min(1)[:2]
-            self.total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
-
-            shift_matrix = np.copy(self.total_matrix)
             flips = [self.transp, self.rot, self.fliph, self.flipv]
             orig_points = []
             for i in range(len(corr_points_fm)):
@@ -799,14 +804,12 @@ class FM_ops(Peak_finding):
             for i in range(len(orig_points)):
                 img_tmp = np.zeros_like(self.channel[:,:,0])
                 img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
-                z = fm_z_values[i]
-                nx, ny = self.channel[:, :, 0].shape
-                corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-                tf_corners = shift_matrix @ corners
-                tf_shape = tuple([int(i) for i in (tf_corners.max(1) - tf_corners.min(1))[:2]])
+                z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
+                print(z)
+                fib_new = np.copy(fib_2d)
+                fib_new[:2,2] -= z*z_shift
+                shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
-                shift_matrix[1, 2] -= z * z_shift
-                print(shift_matrix)
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
                                                output_shape=tf_shape)
                 tf_img.append(refined)
@@ -820,22 +823,24 @@ class FM_ops(Peak_finding):
 
         z_data = []
         for z in range(self.num_slices):
-            nx, ny = self.channel[:,:,0].shape
-            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            tf_corners = self.total_matrix @ corners
-            self.total_matrix[:2, 2] -= tf_corners.min(1)[:2]
-            self.total_matrix[:2, 2] -= self.merge_shift.T
-            self.total_matrix[1, 2] -= z * z_shift
-            refined = ndi.affine_transform(self.channel[:,:,z], np.linalg.inv(self.total_matrix), order=1, output_shape=fib_data.shape)
+            fib_2d[:2, 2] -= z_shift
+            total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
+            total_matrix[:2, 2] -= tf_corners.min(1)[:2]
+            total_matrix[:2, 2] -= self.merge_shift.T
+            refined = ndi.affine_transform(self.channel[:,:,self.num_slices-z-1], np.linalg.inv(total_matrix), order=1, output_shape=fib_data.shape)
+            #refined = ndi.affine_transform(self.channel[:,:,z], np.linalg.inv(total_matrix), order=1, output_shape=fib_data.shape)
             z_data.append(refined)
 
         if self.merged_3d is None:
-            self.merged_3d = np.array(np.max(z_data, axis=0))
+            #self.merged_3d = np.array(np.max(z_data, axis=0))
+            self.merged_3d = np.array(np.sum(z_data, axis=0))
         else:
             if self.merged_3d.ndim == 2:
-                self.merged_3d = np.concatenate((np.expand_dims(self.merged_3d,axis=2), np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
+                #self.merged_3d = np.concatenate((np.expand_dims(self.merged_3d,axis=2), np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
+                self.merged_3d = np.concatenate((np.expand_dims(self.merged_3d,axis=2), np.expand_dims(np.sum(z_data, axis=0),axis=2)), axis=2)
             else:
-                self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
+                #self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
+                self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.sum(z_data, axis=0),axis=2)), axis=2)
         if channel == self.num_channels-1:
             fib_img = np.zeros_like(refined)
             fib_img[:fib_data.shape[0],:fib_data.shape[1]] = fib_data / fib_data.max() * self.merged_3d.max()
