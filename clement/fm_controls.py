@@ -307,7 +307,12 @@ class FMControls(BaseControls):
         line.addWidget(label)
         self.merge_btn = QtWidgets.QPushButton('Merge',self)
         self.merge_btn.setEnabled(False)
+        label = QtWidgets.QLabel('Progress:')
+        self.progress = QtWidgets.QProgressBar(self)
+        self.progress.setMaximum(100)
         line.addWidget(self.merge_btn)
+        line.addWidget(label)
+        line.addWidget(self.progress)
         line.addStretch(1)
         vbox.addStretch(1)
 

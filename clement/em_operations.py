@@ -68,6 +68,7 @@ class EM_ops():
         if '.tif' in fname or '.tiff' in fname:
             self.data = np.array(io.imread(fname))
             self.dimensions = self.data.shape
+            print(self.dimensions)
             self.old_fname = fname
             try:
                 md = tifffile.TiffFile(fname).fei_metadata

@@ -38,6 +38,8 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list = []
         self.size_ops = 10
         self.size_other = 10
+        self.merge_points = []
+        self.merge_points_z = []
 
 
     def _init_ui(self):
@@ -128,7 +130,8 @@ class BaseControls(QtWidgets.QWidget):
 
                     #Calc z position
                     if hasattr(self.other, 'fib') and self.other.fib:
-                        z = self.ops.calc_z(ind, pos)
+                        point = np.array([pos.x(),pos.y()])
+                        z = self.ops.calc_z(ind, point)
                         if z is None:
                             return
                         self._points_corr_z.append(z)
@@ -523,17 +526,9 @@ class BaseControls(QtWidgets.QWidget):
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked() and not self.other.select_btn.isChecked():
                 print('Refining...')
-                if hasattr(self.other,'fib') and self.other.fib:
-                    #if self.auto_opt_btn.isChecked():
-                    #    self.fit_circles()
-                    dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
+                dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
                                     self.other._points_corr])
-                    src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
-                else:
-                    dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
-                                    self.other._points_corr])
-                    src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
-
+                src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
                 if not self.other.fib:
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
@@ -545,6 +540,15 @@ class BaseControls(QtWidgets.QWidget):
                     self._estimate_precision(idx=0)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
                 else:
+                    fm_points = np.array(
+                        [[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
+                         self._points_corr])
+                    em_points = np.array(
+                        [[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
+                         self.other._points_corr])
+                    self.merge_points = np.copy(fm_points)
+                    self.merge_points_z = np.copy(self._points_corr_z)
+                    self.other.merge_points = np.copy(em_points)
                     self.other.ops.calc_refine_matrix(src,dst)
                     self.other.ops.apply_refinement()
                     self.other._refined = True
@@ -576,6 +580,7 @@ class BaseControls(QtWidgets.QWidget):
                 self._points_corr_indices = []
                 self.other._points_corr_indices = []
                 self._update_imview()
+                print('merge_points: ', self.merge_points)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
         else:
@@ -643,19 +648,15 @@ class BaseControls(QtWidgets.QWidget):
                 self.other._points_corr.append(point)
                 self.other.imview.addItem(point)
 
-    def merge_3d(self):
-        pass
-        #green = np.array(self.reader.getFrame(channel=2, dtype='u2').astype('f4'))
-        #merge
-        #for i in range(green.shape[2]):
-        #    transf = ndi.affine_transform(green[:,:,i], np.linalg.inv())
-        #    transf = np.dot(self.tr_matrices, init)
-        #    transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-        #    self.other._points_corr_z.append(transf[2])
-        #    if self.other._refined:
-        #        transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
-        #else:
-        #    transf = np.dot(self.tr_matrices, init)
+    def merge(self):
+        if not self.other.fib:
+            self.ops.calc_merge_matrix(self.other.ops.data, self.other.ops.points)
+        else:
+            for i in range(self.ops.num_channels):
+                self.ops.load_channel(i)
+                self.ops.merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
+                              self.other.ops.data, self.merge_points, self.merge_points_z, self.other.merge_points, i)
+                self.progress.setValue((i+1)/self.ops.num_channels * 100)
 
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]

@@ -28,6 +28,7 @@ class Merge(QtGui.QMainWindow,):
         self.stage_positions_popup = None
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self.max_help = False
+        self.fib = False
 
 
         self._channels_popup = [True, True, True, True]
@@ -35,9 +36,16 @@ class Merge(QtGui.QMainWindow,):
         self._current_slice_popup = self.parent.fmcontrols._current_slice
         self._overlay_popup = True
         self._clicked_points_popup = []
-        
-        if self.parent.fm.merged is not None:
-            self.data_popup = np.copy(self.parent.fm.merged)
+
+        if self.parent.fibcontrols.fib:
+            merged_data = self.parent.fm.merged_3d
+            self.fib = True
+            self.downsampling = 1
+        else:
+            merged_data = self.parent.fm.merged_2d
+            self.fib = False
+        if merged_data is not None:
+            self.data_popup = np.copy(merged_data)
             self._channels_popup.append(True)
             self._colors_popup.append('#808080')
         else:
@@ -107,6 +115,13 @@ class Merge(QtGui.QMainWindow,):
         self.slice_select_btn_popup.setRange(0, self.parent.fm.num_slices)
         self.slice_select_btn_popup.setValue(self.parent.fmcontrols.slice_select_btn.value())
         line.addWidget(self.slice_select_btn_popup)
+        if self.fib:
+            self.max_proj_btn_popup.setEnabled(False)
+            self.max_proj_btn_popup.blockSignals(True)
+            self.max_proj_btn_popup.setChecked(True)
+            self.max_proj_btn_popup.blockSignals(False)
+            self.slice_select_btn_popup.setEnabled(False)
+
         if self.parent.fmcontrols.max_proj_btn.isChecked():
             self.max_help = True
             self.max_proj_btn_popup.setChecked(True)
@@ -422,6 +437,8 @@ class Merge(QtGui.QMainWindow,):
         
 
     def closeEvent(self, event):
+        if self.parent is not None:
+            self.parent.fmcontrols.progress.setValue(0)
         self._reset_init()
         event.accept()
 

@@ -192,27 +192,32 @@ class GUI(QtGui.QMainWindow):
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
-        self.em = self.emcontrols.ops 
+        if self.fibcontrols.fib:
+            self.em = self.fibcontrols.ops
+            em = self.fibcontrols.sem_ops
+        else:
+            self.em = self.emcontrols.ops
+            em = self.em
         
         if self.fm is not None and self.em is not None:
-            if self.fm._tf_points is not None and (self.em._tf_points is not None or self.em._tf_points_region is not None):
-                if self.fibcontrols.fib:
-                    self.fibcontrols.merge_3d()
-                else:
-                    self.fm.calc_merge_matrix(self.em.data, self.em.points)
-                if self.popup is not None:
-                    self.popup.close()
-                self.popup = Merge(self)
-                self.project.merged = True
-                self.project.popup = self.popup
-                if self.project.load_merge:
-                    self.project._load_merge(project)
-                    self.project.load_merge = False
-                QtWidgets.QApplication.restoreOverrideCursor()
-                self.popup.show()
+            if self.fibcontrols.fib and self.fibcontrols.sem_ops.data is None:
+                print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
-                print('You have to transform both images first!')
-                QtWidgets.QApplication.restoreOverrideCursor()
+                if self.fm._tf_points is not None and (em._tf_points is not None or em._tf_points_region is not None):
+                    self.fmcontrols.merge()
+                    if self.popup is not None:
+                        self.popup.close()
+                    self.popup = Merge(self)
+                    self.project.merged = True
+                    self.project.popup = self.popup
+                    if self.project.load_merge:
+                        self.project._load_merge(project)
+                        self.project.load_merge = False
+                    QtWidgets.QApplication.restoreOverrideCursor()
+                    self.popup.show()
+                else:
+                    print('You have to transform the FM and the TEM/SEM images first!')
+                    QtWidgets.QApplication.restoreOverrideCursor()
         else:
             print('Select FM and EM data first!')
             QtWidgets.QApplication.restoreOverrideCursor()
