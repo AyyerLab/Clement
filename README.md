@@ -13,5 +13,5 @@ We recommend create a separate environment using either `conda` or `virtualenv` 
 Further instructions are available in the Wiki [here](https://github.com/kartikayyer/Clement/wiki/installation).
 
 ## Tutorial
-A guide with screenshots for semi-automatic alignment of FM and EM images based on observable features is also described on the [wiki](https://github.com/kartikayyer/Clement/wiki/quick-start-tutorial).
+A guide with screenshots for semi-automatic alignment of FM and EM images based on observable features is also described on the [wiki](https://github.com/kartikayyer/Clement/wiki/tutorial-2D).
 
