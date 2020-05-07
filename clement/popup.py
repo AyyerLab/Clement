@@ -70,7 +70,7 @@ class Merge(QtGui.QMainWindow,):
 
         # -- File menu
         filemenu = menubar.addMenu('&File')
-        action = QtWidgets.QAction('&Save merged image', self)
+        action = QtWidgets.QAction('&Save data', self)
         action.triggered.connect(self._save_data_popup)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Quit', self)
@@ -326,46 +326,34 @@ class Merge(QtGui.QMainWindow,):
             print('Done selecting points of interest!')
 
     def _save_data_popup(self):
-        if self.data_popup is None:
-            print('No image to save!')
-            return
-        if len(self._clicked_points_popup) == 0:
-            print('No coordinates selected!')
-            return
-        if self.stage_positions_popup is None:
-            print('Confirm selected points first!')
-            return
-
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder_popup)
-        screenshot = self.imview_popup.grab()
         if file_name is not '':
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-            screenshot.save(file_name,'tif')
-            self._save_merge_popup(file_name)
-            self._save_coordinates_popup(file_name)
-            QtWidgets.QApplication.restoreOverrideCursor()
+            try:
+                QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+                file_name = file_name.split('.', 1)[0]
+                screenshot = self.imview_popup.grab()
+                screenshot.save(file_name,'tif')
+                self._save_merge_popup(file_name)
+                self._save_coordinates_popup(file_name)
+                QtWidgets.QApplication.restoreOverrideCursor()
+            except PermissionError:
+                print('Permission error! Choose a different directory!')
+                QtWidgets.QApplication.restoreOverrideCursor()
 
     def _save_merge_popup(self, fname):
-        try:
-            with mrc.new(fname+'.mrc', overwrite=True) as f:
-                f.set_data(self.data_popup.astype(np.float32))
-                f.update_header_stats()
-        except PermissionError:
-            pass
+        with mrc.new(fname+'.mrc', overwrite=True) as f:
+            f.set_data(self.data_popup.astype(np.float32))
+            f.update_header_stats()
 
     def _save_coordinates_popup(self, fname):
-        enumerated = []
-        for i in range(len(self.stage_positions_popup)):
-            enumerated.append((i+1,self.stage_positions_popup[i][0],self.stage_positions_popup[i][1]))
-        try:
-            with open(fname+'.txt', 'a', newline='') as f:
-                csv.writer(f, delimiter=' ').writerows(enumerated)
-
-        except PermissionError:
-            print('Permission error! Choose a different directory!')
-            self._save_data_popup()
+        if self.stage_positions_popup is not None:
+            enumerated = []
+            for i in range(len(self.stage_positions_popup)):
+                enumerated.append((i+1,self.stage_positions_popup[i][0],self.stage_positions_popup[i][1]))
+                with open(fname+'.txt', 'a', newline='') as f:
+                    csv.writer(f, delimiter=' ').writerows(enumerated)
 
     def _show_max_projection_popup(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

@@ -123,7 +123,10 @@ class BaseControls(QtWidgets.QWidget):
                 if self.tr_matrices is not None:
                     if hasattr(self, 'peak_btn') and self.ops.tf_peaks_3d is not None:
                         ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1)
-                        if ind is not None:
+                        if ind is None and not self.other._refined:
+                            print('You have to select a bead for the first refinement!')
+                            return
+                        elif ind is not None:
                             peaks_2d = self.ops.tf_peaks_3d
                             pos.setX(peaks_2d[ind,0] - size1 / 2)
                             pos.setY(peaks_2d[ind,1] - size1 / 2)
@@ -650,13 +653,28 @@ class BaseControls(QtWidgets.QWidget):
 
     def merge(self):
         if not self.other.fib:
-            self.ops.calc_merge_matrix(self.other.ops.data, self.other.ops.points)
+            if self.ops.merged_2d is None:
+                for i in range(self.ops.num_channels):
+                    self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
+                    self.progress.setValue((i+1)/self.ops.num_channels * 100)
+            else:
+                self.progress.setValue(100)
+            if self.ops.merged_2d is not None:
+                print('Merged shape: ', self.ops.merged_2d.shape)
         else:
-            for i in range(self.ops.num_channels):
-                self.ops.load_channel(i)
-                self.ops.merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
-                              self.other.ops.data, self.merge_points, self.merge_points_z, self.other.merge_points, i)
-                self.progress.setValue((i+1)/self.ops.num_channels * 100)
+            if self.ops.merged_3d is None:
+                if self.other._refined:
+                    for i in range(self.ops.num_channels):
+                        self.ops.load_channel(i)
+                        self.ops.apply_merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
+                                      self.other.ops.data, self.merge_points, self.merge_points_z, self.other.merge_points, i)
+                        self.progress.setValue((i+1)/self.ops.num_channels * 100)
+                else:
+                    print('You have to perform at least one round of refinement before you can merge the images!')
+            else:
+                self.progress.setValue(100)
+            if self.ops.merged_3d is not None:
+                print('Merged shape: ', self.ops.merged_3d.shape)
 
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]
