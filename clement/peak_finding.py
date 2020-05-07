@@ -4,6 +4,8 @@ from scipy.optimize import curve_fit
 import time
 from skimage import measure, morphology
 import read_lif
+import time
+
 
 
 class Peak_finding():
@@ -84,6 +86,7 @@ class Peak_finding():
             if roi:
                 return None
             else:
+                print('Something weird happened...')
                 pass
 
         coor = np.array(coor_sp)

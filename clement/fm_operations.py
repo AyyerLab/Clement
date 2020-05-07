@@ -10,7 +10,6 @@ from skimage import transform as tf
 from skimage import measure, morphology, io
 import read_lif
 from .peak_finding import Peak_finding
-import time
 
 class FM_ops(Peak_finding):
     def __init__(self):
@@ -205,9 +204,11 @@ class FM_ops(Peak_finding):
         if self._transformed:
             if self.tf_peak_slices is not None:
                 if self._show_max_proj:
-                    peaks = np.array(self.orig_tf_peak_slices[-1])
+                    peaks = self.orig_tf_peak_slices[-1]
                 else:
                     peaks = np.array(self.orig_tf_peak_slices[self.selected_slice])
+                if peaks is not None:
+                    peaks = np.array(peaks)
             fliph = self.fliph
             flipv = self.flipv
             transp = self.transp
@@ -246,7 +247,7 @@ class FM_ops(Peak_finding):
                 self.tf_peak_slices[-1] = np.copy(peaks)
             else:
                 self.tf_peak_slices[self.selected_slice] = np.copy(peaks)
-
+        print('peaks: ', peaks)
         return points
 
     def flip_horizontal(self, do_flip):
@@ -359,7 +360,7 @@ class FM_ops(Peak_finding):
         else:
             refined_tmp = False
         if self.hsv_map_no_tilt is None:
-            if self.peak_slices is None or self.peak_slices[-1] == 0:
+            if self.peak_slices is None or self.peak_slices[-1] is None:
                 self.peak_finding(self.max_proj_data[:,:,-1], transformed=False)
             red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
             self.fit_z(red_channel, transformed=False)

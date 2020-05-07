@@ -9,7 +9,6 @@ from skimage.color import hsv2rgb
 
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
-#import align_fm
 
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, parent, names):
@@ -507,6 +506,7 @@ class FMControls(BaseControls):
                 else:
                     if self.max_proj_btn.isChecked():
                         if self.ops._transformed:
+
                             if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
                                 self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
                             peaks_2d = self.ops.tf_peak_slices[-1]
@@ -523,18 +523,18 @@ class FMControls(BaseControls):
                             if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
                                 self.ops.peak_finding(self.ops.data[:,:,-1], transformed=False, curr_slice=self._current_slice)
                             peaks_2d = self.ops.peak_slices[self._current_slice]
-                print(peaks_2d.shape)
-                for i in range(len(peaks_2d)):
-                    pos = QtCore.QPointF(peaks_2d[i][0]-self.size_ops/2, peaks_2d[i][1]-self.size_ops/2)
-                    point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
-                    point_obj.removeHandle(0)
-                    self.imview.addItem(point_obj)
-                    self._peaks.append(point_obj)
-                if flip:
-                    self.fliph.setChecked(fliph)
-                    self.flipv.setChecked(flipv)
-                    self.transpose.setChecked(transp)
-                    self.rotate.setChecked(rot)
+                if len(peaks_2d.shape) > 0:
+                    for i in range(len(peaks_2d)):
+                        pos = QtCore.QPointF(peaks_2d[i][0]-self.size_ops/2, peaks_2d[i][1]-self.size_ops/2)
+                        point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
+                        point_obj.removeHandle(0)
+                        self.imview.addItem(point_obj)
+                        self._peaks.append(point_obj)
+                    if flip:
+                        self.fliph.setChecked(fliph)
+                        self.flipv.setChecked(flipv)
+                        self.transpose.setChecked(transp)
+                        self.rotate.setChecked(rot)
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []
