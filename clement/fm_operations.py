@@ -285,7 +285,6 @@ class FM_ops(Peak_finding):
                 self.apply_transform()
         self._update_data()
         if refined_tmp and self._transformed:
-        #if self.refined:
             for i in range(len(self.refine_history)):
                 self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
@@ -335,7 +334,6 @@ class FM_ops(Peak_finding):
             argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
             self.cmap = self.create_cmaps(rot=1./2)
             hsv_data = np.array([self.max_proj_data[:,:,-1], argmax_map, self.cmap])
-            np.save('hsv_data.npy', hsv_data)
             self.hsv_map = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map, self.cmap)
 
         if self._transformed:
@@ -347,7 +345,6 @@ class FM_ops(Peak_finding):
         self._update_data()
 
         if refined_tmp and self._transformed:
-            # if self.refined:
             for i in range(len(self.refine_history)):
                 self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
@@ -371,40 +368,32 @@ class FM_ops(Peak_finding):
 
             A = np.array([peaks_2d[:,0], peaks_2d[:,1], np.ones_like(peaks_2d[:,0])]).T #matrix
             beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_3d[:,2], axis=1)) #params
-
             point = np.array([0.0, 0.0, beta[2]]) #point on plane
             normal = np.array(np.cross([1, 0, beta[0][0]], [0, 1, beta[1][0]])) #normal vector of plane
             d = -point.dot(normal) #distance to origin
-
             x, y = np.indices((2048, 2048))
             z_plane = -(normal[0] * x + normal[1] * y + d) / normal[2] #z values of plane for whole image
             z_max_all = np.argmax(red_channel, axis=2)
 
             argmax_map_no_tilt = z_max_all - z_plane
-            #argmax_map_no_tilt /= argmax_map_no_tilt.max() * 2
-            #self.hsv_map_no_tilt = np.array([argmax_map_no_tilt, np.ones_like(argmax_map_no_tilt), self.max_proj_data[:,:,-1]]).transpose(1,2,0)
             self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map_no_tilt, self.cmap)
 
         if self._transformed:
             if self.tf_hsv_map_no_tilt is None:
                 self.apply_transform()
-                #if self.tf_peak_slices is None or self.tf_peak_slices[-1] is None:
-                #    flip_list = [self.transp, self.rot, self.fliph, self.flipv]
-                #self.calc_transformed_coordinates(self.tf_matrix, flip_list, self.data.shape[:-1])
             elif self.refined:
                 self.apply_transform()
 
         self._update_data()
 
         if refined_tmp and self._transformed:
-            # if self.refined:
             for i in range(len(self.refine_history)):
                 self._refine_matrix = self.refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
 
-    def calc_z(self, ind, pos): #size
+    def calc_z(self, ind, pos):
         z = None
         if self._transformed:
             if self.tf_peaks_3d is not None:
@@ -425,16 +414,13 @@ class FM_ops(Peak_finding):
                 point_green = np.array((pos[0], pos[1]))
             z = self.calc_local_z(self.channel, point_green, self._transformed,
                                       self.tf_matrix, flip_list, self.data.shape[:-1])
-
         if z is None:
             print('Oops, something went wrong. Try again!')
             return None
         #scale z slice number by voxel size ratio
         z = self.num_slices - 1 - z
         scaling = self.voxel_size[2] / self.voxel_size[0]
-        print('Z value before scaling: ', z)
         z *= scaling
-        print('Scaling: ', scaling)
         return z
 
     def load_channel(self, ind):

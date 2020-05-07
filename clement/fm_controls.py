@@ -75,14 +75,13 @@ class FMControls(BaseControls):
         self.slice_select_btn = QtWidgets.QSpinBox(self)
         self.slice_select_btn.setRange(0, 0)
         self.slice_select_btn.setEnabled(False)
-        #self.slice_select_btn.valueChanged.connect(self._slice_changed)
         self.slice_select_btn.editingFinished.connect(self._slice_changed)
         line.addWidget(self.slice_select_btn)
 
         # ---- Select channels
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Colors:', self)
+        label = QtWidgets.QLabel('Show color channels:', self)
         line.addWidget(label)
         self.channel1_btn = QtWidgets.QCheckBox(' ',self)
         self.channel2_btn = QtWidgets.QCheckBox(' ',self)
@@ -148,6 +147,35 @@ class FMControls(BaseControls):
         self.align_btn.setEnabled(False)
         line.addWidget(self.align_btn)
         #line.addStretch(1)
+
+        # ---- Peak finding
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Peak finding:', self)
+        line.addWidget(label)
+        self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
+        self.peak_btn.setCheckable(True)
+        self.peak_btn.toggled.connect(self._find_peaks)
+        self.peak_btn.setEnabled(False)
+        line.addWidget(self.peak_btn)
+        line.addStretch(1)
+
+        # 3D mapping
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('3D mapping: ', self)
+        line.addWidget(label)
+        self.map_btn = QtWidgets.QPushButton('Z mapping', self)
+        self.map_btn.setCheckable(True)
+        self.map_btn.toggled.connect(self._mapping)
+        self.map_btn.setEnabled(False)
+        self.remove_tilt_btn = QtWidgets.QCheckBox('Remove tilt effect', self)
+        self.remove_tilt_btn.setEnabled(False)
+        self.remove_tilt_btn.setChecked(False)
+        self.remove_tilt_btn.stateChanged.connect(self._remove_tilt)
+        line.addWidget(self.map_btn)
+        line.addWidget(self.remove_tilt_btn)
+        line.addStretch(1)
 
         # ---- Define and align to grid
         line = QtWidgets.QHBoxLayout()
@@ -238,35 +266,6 @@ class FMControls(BaseControls):
         self.show_btn.setChecked(True)
         self.show_btn.stateChanged.connect(self._show_original)
         line.addWidget(self.show_btn)
-
-        # ---- Peak finding
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Peak finding:', self)
-        line.addWidget(label)
-        self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
-        self.peak_btn.setCheckable(True)
-        self.peak_btn.toggled.connect(self._find_peaks)
-        self.peak_btn.setEnabled(False)
-        line.addWidget(self.peak_btn)
-        line.addStretch(1)
-
-        # 3D mapping
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('3D mapping: ', self)
-        line.addWidget(label)
-        self.map_btn = QtWidgets.QPushButton('Z mapping', self)
-        self.map_btn.setCheckable(True)
-        self.map_btn.toggled.connect(self._mapping)
-        self.map_btn.setEnabled(False)
-        self.remove_tilt_btn = QtWidgets.QCheckBox('Remove tilt effect', self)
-        self.remove_tilt_btn.setEnabled(False)
-        self.remove_tilt_btn.setChecked(False)
-        self.remove_tilt_btn.stateChanged.connect(self._remove_tilt)
-        line.addWidget(self.map_btn)
-        line.addWidget(self.remove_tilt_btn)
-        line.addStretch(1)
 
         # Select points
         line = QtWidgets.QHBoxLayout()
@@ -382,16 +381,10 @@ class FMControls(BaseControls):
             self.c4_btn.setEnabled(True)
             self.overlay_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
-            self.transform_btn.setEnabled(True)
-            self.rot_transform_btn.setEnabled(True)
-            self.select_btn.setEnabled(True)
-            self.refine_btn.setEnabled(True)
-            self.merge_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
-
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _show_max_projection(self):
@@ -480,7 +473,6 @@ class FMControls(BaseControls):
 
         num = self.slice_select_btn.value()
         if num != self._current_slice:
-            #self.ops.parse(fname=self.ops.old_fname, z=num%self.num_slices, reopen=False)
             self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
             self._update_imview()
             fname, indstr = self.fm_fname.text().split()

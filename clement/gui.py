@@ -187,7 +187,11 @@ class GUI(QtGui.QMainWindow):
                     self.fibcontrols.enable_buttons(enable=True)
                 else:
                     self.fibcontrols.enable_buttons(enable=False)
-
+            if self.fibcontrols.num_slices is None:
+                self.fibcontrols.num_slices = self.fmcontrols.num_slices
+                if self.fibcontrols.ops is not None:
+                    if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
+                        self.fibcontrols.correct_grid_z()
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

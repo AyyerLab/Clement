@@ -40,7 +40,7 @@ class BaseControls(QtWidgets.QWidget):
         self.merge_points = []
         self.merge_points_z = []
         self.peaks = []
-
+        self.num_slices = None
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -56,12 +56,6 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         pos = self.imview.getImageItem().mapFromScene(event.pos())
-
-        #self.size_ops = self.ops.data.shape[0]*0.01
-        #if self.other.ops is not None:
-            #self.size_other = self.other.ops.data.shape[0]*0.005
-            #self.size_other = self.size_ops
-        #   pass
         item = self.imview.getImageItem()
 
         pos.setX(pos.x() - self.size_ops/2)
@@ -72,7 +66,7 @@ class BaseControls(QtWidgets.QWidget):
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
-        elif self.select_btn.isChecked():
+        elif hasattr(self, 'select_btn') and self.select_btn.isChecked():
             self._draw_correlated_points(pos, self.size_ops, self.size_other, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
             '''EM only: Select individual image from montage'''
@@ -83,7 +77,6 @@ class BaseControls(QtWidgets.QWidget):
             if points_obj[0] < self.ops.data.shape[0] and points_obj[1] < self.ops.data.shape[1]:
                 # Get index of selected region
                 ind = self.ops.get_selected_region(np.array(points_obj), not self.show_btn.isChecked())
-
                 # If index is non-ambiguous
                 if ind is not None:
                     if self.show_btn.isChecked():
@@ -231,9 +224,6 @@ class BaseControls(QtWidgets.QWidget):
         else:
             print('Done defining grid on %s image: Manually adjust fine positions'%self.tag)
             if len(self.clicked_points) == 4:
-                self.show_grid_btn.setEnabled(True)
-                if not self.ops._transformed:
-                    self.transform_btn.setEnabled(True)
                 # Initialize grid_box on original or transformed image
                 if self.show_btn.isChecked():
                     self.grid_box = None
@@ -265,8 +255,12 @@ class BaseControls(QtWidgets.QWidget):
                     self.tr_grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
                 [self.imview.removeItem(roi) for roi in self.clicked_points]
                 self.clicked_points = []
+
+                self.transform_btn.setEnabled(True)
+                self.rot_transform_btn.setEnabled(True)
                 self.show_grid_btn.setEnabled(True)
                 self.show_grid_btn.setChecked(True)
+
                 if self.show_btn.isChecked():
                     self.show_grid_box = True
                 else:
@@ -471,11 +465,16 @@ class BaseControls(QtWidgets.QWidget):
             self._update_imview()
             self.transform_btn.setEnabled(False)
             self.rot_transform_btn.setEnabled(False)
-            if hasattr(self, 'align_btn') and aligned:
-                self.align_btn.setChecked(True)
+
+            if hasattr(self, 'select_btn'):
+                self.select_btn.setEnabled(True)
+                self.merge_btn.setEnabled(True)
+                self.refine_btn.setEnabled(True)
+                if aligned:
+                    self.align_btn.setChecked(True)
 
             if self.ops is not None and self.other.ops is not None:
-                if hasattr(self, 'align_btn') and not self.other.fib:
+                if hasattr(self, 'select_btn') and not self.other.fib:
                     if self.ops._transformed and self.other.ops._transformed:
                         self.other.show_peaks_btn.setEnabled(True)
                 if hasattr(self, 'fib') and not self.fib:
@@ -498,12 +497,18 @@ class BaseControls(QtWidgets.QWidget):
                     self.fliph.setEnabled(False)
                     self.transpose.setEnabled(False)
                     self.rotate.setEnabled(False)
+                    self.select_btn.setEnabled(True)
+                    self.merge_btn.setEnabled(True)
+                    self.refine_btn.setEnabled(True)
                 elif hasattr(self.ops, 'flipv') and self.ops._transformed:
                     if not self.ops.refined:
                         self.flipv.setEnabled(True)
                         self.fliph.setEnabled(True)
                         self.transpose.setEnabled(True)
                         self.rotate.setEnabled(True)
+                        self.select_btn.setEnabled(True)
+                        self.merge_btn.setEnabled(True)
+                        self.refine_btn.setEnabled(True)
 
                 print('Transformed?', self.ops._transformed)
                 if hasattr(self.ops,'refined'):
@@ -521,15 +526,17 @@ class BaseControls(QtWidgets.QWidget):
                         show_peaks = True
                         self.peak_btn.setChecked(False)
                     if not self.other.fib:
-                        if self.ops._transformed and self.other.ops._transformed:
-                            self.other.show_peaks_btn.setEnabled(True)
+                        if self.other.ops is not None:
+                            if self.ops._transformed and self.other.ops._transformed:
+                                self.other.show_peaks_btn.setEnabled(True)
 
                 if hasattr(self, 'fib') and not self.fib:
-                    if self.ops._transformed and self.other.ops._transformed:
-                        self.show_peaks_btn.setEnabled(True)
-                    else:
-                        self.show_peaks_btn.setChecked(False)
-                        self.show_peaks_btn.setEnabled(False)
+                    if self.other.ops is not None:
+                        if self.ops._transformed and self.other.ops._transformed:
+                            self.show_peaks_btn.setEnabled(True)
+                        else:
+                            self.show_peaks_btn.setChecked(False)
+                            self.show_peaks_btn.setEnabled(False)
 
                 self._update_imview()
                 if self.ops._transformed:
@@ -725,6 +732,17 @@ class BaseControls(QtWidgets.QWidget):
                     self.imview.addItem(point)
         else:
             [self.imview.removeItem(point) for point in self.peaks]
+
+    def correct_grid_z(self):
+        self.ops.fib_matrix = None
+        # set FIB matrix to None to recalculate with medium z slice
+        self._calc_grid(scaling=self.other.ops.voxel_size[2] / self.other.ops.voxel_size[0])
+        self.shift_x_btn.setText(str(self.ops._total_shift[0]))
+        self.shift_y_btn.setText(str(self.ops._total_shift[1]))
+        self.ops._total_shift = None
+        self._refine_grid()
+        self._show_grid()
+        print('WARNING! Recalculate FIB grid square for z = ', self.num_slices // 2)
 
     def merge(self):
         if not self.other.fib:

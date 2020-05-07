@@ -54,6 +54,7 @@ class FIBControls(BaseControls):
         self.sigma_btn = QtWidgets.QLineEdit(self)
         self.sigma_btn.setText('20')
         self._sigma_angle = int(self.sigma_btn.text())
+        self.sigma_btn.setEnabled(False)
         line.addWidget(self.sigma_btn)
         line.addStretch(1)
 
@@ -74,6 +75,8 @@ class FIBControls(BaseControls):
         self.shift_y_btn.setText('250')
         self.shift_x = int(self.shift_x_btn.text())
         self.shift_y = int(self.shift_y_btn.text())
+        self.shift_x_btn.setEnabled(False)
+        self.shift_y_btn.setEnabled(False)
         self.shift_btn = QtWidgets.QPushButton('Shift box')
         self.shift_btn.clicked.connect(self._refine_grid)
         self.shift_btn.setEnabled(False)
@@ -137,18 +140,18 @@ class FIBControls(BaseControls):
             self.mrc_fname.setText(self._file_name)
 
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-            #self.ops = FIB_ops()
             self.ops = EM_ops()
-            self.ops.parse(self.mrc_fname.text(), step=1)
+            self.ops.parse_2d(self._file_name)
             self.imview.setImage(self.ops.data)
             self.grid_box = None
             self.transp_btn.setEnabled(True)
+            self.sigma_btn.setEnabled(True)
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
-                self.shift_btn.setEnabled((True))
+                self.shift_btn.setEnabled(True)
+                self.shift_x_btn.setEnabled(True)
+                self.shift_y_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
-            #if self.sem_ops is not None and (self.sem_ops._tf_points is not None or self.sem_ops._tf_points_region is not None):
-            #    self.select_btn.setEnabled(True)
             QtWidgets.QApplication.restoreOverrideCursor()
         else:
             print('You have to choose a file first!')
@@ -174,7 +177,7 @@ class FIBControls(BaseControls):
             self.show_grid_btn.setEnabled(enable)
             self.shift_btn.setEnabled(enable)
 
-    def _show_grid(self, state):
+    def _show_grid(self):
         if self.show_grid_btn.isChecked():
             self._calc_grid()
             self.show_grid_box = True
@@ -183,19 +186,18 @@ class FIBControls(BaseControls):
             self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
 
-    def _calc_grid(self, transpose=False):
+    def _calc_grid(self, transpose=False, scaling=1):
         if not transpose:
             if self.sem_ops is not None:
                 if self.ops.fib_matrix is None:
                     self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
-                    self.ops.apply_fib_transform(self.sem_ops._orig_points, self.sem_ops.data.shape)
+                    self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
             if self.show_grid_btn.isChecked():
                 self.imview.removeItem(self.grid_box)
             pos = list(self.ops.points)
             self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
-            #self.grid_box.sigRegionChangeFinished.connect(self._refine_grid)
             self.refine_btn.setEnabled(True)
             if self.show_grid_btn.isChecked():
                 self.imview.addItem(self.grid_box)
@@ -254,8 +256,6 @@ class FIBControls(BaseControls):
         self.show_grid_btn.setChecked(False)
         self.show_peaks_btn.setEnabled(False)
         self.show_peaks_btn.setChecked(False)
-
-        #self.select_btn.setEnabled(False)
 
         self.ops.__init__()
 

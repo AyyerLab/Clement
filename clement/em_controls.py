@@ -110,21 +110,6 @@ class EMControls(BaseControls):
         line.addWidget(self.show_btn)
         line.addStretch(1)
 
-        # ---- Points of interest
-        line = QtWidgets.QHBoxLayout()
-        #vbox.addLayout(line)
-        label = QtWidgets.QLabel('Point transform:', self)
-        line.addWidget(label)
-        self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
-        self.select_btn.setCheckable(True)
-        self.select_btn.setEnabled(False)
-        self.select_btn.toggled.connect(self._define_corr_toggled)
-        #self.refine_btn = QtWidgets.QPushButton('Refinement')
-        #self.refine_btn.clicked.connect(self._refine)
-        line.addWidget(self.select_btn)
-        #line.addWidget(self.refine_btn)
-        line.addStretch(1)
-
         # ---- Show FM peaks
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -167,20 +152,28 @@ class EMControls(BaseControls):
 
         self.show()
 
-    def _load_mrc(self):
-        if self._curr_folder is None:
-            self._curr_folder = os.getcwd()
-        self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                             'Select .mrc file',
-                                                             self._curr_folder,
-                                                             '*.mrc;;*.tif;;*tiff')
-        self._curr_folder = os.path.dirname(self._file_name)
+    def _load_mrc(self, jump=False):
+        if not jump:
+            if self._curr_folder is None:
+                self._curr_folder = os.getcwd()
+            self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                                 'Select .mrc file',
+                                                                 self._curr_folder,
+                                                                 '*.mrc;;*.tif;;*tiff')
+            self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name is not '':
             self.reset_init()
             self.mrc_fname.setText(self._file_name)
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
+
+        self.ops = EM_ops()
+        self.ops.parse_2d(self._file_name)
+        if len(self.ops.dimensions) == 2:
+            self.step_box.setText('1')
+            self._assemble_mrc()
+            self.assemble_btn.setEnabled(False)
 
     def _update_imview(self):
         if self.ops is not None and self.ops.data is not None:
@@ -206,14 +199,12 @@ class EMControls(BaseControls):
         else:
             self._downsampling = self.step_box.text()
 
-        if self.mrc_fname.text() is not '':
-            self.ops = EM_ops()
-            self.ops.parse(self.mrc_fname.text(), int(self._downsampling))
+        if self._file_name is not '':
+            if len(self.ops.dimensions) == 3:
+                self.ops.parse_3d(int(self._downsampling), self._file_name)
             self.imview.setImage(self.ops.data)
             self.define_btn.setEnabled(True)
-            self.rot_transform_btn.setEnabled(True)
             self.show_btn.setChecked(True)
-            #self.show_btn.setEnabled(True)
             self.transform_btn.setEnabled(False)
             self.transp_btn.setEnabled(True)
             if self.tr_grid_box is not None:
@@ -224,7 +215,6 @@ class EMControls(BaseControls):
             self.ops._transformed = False
             self.show_grid_btn.setEnabled(False)
 
-            self.select_btn.setEnabled(True)
             if self.ops.stacked_data:
                 self.select_region_btn.setEnabled(True)
             else:
@@ -235,7 +225,6 @@ class EMControls(BaseControls):
         else:
             print('You have to choose a file first!')
         QtWidgets.QApplication.restoreOverrideCursor()
-
 
     def _transpose(self):
         self.ops.transpose()
@@ -425,6 +414,5 @@ class EMControls(BaseControls):
         self.show_grid_btn.setChecked(False)
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
-        self.select_btn.setEnabled(False)
-        
+
         self.ops.__init__()

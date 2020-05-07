@@ -120,6 +120,7 @@ class Project(QtWidgets.QWidget):
         self.em.assemble_btn.setEnabled(True)
         self.em.step_box.setEnabled(True)
         self.em.step_box.setText(emdict['Downsampling'])
+        self.em._load_mrc(jump=True)
         self.em._assemble_mrc()
         try:
             self.em._select_region_original = emdict['Select subregion original']
@@ -233,7 +234,6 @@ class Project(QtWidgets.QWidget):
             self.fib._err = np.array(fibdict['Error distribution'])
             self.fib._rms = float(fibdict['RMS'])
             self.fib.err_btn.setText('{:.2f}'.format(self.fib._rms*self.fib.ops.pixel_size[0]*1e9))
-
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index']:

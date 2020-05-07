@@ -10,6 +10,7 @@ from skimage import transform as tf
 from skimage import io, measure, feature
 import tifffile
 from . ransac import Ransac
+import time
 
 class EM_ops():
     def __init__(self):
@@ -64,11 +65,10 @@ class EM_ops():
         self.fib_angle = None #angle relative to xy-plane
         self.transposed = False
 
-    def parse(self, fname, step):
+    def parse_2d(self, fname):
         if '.tif' in fname or '.tiff' in fname:
             self.data = np.array(io.imread(fname))
             self.dimensions = self.data.shape
-            print(self.dimensions)
             self.old_fname = fname
             try:
                 md = tifffile.TiffFile(fname).fei_metadata
@@ -82,48 +82,49 @@ class EM_ops():
                 self.eh = np.frombuffer(f.extended_header, dtype='i2')
                 self.old_fname = fname
                 self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y]) / 10
-            print(f)
             self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
-            print(self.dimensions)
-            if len(self.dimensions) == 3 and self.dimensions[0] > 1:
-                self.stacked_data = True
-                self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
-                self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
-                self.pos_x = self.eh[1:10*self.dimensions[0]:10] // step
-                self.pos_y = self.eh[2:10*self.dimensions[0]:10] // step
-                self.pos_x -= self.pos_x.min()
-                self.pos_y -= self.pos_y.min()
-                self.pos_z = self.eh[3:10*self.dimensions[0]:10]
-                self.grid_points = []
-                for i in range(len(self.pos_x)):
-                    point = np.array((self.pos_x[i], self.pos_y[i], 1))
-                    box_points = [point + (0, 0, 0),
-                                  point + (self.dimensions[2], 0, 0),
-                                  point + (self.dimensions[2], self.dimensions[1], 0),
-                                  point + (0, self.dimensions[1], 0)]
-                    self.grid_points.append(box_points)
-
-                cy, cx = np.indices(self.dimensions[1:3])
-
-                self.data = np.zeros((self.pos_x.max() + self.dimensions[2], self.pos_y.max() + self.dimensions[1]), dtype='f4')
-                self.mcounts = np.zeros_like(self.data)
-                self.count_map = np.zeros_like(self.data)
-                sys.stdout.write('Assembling images into %s-shaped array...'% (self.data.shape,))
-                for i in range(self.dimensions[0]):
-                    np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
-                    np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), f.data[i, ::step, ::step])
-                    np.add.at(self.count_map, (cx+self.pos_x[i], cy+self.pos_y[i]), i)
-                sys.stdout.write('done\n')
-                self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
-                self.count_map[self.mcounts>1] = 0
-            elif self.dimensions[0] == 1:
-                self.stacked_data = False
-                self.data = np.copy(f.data[0])
-            else:
+            if len(self.dimensions) == 2:
                 self.stacked_data = False
                 self.data = np.copy(f.data)
-            f.close()
 
+        self.orig_data = np.copy(self.data)
+
+    def parse_3d(self, step, fname):
+        f = mrc.open(fname, 'r', permissive=True)
+        if len(self.dimensions) == 3 and self.dimensions[0] > 1:
+            self.stacked_data = True
+            self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
+            self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
+            self.pos_x = self.eh[1:10*self.dimensions[0]:10] // step
+            self.pos_y = self.eh[2:10*self.dimensions[0]:10] // step
+            self.pos_x -= self.pos_x.min()
+            self.pos_y -= self.pos_y.min()
+            self.pos_z = self.eh[3:10*self.dimensions[0]:10]
+            self.grid_points = []
+            for i in range(len(self.pos_x)):
+                point = np.array((self.pos_x[i], self.pos_y[i], 1))
+                box_points = [point + (0, 0, 0),
+                              point + (self.dimensions[2], 0, 0),
+                              point + (self.dimensions[2], self.dimensions[1], 0),
+                              point + (0, self.dimensions[1], 0)]
+                self.grid_points.append(box_points)
+
+            cy, cx = np.indices(self.dimensions[1:3])
+
+            self.data = np.zeros((self.pos_x.max() + self.dimensions[2], self.pos_y.max() + self.dimensions[1]), dtype='f4')
+            self.mcounts = np.zeros_like(self.data)
+            self.count_map = np.zeros_like(self.data)
+            sys.stdout.write('Assembling images into %s-shaped array...'% (self.data.shape,))
+            for i in range(self.dimensions[0]):
+                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
+                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), f.data[i, ::step, ::step])
+                np.add.at(self.count_map, (cx+self.pos_x[i], cy+self.pos_y[i]), i)
+            sys.stdout.write('done\n')
+            self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
+            self.count_map[self.mcounts>1] = 0
+
+        f.close()
+        print(self.data.shape)
         self.orig_data = np.copy(self.data)
 
     def save_merge(self, fname):
@@ -332,42 +333,24 @@ class EM_ops():
         nx, ny = sem_shape
         corners = np.array([[0, 0, 0, 1], [nx, 0, 0, 1], [nx, ny, 0, 1], [0, ny, 0, 1]]).T
         fib_corners = np.dot(self.fib_matrix, corners)
-        print('Corners: ', corners)
-        print('Fib corners: ', fib_corners)
         self.fib_shift = -fib_corners.min(1)[:3]
         self.fib_matrix[:3, 3] += self.fib_shift
         print('Shifted fib matrix: ', self.fib_matrix)
-        print('FIB shift: ', self.fib_shift)
 
-    def apply_fib_transform(self, points, sem_shape=None):
-        #3d rotation
-        print('Orig points: \n', points)
+    def apply_fib_transform(self, points, num_slices, scaling=1):
+        print('Num slices: ', num_slices)
+        if num_slices is None:
+            num_slices = 0
+        else:
+            num_slices *= scaling
         src = np.zeros((points.shape[0], 4))
         dst = np.zeros_like(src)
         for i in range(points.shape[0]):
-            src[i,:] = [points[i,0], points[i,1], 0, 1]
+            src[i,:] = [points[i,0], points[i,1], int(num_slices/2), 1]
             dst[i,:] = self.fib_matrix @ src[i,:]
-        print('Rotated points: \n', dst[:,:3])
         self.points = np.array(dst[:,:2])
         if self._orig_points is None:
             self._orig_points = np.copy(self.points)
-        #self.project_points(dst[:,:3], sem_shape)
-
-    def project_points(self, points, sem_shape):
-        pass
-        #v1 = np.array([1,0,0])
-        #v2 = np.array([0, np.cos(self.fib_angle*np.pi/180), np.sin(self.fib_angle*np.pi/180)])
-        #self.normal_vector = np.cross(v1,v2)
-        #self.normal_vector /= np.linalg.norm(self.normal_vector)
-        #print('normal vector: ', self.normal_vector)
-        #for i in range(points.shape[0]):
-        #    dist = np.dot(normal_vector, points[i])
-        #    points[i] = points[i] - dist * normal_vector
-
-
-        #for i in range(self.points.shape[0]):
-        #    self.points[i,1] += self.data.shape[1]//2
-
 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
@@ -435,18 +418,6 @@ class EM_ops():
         print(stage_positions)
         return stage_positions
 
-    #def calc_grid_shift(self, points):
-    #    if len(self._orig_points) == len(points):
-    #        self.points = np.array(points)
-    #        self._grid_points_tmp = np.copy(self.points)
-    #        shift = (points - self._orig_points).mean(0)
-    #        print('Grid box shift: ', shift)
-    #        self.fib_matrix[:2, 3] = shift
-    #        print('Fib matrix shifted: \n', self.fib_matrix)
-    #    else:
-    #        print('Ooops, something went wrong!')
-    #        print('Have you accidentally clicked on a grid line? This is not allowed')
-
     def calc_grid_shift(self, shift_x, shift_y):
         shift = np.array([shift_x, shift_y])
         if self._total_shift is None:
@@ -455,9 +426,7 @@ class EM_ops():
             self._total_shift += shift
         self.points += shift
         self._orig_points = np.copy(self.points)
-        print('Grid box shift: ', shift)
         self.fib_matrix[:2, 3] = shift
-        print('Fib matrix shifted: \n', self.fib_matrix)
 
     def calc_refine_matrix(self, src, dst):
         print('Source: \n', src)
