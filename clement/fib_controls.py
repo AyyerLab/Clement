@@ -5,7 +5,6 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 
 from .base_controls import BaseControls
-#from .fib_operations import FIB_ops
 from .em_operations import EM_ops
 
 
@@ -22,7 +21,6 @@ class FIBControls(BaseControls):
         self.grid_box = None
         self.mrc_fname = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
-        self.peaks = []
 
         self._curr_folder = None
         self._file_name = None
@@ -45,6 +43,7 @@ class FIBControls(BaseControls):
         self.transp_btn.setEnabled(False)
         line.addWidget(self.transp_btn)
 
+        # ---- Specify FIB orientation
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Angles:', self)
@@ -58,6 +57,7 @@ class FIBControls(BaseControls):
         line.addWidget(self.sigma_btn)
         line.addStretch(1)
 
+        # ---- Calculate grid square
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Grid box:')
@@ -85,42 +85,29 @@ class FIBControls(BaseControls):
         line.addWidget(self.shift_btn)
         line.addStretch(1)
 
+        # ---- Show FM peaks
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Peaks:')
         line.addWidget(label)
         self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
-        self.show_peaks_btn.setEnabled(True)
         self.show_peaks_btn.setChecked(False)
-        self.show_peaks_btn.stateChanged.connect(self._show_peaks)
+        self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
+        self.show_peaks_btn.setEnabled(False)
         line.addWidget(self.show_peaks_btn)
         line.addStretch(1)
 
-        # ---- Points of interest
-        #line = QtWidgets.QHBoxLayout()
-        #vbox.addLayout(line)
-        #label = QtWidgets.QLabel('Point transform:', self)
-        #line.addWidget(label)
-        self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
-        self.select_btn.setCheckable(True)
-        self.select_btn.setEnabled(False)
-        self.select_btn.toggled.connect(self._define_corr_toggled)
-        #line.addWidget(self.select_btn)
-        #line.addStretch(1)
-
+        # ---- Refinement
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)
         line.addWidget(label)
         self.refine_btn = QtWidgets.QPushButton('Refine', self)
         self.refine_btn.setEnabled(False)
-        #self.refine_btn.clicked.connect(self._refine_fib)
-        mean_label = QtWidgets.QLabel('Precision [nm]:')
         self.err_btn = QtWidgets.QLabel('0')
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
         self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=1))
-        #line.addWidget(self.refine_btn)
-        #line.addWidget(mean_label)
+        self.err_plt_btn.setEnabled(False)
         line.addWidget(self.err_btn)
         line.addWidget(self.err_plt_btn)
         line.addStretch(1)
@@ -160,7 +147,6 @@ class FIBControls(BaseControls):
                 self.show_grid_btn.setEnabled(True)
                 self.shift_btn.setEnabled((True))
             self.show_grid_btn.setChecked(False)
-            self.show_peaks_btn.setEnabled(True)
             #if self.sem_ops is not None and (self.sem_ops._tf_points is not None or self.sem_ops._tf_points_region is not None):
             #    self.select_btn.setEnabled(True)
             QtWidgets.QApplication.restoreOverrideCursor()
@@ -187,7 +173,6 @@ class FIBControls(BaseControls):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
             self.shift_btn.setEnabled(enable)
-            #self.select_btn.setEnabled(enable)
 
     def _show_grid(self, state):
         if self.show_grid_btn.isChecked():
@@ -215,42 +200,8 @@ class FIBControls(BaseControls):
             if self.show_grid_btn.isChecked():
                 self.imview.addItem(self.grid_box)
 
-    def _show_peaks(self):
-        if self.show_peaks_btn.isChecked():
-            if self.other.ops is None:
-                print('Select FM data first')
-            else:
-                if self.other.ops.tf_peaks_3d is None:
-                    print('Calculate 3d FM peaks first!')
-                else:
-                    if len(self.peaks) != 0:
-                        self.peaks = []
-                    src_sorted = np.array(
-                        sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
-                    dst_sorted = np.array(
-                        sorted(self.sem_ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
-                    tr_matrix = self.ops.get_fib_transform(src_sorted, dst_sorted, self.sem_ops.tf_matrix)
-
-                    for i in range(self.other.ops.tf_peaks_3d.shape[0]):
-                        z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_3d[i,:2])
-                        init = np.array([self.other.ops.tf_peaks_3d[i,0], self.other.ops.tf_peaks_3d[i,1], 1])
-                        transf = np.dot(tr_matrix, init)
-                        transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-                        if self._refined:
-                            transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
-                        pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
-                        point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False,
-                                                   removable=False)
-                        point.setPen(255, 0, 0)
-                        point.removeHandle(0)
-                        self.peaks.append(point)
-                        self.imview.addItem(point)
-
-                    print(tr_matrix)
-                    print(self.ops.fib_matrix)
-                    print(self.ops._refine_matrix)
-        else:
-            [self.imview.removeItem(point) for point in self.peaks]
+        if self.grid_box is not None:
+            self.show_peaks_btn.setEnabled(True)
 
     def _refine_grid(self):
         if self.ops.points is not None:

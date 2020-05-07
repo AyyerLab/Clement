@@ -260,10 +260,12 @@ class Peak_finding():
             return z
 
 
-    def check_peak_index(self, point, size):
+    def check_peak_index(self, point, size, fib):
         point += size / 2
-        #peaks_2d = self.tf_peak_slices[-1]
-        peaks_2d = self.tf_peaks_3d[:,:2]
+        if fib:
+            peaks_2d = self.tf_peaks_3d[:,:2]
+        else:
+            peaks_2d = self.tf_peak_slices[-1]
         diff = peaks_2d - point
         diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
         ind_arr = np.where(diff_err < size/2)[0]

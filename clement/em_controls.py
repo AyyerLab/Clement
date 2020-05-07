@@ -57,6 +57,23 @@ class EMControls(BaseControls):
         self.transp_btn.setEnabled(False)
         line.addWidget(self.transp_btn)
 
+        # ---- Assembly grid options
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Assembly grid:', self)
+        line.addWidget(label)
+        self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
+        self.select_region_btn.setCheckable(True)
+        self.select_region_btn.toggled.connect(self._select_box)
+        self.select_region_btn.setEnabled(False)
+        self.show_assembled_btn = QtWidgets.QCheckBox('Show assembled image',self)
+        self.show_assembled_btn.stateChanged.connect(self._show_assembled)
+        self.show_assembled_btn.setChecked(True)
+        self.show_assembled_btn.setEnabled(False)
+        line.addWidget(self.select_region_btn)
+        line.addWidget(self.show_assembled_btn)
+        line.addStretch(1)
+
         # ---- Define grid
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -93,24 +110,6 @@ class EMControls(BaseControls):
         line.addWidget(self.show_btn)
         line.addStretch(1)
 
-
-        # ---- Assembly grid options
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Assembly grid:', self)
-        line.addWidget(label)
-        self.select_region_btn = QtWidgets.QPushButton('Select subregion',self)
-        self.select_region_btn.setCheckable(True)
-        self.select_region_btn.toggled.connect(self._select_box)
-        self.select_region_btn.setEnabled(False)
-        self.show_assembled_btn = QtWidgets.QCheckBox('Show assembled image',self)
-        self.show_assembled_btn.stateChanged.connect(self._show_assembled)
-        self.show_assembled_btn.setChecked(True)
-        self.show_assembled_btn.setEnabled(False)
-        line.addWidget(self.select_region_btn)
-        line.addWidget(self.show_assembled_btn)
-        line.addStretch(1)
-
         # ---- Points of interest
         line = QtWidgets.QHBoxLayout()
         #vbox.addLayout(line)
@@ -126,6 +125,19 @@ class EMControls(BaseControls):
         #line.addWidget(self.refine_btn)
         line.addStretch(1)
 
+        # ---- Show FM peaks
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Peaks:')
+        line.addWidget(label)
+        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
+        self.show_peaks_btn.setEnabled(True)
+        self.show_peaks_btn.setChecked(False)
+        self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
+        self.show_peaks_btn.setEnabled(False)
+        line.addWidget(self.show_peaks_btn)
+        line.addStretch(1)
+
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)
@@ -137,6 +149,7 @@ class EMControls(BaseControls):
         self.err_btn = QtWidgets.QLabel('0')
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
         self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=0))
+        self.err_plt_btn.setEnabled(False)
         #line.addWidget(self.refine_btn)
         #line.addWidget(mean_label)
         line.addWidget(self.err_btn)
@@ -146,7 +159,6 @@ class EMControls(BaseControls):
 
         # ---- Quit button
         vbox.addStretch(1)
-
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         line.addStretch(1)
