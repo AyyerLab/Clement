@@ -166,7 +166,7 @@ class GUI(QtGui.QMainWindow):
 
     def _save_p(self):
         self.project._save_project()
-    
+
     def _load_p(self):
         self.project._load_project()
 
@@ -202,7 +202,7 @@ class GUI(QtGui.QMainWindow):
         else:
             self.em = self.emcontrols.ops
             em = self.em
-        
+
         if self.fm is not None and self.em is not None:
             if self.fibcontrols.fib and self.fibcontrols.sem_ops.data is None:
                 print('You have to calculate the FM to TEM/SEM correlation first!')
@@ -227,14 +227,11 @@ class GUI(QtGui.QMainWindow):
             QtWidgets.QApplication.restoreOverrideCursor()
 
     def _set_theme(self, name):
-        if name == 'none':
-            self.setStyleSheet('')
-            with open(resource_path('styles/%s.qss' % name), 'r') as f:
-                self.setStyleSheet(f.read())
-        else:
-            self.setStyleSheet('')
-            with open(resource_path('styles/%s.qss'%name), 'r') as f:
-                self.setStyleSheet(f.read())
+        self.setStyleSheet('')
+        with open(resource_path('styles/%s.qss' % name), 'r') as f:
+            self.setStyleSheet(f.read())
+
+        if name != 'none':
             if name == 'solarized':
                 c = (203, 76, 22, 80)
                 bc = '#002b36'
