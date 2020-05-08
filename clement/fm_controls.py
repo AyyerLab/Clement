@@ -341,7 +341,7 @@ class FMControls(BaseControls):
                                                              'Select FM file',
                                                              self._curr_folder,
                                                              '*.lif;;*.tif;;*.tiff')
-        if self._file_name is not '':
+        if self._file_name != '':
             self.reset_init()
             self._curr_folder = os.path.dirname(self._file_name)
             self._current_slice = self.slice_select_btn.value()
@@ -362,7 +362,7 @@ class FMControls(BaseControls):
 
         self.num_slices = self.ops.num_slices
 
-        if file_name is not '':
+        if file_name != '':
             self.fm_fname.setText(file_name + ' [0/%d]'%self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices-1)
 

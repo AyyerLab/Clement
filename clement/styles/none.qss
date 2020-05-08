@@ -1,0 +1,28 @@
+#rotate {
+  image: url(':rc/rotate-eaf0ce.svg');
+  padding: 0px;
+}
+  #rotate:disabled {
+    image: url(':rc/rotate-808371.svg');
+  }
+#fliph {
+  image: url(':rc/fliph-eaf0ce.svg');
+  padding: 1px;
+}
+  #fliph:disabled {
+    image: url(':rc/fliph-808371.svg');
+  }
+#flipv {
+  image: url(':rc/flipv-eaf0ce.svg');
+  padding: 1px;
+}
+  #flipv:disabled {
+    image: url(':rc/flipv-808371.svg');
+  }
+#transpose {
+  image: url(':rc/transpose-eaf0ce.svg');
+  padding: 1px;
+}
+  #transpose:disabled {
+    image: url(':rc/transpose-808371.svg');
+  }

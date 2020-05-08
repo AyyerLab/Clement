@@ -229,6 +229,8 @@ class GUI(QtGui.QMainWindow):
     def _set_theme(self, name):
         if name == 'none':
             self.setStyleSheet('')
+            with open(resource_path('styles/%s.qss' % name), 'r') as f:
+                self.setStyleSheet(f.read())
         else:
             self.setStyleSheet('')
             with open(resource_path('styles/%s.qss'%name), 'r') as f:

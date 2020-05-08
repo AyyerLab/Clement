@@ -135,7 +135,7 @@ class FIBControls(BaseControls):
                                                                  '*.mrc;;*.tif;;*tiff')
             self._curr_folder = os.path.dirname(self._file_name)
 
-        if self._file_name is not '':
+        if self._file_name != '':
             self.reset_init()
             self.mrc_fname.setText(self._file_name)
 
@@ -238,7 +238,7 @@ class FIBControls(BaseControls):
                 self._curr_folder = os.getcwd()
             file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self._curr_folder, '*.mrc')
             self._curr_folder = os.path.dirname(file_name)
-            if file_name is not '':
+            if file_name != '':
                 self.ops.save_merge(file_name)
         QtWidgets.QApplication.restoreOverrideCursor()
 

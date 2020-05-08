@@ -33,6 +33,7 @@ setuptools.setup(
         'tifffile',
         #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=pyqtgraph',
         'pyqtgraph',
+        'pyyaml'
     ],
     package_data={'clement': ['styles/*.qss']},
     entry_points={'gui_scripts': [

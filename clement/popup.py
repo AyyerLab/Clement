@@ -329,7 +329,7 @@ class Merge(QtGui.QMainWindow,):
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder_popup)
-        if file_name is not '':
+        if file_name != '':
             try:
                 QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
                 file_name = file_name.split('.', 1)[0]

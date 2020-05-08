@@ -162,7 +162,7 @@ class EMControls(BaseControls):
                                                                  '*.mrc;;*.tif;;*tiff')
             self._curr_folder = os.path.dirname(self._file_name)
 
-        if self._file_name is not '':
+        if self._file_name != '':
             self.reset_init()
             self.mrc_fname.setText(self._file_name)
             self.assemble_btn.setEnabled(True)
@@ -194,12 +194,12 @@ class EMControls(BaseControls):
 
     def _assemble_mrc(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if self.step_box.text() is '':
+        if self.step_box.text() == '':
             self._downsampling = 10
         else:
             self._downsampling = self.step_box.text()
 
-        if self._file_name is not '':
+        if self._file_name != '':
             if len(self.ops.dimensions) == 3:
                 self.ops.parse_3d(int(self._downsampling), self._file_name)
             self.imview.setImage(self.ops.data)
@@ -355,7 +355,7 @@ class EMControls(BaseControls):
                 self._curr_folder = os.getcwd()
             file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self._curr_folder, '*.mrc')
             self._curr_folder = os.path.dirname(file_name)
-            if file_name is not '':
+            if file_name != '':
                 self.ops.save_merge(file_name)
         QtWidgets.QApplication.restoreOverrideCursor()
     
