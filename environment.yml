@@ -16,5 +16,5 @@ dependencies:
   - pip:
     - mrcfile
     - read-lif
-    - git+https://github.com/pyqtgraph/pyqtgraph.git@develop
-
+    #- git+https://github.com/pyqtgraph/pyqtgraph.git@develop
+    - pyqtgraph
