@@ -29,6 +29,7 @@ class Merge(QtGui.QMainWindow,):
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self.max_help = False
         self.fib = False
+        self.size = 10
 
 
         self._channels_popup = [True, True, True, True]
@@ -223,18 +224,17 @@ class Merge(QtGui.QMainWindow,):
             event.ignore()
             return
 
-        size = 10 #0.01 * self.data_popup.shape[0]
         item = self.imview_popup.getImageItem()
         pos = self.imview_popup.getImageItem().mapFromScene(event.pos())
-        pos.setX(pos.x() - size/2)
-        pos.setY(pos.y() - size/2)
+        pos.setX(pos.x() - self.size/2)
+        pos.setY(pos.y() - self.size/2)
 
         if self.select_btn_popup.isChecked():
-            self._draw_correlated_points_popup(pos, size, item)
+            self._draw_correlated_points_popup(pos, item)
             
-    def _draw_correlated_points_popup(self, pos, size, item):
+    def _draw_correlated_points_popup(self, pos, item):
             
-        point = pg.CircleROI(pos, size, parent=item, movable=False, removable=True)
+        point = pg.CircleROI(pos, self.size, parent=item, movable=False, removable=True)
         point.setPen(0,255,0)
         point.removeHandle(0)
         self.imview_popup.addItem(point)
@@ -320,9 +320,11 @@ class Merge(QtGui.QMainWindow,):
                 self.counter_popup = 0
                 self.stage_positions_popup = None
         else:
-            size = 0.01 * self.data_popup.shape[0]
-            coordinates = [np.array([point.x()+size/2,point.y()+size/2]) for point in self._clicked_points_popup]
-            self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates, self.downsampling)
+            coordinates = [np.array([point.x()+self.size/2,point.y()+self.size/2]) for point in self._clicked_points_popup]
+            if self.fib:
+                self.stage_positions_popup = np.copy(coordinates)
+            else:
+                self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates, self.downsampling)
             print('Done selecting points of interest!')
 
     def _save_data_popup(self):

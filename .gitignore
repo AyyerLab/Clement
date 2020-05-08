@@ -10,6 +10,7 @@ __pycache__/
 *.h5
 data
 old
+images
 
 #projects
 test
