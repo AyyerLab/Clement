@@ -61,7 +61,7 @@ class FM_ops(Peak_finding):
         self.counter_clockwise = False
         self.rotated = False
         self.corr_matrix = None
-        self.refine_points = None
+        self.refine_corners = None
         self.refine_history = []
         self.refined = False
         self.refined_max_proj = None
@@ -114,7 +114,7 @@ class FM_ops(Peak_finding):
             # a single Z-slice with all channels rather than all slices for a single channel
             self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z,:,:].astype('f4')
                                        for i in range(self.num_channels)])
-            self.orig_data = self.orig_data.transpose(1,2,0)
+            self.orig_data = self.orig_data.transpose(2,1,0)
             self.orig_data /= self.orig_data.mean((0, 1))
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
@@ -204,7 +204,7 @@ class FM_ops(Peak_finding):
                 if self._show_max_proj:
                     peaks = self.orig_tf_peak_slices[-1]
                 else:
-                    peaks = np.array(self.orig_tf_peak_slices[self.selected_slice])
+                    peaks = self.orig_tf_peak_slices[self.selected_slice]
                 if peaks is not None:
                     peaks = np.array(peaks)
             fliph = self.fliph
@@ -229,7 +229,6 @@ class FM_ops(Peak_finding):
             points[:,1] = self.data.shape[1] - points[:,1]
 
         if peaks is not None and self._transformed:
-            print('Update peaks!')
             if transp:
                 peaks = np.array([np.flip(point) for point in peaks])
             if rot:
@@ -296,7 +295,7 @@ class FM_ops(Peak_finding):
             self.max_proj_data /= self.max_proj_data.mean((0, 1))
         else:
             self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
-                                           for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
+                                           for i in range(self.num_channels)]).transpose(2,1,0).astype('f4')
             self.max_proj_data /= self.max_proj_data.mean((0, 1))
 
     def colorize2d(self, brightness, zvals, cmap_funcs):
@@ -330,7 +329,7 @@ class FM_ops(Peak_finding):
         if self.hsv_map is None:
             if self.max_proj_data is None:
                self.calc_max_proj_data()
-            argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=0).astype('f4')
+            argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=0).astype('f4').transpose((1,0))
             self.cmap = self.create_cmaps(rot=1./2)
             hsv_data = np.array([self.max_proj_data[:,:,-1], argmax_map, self.cmap])
             self.hsv_map = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map, self.cmap)
@@ -360,7 +359,7 @@ class FM_ops(Peak_finding):
         if self.hsv_map_no_tilt is None:
             if self.peak_slices is None or self.peak_slices[-1] is None:
                 self.peak_finding(self.max_proj_data[:,:,-1], transformed=False)
-            red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4'))
+            red_channel = np.array(self.reader.getFrame(channel=3, dtype='u2').astype('f4')).transpose((2,1,0))
             self.fit_z(red_channel, transformed=False)
             # fit plane to peaks with least squares to remove tilt
             peaks_2d = self.peak_slices[-1]
@@ -423,7 +422,7 @@ class FM_ops(Peak_finding):
         return z
 
     def load_channel(self, ind):
-        self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4'))
+        self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((2,1,0))
         print('Load channel {}'.format(ind))
 
     def clear_channel(self):
@@ -667,10 +666,10 @@ class FM_ops(Peak_finding):
             self._refine_matrix = tf.estimate_transform('affine', src, dst).params
             nx, ny = self.data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            refine_corners = np.dot(self._refine_matrix, corners)
-            self._refine_shape = tuple([int(i) for i in (refine_corners.max(1) - refine_corners.min(1))[:2]])
+            self.refine_corners = np.dot(self._refine_matrix, corners)
+            self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
             self.refine_history.append(self._refine_matrix)
-            self._refine_matrix[:2, 2] -= refine_corners.min(1)[:2]
+            self._refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
             print(self._refine_matrix)
 
     def apply_refinement(self):
@@ -684,7 +683,22 @@ class FM_ops(Peak_finding):
         else:
             self.refined_data = np.copy(self.data)
         print('\r', self.data.shape)
+
+        self.refine_peaks()
         self.refined = True
+
+    def refine_peaks(self):
+        peak_refine_matrix = np.copy(self._refine_matrix)
+        if self.tf_peak_slices is not None:
+            if self.selected_slice is None:
+                peaks_2d = self.tf_peak_slices[-1]
+            else:
+                peaks_2d = self.tf_peak_slices[self.selected_slice]
+            if peaks_2d is not None:
+                for i in range(len(peaks_2d)):
+                    peaks_2d[i] = (peak_refine_matrix @ (peaks_2d[i][0], peaks_2d[i][1], 1))[:2]
+            if self.tf_peaks_3d is not None:
+                self.tf_peaks_3d[:,:2] = np.copy(peaks_2d)
 
     def refine_grid(self, src, dst, em_points):
         print('refine grid')

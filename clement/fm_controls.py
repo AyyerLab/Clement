@@ -388,6 +388,10 @@ class FMControls(BaseControls):
 
     def _show_max_projection(self):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
+        if self.max_proj_btn.isChecked():
+            self.ops.selected_slice = None
+        else:
+            self.ops.selected_slice = self.slice_select_btn.value()
         if self.ops is not None:
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self.ops.calc_max_projection()

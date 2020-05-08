@@ -171,6 +171,9 @@ class GUI(QtGui.QMainWindow):
         self.project._load_project()
 
     def select_tab(self, idx):
+        self.fmcontrols.select_btn.setChecked(False)
+        self.fmcontrols.select_btn.setChecked(True)
+        self.fmcontrols.select_btn.setChecked(False)
         if idx == 0:
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()

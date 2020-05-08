@@ -179,38 +179,41 @@ class BaseControls(QtWidgets.QWidget):
                     self.other.imview.addItem(annotation_other)
                     self.other.anno_list.append(annotation_other)
 
-                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
-                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
+                    point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj, other=False))
+                    point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other, other=True))
 
 
             else:
                 print('Transform both images before point selection')
 
-    def _remove_correlated_points(self, point):
+    def _remove_correlated_points(self, point, other):
+        idx = None
         for i in range(len(self._points_corr)):
             if self._points_corr[i] == point or self.other._points_corr[i] == point:
+                idx = i
                 break
-        self.imview.removeItem(point)
-        self.imview.removeItem(self.anno_list[i])
-        self.other.imview.removeItem(self.other._points_corr[i])
-        self.other.imview.removeItem(self.other.anno_list[i])
 
-        self._points_corr.remove(point)
-        self.other._points_corr.remove(self.other._points_corr[i])
+        self.imview.removeItem(self._points_corr[idx])
+        self.imview.removeItem(self.anno_list[idx])
+        self.other.imview.removeItem(self.other._points_corr[idx])
+        self.other.imview.removeItem(self.other.anno_list[idx])
 
-        self.anno_list.remove(self.anno_list[i])
-        self.other.anno_list.remove(self.other.anno_list[i])
+        self._points_corr.remove(self._points_corr[idx])
+        self.other._points_corr.remove(self.other._points_corr[idx])
 
-        self._points_corr_indices.remove(self._points_corr_indices[i])
+        self.anno_list.remove(self.anno_list[idx])
+        self.other.anno_list.remove(self.other.anno_list[idx])
+
+        self._points_corr_indices.remove(self._points_corr_indices[idx])
 
         if hasattr(self, 'fib') and self.fib:
-            self._points_corr_z.remove(self._points_corr_z[i])
-            self.other._points_corr_z.remove(self.other._points_corr_z[i])
-            self._orig_points_corr.remove(self._orig_points_corr[i])
+            self._points_corr_z.remove(self._points_corr_z[idx])
+            self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+            self._orig_points_corr.remove(self._orig_points_corr[idx])
         elif hasattr(self.other, 'fib') and self.other.fib:
-            self.other._orig_points_corr.remove(self.other._orig_points_corr[i])
+            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
         else:
-            self.other._orig_points_corr.remove(self.other._orig_points_corr[i])
+            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
 
 
     def _define_grid_toggled(self, checked):
