@@ -112,13 +112,12 @@ class FM_ops(Peak_finding):
 
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
-            self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[:,:,z].astype('f4')
-                                        for i in range(self.num_channels)])
+            self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z,:,:].astype('f4')
+                                       for i in range(self.num_channels)])
             self.orig_data = self.orig_data.transpose(1,2,0)
             self.orig_data /= self.orig_data.mean((0, 1))
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
-
 
         if self.refined:
             refined_tmp = True
@@ -130,7 +129,6 @@ class FM_ops(Peak_finding):
             self.apply_transform(shift_points=False)
             self._update_data()
 
-        print('Refined?: ', self.refined)
         if refined_tmp and self._transformed:
             for i in range(len(self.refine_history)):
                 self._refine_matrix = self.refine_history[i]
@@ -297,7 +295,7 @@ class FM_ops(Peak_finding):
             self.max_proj_data = self.tif_data.max(0)
             self.max_proj_data /= self.max_proj_data.mean((0, 1))
         else:
-            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(2)
+            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
                                            for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
             self.max_proj_data /= self.max_proj_data.mean((0, 1))
 
@@ -332,7 +330,7 @@ class FM_ops(Peak_finding):
         if self.hsv_map is None:
             if self.max_proj_data is None:
                self.calc_max_proj_data()
-            argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=2).astype('f4')
+            argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=0).astype('f4')
             self.cmap = self.create_cmaps(rot=1./2)
             hsv_data = np.array([self.max_proj_data[:,:,-1], argmax_map, self.cmap])
             self.hsv_map = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map, self.cmap)

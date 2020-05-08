@@ -476,7 +476,7 @@ class EM_ops():
                     except np.linalg.LinAlgError:
                         counter += 1
                         if counter % 1 == 0:
-                            print('LinAlgError: ', counter)
+                            print('LinAlgError: \r', counter)
                         if counter == 100:
                             break
             if successfull:
