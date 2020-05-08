@@ -578,6 +578,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.other._calc_grid()
                     self._estimate_precision(idx=1)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[1] * self.other.ops.pixel_size[0]))
+                    self.ops.merged_3d = None
                 else:
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
@@ -588,6 +589,7 @@ class BaseControls(QtWidgets.QWidget):
                     self._recalc_grid()
                     self._estimate_precision(idx=0)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
+                    self.ops.merged_2d = None
 
                 self.fliph.setEnabled(False)
                 self.flipv.setEnabled(False)
@@ -651,13 +653,12 @@ class BaseControls(QtWidgets.QWidget):
         diff = np.array(sel_points) - np.array(calc_points)
         self._err[idx] = diff
         if len(diff) > 0:
-            self._rms[idx] = np.sqrt(1/len(diff) * np.sum((diff[:,0]**2 + diff[:,1]**2)))
+            self._rms[idx] = np.sqrt(1/len(diff) * (diff**2).sum())
         else:
             self._rms[idx] = 0.0
-        np.save('sel.npy', sel_points)
-        np.save('calc.npy', calc_points)
-        print('Selected points: ', np.array(sel_points))
-        print('Calculated points: ', np.array(calc_points))
+
+        #np.save('sel.npy', sel_points)
+        #np.save('calc.npy', calc_points)
 
     def _scatter_plot(self, idx):
         if self.other._err[idx] is not None:

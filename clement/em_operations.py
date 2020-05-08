@@ -88,6 +88,7 @@ class EM_ops():
                 self.data = np.copy(f.data)
 
         self.orig_data = np.copy(self.data)
+        print('Pixel size: ', self.pixel_size)
 
     def parse_3d(self, step, fname):
         f = mrc.open(fname, 'r', permissive=True)
@@ -470,13 +471,12 @@ class EM_ops():
                 while True:
                     try:
                         ransac.run()
-                        print('yes')
                         successfull = True
                         break
                     except np.linalg.LinAlgError:
                         counter += 1
                         if counter % 1 == 0:
-                            print('LinAlgError: \r', counter)
+                            print('\r LinAlgError: ', counter)
                         if counter == 100:
                             break
             if successfull:

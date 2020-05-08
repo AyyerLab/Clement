@@ -767,9 +767,9 @@ class FM_ops(Peak_finding):
         p0 = np.array([0, 0, 0, 1])
         p1 = np.array([0, 0, self.voxel_size[2] / self.voxel_size[0], 1])
         z_shift = (fib_matrix @ p1)[:2] - (fib_matrix @ p0)[:2]
+
         fib_2d = np.zeros((3, 3))
         fib_2d[:2, :2] = fib_matrix[:2, :2]
-        fib_2d[:2, 2] = fib_matrix[:2, 3]
         fib_2d[2, 2] = 1
 
         tf_matrix = np.copy(self.tf_matrix)
@@ -807,8 +807,9 @@ class FM_ops(Peak_finding):
                 img_tmp = np.zeros_like(self.channel[:,:,0])
                 img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
                 z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
+                z_reverse = self.num_slices - 1 - z
                 fib_new = np.copy(fib_2d)
-                fib_new[:2,2] -= z*z_shift
+                fib_new[:2,2] -= z_reverse*z_shift
                 shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
@@ -833,9 +834,7 @@ class FM_ops(Peak_finding):
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 
-            print(total_matrix)
-            print((total_matrix[2,:] == np.array([0,0,1]).all()))
-            refined = ndi.affine_transform(self.channel[:,:,self.num_slices-z-1], np.linalg.inv(total_matrix), order=1, output_shape=fib_data.shape)
+            refined = ndi.affine_transform(self.channel[:,:,z], np.linalg.inv(total_matrix), order=1, output_shape=fib_data.shape)
             z_data.append(refined)
 
         if self.merged_3d is None:
