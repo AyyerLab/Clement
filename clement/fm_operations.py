@@ -7,8 +7,9 @@ from scipy import signal as sc
 from scipy import ndimage as ndi
 from scipy import interpolate
 from skimage import transform as tf
-from skimage import measure, morphology, io
+from skimage import measure, morphology, io, feature
 import read_lif
+from .ransac import Ransac
 from .peak_finding import Peak_finding
 
 class FM_ops(Peak_finding):
@@ -108,6 +109,7 @@ class FM_ops(Peak_finding):
                 self.num_channels = len(self.reader.getChannels())
                 md = self.reader.getMetadata()
                 self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
+                print(self.voxel_size)
                 self.old_fname = fname
 
             # TODO: Look into modifying read_lif to get
@@ -331,7 +333,6 @@ class FM_ops(Peak_finding):
                self.calc_max_proj_data()
             argmax_map = np.argmax(self.reader.getFrame(channel=3, dtype='u2'), axis=0).astype('f4').transpose((1,0))
             self.cmap = self.create_cmaps(rot=1./2)
-            hsv_data = np.array([self.max_proj_data[:,:,-1], argmax_map, self.cmap])
             self.hsv_map = self.colorize2d(self.max_proj_data[:,:,-1], argmax_map, self.cmap)
 
         if self._transformed:
@@ -740,6 +741,49 @@ class FM_ops(Peak_finding):
 
         return fm_coor_list, em_coor_list
 
+    def fit_circles(self, points, bead_size):
+        points_model = []
+        successfull = False
+        roi_size = int(np.round(bead_size * 1e-6 / self.voxel_size[0] + bead_size * 1e-6 / (2 * self.voxel_size[0])) / 2)
+        for i in range(len(points)):
+            x = int(np.round(points[i, 0]))
+            y = int(np.round(points[i, 1]))
+            x_min = (x-roi_size) if (x-roi_size) > 0 else 0
+            x_max = (x+roi_size) if (x+roi_size) < self.data.shape[0] else self.data.shape[0]
+            y_min = (y-roi_size) if (y-roi_size) > 0 else 0
+            y_max = (y+roi_size) if (y+roi_size) < self.data.shape[1] else self.data.shape[1]
+
+            roi = self.data[x_min:x_max, y_min:y_max, -1]
+            edges = feature.canny(roi, 3).astype(np.float32)
+            coor_x, coor_y = np.where(edges!=0)
+            if len(coor_x) != 0:
+                rad = bead_size * 1e-6 / self.voxel_size[0] / 2 #bead size is supposed to be in microns
+                ransac = Ransac(coor_x, coor_y, 100, rad)
+                counter = 0
+                while True:
+                    try:
+                        ransac.run()
+                        successfull = True
+                        break
+                    except np.linalg.LinAlgError:
+                        counter += 1
+                        if counter % 1 == 0:
+                            print('\rLinAlgError: ', counter)
+                        if counter == 100:
+                            break
+            if successfull:
+                if ransac.best_fit is not None: #This should not happen, but it happens sometimes...
+                    cx, cy = ransac.best_fit[0], ransac.best_fit[1]
+                    coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
+                    points_model.append(coor)
+                #else:
+                #    print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                #    points_model.append(np.array([x, y]))
+            else:
+                print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                points_model.append(np.array([x,y]))
+        return np.array(points_model)
+
     def apply_merge_2d(self, em_data, em_points, channel):
         if channel == 0:
             src = np.array(sorted(self.points, key=lambda k: [np.cos(30*np.pi/180)*k[0] + k[1]]))
@@ -807,9 +851,8 @@ class FM_ops(Peak_finding):
                 img_tmp = np.zeros_like(self.channel[:,:,0])
                 img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
                 z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
-                z_reverse = self.num_slices - 1 - z
                 fib_new = np.copy(fib_2d)
-                fib_new[:2,2] -= z_reverse*z_shift
+                fib_new[:2, 2] += z * z_shift
                 shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
@@ -818,18 +861,20 @@ class FM_ops(Peak_finding):
                 tf_point = np.where(refined == refined.max())
                 tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
 
-            #np.save('tf_points.npy', np.array(tf_points))
-            #np.save('fib_points.npy', np.array(corr_points_fib))
+            np.save('tf_points.npy', np.array(tf_points))
+            np.save('fib_points.npy', np.array(corr_points_fib))
             self.merge_shift = np.mean(tf_points,axis=0) - np.mean(corr_points_fib,axis=0)
             print('IMG shift: ', self.merge_shift)
 
         z_data = []
         for z in range(self.num_slices):
-            fib_2d[:2, 2] -= z_shift
+            fib_new = np.copy(fib_2d)
+            z_reverse = self.num_slices - 1 - z
+            fib_new[:2, 2] += z_reverse*z_shift
             if channel == 2:
-                total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_aligned
+                total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
             else:
-                total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_aligned
+                total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
 
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T

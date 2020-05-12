@@ -9,8 +9,9 @@ from scipy import signal as sc
 from skimage import transform as tf
 from skimage import io, measure, feature
 import tifffile
-from . ransac import Ransac
+from .ransac import Ransac
 import time
+import random
 
 class EM_ops():
     def __init__(self):
@@ -460,8 +461,12 @@ class EM_ops():
         for i in range(len(points)):
             x = int(np.round(points[i, 0]))
             y = int(np.round(points[i, 1]))
-            roi = self.data[x - roi_size:x + roi_size, y - roi_size:y + roi_size]
-            np.save('roi_{}.npy'.format(i), roi)
+            x_min = (x-roi_size) if (x-roi_size) > 0 else 0
+            x_max = (x+roi_size) if (x+roi_size) < self.data.shape[0] else self.data.shape[0]
+            y_min = (y-roi_size) if (y-roi_size) > 0 else 0
+            y_max = (y+roi_size) if (y+roi_size) < self.data.shape[1] else self.data.shape[1]
+
+            roi = self.data[x_min:x_max, y_min:y_max]
             edges = feature.canny(roi, 3).astype(np.float32)
             coor_x, coor_y = np.where(edges!=0)
             if len(coor_x) != 0:
@@ -476,17 +481,60 @@ class EM_ops():
                     except np.linalg.LinAlgError:
                         counter += 1
                         if counter % 1 == 0:
-                            print('\r LinAlgError: ', counter)
+                            print('\rLinAlgError: ', counter)
                         if counter == 100:
                             break
             if successfull:
-                cx, cy = ransac.best_fit[0], ransac.best_fit[1]
-                coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
-                points_model.append(coor)
+                if ransac.best_fit is not None: #This should not happen, but it happens sometimes...
+                    cx, cy = ransac.best_fit[0], ransac.best_fit[1]
+                    coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
+                    points_model.append(coor)
+                #else:
+                #    print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                #    points_model.append(np.array([x, y]))
             else:
                 print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 points_model.append(np.array([x,y]))
         return np.array(points_model)
+
+    def calc_convergence(self, corr_points, em_points, min_points, refine_matrix):
+        em_points = np.array(em_points)
+        corr_points = np.array(corr_points)
+        corr_points_refined = []
+        if refine_matrix is None:
+            corr_points_refined = corr_points
+        else:
+            for i in range(len(corr_points)):
+                p = np.array([corr_points[i,0], corr_points[i,1], 1])
+                p_new = refine_matrix @ p
+                corr_points_refined.append(p_new[:2])
+            corr_points_refined = np.array(corr_points)
+
+        num_sims = len(em_points) - min_points + 1
+        num_iterations = 100
+        precision = []
+        num_points = min_points
+        for i in range(num_sims):
+            precision_i = []
+            for k in range(num_iterations):
+                indices = random.sample(range(len(em_points)), num_points)
+                p_em = em_points[indices]
+                p_corr = corr_points_refined[indices]
+                refine_matrix = tf.estimate_transform('affine', p_corr, p_em).params
+                calc_points = []
+                for l in range(len(corr_points)):
+                    p = np.array([corr_points_refined[l, 0], corr_points_refined[l, 1], 1])
+                    p_refined = refine_matrix @ p
+                    calc_points.append(p_refined[:2])
+                diff = em_points - np.array(calc_points)
+                rms = np.sqrt(1 / len(diff) * (diff ** 2).sum())
+                precision_i.append(rms)
+            precision.append(np.mean(precision_i))
+            num_points += 1
+
+        print(calc_points)
+        precision = np.array(precision) * self.pixel_size[0]
+        return precision
 
     @classmethod
     def get_transform(self, source, dest):

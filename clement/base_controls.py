@@ -22,6 +22,7 @@ class BaseControls(QtWidgets.QWidget):
         self._refined = False
         self._err = [None, None]
         self._rms = [None, None]
+        self._conv = [None, None]
 
         self.tr_matrices = None
         self.show_grid_box = False
@@ -41,13 +42,13 @@ class BaseControls(QtWidgets.QWidget):
         self.merge_points_z = []
         self.peaks = []
         self.num_slices = None
+        self.corr_points = []
+        self.min_conv_points = 10
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
 
     def _imview_clicked(self, event):
-
-        print(self)
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
             return
@@ -92,6 +93,9 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 print('Oops, something went wrong. Try again!')
 
+    def _couple_views(self):
+        pass
+
     def _draw_correlated_points(self, pos, size1, size2, item):
         if self.other.ops is None:
             print('Select both data first')
@@ -124,7 +128,7 @@ class BaseControls(QtWidgets.QWidget):
                             pos.setX(peaks_2d[ind, 0] - size1 / 2)
                             pos.setY(peaks_2d[ind, 1] - size1 / 2)
 
-                        point = np.array([pos.x(),pos.y()])
+                        point = np.array([pos.x() + size1/2, pos.y() + size1/2])
                         z = self.ops.calc_z(ind, point)
                         if z is None:
                             return
@@ -138,7 +142,7 @@ class BaseControls(QtWidgets.QWidget):
                             pos.setX(peaks_2d[ind, 0] - size1 / 2)
                             pos.setY(peaks_2d[ind, 1] - size1 / 2)
 
-                    init = np.array([pos.x()+size1/2,pos.y()+size1/2, 1])
+                    init = np.array([pos.x() + size1/2, pos.y() + size1/2, 1])
 
                     point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
                     point_obj.setPen(0,255,0)
@@ -171,7 +175,7 @@ class BaseControls(QtWidgets.QWidget):
                     point_other.removeHandle(0)
                     self.other.imview.addItem(point_other)
                     self.other._points_corr.append(point_other)
-                    self.other._orig_points_corr.append([pos.x()+size2/2,pos.y()+size2/2])
+                    self.other._orig_points_corr.append([pos.x(),pos.y()])
 
                     self.other.counter = self.counter
                     annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
@@ -408,7 +412,7 @@ class BaseControls(QtWidgets.QWidget):
                                                  flips=flip_list, shape=self.ops.data.shape[:-1])
                         self.ops.clear_channel()
                         print('Done.')
-                    self.ops.load_channel(ind=2)
+                    self.ops.load_channel(ind=3)
                 else:
                     src_sorted = np.array(
                         sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
@@ -560,34 +564,38 @@ class BaseControls(QtWidgets.QWidget):
             if not self.select_btn.isChecked():
                 print('Refining...')
                 dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
-                                    self.other._points_corr])
-                src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
+                                self.other._points_corr])
+                src = np.array([[point[0] + self.size_other / 2, point[1] + self.size_other / 2] for point in
+                                self.other._orig_points_corr])
+                fm_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2]
+                                      for point in self._points_corr])
+                em_points = np.copy(dst)
+                np.save('fm_points.npy', fm_points)
+                np.save('em_points.npy', em_points)
+
+                self.other.merge_points = np.copy(em_points)
+                self.merge_points = np.copy(fm_points)
+
                 if self.other.fib:
-                    fm_points = np.array(
-                        [[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
-                         self._points_corr])
-                    em_points = np.array(
-                        [[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
-                         self.other._points_corr])
-                    self.merge_points = np.copy(fm_points)
+                    idx = 1
+                    refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
                     self.merge_points_z = np.copy(self._points_corr_z)
-                    self.other.merge_points = np.copy(em_points)
                     self.other.ops.calc_refine_matrix(src,dst)
                     self.other.ops.apply_refinement()
                     self.other._refined = True
                     self.other._calc_grid()
-                    self._estimate_precision(idx=1)
+                    self._estimate_precision(idx, refine_matrix_old)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[1] * self.other.ops.pixel_size[0]))
                     self.ops.merged_3d = None
                 else:
+                    idx = 0
+                    refine_matrix_old = copy.copy(self.ops._refine_matrix)
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
                     self._refined = True
-                    fm_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self._points_corr])
-                    em_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in self.other._points_corr])
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
                     self._recalc_grid()
-                    self._estimate_precision(idx=0)
+                    self._estimate_precision(idx, refine_matrix_old)
                     self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
                     self.ops.merged_2d = None
 
@@ -597,6 +605,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.transpose.setEnabled(False)
                 self.rotate.setEnabled(False)
                 self.other.err_plt_btn.setEnabled(True)
+                self.other.convergence_btn.setEnabled(True)
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -623,11 +632,12 @@ class BaseControls(QtWidgets.QWidget):
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _estimate_precision(self, idx):
+    def _estimate_precision(self, idx, refine_matrix_old):
         sel_points = [[point.x() + self.size_ops/2, point.y()+self.size_ops/2] for point in self.other._points_corr]
         orig_fm_points = np.copy(self._points_corr)
 
         calc_points = []
+        self.other.corr_points = []
         if idx == 0:
             src_sorted = np.array(
                 sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
@@ -637,6 +647,7 @@ class BaseControls(QtWidgets.QWidget):
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
+                self.other.corr_points.append(np.copy((tr_matrix @ init)[:2]))
                 transf = tr_matrix @ self.ops._refine_matrix @ init
                 calc_points.append(transf[:2])
         else:
@@ -647,6 +658,7 @@ class BaseControls(QtWidgets.QWidget):
                 init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
                 transf = np.dot(self.tr_matrices, init)
                 transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+                self.other.corr_points.append(np.copy(transf[:2]))
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                 calc_points.append(transf[:2])
 
@@ -657,8 +669,15 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self._rms[idx] = 0.0
 
-        #np.save('sel.npy', sel_points)
-        #np.save('calc.npy', calc_points)
+        if len(self.other.corr_points) >= self.min_conv_points:
+            min_points = self.min_conv_points-4
+            convergence = self.other.ops.calc_convergence(self.other.corr_points, sel_points, min_points, refine_matrix_old)
+            self._conv[idx] = convergence
+        else:
+            self._conv[idx] = []
+        np.save('corr_points.npy', self.other.corr_points)
+        np.save('sel.npy', sel_points)
+        np.save('calc.npy', calc_points)
 
     def _scatter_plot(self, idx):
         if self.other._err[idx] is not None:
@@ -666,18 +685,40 @@ class BaseControls(QtWidgets.QWidget):
         else:
             print('Data not refined yet!')
 
+    def _convergence_plot(self, idx):
+        if self.other._conv[idx] is not None:
+            if len(self.other._conv[idx]) == 0:
+                print('To use this feature, you have to use at least 10 points for the refinement!')
+            else:
+                pg.plot(np.arange(self.min_conv_points-4, self.min_conv_points-4+len(self.other._conv[idx])), self.other._conv[idx])
+        else:
+            print('Data not refined yet!')
+
     def fit_circles(self):
         if self.auto_opt_btn.isChecked():
             bead_size = float(self.size_box.text())
-            points = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self.other._points_corr])
 
-            points_fitted = self.other.ops.fit_circles(points, bead_size)
+            points_fm = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self._points_corr])
+            points_em = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self.other._points_corr])
+
+            #points_fm_fitted = self.ops.fit_circles(points_fm, bead_size)
+            points_em_fitted = self.other.ops.fit_circles(points_em, bead_size)
+            #[self.imview.removeItem(point) for point in self._points_corr]
             [self.other.imview.removeItem(point) for point in self.other._points_corr]
+            #self._points_corr = []
             self.other._points_corr = []
-            circle_size = bead_size * 1e3 / self.other.ops.pixel_size[0] / 2
-            for i in range(len(points_fitted)):
-                pos = QtCore.QPointF(points_fitted[i,0] - circle_size, points_fitted[i,1] - circle_size)
-                point = pg.CircleROI(pos, circle_size*2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+            #circle_size_fm = bead_size * 1e-6 / self.ops.voxel_size[0] / 2
+            circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0] / 2
+            for i in range(len(points_em_fitted)):
+                #pos = QtCore.QPointF(points_fm_fitted[i,0] - circle_size_fm, points_fm_fitted[i,1] - circle_size_fm)
+                #point = pg.CircleROI(pos, circle_size_fm*2, parent=self.imview.getImageItem(), movable=True, removable=True)
+                #point.setPen(0, 255, 255)
+                #point.removeHandle(0)
+                #self._points_corr.append(point)
+                #self.imview.addItem(point)
+
+                pos = QtCore.QPointF(points_em_fitted[i,0] - circle_size_em, points_em_fitted[i,1] - circle_size_em)
+                point = pg.CircleROI(pos, circle_size_em*2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                 point.setPen(0, 255, 255)
                 point.removeHandle(0)
                 self.other._points_corr.append(point)

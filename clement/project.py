@@ -354,7 +354,7 @@ class Project(QtWidgets.QWidget):
 
     def _save_project(self):
         if self.fm.ops is not None or self.em.ops is not None:
-            if self.fm.select_btn.isChecked() or self.em.select_btn.isChecked():
+            if self.fm.select_btn.isChecked():
                 buttonReply = QtWidgets.QMessageBox.question(self, 'Warning', 'Selected points have not been confirmed and will be lost during saving! \r Continue?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
                 if buttonReply == QtWidgets.QMessageBox.Yes:
                     self._do_save()
@@ -479,8 +479,10 @@ class Project(QtWidgets.QWidget):
         fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
         #if self.fib.ops.points is not None:
         #    fibdict['Grid points'] = self.fib.ops._grid_points_tmp.tolist() if self.fib.ops._grid_points_tmp is not None else None
-        fibdict['Original points'] = self.fib.ops._orig_points.tolist()
-        fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [0.0,0.0]
+        if self.fib.ops._orig_points is not None:
+            fibdict['Original points'] = self.fib.ops._orig_points.tolist()
+        if self.fib.ops._total_shift is not None:
+            fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [0.0,0.0]
 
         points = [[p.pos().x(),p.pos().y()] for p in self.fib._points_corr]
         fibdict['Correlated points'] = points

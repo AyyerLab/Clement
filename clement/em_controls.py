@@ -127,18 +127,17 @@ class EMControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)
         line.addWidget(label)
-        self.refine_btn = QtWidgets.QPushButton('Refine', self)
-        self.refine_btn.setEnabled(False)
-        #self.refine_btn.clicked.connect(self._refine_fib)
-        mean_label = QtWidgets.QLabel('Precision [nm]:')
         self.err_btn = QtWidgets.QLabel('0')
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
         self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=0))
         self.err_plt_btn.setEnabled(False)
-        #line.addWidget(self.refine_btn)
-        #line.addWidget(mean_label)
+
+        self.convergence_btn = QtWidgets.QPushButton('Show error convergence')
+        self.convergence_btn.clicked.connect(lambda : self._convergence_plot(idx=0))
+        self.convergence_btn.setEnabled(False)
         line.addWidget(self.err_btn)
         line.addWidget(self.err_plt_btn)
+        line.addWidget(self.convergence_btn)
         line.addStretch(1)
 
 
@@ -168,12 +167,12 @@ class EMControls(BaseControls):
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
 
-        self.ops = EM_ops()
-        self.ops.parse_2d(self._file_name)
-        if len(self.ops.dimensions) == 2:
-            self.step_box.setText('1')
-            self._assemble_mrc()
-            self.assemble_btn.setEnabled(False)
+            self.ops = EM_ops()
+            self.ops.parse_2d(self._file_name)
+            if len(self.ops.dimensions) == 2:
+                self.step_box.setText('1')
+                self._assemble_mrc()
+                self.assemble_btn.setEnabled(False)
 
     def _update_imview(self):
         if self.ops is not None and self.ops.data is not None:

@@ -105,14 +105,16 @@ class FIBControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)
         line.addWidget(label)
-        self.refine_btn = QtWidgets.QPushButton('Refine', self)
-        self.refine_btn.setEnabled(False)
         self.err_btn = QtWidgets.QLabel('0')
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
         self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=1))
         self.err_plt_btn.setEnabled(False)
+        self.convergence_btn = QtWidgets.QPushButton('Show error convergence')
+        self.convergence_btn.clicked.connect(lambda : self._convergence_plot(idx=1))
+        self.convergence_btn.setEnabled(False)
         line.addWidget(self.err_btn)
         line.addWidget(self.err_plt_btn)
+        line.addWidget(self.convergence_btn)
         line.addStretch(1)
 
         # ---- Quit button
@@ -198,12 +200,13 @@ class FIBControls(BaseControls):
                 self.imview.removeItem(self.grid_box)
             pos = list(self.ops.points)
             self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
-            self.refine_btn.setEnabled(True)
             if self.show_grid_btn.isChecked():
                 self.imview.addItem(self.grid_box)
 
         if self.grid_box is not None:
             self.show_peaks_btn.setEnabled(True)
+            self.shift_x_btn.setEnabled(True)
+            self.shift_y_btn.setEnabled(True)
 
     def _refine_grid(self):
         if self.ops.points is not None:
