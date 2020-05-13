@@ -414,4 +414,6 @@ class EMControls(BaseControls):
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
 
+        self.err_plt_btn.setEnabled(False)
+        self.convergence_btn.setEnabled(False)
         self.ops.__init__()

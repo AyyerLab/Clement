@@ -23,6 +23,8 @@ class BaseControls(QtWidgets.QWidget):
         self._err = [None, None]
         self._rms = [None, None]
         self._conv = [None, None]
+        self._merge_points = []
+        self._merge_points_z = []
 
         self.tr_matrices = None
         self.show_grid_box = False
@@ -38,8 +40,7 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list = []
         self.size_ops = 10
         self.size_other = 10
-        self.merge_points = []
-        self.merge_points_z = []
+
         self.peaks = []
         self.num_slices = None
         self.corr_points = []
@@ -573,19 +574,19 @@ class BaseControls(QtWidgets.QWidget):
                 np.save('fm_points.npy', fm_points)
                 np.save('em_points.npy', em_points)
 
-                self.other.merge_points = np.copy(em_points)
-                self.merge_points = np.copy(fm_points)
+                self.other._merge_points = np.copy(em_points)
+                self._merge_points = np.copy(fm_points)
 
                 if self.other.fib:
                     idx = 1
                     refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
-                    self.merge_points_z = np.copy(self._points_corr_z)
+                    self._merge_points_z = np.copy(self._points_corr_z)
                     self.other.ops.calc_refine_matrix(src,dst)
                     self.other.ops.apply_refinement()
                     self.other._refined = True
                     self.other._calc_grid()
                     self._estimate_precision(idx, refine_matrix_old)
-                    self.other.err_btn.setText('{:.2f}'.format(self._rms[1] * self.other.ops.pixel_size[0]))
+                    self.other.err_btn.setText('{:.2f}'.format(self.other._rms[1] * self.other.ops.pixel_size[0]))
                     self.ops.merged_3d = None
                 else:
                     idx = 0
@@ -593,10 +594,11 @@ class BaseControls(QtWidgets.QWidget):
                     self.ops.calc_refine_matrix(src, dst)
                     self.ops.apply_refinement()
                     self._refined = True
+                    self.other._refined = True
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
                     self._recalc_grid()
                     self._estimate_precision(idx, refine_matrix_old)
-                    self.other.err_btn.setText('{:.2f}'.format(self._rms[0] * self.other.ops.pixel_size[0]))
+                    self.other.err_btn.setText('{:.2f}'.format(self.other._rms[0] * self.other.ops.pixel_size[0]))
                     self.ops.merged_2d = None
 
                 self.fliph.setEnabled(False)
@@ -625,7 +627,7 @@ class BaseControls(QtWidgets.QWidget):
                 self._points_corr_indices = []
                 self.other._points_corr_indices = []
                 self._update_imview()
-                print('merge_points: ', self.merge_points)
+                print('merge_points: ', self._merge_points)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
         else:
@@ -663,34 +665,34 @@ class BaseControls(QtWidgets.QWidget):
                 calc_points.append(transf[:2])
 
         diff = np.array(sel_points) - np.array(calc_points)
-        self._err[idx] = diff
+        self.other._err[idx] = diff
         if len(diff) > 0:
-            self._rms[idx] = np.sqrt(1/len(diff) * (diff**2).sum())
+            self.other._rms[idx] = np.sqrt(1/len(diff) * (diff**2).sum())
         else:
-            self._rms[idx] = 0.0
+            self.other._rms[idx] = 0.0
 
         if len(self.other.corr_points) >= self.min_conv_points:
             min_points = self.min_conv_points-4
             convergence = self.other.ops.calc_convergence(self.other.corr_points, sel_points, min_points, refine_matrix_old)
-            self._conv[idx] = convergence
+            self.other._conv[idx] = convergence
         else:
-            self._conv[idx] = []
+            self.other._conv[idx] = []
         np.save('corr_points.npy', self.other.corr_points)
         np.save('sel.npy', sel_points)
         np.save('calc.npy', calc_points)
 
     def _scatter_plot(self, idx):
-        if self.other._err[idx] is not None:
-            pg.plot(self.other._err[idx][:, 0] * self.ops.pixel_size[0], self.other._err[idx][:, 1] * self.ops.pixel_size[1], pen=None, symbol='o')
+        if self._err[idx] is not None:
+            pg.plot(self._err[idx][:, 0] * self.ops.pixel_size[0], self._err[idx][:, 1] * self.ops.pixel_size[1], pen=None, symbol='o')
         else:
             print('Data not refined yet!')
 
     def _convergence_plot(self, idx):
-        if self.other._conv[idx] is not None:
-            if len(self.other._conv[idx]) == 0:
+        if self._conv[idx] is not None:
+            if len(self._conv[idx]) == 0:
                 print('To use this feature, you have to use at least 10 points for the refinement!')
             else:
-                pg.plot(np.arange(self.min_conv_points-4, self.min_conv_points-4+len(self.other._conv[idx])), self.other._conv[idx])
+                pg.plot(np.arange(self.min_conv_points-4, self.min_conv_points-4+len(self._conv[idx])), self._conv[idx])
         else:
             print('Data not refined yet!')
 
@@ -805,7 +807,7 @@ class BaseControls(QtWidgets.QWidget):
                     for i in range(self.ops.num_channels):
                         self.ops.load_channel(i)
                         self.ops.apply_merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
-                                      self.other.ops.data, self.merge_points, self.merge_points_z, self.other.merge_points, i)
+                                      self.other.ops.data, self._merge_points, self._merge_points_z, self.other._merge_points, i)
                         self.progress.setValue((i+1)/self.ops.num_channels * 100)
                 else:
                     print('You have to perform at least one round of refinement before you can merge the images!')

@@ -796,6 +796,9 @@ class FM_ops(Peak_finding):
         print('Merged.shape: ', self.merged_2d.shape)
 
     def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values, corr_points_fib, channel):
+        print(corr_points_fm)
+        print(corr_points_fib)
+
         rot_matrix = np.identity(3)
         if self.transp:
             rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -845,25 +848,26 @@ class FM_ops(Peak_finding):
 
             #np.save('orig_points.npy', np.array(orig_points))
 
-            tf_points = []
-            tf_img = []
-            for i in range(len(orig_points)):
-                img_tmp = np.zeros_like(self.channel[:,:,0])
-                img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
-                z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
-                fib_new = np.copy(fib_2d)
-                fib_new[:2, 2] += z * z_shift
-                shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
-                shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
-                refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
-                                               output_shape=tf_shape)
-                tf_img.append(refined)
-                tf_point = np.where(refined == refined.max())
-                tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
+            if self.merge_shift is None:
+                tf_points = []
+                tf_img = []
+                for i in range(len(orig_points)):
+                    img_tmp = np.zeros_like(self.channel[:,:,0])
+                    img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
+                    z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
+                    fib_new = np.copy(fib_2d)
+                    fib_new[:2, 2] += z * z_shift
+                    shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
+                    shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
+                    refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
+                                                   output_shape=tf_shape)
+                    tf_img.append(refined)
+                    tf_point = np.where(refined == refined.max())
+                    tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
 
-            np.save('tf_points.npy', np.array(tf_points))
-            np.save('fib_points.npy', np.array(corr_points_fib))
-            self.merge_shift = np.mean(tf_points,axis=0) - np.mean(corr_points_fib,axis=0)
+                np.save('tf_points.npy', np.array(tf_points))
+                np.save('fib_points.npy', np.array(corr_points_fib))
+                self.merge_shift = np.mean(tf_points,axis=0) - np.mean(corr_points_fib,axis=0)
             print('IMG shift: ', self.merge_shift)
 
         z_data = []

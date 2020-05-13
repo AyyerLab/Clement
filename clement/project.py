@@ -105,6 +105,11 @@ class Project(QtWidgets.QWidget):
             self.fm.ops._refine_matrix = np.array(fmdict['Refine matrix'])
             self.fm.ops.refine_history.append(self.fm.ops._refine_matrix)
             self.fm.ops.apply_refinement()
+        try:
+            self.fm._merge_points = np.array(fmdict['Merge points'])
+            self.fm._merge_points_z = np.array(fmdict['Merge points z'])
+        except KeyError:
+            pass
         if 'Align colors' in fmdict:
             self.fm.align_btn.setChecked(fmdict['Align colors'])
 
@@ -197,6 +202,15 @@ class Project(QtWidgets.QWidget):
         self.em.show_assembled_btn.setChecked(emdict['Show assembled'])
         self.em.show_btn.setChecked(emdict['Show original'])
 
+        try:
+            self.em._err[1] = np.array(emdict['Error distribution'])
+            self.em._rms[1] = float(emdict['RMS'])
+            self.em.err_btn.setText('{:.2f}'.format(self.em._rms[0]))
+            self.em.convergence_btn.setEnabled(True)
+            self.em.err_plt_btn.setEnabled(True)
+        except KeyError:
+            pass
+
     def _load_fib(self, project):
         if 'FIB' not in project:
             return
@@ -226,14 +240,20 @@ class Project(QtWidgets.QWidget):
         except KeyError:
             pass
 
-        if fibdict['Refined']:
-            self.fib._refined = fibdict['Refined']
-            self.fib.ops._refine_matrix = np.array(fibdict['Refine matrix'])
-            self.fib.ops.apply_refinement(self.fib.ops.points)
-            self.fib._calc_grid()
-            self.fib._err = np.array(fibdict['Error distribution'])
-            self.fib._rms = float(fibdict['RMS'])
-            self.fib.err_btn.setText('{:.2f}'.format(self.fib._rms*self.fib.ops.pixel_size[0]*1e9))
+        try:
+            if fibdict['Refined']:
+                self.fib._refined = fibdict['Refined']
+                self.fib.ops._refine_matrix = np.array(fibdict['Refine matrix'])
+                self.fib.ops.apply_refinement(self.fib.ops.points)
+                self.fib._calc_grid()
+                self.fib._err[1] = np.array(fibdict['Error distribution'])
+                self.fib._rms[1] = float(fibdict['RMS'])
+                self.fib.err_btn.setText('{:.2f}'.format(self.fib._rms[1]))
+                self.fib.convergence_btn.setEnabled(True)
+                self.fib.err_plt_btn.setEnabled(True)
+                self.fib._merge_points = np.array(fibdict['Merge points'])
+        except KeyError:
+            pass
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index']:
@@ -250,69 +270,42 @@ class Project(QtWidgets.QWidget):
             fmdict = project['FM']
             print('show fib: ', self.show_fib)
             if self.show_fib:
-                self.fm.select_btn.setChecked(True)
-                points_corr_fm = fmdict['Correlated points']
-                qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
-                [self.fm._draw_correlated_points(point, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem())
-                for point in qpoints]
-                self.fm.select_btn.setChecked(False)
-
+                emdict = project['FIB']
+                em = self.fib
             else:
                 emdict = project['EM']
                 em = self.em
-                self.fm.select_btn.setChecked(True)
 
-                points_corr_fm = fmdict['Correlated points']
-                indices_fm = fmdict['Correlated points indices']
-                if len(indices_fm) > 0:
-                    points_red = list(itemgetter(*indices_fm)(list(points_corr_fm)))
-                    roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                    [self.fm._draw_correlated_points(roi, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem()) for roi in roi_list]
-                if not self.show_fib:
-                    try:
-                        em.select_btn.setChecked(True)
-                        points_corr_em = emdict['Correlated points']
-                        indices_em = list(emdict['Correlated points indices'])
-                        if len(indices_em) > 0:
-                            points_red = list(itemgetter(*indices_em)(list(points_corr_em)))
-                            roi_list = [QtCore.QPointF(p[0],p[1]) for p in np.array(points_red)]
-                            [em._draw_correlated_points(roi, em.size_ops, em.size_other, em.imview.getImageItem()) for roi in roi_list]
-                    except KeyError:
-                        pass
-                    em.select_btn.setChecked(False)
-                self.fm.select_btn.setChecked(False)
+            self.fm.select_btn.setChecked(True)
+            points_corr_fm = fmdict['Correlated points']
+            qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
+            [self.fm._draw_correlated_points(point, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem())
+            for point in qpoints]
 
-                #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
-                try: #do this only when correlated points exist
-                    indices_fm = list(fmdict['Correlated points indices'])
-                    if len(indices_fm) > 0:
-                        correct_em = list(itemgetter(*indices_fm)(list(points_corr_em)))
-                        pt_list_em = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_em)]
-                        roi_list_em = [pg.CircleROI(pt_list_em[i],em.size_ops, parent=em.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_em))]
-                        [roi.setPen(0,255,255) for roi in roi_list_em]
-                        [roi.removeHandle(0) for roi in roi_list_em]
-                        #[em.imview.removeItem(em._points_corr[indices_fm[index]]) for index in indices_fm]
-                        [em.imview.removeItem(em._points_corr[index]) for index in indices_fm]
-                        for i in range(len(correct_em)):
-                            em._points_corr[indices_fm[i]] = roi_list_em[i]
-                except KeyError:
-                    pass
-                try:
-                    indices_em = list(emdict['Correlated points indices'])
-                    if len(indices_em) > 0:
-                        correct_fm = list(itemgetter(*indices_em)(list(points_corr_fm)))
-                        pt_list_fm = [QtCore.QPointF(p[0],p[1]) for p in np.array(correct_fm)]
-                        roi_list_fm = [pg.CircleROI(pt_list_fm[i], self.fm.size_ops, parent=self.fm.imview.getImageItem(), movable=True, removable=True) for i in range(len(pt_list_fm))]
-                        [roi.setPen(0,255,255) for roi in roi_list_fm]
-                        [roi.removeHandle(0) for roi in roi_list_fm]
-                        #[self.fm.imview.removeItem(self.fm._points_corr[indices_em[index]]) for index in indices_em]
-                        [self.fm.imview.removeItem(self.fm._points_corr[index]) for index in indices_em]
-                        for i in range(len(correct_fm)):
-                            self.fm._points_corr[indices_em[i]] = roi_list_fm[i]
-                except KeyError:
-                    pass
+            #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
+            try:
+                points_corr_em = emdict['Correlated points']
+                qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_em)]
+                roi_list_em = [pg.CircleROI(qpoints[i],em.size_ops, parent=em.imview.getImageItem(),
+                                            movable=True, removable=True) for i in range(len(qpoints))]
+                [roi.setPen(0,255,255) for roi in roi_list_em]
+                [roi.removeHandle(0) for roi in roi_list_em]
+
+                anno_list = [pg.TextItem(str(idx+1), color=(0,255,255), anchor=(0,0))
+                             for idx in self.fm._points_corr_indices]
+                for i in range(len(anno_list)):
+                    anno_list[i].setPos(qpoints[i].x()+5, qpoints[i].y()+5)
+
+                [em.imview.removeItem(point) for point in em._points_corr]
+                [em.imview.removeItem(anno) for anno in em.anno_list]
+                [em.imview.addItem(anno) for anno in anno_list]
+                em._points_corr = roi_list_em
+                em.anno_list = anno_list
+            except KeyError:
+                pass
         except KeyError:
             pass
+
         mdict = project['MERGE']
         self.merged = mdict['Merged']
         if self.merged:
@@ -437,6 +430,9 @@ class Project(QtWidgets.QWidget):
         fmdict['Refine matrix'] = total_refine_matrix.tolist()
         fmdict['Refine shape'] = list(self.fm.ops._refine_shape) if self.fm.ops._refine_shape is not None else None
         fmdict['Refined'] = self.fm._refined
+        if self.fib._refined:
+            fmdict['Merge points'] = self.fm._merge_points.tolist()
+            fmdict['Merge points z'] = self.fm._merge_points_z.tolist()
 
     def _save_em(self, project):
         emdict = {}
@@ -466,6 +462,12 @@ class Project(QtWidgets.QWidget):
         emdict['Correlated points'] = points
         emdict['Original correlated points '] = self.em._orig_points_corr
         emdict['Correlated points indices'] = self.em._points_corr_indices
+        emdict['Refined'] = self.em._refined
+        if self.em._refined:
+            fibdict['Error distribution'] = self.em._err[0].tolist()
+            fibdict['RMS'] = str(self.em._rms[0]*self.em.ops.pixel_size[0])
+        if self.em._conv[1] is not None:
+            fibdict['Convergence'] = str(self.em._conv[0])
 
     def _save_fib(self, project):
         fibdict = {}
@@ -492,8 +494,13 @@ class Project(QtWidgets.QWidget):
         fibdict['Refined'] = self.fib._refined
         if self.fib._refined:
             fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
-            fibdict['Error distribution'] = self.fib._err.tolist()
-            fibdict['RMS'] = str(self.fib._rms)
+            fibdict['Error distribution'] = self.fib._err[1].tolist()
+            fibdict['RMS'] = str(self.fib._rms[1]*self.fib.ops.pixel_size[0])
+            if self.fib._conv[1] is not None:
+                fibdict['Convergence'] = str(self.fib._conv[1])
+            print(self.fib._merge_points)
+            print(self.fib._merge_points_z)
+            fibdict['Merge points'] = self.fib._merge_points.tolist()
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

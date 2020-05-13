@@ -259,6 +259,8 @@ class FIBControls(BaseControls):
         self.show_grid_btn.setChecked(False)
         self.show_peaks_btn.setEnabled(False)
         self.show_peaks_btn.setChecked(False)
+        self.err_plt_btn.setEnabled(False)
+        self.convergence_btn.setEnabled(False)
 
         self.ops.__init__()
 
