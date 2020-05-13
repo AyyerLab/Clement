@@ -880,6 +880,7 @@ class FM_ops(Peak_finding):
             else:
                 total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
 
+            self.merge_shift[0] -= 5
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 

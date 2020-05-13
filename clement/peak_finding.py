@@ -264,7 +264,6 @@ class Peak_finding():
 
 
     def check_peak_index(self, point, size, fib):
-        point += size / 2
         if fib:
             peaks_2d = self.tf_peaks_3d[:,:2]
         else:

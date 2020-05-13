@@ -38,8 +38,8 @@ class BaseControls(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
-        self.size_ops = 10
-        self.size_other = 10
+        self.size = 10
+        self.orig_size = 10
 
         self.peaks = []
         self.num_slices = None
@@ -60,16 +60,16 @@ class BaseControls(QtWidgets.QWidget):
         pos = self.imview.getImageItem().mapFromScene(event.pos())
         item = self.imview.getImageItem()
 
-        pos.setX(pos.x() - self.size_ops/2)
-        pos.setY(pos.y() - self.size_ops/2)
+        pos.setX(pos.x() - self.size/2)
+        pos.setY(pos.y() - self.size/2)
         if hasattr(self, 'define_btn') and self.define_btn.isChecked():
-            roi = pg.CircleROI(pos, self.size_ops, parent=item, movable=False)
+            roi = pg.CircleROI(pos, self.size, parent=item, movable=False)
             roi.setPen(255,0,0)
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
         elif hasattr(self, 'select_btn') and self.select_btn.isChecked():
-            self._draw_correlated_points(pos, self.size_ops, self.size_other, item)
+            self._draw_correlated_points(pos, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
             '''EM only: Select individual image from montage'''
             points_obj = (pos.x(), pos.y())
@@ -97,7 +97,7 @@ class BaseControls(QtWidgets.QWidget):
     def _couple_views(self):
         pass
 
-    def _draw_correlated_points(self, pos, size1, size2, item):
+    def _draw_correlated_points(self, pos, item):
         if self.other.ops is None:
             print('Select both data first')
         
@@ -118,18 +118,16 @@ class BaseControls(QtWidgets.QWidget):
                             condition = True
             if condition:
                 ind = None
+                point = np.array([pos.x() + self.size / 2, pos.y() + self.size / 2])
                 if self.tr_matrices is not None:
+                    peaks = None
                     if self.other.fib and self.ops.tf_peaks_3d is not None:
-                        ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1, True)
+                        ind = self.ops.check_peak_index(point, self.size, True)
                         if ind is None and not self.other._refined:
                             print('You have to select a bead for the first refinement!')
                             return
                         elif ind is not None:
-                            peaks_2d = self.ops.tf_peaks_3d
-                            pos.setX(peaks_2d[ind, 0] - size1 / 2)
-                            pos.setY(peaks_2d[ind, 1] - size1 / 2)
-
-                        point = np.array([pos.x() + size1/2, pos.y() + size1/2])
+                            peaks = self.ops.tf_peaks_3d
                         z = self.ops.calc_z(ind, point)
                         if z is None:
                             return
@@ -137,15 +135,18 @@ class BaseControls(QtWidgets.QWidget):
 
                     elif not self.other.fib:
                         if self.ops.tf_peak_slices is not None and self.ops.tf_peak_slices[-1] is not None:
-                            ind = self.ops.check_peak_index(np.array((pos.x(), pos.y())), size1, False)
+                            ind = self.ops.check_peak_index(point, self.size, False)
                         if ind is not None:
-                            peaks_2d = self.ops.tf_peak_slices[-1]
-                            pos.setX(peaks_2d[ind, 0] - size1 / 2)
-                            pos.setY(peaks_2d[ind, 1] - size1 / 2)
+                            peaks = self.ops.tf_peak_slices[-1]
 
-                    init = np.array([pos.x() + size1/2, pos.y() + size1/2, 1])
+                    if ind is not None:
+                        pos.setX(peaks[ind,0] - self.size/2)
+                        pos.setY(peaks[ind,1] - self.size/2)
+                        init = np.array([peaks[ind, 0], peaks[ind, 1], 1])
+                    else:
+                        init = np.array([point[0], point[1], 1])
 
-                    point_obj = pg.CircleROI(pos, size1, parent=item, movable=False, removable=True)
+                    point_obj = pg.CircleROI(pos, self.size, parent=item, movable=False, removable=True)
                     point_obj.setPen(0,255,0)
                     point_obj.removeHandle(0)
                     self.imview.addItem(point_obj)
@@ -170,13 +171,13 @@ class BaseControls(QtWidgets.QWidget):
                         transf = np.dot(self.tr_matrices, init)
 
                     print('Transformed point: ', transf)
-                    pos = QtCore.QPointF(transf[0]-size2/2, transf[1]-size2/2)
-                    point_other = pg.CircleROI(pos, size2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+                    pos = QtCore.QPointF(transf[0]-self.other.size/2, transf[1]-self.other.size/2)
+                    point_other = pg.CircleROI(pos, self.other.size, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                     point_other.setPen(0,255,255)
                     point_other.removeHandle(0)
                     self.other.imview.addItem(point_other)
                     self.other._points_corr.append(point_other)
-                    self.other._orig_points_corr.append([pos.x(),pos.y()])
+                    self.other._orig_points_corr.append([pos.x(), pos.y()])
 
                     self.other.counter = self.counter
                     annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
@@ -564,11 +565,11 @@ class BaseControls(QtWidgets.QWidget):
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked():
                 print('Refining...')
-                dst = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2] for point in
+                dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
                                 self.other._points_corr])
-                src = np.array([[point[0] + self.size_other / 2, point[1] + self.size_other / 2] for point in
+                src = np.array([[point[0] + self.orig_size / 2, point[1] + self.orig_size / 2] for point in
                                 self.other._orig_points_corr])
-                fm_points = np.array([[point.x() + self.size_other / 2, point.y() + self.size_other / 2]
+                fm_points = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
                                       for point in self._points_corr])
                 em_points = np.copy(dst)
                 np.save('fm_points.npy', fm_points)
@@ -626,7 +627,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.other._orig_points_corr = []
                 self._points_corr_indices = []
                 self.other._points_corr_indices = []
+                self.other.size = self.orig_size
                 self._update_imview()
+                self.auto_opt_btn.setChecked(False)
                 print('merge_points: ', self._merge_points)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
@@ -635,7 +638,7 @@ class BaseControls(QtWidgets.QWidget):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _estimate_precision(self, idx, refine_matrix_old):
-        sel_points = [[point.x() + self.size_ops/2, point.y()+self.size_ops/2] for point in self.other._points_corr]
+        sel_points = [[point.x() + self.other.size/2, point.y()+self.other.size/2] for point in self.other._points_corr]
         orig_fm_points = np.copy(self._points_corr)
 
         calc_points = []
@@ -648,7 +651,7 @@ class BaseControls(QtWidgets.QWidget):
             tr_matrix = self.ops.get_transform(src_sorted, dst_sorted)
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
-                init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
+                init = np.array([orig_point[0] + self.size / 2, orig_point[1] + self.size / 2, 1])
                 self.other.corr_points.append(np.copy((tr_matrix @ init)[:2]))
                 transf = tr_matrix @ self.ops._refine_matrix @ init
                 calc_points.append(transf[:2])
@@ -657,7 +660,7 @@ class BaseControls(QtWidgets.QWidget):
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 z = orig_fm_points_z[i]
-                init = np.array([orig_point[0] + self.size_ops / 2, orig_point[1] + self.size_ops / 2, 1])
+                init = np.array([orig_point[0] + self.size / 2, orig_point[1] + self.size / 2, 1])
                 transf = np.dot(self.tr_matrices, init)
                 transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                 self.other.corr_points.append(np.copy(transf[:2]))
@@ -700,8 +703,8 @@ class BaseControls(QtWidgets.QWidget):
         if self.auto_opt_btn.isChecked():
             bead_size = float(self.size_box.text())
 
-            points_fm = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self._points_corr])
-            points_em = np.array([[p.x() + self.size_ops/2, p.y() + self.size_ops/2] for p in self.other._points_corr])
+            points_fm = np.array([[p.x() + self.size/2, p.y() + self.size/2] for p in self._points_corr])
+            points_em = np.array([[p.x() + self.other.size/2, p.y() + self.other.size/2] for p in self.other._points_corr])
 
             #points_fm_fitted = self.ops.fit_circles(points_fm, bead_size)
             points_em_fitted = self.other.ops.fit_circles(points_em, bead_size)
@@ -709,22 +712,24 @@ class BaseControls(QtWidgets.QWidget):
             [self.other.imview.removeItem(point) for point in self.other._points_corr]
             #self._points_corr = []
             self.other._points_corr = []
-            #circle_size_fm = bead_size * 1e-6 / self.ops.voxel_size[0] / 2
-            circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0] / 2
+            #circle_size_fm = bead_size * 1e-6 / self.ops.voxel_size[0]
+            circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0]
             for i in range(len(points_em_fitted)):
-                #pos = QtCore.QPointF(points_fm_fitted[i,0] - circle_size_fm, points_fm_fitted[i,1] - circle_size_fm)
-                #point = pg.CircleROI(pos, circle_size_fm*2, parent=self.imview.getImageItem(), movable=True, removable=True)
+                #pos = QtCore.QPointF(points_fm_fitted[i,0] - circle_size_fm/2, points_fm_fitted[i,1] - circle_size_fm/2)
+                #point = pg.CircleROI(pos, circle_size_fm, parent=self.imview.getImageItem(), movable=True, removable=True)
                 #point.setPen(0, 255, 255)
                 #point.removeHandle(0)
                 #self._points_corr.append(point)
                 #self.imview.addItem(point)
+                #self.size = circle_size_fm
 
-                pos = QtCore.QPointF(points_em_fitted[i,0] - circle_size_em, points_em_fitted[i,1] - circle_size_em)
-                point = pg.CircleROI(pos, circle_size_em*2, parent=self.other.imview.getImageItem(), movable=True, removable=True)
+                pos = QtCore.QPointF(points_em_fitted[i,0] - circle_size_em/2, points_em_fitted[i,1] - circle_size_em/2)
+                point = pg.CircleROI(pos, circle_size_em, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                 point.setPen(0, 255, 255)
                 point.removeHandle(0)
                 self.other._points_corr.append(point)
                 self.other.imview.addItem(point)
+                self.other.size = circle_size_em
 
     def _show_FM_peaks(self):
         if self.show_peaks_btn.isChecked():
@@ -754,8 +759,8 @@ class BaseControls(QtWidgets.QWidget):
                     transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                     if self._refined:
                         transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
-                    pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
-                    point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False,
+                    pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
+                    point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
                                                removable=False)
                     point.setPen(255, 0, 0)
                     point.removeHandle(0)
@@ -770,8 +775,8 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(self.other.ops.tf_peak_slices[-1].shape[0]):
                     init = np.array([self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
                     transf = tr_matrix @ self.other.ops._refine_matrix @ init
-                    pos = QtCore.QPointF(transf[0] - self.size_ops / 2, transf[1] - self.size_ops / 2)
-                    point = pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False,
+                    pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
+                    point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=False)
                     point.setPen(255, 0, 0)
                     point.removeHandle(0)

@@ -279,14 +279,14 @@ class Project(QtWidgets.QWidget):
             self.fm.select_btn.setChecked(True)
             points_corr_fm = fmdict['Correlated points']
             qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
-            [self.fm._draw_correlated_points(point, self.fm.size_ops, self.fm.size_other, self.fm.imview.getImageItem())
+            [self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
             for point in qpoints]
 
             #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
             try:
                 points_corr_em = emdict['Correlated points']
                 qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_em)]
-                roi_list_em = [pg.CircleROI(qpoints[i],em.size_ops, parent=em.imview.getImageItem(),
+                roi_list_em = [pg.CircleROI(qpoints[i],em.size, parent=em.imview.getImageItem(),
                                             movable=True, removable=True) for i in range(len(qpoints))]
                 [roi.setPen(0,255,255) for roi in roi_list_em]
                 [roi.removeHandle(0) for roi in roi_list_em]
