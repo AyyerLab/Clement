@@ -204,8 +204,10 @@ class Project(QtWidgets.QWidget):
 
         try:
             self.em._err[1] = np.array(emdict['Error distribution'])
-            self.em._rms[1] = float(emdict['RMS'])
-            self.em.err_btn.setText('{:.2f}'.format(self.em._rms[0]))
+            self.em._std[1] = emdict['Std']
+            self.em.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(
+                                    self.em._std[0][0] * self.em.ops.pixel_size[0],
+                                    self.em._std[0][1] * self.em.ops.pixel_size[0]))
             self.em.convergence_btn.setEnabled(True)
             self.em.err_plt_btn.setEnabled(True)
         except KeyError:
@@ -247,8 +249,10 @@ class Project(QtWidgets.QWidget):
                 self.fib.ops.apply_refinement(self.fib.ops.points)
                 self.fib._calc_grid()
                 self.fib._err[1] = np.array(fibdict['Error distribution'])
-                self.fib._rms[1] = float(fibdict['RMS'])
-                self.fib.err_btn.setText('{:.2f}'.format(self.fib._rms[1]))
+                self.fib._std[1] = fibdict['Std']
+                self.fib.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(
+                                                self.fib._std[1][0] * self.fib.ops.pixel_size[0],
+                                                self.fib._std[1][1] * self.fib.ops.pixel_size[0]))
                 self.fib.convergence_btn.setEnabled(True)
                 self.fib.err_plt_btn.setEnabled(True)
                 self.fib._merge_points = np.array(fibdict['Merge points'])
@@ -465,7 +469,7 @@ class Project(QtWidgets.QWidget):
         emdict['Refined'] = self.em._refined
         if self.em._refined:
             fibdict['Error distribution'] = self.em._err[0].tolist()
-            fibdict['RMS'] = str(self.em._rms[0]*self.em.ops.pixel_size[0])
+            fibdict['Std'] = np.array(self.em._std[0]).tolist()
         if self.em._conv[1] is not None:
             fibdict['Convergence'] = str(self.em._conv[0])
 
@@ -495,11 +499,9 @@ class Project(QtWidgets.QWidget):
         if self.fib._refined:
             fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
             fibdict['Error distribution'] = self.fib._err[1].tolist()
-            fibdict['RMS'] = str(self.fib._rms[1]*self.fib.ops.pixel_size[0])
+            fibdict['Std'] = np.array(self.fib._std[1]).tolist()
             if self.fib._conv[1] is not None:
                 fibdict['Convergence'] = str(self.fib._conv[1])
-            print(self.fib._merge_points)
-            print(self.fib._merge_points_z)
             fibdict['Merge points'] = self.fib._merge_points.tolist()
 
     def _save_merge(self, mdict):

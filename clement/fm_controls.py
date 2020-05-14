@@ -291,11 +291,15 @@ class FMControls(BaseControls):
         self.refine_btn = QtWidgets.QPushButton('Refinement')
         self.refine_btn.clicked.connect(self._refine)
         self.refine_btn.setEnabled(False)
+        self.undo_refine_btn = QtWidgets.QPushButton('Undo last refinement')
+        self.undo_refine_btn.clicked.connect(self._undo_refinement)
+        self.undo_refine_btn.setEnabled(False)
         line.addWidget(self.select_btn)
         line.addWidget(size_label)
         line.addWidget(self.size_box)
         line.addWidget(self.auto_opt_btn)
         line.addWidget(self.refine_btn)
+        line.addWidget(self.undo_refine_btn)
         line.addStretch(1)
 
 
@@ -529,8 +533,8 @@ class FMControls(BaseControls):
                             peaks_2d = self.ops.peak_slices[self._current_slice]
                 if len(peaks_2d.shape) > 0:
                     for i in range(len(peaks_2d)):
-                        pos = QtCore.QPointF(peaks_2d[i][0]-self.size_ops/2, peaks_2d[i][1]-self.size_ops/2)
-                        point_obj= pg.CircleROI(pos, self.size_ops, parent=self.imview.getImageItem(), movable=False, removable=True)
+                        pos = QtCore.QPointF(peaks_2d[i][0]-self.size/2, peaks_2d[i][1]-self.size/2)
+                        point_obj= pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False, removable=True)
                         point_obj.removeHandle(0)
                         self.imview.addItem(point_obj)
                         self._peaks.append(point_obj)
@@ -628,8 +632,6 @@ class FMControls(BaseControls):
         self._box_coordinate = None
         self._points_corr = []
         self._points_corr_indices= []
-        self._size_ops = 3
-        self._size_other = 3
         self._refined = False
         self._refine_history = []
         self._refine_counter = 0 

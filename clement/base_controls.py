@@ -21,7 +21,7 @@ class BaseControls(QtWidgets.QWidget):
         self._points_corr_indices = []
         self._refined = False
         self._err = [None, None]
-        self._rms = [None, None]
+        self._std = [[None, None], [None, None]]
         self._conv = [None, None]
         self._merge_points = []
         self._merge_points_z = []
@@ -381,6 +381,10 @@ class BaseControls(QtWidgets.QWidget):
                     [self.other.imview.removeItem(point) for point in self.other._points_corr]
                     [self.imview.removeItem(anno) for anno in self.anno_list]
                     [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+                    self.anno_list = []
+                    self.other.anno_list = []
+                    self.counter = 0
+                    self.other.counter = 0
                     self._points_corr = []
                     self.other._points_corr = []
                     self._points_corr_z = []
@@ -389,10 +393,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.other._orig_points_corr = []
                     self._points_corr_indices = []
                     self.other._points_corr_indices = []
-                    self.anno_list = []
-                    self.other.anno_list = []
-                    self.counter = 0
-                    self.other.counter = 0
+                    self.other.size = self.orig_size
 
                 if hasattr(self.other, 'fib') and self.other.fib:
                     src_sorted = np.array(
@@ -587,7 +588,6 @@ class BaseControls(QtWidgets.QWidget):
                     self.other._refined = True
                     self.other._calc_grid()
                     self._estimate_precision(idx, refine_matrix_old)
-                    self.other.err_btn.setText('{:.2f}'.format(self.other._rms[1] * self.other.ops.pixel_size[0]))
                     self.ops.merged_3d = None
                 else:
                     idx = 0
@@ -599,7 +599,6 @@ class BaseControls(QtWidgets.QWidget):
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
                     self._recalc_grid()
                     self._estimate_precision(idx, refine_matrix_old)
-                    self.other.err_btn.setText('{:.2f}'.format(self.other._rms[0] * self.other.ops.pixel_size[0]))
                     self.ops.merged_2d = None
 
                 self.fliph.setEnabled(False)
@@ -609,25 +608,13 @@ class BaseControls(QtWidgets.QWidget):
                 self.rotate.setEnabled(False)
                 self.other.err_plt_btn.setEnabled(True)
                 self.other.convergence_btn.setEnabled(True)
+                self.undo_refine_btn.setEnabled(True)
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
                 [self.imview.removeItem(anno) for anno in self.anno_list]
                 [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
 
-                self.anno_list = []
-                self.other.anno_list = []
-                self.counter = 0
-                self.other.counter = 0
-                self._points_corr = []
-                self.other._points_corr = []
-                self._points_corr_z = []
-                self.other._points_corr_z = []
-                self._orig_points_corr = []
-                self.other._orig_points_corr = []
-                self._points_corr_indices = []
-                self.other._points_corr_indices = []
-                self.other.size = self.orig_size
                 self._update_imview()
                 self.auto_opt_btn.setChecked(False)
                 print('merge_points: ', self._merge_points)
@@ -636,6 +623,35 @@ class BaseControls(QtWidgets.QWidget):
         else:
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()
+
+    def _undo_refinement(self):
+        if self.other.fib:
+            idx = 1
+            self.other.ops.undo_refinement()
+            self.other._calc_grid()
+            if len(self.other.ops._refine_history) == 1:
+                self.other._refined = False
+                self.undo_refine_btn.setEnabled(False)
+                self.other.err_btn.setText('0')
+            else:
+                self._estimate_precision(idx, self.other.ops._refine_matrix)
+
+        else:
+            idx = 0
+            em_points = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
+                            self.other._points_corr])
+            fm_points = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
+                                  for point in self._points_corr])
+            self.ops.undo_refinement(fm_points, em_points, self.other.ops.points)
+            self._recalc_grid()
+            if len(self.ops._refine_history) == 1:
+                self._refined = False
+                self.other._refined = False
+                self.undo_refine_btn.setEnabled(False)
+                self.other.err_btn.setText('0')
+            else:
+                self._estimate_precision(idx, self.ops._refine_matrix)
+            self._update_imview()
 
     def _estimate_precision(self, idx, refine_matrix_old):
         sel_points = [[point.x() + self.other.size/2, point.y()+self.other.size/2] for point in self.other._points_corr]
@@ -668,11 +684,11 @@ class BaseControls(QtWidgets.QWidget):
                 calc_points.append(transf[:2])
 
         diff = np.array(sel_points) - np.array(calc_points)
+        self.other._std[idx][0], self.other._std[idx][1] = self.other.ops.calc_error(diff)
         self.other._err[idx] = diff
-        if len(diff) > 0:
-            self.other._rms[idx] = np.sqrt(1/len(diff) * (diff**2).sum())
-        else:
-            self.other._rms[idx] = 0.0
+        self.other.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(
+            self.other._std[idx][0] * self.other.ops.pixel_size[0],
+            self.other._std[idx][1]* self.other.ops.pixel_size[0]))
 
         if len(self.other.corr_points) >= self.min_conv_points:
             min_points = self.min_conv_points-4

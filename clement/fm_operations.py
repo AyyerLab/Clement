@@ -23,6 +23,7 @@ class FM_ops(Peak_finding):
         self._show_no_tilt = False
         self._refine_matrix = None
         self._refine_shape = None
+        self._refine_history = [np.identity(3)]
 
         self.reader = None
         self.voxel_size = None
@@ -63,7 +64,6 @@ class FM_ops(Peak_finding):
         self.rotated = False
         self.corr_matrix = None
         self.refine_corners = None
-        self.refine_history = []
         self.refined = False
         self.refined_max_proj = None
         self.refined_data = None
@@ -132,8 +132,8 @@ class FM_ops(Peak_finding):
             self._update_data()
 
         if refined_tmp and self._transformed:
-            for i in range(len(self.refine_history)):
-                self._refine_matrix = self.refine_history[i]
+            for i in range(len(self._refine_history)):
+                self._refine_matrix = self._refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -285,8 +285,8 @@ class FM_ops(Peak_finding):
                 self.apply_transform()
         self._update_data()
         if refined_tmp and self._transformed:
-            for i in range(len(self.refine_history)):
-                self._refine_matrix = self.refine_history[i]
+            for i in range(len(self._refine_history)):
+                self._refine_matrix = self._refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -344,8 +344,8 @@ class FM_ops(Peak_finding):
         self._update_data()
 
         if refined_tmp and self._transformed:
-            for i in range(len(self.refine_history)):
-                self._refine_matrix = self.refine_history[i]
+            for i in range(len(self._refine_history)):
+                self._refine_matrix = self._refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -386,8 +386,8 @@ class FM_ops(Peak_finding):
         self._update_data()
 
         if refined_tmp and self._transformed:
-            for i in range(len(self.refine_history)):
-                self._refine_matrix = self.refine_history[i]
+            for i in range(len(self._refine_history)):
+                self._refine_matrix = self._refine_history[i]
                 self.apply_refinement()
         if refined_tmp:
             self.refined = True
@@ -669,9 +669,9 @@ class FM_ops(Peak_finding):
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
             self.refine_corners = np.dot(self._refine_matrix, corners)
             self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
-            self.refine_history.append(self._refine_matrix)
             self._refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
             print(self._refine_matrix)
+            self._refine_history.append(self._refine_matrix)
 
     def apply_refinement(self):
         data_tmp = np.copy(self.data)
@@ -688,18 +688,67 @@ class FM_ops(Peak_finding):
         self.refine_peaks()
         self.refined = True
 
-    def refine_peaks(self):
-        peak_refine_matrix = np.copy(self._refine_matrix)
-        if self.tf_peak_slices is not None:
-            if self.selected_slice is None:
-                peaks_2d = self.tf_peak_slices[-1]
+    def undo_refinement(self, src, dst, em_points):
+        if len(self._refine_history) > 1:
+            nx, ny = self.data.shape[:-1]
+            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+
+            inv_refine_matrix = np.linalg.inv(self._refine_history[-1])
+            self.refine_corners = np.dot(inv_refine_matrix, corners)
+            self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
+            for i in range(self.points.shape[0]):
+                point = np.array([self.points[i, 0], self.points[i, 1], 1])
+                self.points[i] = (np.linalg.inv(self._refine_history[-1]) @ point)[:2]
+
+            inv_refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
+            data_tmp = np.copy(self.data)
+            self.data = np.empty(self._refine_shape + (self.data.shape[-1],))
+            for i in range(self.data.shape[-1]):
+                self.data[:,:,i] = ndi.affine_transform(data_tmp[:,:,i], np.linalg.inv(inv_refine_matrix), order=1, output_shape=self._refine_shape)
+                sys.stderr.write('\r%d'%i)
+            if self._show_max_proj:
+                self.refined_max_proj = np.copy(self.data)
             else:
-                peaks_2d = self.tf_peak_slices[self.selected_slice]
-            if peaks_2d is not None:
-                for i in range(len(peaks_2d)):
-                    peaks_2d[i] = (peak_refine_matrix @ (peaks_2d[i][0], peaks_2d[i][1], 1))[:2]
-            if self.tf_peaks_3d is not None:
-                self.tf_peaks_3d[:,:2] = np.copy(peaks_2d)
+                self.refined_data = np.copy(self.data)
+            self.refine_peaks(undo=True)
+
+
+            dst_new = np.array([(inv_refine_matrix_no_shift @ np.array([point[0], point[1], 1]))[:2] for point in src])
+
+            corr_matrix_new = tf.estimate_transform('affine', src_new, dst).params
+
+            grid_matrix = inv_refine_matrix @ np.linalg.inv(corr_matrix_new)
+            self._tf_points = np.array([(grid_matrix @ np.array([point[0], point[1], 1]))[:2] for point in em_points])
+            self.points = np.copy(self._tf_points)
+
+            del self._refine_history[-1]
+            self._refine_matrix = self._refine_history[-1]
+        else:
+            print('Data is not refined!')
+
+    def refine_peaks(self, undo=False):
+        if undo:
+            if self.tf_peak_slices is not None:
+                if self.selected_slice is None:
+                    peaks_2d = self.tf_peak_slices[-1]
+                else:
+                    peaks_2d = self.tf_peak_slices[self.selected_slice]
+                if peaks_2d is not None:
+                    for i in range(len(peaks_2d)):
+                        peaks_2d[i] = (np.linalg.inv(self._refine_history[-1]) @ (peaks_2d[i][0], peaks_2d[i][1], 1))[:2]
+                if self.tf_peaks_3d is not None:
+                    self.tf_peaks_3d[:,:2] = np.copy(peaks_2d)
+        else:
+            if self.tf_peak_slices is not None:
+                if self.selected_slice is None:
+                    peaks_2d = self.tf_peak_slices[-1]
+                else:
+                    peaks_2d = self.tf_peak_slices[self.selected_slice]
+                if peaks_2d is not None:
+                    for i in range(len(peaks_2d)):
+                        peaks_2d[i] = (self._refine_matrix @ (peaks_2d[i][0], peaks_2d[i][1], 1))[:2]
+                if self.tf_peaks_3d is not None:
+                    self.tf_peaks_3d[:,:2] = np.copy(peaks_2d)
 
     def refine_grid(self, src, dst, em_points):
         print('refine grid')
@@ -880,7 +929,6 @@ class FM_ops(Peak_finding):
             else:
                 total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
 
-            self.merge_shift[0] -= 5
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 

@@ -8,6 +8,7 @@ from scipy import ndimage as ndi
 from scipy import signal as sc
 from skimage import transform as tf
 from skimage import io, measure, feature
+from sklearn import cluster, mixture
 import tifffile
 from .ransac import Ransac
 import time
@@ -23,6 +24,7 @@ class EM_ops():
         self._tf_points_region = None
         self._refine_matrix = None
         self._total_shift = None
+        self._refine_history = [np.identity(3)]
 
         self.h = None
         self.eh = None
@@ -441,6 +443,7 @@ class EM_ops():
         else:
             self._refine_matrix = refine_matrix @ self._refine_matrix
 
+        self._refine_history.append(refine_matrix)
         print('Refine matrix: \n', self._refine_matrix)
 
     def apply_refinement(self, points=None):
@@ -453,6 +456,16 @@ class EM_ops():
             points[i] = (self._refine_matrix @ point)[:2]
         if update_points:
             self.points = points
+
+    def undo_refinement(self):
+        if len(self._refine_history) > 1:
+            self._refine_matrix = np.linalg.inv(self._refine_history[-1]) @ self._refine_matrix
+            for i in range(self.points.shape[0]):
+                point = np.array([self.points[i, 0], self.points[i, 1], 1])
+                self.points[i] = (np.linalg.inv(self._refine_history[-1]) @ point)[:2]
+            del self._refine_history[-1]
+        else:
+            print('Data not refined!')
 
     def fit_circles(self, points, bead_size):
         points_model = []
@@ -496,6 +509,14 @@ class EM_ops():
                 print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 points_model.append(np.array([x,y]))
         return np.array(points_model)
+
+    def calc_error(self, diff):
+        clf = mixture.GaussianMixture(n_components=1, covariance_type='full')
+        clf.fit(diff)
+        print(diff)
+        cov = clf.covariances_[0]
+        print(cov)
+        return np.sqrt(cov[0,0]), np.sqrt(cov[1,1])
 
     def calc_convergence(self, corr_points, em_points, min_points, refine_matrix):
         em_points = np.array(em_points)

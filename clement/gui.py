@@ -178,10 +178,18 @@ class GUI(QtGui.QMainWindow):
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
             self.fmcontrols.other = self.emcontrols
+            if self.fmcontrols._refined:
+                self.fmcontrols.undo_refine_btn.setEnabled(True)
+            else:
+                self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols.fib = False
         else:
             self.fibcontrols.fib = True
             self.em_imview.setCurrentIndex(1)
+            if self.fibcontrols._refined:
+                self.fmcontrols.undo_refine_btn.setEnabled(True)
+            else:
+                self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols._update_imview()
             self.fibcontrols.sem_ops = self.emcontrols.ops
             self.fmcontrols.other = self.fibcontrols
