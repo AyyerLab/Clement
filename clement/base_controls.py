@@ -212,12 +212,12 @@ class BaseControls(QtWidgets.QWidget):
 
         self._points_corr_indices.remove(self._points_corr_indices[idx])
 
-        if hasattr(self, 'fib') and self.fib:
+        if (hasattr(self, 'fib') and self.fib) or (hasattr(self.other, 'fib') and self.other.fib):
             self._points_corr_z.remove(self._points_corr_z[idx])
             self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+
+        if hasattr(self, 'fib'):
             self._orig_points_corr.remove(self._orig_points_corr[idx])
-        elif hasattr(self.other, 'fib') and self.other.fib:
-            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
         else:
             self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
 
@@ -574,6 +574,7 @@ class BaseControls(QtWidgets.QWidget):
                                       for point in self._points_corr])
                 em_points = np.copy(dst)
                 np.save('fm_points.npy', fm_points)
+                np.save('fm_points_z.npy', self._points_corr_z)
                 np.save('em_points.npy', em_points)
 
                 self.other._merge_points = np.copy(em_points)
@@ -697,6 +698,7 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self.other._conv[idx] = []
         np.save('corr_points.npy', self.other.corr_points)
+        np.save('corr_points_z.npy', self._points_corr_z)
         np.save('sel.npy', sel_points)
         np.save('calc.npy', calc_points)
 

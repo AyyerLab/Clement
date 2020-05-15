@@ -103,7 +103,7 @@ class Project(QtWidgets.QWidget):
         if self.fm._refined:
             self.fm.ops._refine_shape = tuple(fmdict['Refine shape'])
             self.fm.ops._refine_matrix = np.array(fmdict['Refine matrix'])
-            self.fm.ops.refine_history.append(self.fm.ops._refine_matrix)
+            self.fm.ops._refine_history.append(self.fm.ops._refine_matrix)
             self.fm.ops.apply_refinement()
         try:
             self.fm._merge_points = np.array(fmdict['Merge points'])
@@ -429,8 +429,8 @@ class Project(QtWidgets.QWidget):
         fmdict['Correlated points indices'] = self.fm._points_corr_indices
 
         total_refine_matrix = np.identity(3)
-        for i in range(len(self.fm.ops.refine_history)):
-            total_refine_matrix = self.fm.ops.refine_history[i] @ total_refine_matrix
+        for i in range(len(self.fm.ops._refine_history)):
+            total_refine_matrix = self.fm.ops._refine_history[i] @ total_refine_matrix
         fmdict['Refine matrix'] = total_refine_matrix.tolist()
         fmdict['Refine shape'] = list(self.fm.ops._refine_shape) if self.fm.ops._refine_shape is not None else None
         fmdict['Refined'] = self.fm._refined
