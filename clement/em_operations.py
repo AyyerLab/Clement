@@ -513,10 +513,18 @@ class EM_ops():
     def calc_error(self, diff):
         clf = mixture.GaussianMixture(n_components=1, covariance_type='full')
         clf.fit(diff)
-        print(diff)
         cov = clf.covariances_[0]
         print(cov)
-        return np.sqrt(cov[0,0]), np.sqrt(cov[1,1])
+        max = np.max(np.abs(diff))
+        x = np.linspace(-max, max)
+        y = np.linspace(-max, max)
+        X, Y = np.meshgrid(x,y)
+        XX = np.array([X.ravel(), Y.ravel()]).T
+        Z = -clf.score_samples(XX)
+        Z = Z.reshape(X.shape)
+        f = np.exp(-Z)
+        f /= f.max()
+        return np.sqrt(cov[0,0]), np.sqrt(cov[1,1]), f
 
     def calc_convergence(self, corr_points, em_points, min_points, refine_matrix):
         em_points = np.array(em_points)

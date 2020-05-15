@@ -205,9 +205,8 @@ class Project(QtWidgets.QWidget):
         try:
             self.em._err[1] = np.array(emdict['Error distribution'])
             self.em._std[1] = emdict['Std']
-            self.em.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(
-                                    self.em._std[0][0] * self.em.ops.pixel_size[0],
-                                    self.em._std[0][1] * self.em.ops.pixel_size[0]))
+            self.em.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.em._std[0][0], self.em._std[0][1]))
+            self.em._dist = np.array(emdict['Error gauss'])
             self.em.convergence_btn.setEnabled(True)
             self.em.err_plt_btn.setEnabled(True)
         except KeyError:
@@ -250,9 +249,8 @@ class Project(QtWidgets.QWidget):
                 self.fib._calc_grid()
                 self.fib._err[1] = np.array(fibdict['Error distribution'])
                 self.fib._std[1] = fibdict['Std']
-                self.fib.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(
-                                                self.fib._std[1][0] * self.fib.ops.pixel_size[0],
-                                                self.fib._std[1][1] * self.fib.ops.pixel_size[0]))
+                self.fib.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.fib._std[1][0], self.fib._std[1][1]))
+                self.fib._dist = np.array(fibdict['Error gauss'])
                 self.fib.convergence_btn.setEnabled(True)
                 self.fib.err_plt_btn.setEnabled(True)
                 self.fib._merge_points = np.array(fibdict['Merge points'])
@@ -468,8 +466,9 @@ class Project(QtWidgets.QWidget):
         emdict['Correlated points indices'] = self.em._points_corr_indices
         emdict['Refined'] = self.em._refined
         if self.em._refined:
-            fibdict['Error distribution'] = self.em._err[0].tolist()
-            fibdict['Std'] = np.array(self.em._std[0]).tolist()
+            emdict['Error distribution'] = self.em._err[0].tolist()
+            emdict['Std'] = np.array(self.em._std[0]).tolist()
+            emdict['Error gauss'] = self.em._dist.tolist()
         if self.em._conv[1] is not None:
             fibdict['Convergence'] = str(self.em._conv[0])
 
@@ -500,6 +499,7 @@ class Project(QtWidgets.QWidget):
             fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
             fibdict['Error distribution'] = self.fib._err[1].tolist()
             fibdict['Std'] = np.array(self.fib._std[1]).tolist()
+            fibdict['Error gauss'] = self.fib._dist.tolist()
             if self.fib._conv[1] is not None:
                 fibdict['Convergence'] = str(self.fib._conv[1])
             fibdict['Merge points'] = self.fib._merge_points.tolist()

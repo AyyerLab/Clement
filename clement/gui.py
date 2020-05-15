@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys
 import os
 import warnings
@@ -11,8 +10,7 @@ from .em_controls import EMControls
 from .fm_controls import FMControls
 from .fib_controls import FIBControls
 from .project import Project
-from .popup import Merge
-
+from .popup import Merge, Scatter
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -102,13 +100,17 @@ class GUI(QtGui.QMainWindow):
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
         self.emcontrols.quit_button.clicked.connect(self.close)
+        self.emcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
         self.emcontrols.other = self.fmcontrols
         self.fibcontrols.quit_button.clicked.connect(self.close)
+        self.fibcontrols.err_plt_btn.clicked.connect(lambda : self._show_scatter(idx=1))
         self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
+
         self.popup = None
+        self.scatter = None
         self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self)
         # Menu Bar
         self._init_menubar()
@@ -203,6 +205,13 @@ class GUI(QtGui.QMainWindow):
                 if self.fibcontrols.ops is not None:
                     if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
                         self.fibcontrols.correct_grid_z()
+
+    def _show_scatter(self, idx):
+        if idx == 0:
+            self.scatter = Scatter(self, self.emcontrols)
+        else:
+            self.scatter = Scatter(self, self.fibcontrols)
+        self.scatter.show()
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

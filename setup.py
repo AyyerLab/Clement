@@ -32,6 +32,7 @@ setuptools.setup(
         'mrcfile',
         'read-lif==0.4.0',
         'tifffile',
+        'matplotlib'
         #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=pyqtgraph',
         'pyqtgraph',
         'pyyaml'

@@ -23,6 +23,7 @@ class BaseControls(QtWidgets.QWidget):
         self._err = [None, None]
         self._std = [[None, None], [None, None]]
         self._conv = [None, None]
+        self._dist = None
         self._merge_points = []
         self._merge_points_z = []
 
@@ -220,7 +221,6 @@ class BaseControls(QtWidgets.QWidget):
             self._orig_points_corr.remove(self._orig_points_corr[idx])
         else:
             self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
-
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
@@ -685,11 +685,11 @@ class BaseControls(QtWidgets.QWidget):
                 calc_points.append(transf[:2])
 
         diff = np.array(sel_points) - np.array(calc_points)
-        self.other._std[idx][0], self.other._std[idx][1] = self.other.ops.calc_error(diff)
+        diff *= self.other.ops.pixel_size
+        self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
+
         self.other._err[idx] = diff
-        self.other.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(
-            self.other._std[idx][0] * self.other.ops.pixel_size[0],
-            self.other._std[idx][1]* self.other.ops.pixel_size[0]))
+        self.other.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0],self.other._std[idx][1]))
 
         if len(self.other.corr_points) >= self.min_conv_points:
             min_points = self.min_conv_points-4
@@ -701,12 +701,6 @@ class BaseControls(QtWidgets.QWidget):
         np.save('corr_points_z.npy', self._points_corr_z)
         np.save('sel.npy', sel_points)
         np.save('calc.npy', calc_points)
-
-    def _scatter_plot(self, idx):
-        if self._err[idx] is not None:
-            pg.plot(self._err[idx][:, 0] * self.ops.pixel_size[0], self._err[idx][:, 1] * self.ops.pixel_size[1], pen=None, symbol='o')
-        else:
-            print('Data not refined yet!')
 
     def _convergence_plot(self, idx):
         if self._conv[idx] is not None:
@@ -858,3 +852,5 @@ class BaseControls(QtWidgets.QWidget):
         self._points_corr_indices = []
         self.other._points_corr_indices = []
         self.peaks = []
+
+

@@ -8,8 +8,71 @@ import csv
 import mrcfile as mrc
 import copy
 from skimage.color import hsv2rgb
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 warnings.simplefilter('ignore', category=FutureWarning)
+
+class MplCanvas(FigureCanvas):
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        #self.fig = Figure(figsize=(5, 5), dpi=dpi)
+        self.axes = self.fig.add_subplot(111)
+
+        FigureCanvas.__init__(self, self.fig)
+        self.setParent(parent)
+
+        FigureCanvas.setSizePolicy(self,
+                                   QtWidgets.QSizePolicy.Expanding,
+                                   QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
+    def _scatter_plot(self):
+        pass
+
+class Plot(MplCanvas):
+    def __init__(self, base, widget):
+        MplCanvas.__init__(self)
+        self.base = base
+        self._scatter_plot()
+
+    def _scatter_plot(self):
+        if self.base.fib:
+            idx = 1
+        else:
+            idx = 0
+        diff = self.base._err[idx]
+        max = np.max(np.abs(diff))
+        x = np.linspace(-max, max)
+        y = np.linspace(-max, max)
+        X, Y = np.meshgrid(x, y)
+        levels = np.array([0.5, 0.75, 0.95])
+        cset = self.axes.contour(X, Y, 1 - self.base._dist, colors='k', levels=levels)
+        self.axes.clabel(cset, inline=1, fontsize=10)
+        if self.base.fib:
+            scatter = self.axes.scatter(diff[:, 0], diff[:, 1], c=self.base.other._merge_points_z)
+            cbar = self.fig.colorbar(scatter)
+            cbar.set_label('z position of beads in FM')
+        else:
+            self.axes.scatter(diff[:, 0], diff[:, 1])
+        self.axes.set_xlabel('x error [nm]')
+        self.axes.set_ylabel('y error [nm]')
+        self.axes.title.set_text('Error distribution and GMM model confidence intervals')
+
+class Scatter(QtWidgets.QMainWindow):
+    def __init__(self, parent, base):
+        super(Scatter, self).__init__(parent)
+        self.parent = parent
+        self.theme = self.parent.theme
+        self.resize(800, 800)
+        self.parent._set_theme(self.theme)
+        widget = QtWidgets.QWidget()
+        self.setCentralWidget(widget)
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        widget.setLayout(layout)
+        sc = Plot(base, widget)
+        layout.addWidget(sc)
 
 class Merge(QtGui.QMainWindow,):
     def __init__(self, parent):

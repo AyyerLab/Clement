@@ -129,10 +129,9 @@ class EMControls(BaseControls):
         line.addWidget(label)
         self.err_btn = QtWidgets.QLabel('0')
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
-        self.err_plt_btn.clicked.connect(lambda : self._scatter_plot(idx=0))
         self.err_plt_btn.setEnabled(False)
 
-        self.convergence_btn = QtWidgets.QPushButton('Show error convergence')
+        self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
         self.convergence_btn.clicked.connect(lambda : self._convergence_plot(idx=0))
         self.convergence_btn.setEnabled(False)
         line.addWidget(self.err_btn)
