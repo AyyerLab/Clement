@@ -491,7 +491,6 @@ class FMControls(BaseControls):
     def _find_peaks(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
-            print(self.ops.data.shape)
             if self.peak_btn.isChecked():
                 flip = False
                 if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
@@ -505,16 +504,15 @@ class FMControls(BaseControls):
                 if self.map_btn.isChecked():
                     if self.ops._transformed:
                         if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.tf_max_proj_data[:,:,-1], transformed=True)
+                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
                         peaks_2d = self.ops.tf_peak_slices[-1]
                     else:
                         if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.max_proj_data[:, :, -1], transformed=False)
+                            self.ops.peak_finding(self.ops.data[:, :, -1], transformed=False)
                         peaks_2d = self.ops.peak_slices[-1]
                 else:
                     if self.max_proj_btn.isChecked():
                         if self.ops._transformed:
-
                             if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
                                 self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
                             peaks_2d = self.ops.tf_peak_slices[-1]
@@ -546,6 +544,7 @@ class FMControls(BaseControls):
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []
+                #self.max_proj_btn.setChecked(show_max_proj)
         else:
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()

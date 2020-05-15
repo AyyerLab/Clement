@@ -102,7 +102,8 @@ class Peak_finding():
                     self.tf_peak_slices[-1] = np.copy(peaks_2d)
                 else:
                     self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
-                self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+                if self.orig_tf_peak_slices is None:
+                    self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
             else:
                 if curr_slice is None:
                     self.peak_slices[-1] = np.copy(peaks_2d)

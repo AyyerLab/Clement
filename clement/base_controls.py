@@ -408,7 +408,18 @@ class BaseControls(QtWidgets.QWidget):
                             if self.ops.max_proj_data is None:
                                 self.ops.calc_max_proj_data()
                             if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                                fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
+                                self.fliph.setChecked(False)
+                                self.flipv.setChecked(False)
+                                self.transpose.setChecked(False)
+                                self.rotate.setChecked(False)
+                                flip = True
                                 self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
+                                if flip:
+                                    self.fliph.setChecked(fliph)
+                                    self.flipv.setChecked(flipv)
+                                    self.transpose.setChecked(transp)
+                                    self.rotate.setChecked(rot)
                         self.ops.load_channel(ind=3)
                         flip_list = [self.ops.transp, self.ops.rot, self.ops.fliph, self.ops.flipv]
                         self.ops.fit_z(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
@@ -496,6 +507,24 @@ class BaseControls(QtWidgets.QWidget):
 
     def _show_original(self):
             if self.ops is not None:
+                [self.imview.removeItem(point) for point in self._points_corr]
+                [self.other.imview.removeItem(point) for point in self.other._points_corr]
+                [self.imview.removeItem(anno) for anno in self.anno_list]
+                [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+                self.anno_list = []
+                self.other.anno_list = []
+                self.counter = 0
+                self.other.counter = 0
+                self._points_corr = []
+                self.other._points_corr = []
+                self._points_corr_z = []
+                self.other._points_corr_z = []
+                self._orig_points_corr = []
+                self.other._orig_points_corr = []
+                self._points_corr_indices = []
+                self.other._points_corr_indices = []
+                self.other.size = self.orig_size
+
                 self.ops._transformed = not self.ops._transformed
                 print('Transformed: ',self.ops._transformed)
                 align = False
