@@ -14,8 +14,8 @@ class Peak_finding():
         self.peak_slices = None
         self.tf_peak_slices = None
         self.orig_tf_peak_slices = None
-        self.peaks_3d = None
-        self.tf_peaks_3d = None
+        self.tf_peaks_z = None
+        self.peaks_z = None
         self.pixel_lower_threshold = plt
         self.pixel_upper_threshold = put
         self.flood_steps = 10
@@ -142,39 +142,11 @@ class Peak_finding():
         inv_point = (np.linalg.inv(tf_mat) @ point)[:2]
         return inv_point
 
-    def calc_transformed_coordinates(self, tf_mat, flip, tf_shape, slice=None):
-        if self.tf_peak_slices is None:
-            self.tf_peak_slices = [None] * self.num_slices
-        if flip is None:
-            flip = [False, False, False, False]  # transp, rot, fliph, flipv
-        transp, rot, fliph, flipv = flip
-
-        if slice is None:
-            peaks_2d = self.peak_slices[-1]
-        else:
-            peaks_2d = self.peak_slices[slice]
-
-        tf_peaks_2d = np.zeros_like(peaks_2d)
-        for i in range(peaks_2d.shape[0]):
-            point = np.array([peaks_2d[i,0], peaks_2d[i,1], 1])
-            tf_point = (tf_mat @ point)[:2]
-            if transp:
-                tf_point = np.array([tf_point[1], tf_point[0], 1])
-            if rot:
-                temp = tf_shape[0] - 1 - tf_point[1]
-                tf_point[1] = tf_point[0]
-                tf_point[0] = temp
-            if fliph:
-                tf_point[0] = tf_shape[0] - tf_point[0]
-            if flipv:
-                tf_point[1] = tf_shape[1] - tf_point[1]
-
-        if slice is None:
-            self.tf_peak_slices[-1] = tf_peaks_2d
-        else:
-            self.tf_peak_slices[slice] = tf_peaks_2d
-
     def fit_z(self, data, transformed, curr_slice=None, tf_matrix=None, flips=None, shape=None, local=False, point=None):
+        '''
+        calculates the z profile along the beads and fits a gaussian
+        '''
+
         if not local:
             if transformed:
                 if tf_matrix is None:
@@ -209,7 +181,7 @@ class Peak_finding():
         z_max = np.argmax(z_profile, axis=1)
         z_shifted = np.zeros((z_profile.shape[0], z_profile.shape[1]*2))
         x = np.arange(z_shifted.shape[1])
-        mean_values = np.zeros((z_shifted.shape[0],1))
+        mean_values = np.zeros(z_shifted.shape[0])
         shifts = []
         go = time.time()
         for i in range(z_profile.shape[0]):
@@ -229,15 +201,14 @@ class Peak_finding():
             else:
                 for i in range(z_shifted.shape[0]):
                     popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
-                    mean_values[i] = popt_i[1]-shifts[i]
+                    mean_values[i] = (popt_i[1]-shifts[i])
 
                 if transformed:
-                    self.tf_peaks_3d = np.concatenate((tf_peaks, mean_values), axis=1)
-                    print(self.tf_peaks_3d)
+                    self.tf_peaks_z = np.copy(mean_values)
                 else:
-                    self.peaks_3d = np.concatenate((peaks_2d, mean_values), axis=1)
-
+                    self.peaks_z = np.copy(mean_values)
                 no = time.time()
+                print(mean_values)
                 print('Duration:', no-go)
         except RuntimeError:
             if local:
@@ -251,7 +222,6 @@ class Peak_finding():
     def calc_local_z(self, data, point, transformed, tf_matrix = None, flips=None, shape=None):
         if transformed:
             point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
-            print('Orig point: ', point)
         z = None
         try:
             if point[0] < 0 or point[1] < 0:
@@ -264,11 +234,8 @@ class Peak_finding():
             return z
 
 
-    def check_peak_index(self, point, size, fib):
-        if fib:
-            peaks_2d = self.tf_peaks_3d[:,:2]
-        else:
-            peaks_2d = self.tf_peak_slices[-1]
+    def check_peak_index(self, point, size):
+        peaks_2d = self.tf_peak_slices[-1]
         diff = peaks_2d - point
         diff_err = np.sqrt(diff[:,0]**2 + diff[:,1]**2)
         ind_arr = np.where(diff_err < size/2)[0]

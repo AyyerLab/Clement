@@ -41,7 +41,6 @@ class FMControls(BaseControls):
         self.tag = 'FM'
         self.imview = imview
         self.ops = None
-        #self.ind = 0
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
 
         self._colors = colors
@@ -54,6 +53,7 @@ class FMControls(BaseControls):
         self._peaks = []
         self._bead_size = None
         self._init_ui()
+
     
     def _init_ui(self):
         vbox = QtWidgets.QVBoxLayout()
@@ -443,14 +443,25 @@ class FMControls(BaseControls):
     def _fliph(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.fliph.isChecked():
+                self.flips[2] = True
+            else:
+                self.flips[2] = False
+            self._remove_points_flip()
             self.ops.flip_horizontal(state)
             self._recalc_grid()
             self._update_imview()
+
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _flipv(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.flipv.isChecked():
+                self.flips[3] = True
+            else:
+                self.flips[3] = False
+            self._remove_points_flip()
             self.ops.flip_vertical(state)
             self._recalc_grid()
             self._update_imview()
@@ -459,6 +470,11 @@ class FMControls(BaseControls):
     def _trans(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.transpose.isChecked():
+                self.flips[0] = True
+            else:
+                self.flips[0] = False
+            self._remove_points_flip()
             self.ops.transpose(state)
             self._recalc_grid()
             self._update_imview()
@@ -467,6 +483,11 @@ class FMControls(BaseControls):
     def _rot(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.rotate.isChecked():
+                self.flips[1] = True
+            else:
+                self.flips[1] = False
+            self._remove_points_flip()
             self.ops.rotate_clockwise(state)
             self._recalc_grid()
             self._update_imview()
@@ -614,9 +635,48 @@ class FMControls(BaseControls):
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
+    def _undo_refinement(self):
+        if self.other.fib:
+            idx = 1
+            self.other.ops.undo_refinement()
+            self.other._calc_grid()
+            if len(self.other.ops._refine_history) == 1:
+                self.other._refined = False
+                self.undo_refine_btn.setEnabled(False)
+                self.other.err_btn.setText('0')
+            else:
+                self._estimate_precision(idx, self.other.ops._refine_matrix)
 
-    def _side_view(self):
-        pass
+        else:
+            idx = 0
+            em_points = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
+                            self.other._points_corr])
+            fm_points = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
+                                  for point in self._points_corr])
+            self.ops.undo_refinement(fm_points, em_points, self.other.ops.points)
+            self._recalc_grid()
+            if len(self.ops._refine_history) == 1:
+                self._refined = False
+                self.other._refined = False
+                self.undo_refine_btn.setEnabled(False)
+                self.other.err_btn.setText('0')
+
+            else:
+                self._estimate_precision(idx, self.ops._refine_matrix)
+            self._update_imview()
+
+        self.fliph.setEnabled(True)
+        self.flipv.setEnabled(True)
+        self.rotate.setEnabled(True)
+        self.transpose.setEnabled(True)
+
+
+
+
+
+
+
+
 
     def reset_init(self):
         

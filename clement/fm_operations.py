@@ -366,7 +366,7 @@ class FM_ops(Peak_finding):
             peaks_2d = self.peak_slices[-1]
 
             A = np.array([peaks_2d[:,0], peaks_2d[:,1], np.ones_like(peaks_2d[:,0])]).T #matrix
-            beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_3d[:,2], axis=1)) #params
+            beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_z, axis=1)) #params
             point = np.array([0.0, 0.0, beta[2]]) #point on plane
             normal = np.array(np.cross([1, 0, beta[0][0]], [0, 1, beta[1][0]])) #normal vector of plane
             d = -point.dot(normal) #distance to origin
@@ -395,15 +395,15 @@ class FM_ops(Peak_finding):
     def calc_z(self, ind, pos):
         z = None
         if self._transformed:
-            if self.tf_peaks_3d is not None:
+            if self.tf_peaks_z is not None:
                 if ind is not None:
-                    z = self.tf_peaks_3d[ind, 2]
+                    z = self.tf_peaks_z[ind]
             if z is not None:
                 print('Index found! ind, z:', ind, z)
         else:
-            if self.peaks_3d is not None:
+            if self.peaks_z is not None:
                 if ind is not None:  # do not replace by else-statement!!!
-                    z = self.peaks_3d[ind, 2]
+                    z = self.peaks_z[ind]
         if z is None:
             print('Index not found. Calculate local z position!')
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
@@ -729,26 +729,20 @@ class FM_ops(Peak_finding):
     def refine_peaks(self, undo=False):
         if undo:
             if self.tf_peak_slices is not None:
-                if self.selected_slice is None:
-                    peaks_2d = self.tf_peak_slices[-1]
-                else:
-                    peaks_2d = self.tf_peak_slices[self.selected_slice]
-                if peaks_2d is not None:
-                    for i in range(len(peaks_2d)):
-                        peaks_2d[i] = (np.linalg.inv(self._refine_history[-1]) @ (peaks_2d[i][0], peaks_2d[i][1], 1))[:2]
-                if self.tf_peaks_3d is not None:
-                    self.tf_peaks_3d[:,:2] = np.copy(peaks_2d)
+                for i in range(len(self.tf_peak_slices)):
+                    if self.tf_peak_slices[i] is not None:
+                        peaks_2d = self.tf_peak_slices[i]
+                        for k in range(len(peaks_2d)):
+                            peaks_2d[k] = (np.linalg.inv(self._refine_history[-1]) @ (peaks_2d[k][0], peaks_2d[k][1], 1))[:2]
+                        self.tf_peak_slices[i] = np.copy(peaks_2d)
         else:
             if self.tf_peak_slices is not None:
-                if self.selected_slice is None:
-                    peaks_2d = self.tf_peak_slices[-1]
-                else:
-                    peaks_2d = self.tf_peak_slices[self.selected_slice]
-                if peaks_2d is not None:
-                    for i in range(len(peaks_2d)):
-                        peaks_2d[i] = (self._refine_matrix @ (peaks_2d[i][0], peaks_2d[i][1], 1))[:2]
-                if self.tf_peaks_3d is not None:
-                    self.tf_peaks_3d[:,:2] = np.copy(peaks_2d)
+                for i in range(len(self.tf_peak_slices)):
+                    if self.tf_peak_slices[i] is not None:
+                        peaks_2d = self.tf_peak_slices[i]
+                        for k in range(len(peaks_2d)):
+                            peaks_2d[k] = (self._refine_matrix @ (peaks_2d[k][0], peaks_2d[k][1], 1))[:2]
+                        self.tf_peak_slices[i] = np.copy(peaks_2d)
 
     def refine_grid(self, src, dst, em_points):
         print('refine grid')
