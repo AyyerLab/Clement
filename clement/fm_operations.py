@@ -21,9 +21,6 @@ class FM_ops(Peak_finding):
         self._tf_points = None
         self._show_mapping = False
         self._show_no_tilt = False
-        self._refine_matrix = None
-        self._refine_shape = None
-        self._refine_history = [np.identity(3)]
 
         self.reader = None
         self.voxel_size = None
@@ -63,10 +60,6 @@ class FM_ops(Peak_finding):
         self.counter_clockwise = False
         self.rotated = False
         self.corr_matrix = None
-        self.refine_corners = None
-        self.refined = False
-        self.refined_max_proj = None
-        self.refined_data = None
         self.merged_2d = None
         self.merged_3d = None
         self.merge_shift = None
@@ -121,22 +114,9 @@ class FM_ops(Peak_finding):
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
 
-        if self.refined:
-            refined_tmp = True
-            self.refined = False
-        else:
-            refined_tmp = False
-
         if self._transformed:
             self.apply_transform(shift_points=False)
             self._update_data()
-
-        if refined_tmp and self._transformed:
-            for i in range(len(self._refine_history)):
-                self._refine_matrix = self._refine_history[i]
-                self.apply_refinement()
-        if refined_tmp:
-            self.refined = True
 
     def _update_data(self,update=True,update_points=True):
         if self._transformed and (self.tf_data is not None or self.tf_max_proj_data is not None or self.tf_hsv_map is not None or self.tf_hsv_map_no_tilt is not None):
@@ -146,18 +126,11 @@ class FM_ops(Peak_finding):
                 else:
                     self.data = np.copy(self.tf_hsv_map)
             elif self._show_max_proj:
-                if self.refined:
-                    self.data = np.copy(self.refined_max_proj)
-                else:
-                    self.data = np.copy(self.tf_max_proj_data)
+                self.data = np.copy(self.tf_max_proj_data)
             else:
-                if self.refined:
-                    self.data = np.copy(self.refined_data)
-                else:
-                    self.data = np.copy(self.tf_data)
+                self.data = np.copy(self.tf_data)
             if self.aligned and not self._show_mapping:
                 self.apply_alignment()
-
             self.points = np.copy(self._tf_points)
         else:
             if self._show_mapping and self.hsv_map is not None:
@@ -270,26 +243,12 @@ class FM_ops(Peak_finding):
 
     def calc_max_projection(self):
         self._show_max_proj = not self._show_max_proj
-        if self.refined:
-            refined_tmp = True
-            self.refined = False
-        else:
-            refined_tmp = False
-
         if self.max_proj_data is None:
             self.calc_max_proj_data()
         if self._transformed:
             if self.tf_max_proj_data is None:
                 self.apply_transform()
-            elif self.refined:
-                self.apply_transform()
         self._update_data()
-        if refined_tmp and self._transformed:
-            for i in range(len(self._refine_history)):
-                self._refine_matrix = self._refine_history[i]
-                self.apply_refinement()
-        if refined_tmp:
-            self.refined = True
 
     def calc_max_proj_data(self):
         if self.reader is None:
@@ -323,11 +282,6 @@ class FM_ops(Peak_finding):
 
     def calc_mapping(self):
         self._show_mapping = not self._show_mapping
-        if self.refined:
-            refined_tmp = True
-            self.refined = False
-        else:
-            refined_tmp = False
         if self.hsv_map is None:
             if self.max_proj_data is None:
                self.calc_max_proj_data()
@@ -338,25 +292,11 @@ class FM_ops(Peak_finding):
         if self._transformed:
             if self.tf_hsv_map is None:
                 self.apply_transform()
-            elif self.refined:
-                self.apply_transform()
 
         self._update_data()
 
-        if refined_tmp and self._transformed:
-            for i in range(len(self._refine_history)):
-                self._refine_matrix = self._refine_history[i]
-                self.apply_refinement()
-        if refined_tmp:
-            self.refined = True
-
     def remove_tilt(self, remove_tilt):
         self._show_no_tilt = remove_tilt
-        if self.refined:
-            refined_tmp = True
-            self.refined = False
-        else:
-            refined_tmp = False
         if self.hsv_map_no_tilt is None:
             if self.peak_slices is None or self.peak_slices[-1] is None:
                 self.peak_finding(self.max_proj_data[:,:,-1], transformed=False)
@@ -380,17 +320,8 @@ class FM_ops(Peak_finding):
         if self._transformed:
             if self.tf_hsv_map_no_tilt is None:
                 self.apply_transform()
-            elif self.refined:
-                self.apply_transform()
 
         self._update_data()
-
-        if refined_tmp and self._transformed:
-            for i in range(len(self._refine_history)):
-                self._refine_matrix = self._refine_history[i]
-                self.apply_refinement()
-        if refined_tmp:
-            self.refined = True
 
     def calc_z(self, ind, pos):
         z = None
@@ -432,16 +363,14 @@ class FM_ops(Peak_finding):
     def estimate_alignment(self, peaks_2d):
         if self._transformed:
             if self._show_max_proj:
-                if self.refined:
-                    data = np.copy(self.refined_max_proj)
-                else:
-                    data = np.copy(self.tf_max_proj_data)
-
+                data = np.copy(self.tf_max_proj_data)
             else:
-                if self.refined:
-                    data = np.copy(self.refined_data)
-                else:
-                    data = np.copy(self.tf_data)
+                data = np.copy(self.tf_data)
+        else:
+            if self._show_max_proj:
+                data = np.copy(self.max_proj_data)
+            else:
+                data = np.copy(self.orig_data)
         roi_size = 20
         green = []
         red = []
@@ -456,7 +385,7 @@ class FM_ops(Peak_finding):
                 green_coor_i = self.peak_finding(data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
                                                  self._transformed, roi=True)
             else:
-                green_coor_i = self.peak_finding(self.data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
+                green_coor_i = self.peak_finding(data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
                                                  self._transformed, roi=True)
             if green_coor_i is not None:
                 green_coor_0 = green_coor_i[0] + peaks_2d[i][0] - roi_size // 2 if green_coor_i[0] + peaks_2d[i][0] \
@@ -593,7 +522,6 @@ class FM_ops(Peak_finding):
             self.transp = False
             self.rot = False
             self.flipv = False
-            self.refined = False
 
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
@@ -661,95 +589,6 @@ class FM_ops(Peak_finding):
             self.data = np.copy(self.tf_data)
 
         self._transformed = True
-
-    def calc_refine_matrix(self, src, dst):
-        if self.tf_data is not None:
-            self._refine_matrix = tf.estimate_transform('affine', src, dst).params
-            nx, ny = self.data.shape[:-1]
-            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            self.refine_corners = np.dot(self._refine_matrix, corners)
-            self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
-            self._refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
-            print(self._refine_matrix)
-            self._refine_history.append(self._refine_matrix)
-
-    def apply_refinement(self):
-        data_tmp = np.copy(self.data)
-        self.data = np.empty(self._refine_shape+(self.data.shape[-1],))
-        for i in range(self.data.shape[-1]):
-            self.data[:,:,i] = ndi.affine_transform(data_tmp[:,:,i], np.linalg.inv(self._refine_matrix), order=1, output_shape=self._refine_shape)
-            sys.stderr.write('\r%d'%i)
-        if self._show_max_proj:
-            self.refined_max_proj = np.copy(self.data)
-        else:
-            self.refined_data = np.copy(self.data)
-        print('\r', self.data.shape)
-
-        self.refine_peaks()
-        self.refined = True
-
-    def undo_refinement(self, src, dst, em_points):
-        if len(self._refine_history) > 1:
-            nx, ny = self.data.shape[:-1]
-            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-
-            inv_refine_matrix = np.linalg.inv(self._refine_history[-1])
-            self.refine_corners = np.dot(inv_refine_matrix, corners)
-            self._refine_shape = tuple([int(i) for i in (self.refine_corners.max(1) - self.refine_corners.min(1))[:2]])
-            for i in range(self.points.shape[0]):
-                point = np.array([self.points[i, 0], self.points[i, 1], 1])
-                self.points[i] = (np.linalg.inv(self._refine_history[-1]) @ point)[:2]
-
-            inv_refine_matrix[:2, 2] -= self.refine_corners.min(1)[:2]
-            data_tmp = np.copy(self.data)
-            self.data = np.empty(self._refine_shape + (self.data.shape[-1],))
-            for i in range(self.data.shape[-1]):
-                self.data[:,:,i] = ndi.affine_transform(data_tmp[:,:,i], np.linalg.inv(inv_refine_matrix), order=1, output_shape=self._refine_shape)
-                sys.stderr.write('\r%d'%i)
-            if self._show_max_proj:
-                self.refined_max_proj = np.copy(self.data)
-            else:
-                self.refined_data = np.copy(self.data)
-            self.refine_peaks(undo=True)
-
-
-            dst_new = np.array([(inv_refine_matrix_no_shift @ np.array([point[0], point[1], 1]))[:2] for point in src])
-
-            corr_matrix_new = tf.estimate_transform('affine', src_new, dst).params
-
-            grid_matrix = inv_refine_matrix @ np.linalg.inv(corr_matrix_new)
-            self._tf_points = np.array([(grid_matrix @ np.array([point[0], point[1], 1]))[:2] for point in em_points])
-            self.points = np.copy(self._tf_points)
-
-            del self._refine_history[-1]
-            self._refine_matrix = self._refine_history[-1]
-        else:
-            print('Data is not refined!')
-
-    def refine_peaks(self, undo=False):
-        if undo:
-            if self.tf_peak_slices is not None:
-                for i in range(len(self.tf_peak_slices)):
-                    if self.tf_peak_slices[i] is not None:
-                        peaks_2d = self.tf_peak_slices[i]
-                        for k in range(len(peaks_2d)):
-                            peaks_2d[k] = (np.linalg.inv(self._refine_history[-1]) @ (peaks_2d[k][0], peaks_2d[k][1], 1))[:2]
-                        self.tf_peak_slices[i] = np.copy(peaks_2d)
-        else:
-            if self.tf_peak_slices is not None:
-                for i in range(len(self.tf_peak_slices)):
-                    if self.tf_peak_slices[i] is not None:
-                        peaks_2d = self.tf_peak_slices[i]
-                        for k in range(len(peaks_2d)):
-                            peaks_2d[k] = (self._refine_matrix @ (peaks_2d[k][0], peaks_2d[k][1], 1))[:2]
-                        self.tf_peak_slices[i] = np.copy(peaks_2d)
-
-    def refine_grid(self, src, dst, em_points):
-        print('refine grid')
-        corr_matrix_new = tf.estimate_transform('affine',src,dst).params
-        grid_matrix = self._refine_matrix @ np.linalg.inv(corr_matrix_new)
-        self._tf_points = np.array([(grid_matrix @ np.array([point[0],point[1],1]))[:2] for point in em_points])
-        self.points = np.copy(self._tf_points)
 
     def optimize(self, fm_max, em_img, fm_points, em_points):
         def preprocessing(img, points, size=15, em=False):

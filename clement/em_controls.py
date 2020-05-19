@@ -220,7 +220,6 @@ class EMControls(BaseControls):
         self._recalc_grid()
         self._update_imview()
 
-
     def _show_boxes(self):
         if self.ops is None:
             return

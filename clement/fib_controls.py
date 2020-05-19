@@ -162,7 +162,7 @@ class FIBControls(BaseControls):
 
     def _transpose(self):
         self.ops.transpose()
-        self._calc_grid(transpose=True)
+        self._recalc_grid(transpose=True)
         self._update_imview()
 
     def enable_buttons(self, enable=False):
@@ -172,14 +172,14 @@ class FIBControls(BaseControls):
 
     def _show_grid(self):
         if self.show_grid_btn.isChecked():
-            self._calc_grid()
+            self._recalc_grid()
             self.show_grid_box = True
             self.imview.addItem(self.grid_box)
         else:
             self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
 
-    def _calc_grid(self, transpose=False, scaling=1):
+    def _recalc_grid(self, transpose=False, scaling=1):
         if not transpose:
             if self.sem_ops is not None:
                 if self.ops.fib_matrix is None:
@@ -206,22 +206,11 @@ class FIBControls(BaseControls):
             yshift = int(self.shift_y_btn.text())
             self.ops.calc_grid_shift(xshift, yshift)
             print('New Points: \n', self.ops.points)
-            self._calc_grid()
+            self._recalc_grid()
             self.shift_x_btn.setText('0')
             self.shift_y_btn.setText('0')
         else:
             print('You have to calculate the grid box first!')
-
-    def _refine_fib(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if len(self._points_corr) < 4:
-            print('You have to select at least 4 points!')
-        else:
-            self._refine()
-            #self.ops.apply_refinement(self.ops.points)
-            self._calc_grid()
-            self.err_btn.setText('{:.2f}'.format(self._rms*self.ops.pixel_size[0]*1e9))
-        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

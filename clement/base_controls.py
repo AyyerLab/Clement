@@ -246,10 +246,8 @@ class BaseControls(QtWidgets.QWidget):
             self._points_corr_z.remove(self._points_corr_z[idx])
             self.other._points_corr_z.remove(self.other._points_corr_z[idx])
 
-        if hasattr(self, 'fib'):
-            self._orig_points_corr.remove(self._orig_points_corr[idx])
-        else:
-            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
+        self._orig_points_corr.remove(self._orig_points_corr[idx])
+        self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
 
     def _remove_points_flip(self):
         if self.fixed_orientation:
@@ -313,7 +311,7 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 print('You have to select exactly 4 points. Try again!')
                 [self.imview.removeItem(roi) for roi in self.clicked_points]
-                self._show_grid(None)
+                self._show_grid()
                 self.clicked_points = []
 
     def _recalc_grid(self, toggle_orig=False):
@@ -341,7 +339,7 @@ class BaseControls(QtWidgets.QWidget):
                         self.redo_tr = False
                 print('Recalculating transformed grid...')
                 self.tr_grid_box = poly_line
-            self._show_grid(None)
+            self._show_grid()
 
     def store_grid_box_points(self):
         points_obj = self.grid_box.getState()['points']
@@ -356,7 +354,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops._orig_points = points
             self.ops.points = points
 
-    def _show_grid(self, state):
+    def _show_grid(self):
         if self.show_grid_btn.isChecked():
             if self.show_btn.isChecked():
                 self.show_grid_box = True
@@ -413,7 +411,6 @@ class BaseControls(QtWidgets.QWidget):
         if condition:
             if checked:
                 print('Select points of interest on %s image'%self.tag)
-                self.fixed_orientation = True
                 if len(self._points_corr) != 0:
                     [self.imview.removeItem(point) for point in self._points_corr]
                     [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -529,9 +526,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _show_original(self):
             if self.ops is not None:
-
                 self.ops._transformed = not self.ops._transformed
-                print('Transformed: ',self.ops._transformed)
                 align = False
                 if hasattr(self.ops, 'flipv') and not self.ops._transformed:
                     if self.align_btn.isChecked() and self.ops.color_matrix is None:
@@ -545,7 +540,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.merge_btn.setEnabled(True)
                     self.refine_btn.setEnabled(True)
                 elif hasattr(self.ops, 'flipv') and self.ops._transformed:
-                    if not self.ops.refined:
+                    if not self.fixed_orientation:
                         self.flipv.setEnabled(True)
                         self.fliph.setEnabled(True)
                         self.transpose.setEnabled(True)
@@ -554,14 +549,7 @@ class BaseControls(QtWidgets.QWidget):
                         self.merge_btn.setEnabled(True)
                         self.refine_btn.setEnabled(True)
 
-                print('Transformed?', self.ops._transformed)
-                if hasattr(self.ops,'refined'):
-                    if self.ops.refined:
-                        self.ops.toggle_original(update=False)
-                    else:
-                        self.ops.toggle_original()
-                else:
-                    self.ops.toggle_original()
+                self.ops.toggle_original()
                 self._recalc_grid(toggle_orig=True)
 
                 show_peaks = False
@@ -607,8 +595,6 @@ class BaseControls(QtWidgets.QWidget):
                 [self.imview.removeItem(anno) for anno in self.anno_list]
                 [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
 
-
-
     def _refine(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
@@ -620,36 +606,26 @@ class BaseControls(QtWidgets.QWidget):
                                 self.other._orig_points_corr])
                 fm_points = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
                                       for point in self._points_corr])
-                em_points = np.copy(dst)
-                np.save('fm_points.npy', fm_points)
-                np.save('fm_points_z.npy', self._points_corr_z)
-                np.save('em_points.npy', em_points)
 
-                self.other._merge_points = np.copy(em_points)
+                self.other._merge_points = np.copy(dst)
                 self._merge_points = np.copy(fm_points)
 
                 if self.other.fib:
                     idx = 1
-                    refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
                     self._merge_points_z = np.copy(self._points_corr_z)
-                    self.other.ops.calc_refine_matrix(src,dst)
-                    self.other.ops.apply_refinement()
-                    self.other._refined = True
-                    self.other._calc_grid()
-                    self._estimate_precision(idx, refine_matrix_old)
                     self.ops.merged_3d = None
                 else:
                     idx = 0
-                    refine_matrix_old = copy.copy(self.ops._refine_matrix)
-                    self.ops.calc_refine_matrix(src, dst)
-                    self.ops.apply_refinement()
-                    self._refined = True
-                    self.other._refined = True
-                    self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
-                    self._recalc_grid()
-                    self._estimate_precision(idx, refine_matrix_old)
                     self.ops.merged_2d = None
 
+                refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
+                self.other.ops.calc_refine_matrix(src,dst)
+                self.other.ops.apply_refinement()
+                self.other._refined = True
+                self.other._recalc_grid()
+                self._estimate_precision(idx, refine_matrix_old)
+
+                self.fixed_orientation = True
                 self.fliph.setEnabled(False)
                 self.flipv.setEnabled(False)
                 self.auto_opt_btn.setChecked(False)
@@ -673,6 +649,28 @@ class BaseControls(QtWidgets.QWidget):
             print('Select at least 4 points for refinement!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
+    def _undo_refinement(self):
+        if self.other.fib:
+            idx = 1
+        else:
+            idx = 0
+
+        self.other.ops.undo_refinement()
+        for i in range(len(self._points_corr)):
+            self._remove_correlated_points(self._points_corr[0])
+        self.other._recalc_grid()
+
+        if len(self.other.ops._refine_history) == 1:
+            self.fliph.setEnabled(True)
+            self.flipv.setEnabled(True)
+            self.rotate.setEnabled(True)
+            self.transpose.setEnabled(True)
+            self.other._refined = False
+            self.undo_refine_btn.setEnabled(False)
+            self.other.err_btn.setText('0')
+            self.fixed_orientation = False
+        else:
+            self._estimate_precision(idx, self.other.ops._refine_matrix)
 
     def _estimate_precision(self, idx, refine_matrix_old):
         sel_points = [[point.x() + self.other.size/2, point.y()+self.other.size/2] for point in self.other._points_corr]
@@ -690,7 +688,7 @@ class BaseControls(QtWidgets.QWidget):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size / 2, orig_point[1] + self.size / 2, 1])
                 self.other.corr_points.append(np.copy((tr_matrix @ init)[:2]))
-                transf = tr_matrix @ self.ops._refine_matrix @ init
+                transf = self.other.ops._refine_matrix @ tr_matrix @ init
                 calc_points.append(transf[:2])
         else:
             orig_fm_points_z = np.copy(self._points_corr_z)

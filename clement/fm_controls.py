@@ -525,11 +525,11 @@ class FMControls(BaseControls):
                 if self.map_btn.isChecked():
                     if self.ops._transformed:
                         if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.data[:,:,-1], transformed=True)
+                            self.ops.peak_finding(self.ops.tf_max_proj_data[:,:,-1], transformed=True)
                         peaks_2d = self.ops.tf_peak_slices[-1]
                     else:
                         if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.data[:, :, -1], transformed=False)
+                            self.ops.peak_finding(self.ops.max_proj_data[:, :, -1], transformed=False)
                         peaks_2d = self.ops.peak_slices[-1]
                 else:
                     if self.max_proj_btn.isChecked():
@@ -635,51 +635,9 @@ class FMControls(BaseControls):
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _undo_refinement(self):
-        if self.other.fib:
-            idx = 1
-            self.other.ops.undo_refinement()
-            self.other._calc_grid()
-            if len(self.other.ops._refine_history) == 1:
-                self.other._refined = False
-                self.undo_refine_btn.setEnabled(False)
-                self.other.err_btn.setText('0')
-            else:
-                self._estimate_precision(idx, self.other.ops._refine_matrix)
-
-        else:
-            idx = 0
-            em_points = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
-                            self.other._points_corr])
-            fm_points = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
-                                  for point in self._points_corr])
-            self.ops.undo_refinement(fm_points, em_points, self.other.ops.points)
-            self._recalc_grid()
-            if len(self.ops._refine_history) == 1:
-                self._refined = False
-                self.other._refined = False
-                self.undo_refine_btn.setEnabled(False)
-                self.other.err_btn.setText('0')
-
-            else:
-                self._estimate_precision(idx, self.ops._refine_matrix)
-            self._update_imview()
-
-        self.fliph.setEnabled(True)
-        self.flipv.setEnabled(True)
-        self.rotate.setEnabled(True)
-        self.transpose.setEnabled(True)
-
-
-
-
-
-
-
-
 
     def reset_init(self):
-        
+
         #self.ops = None
         #self.other = None # The other controls object
         if self.show_grid_btn.isChecked():
@@ -691,7 +649,6 @@ class FMControls(BaseControls):
         self._box_coordinate = None
         self._points_corr = []
         self._points_corr_indices= []
-        self._refined = False
         self._refine_history = []
         self._refine_counter = 0 
         #self._merged = False

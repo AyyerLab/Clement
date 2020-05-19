@@ -355,6 +355,7 @@ class EM_ops():
         self.points = np.array(dst[:,:2])
         if self._orig_points is None:
             self._orig_points = np.copy(self.points)
+            self._tf_points = np.copy(self.points)
 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
@@ -433,10 +434,7 @@ class EM_ops():
         self.fib_matrix[:2, 3] = shift
 
     def calc_refine_matrix(self, src, dst):
-        print('Source: \n', src)
-        print('Dest: \n', dst)
         refine_matrix = tf.estimate_transform('affine', src, dst).params
-        print('Refine matrix i: \n', refine_matrix)
 
         if self._refine_matrix is None:
             self._refine_matrix = refine_matrix
@@ -449,7 +447,7 @@ class EM_ops():
     def apply_refinement(self, points=None):
         update_points = False
         if points is None:
-            points = np.copy(self._orig_points)
+            points = np.copy(self._tf_points)
             update_points = True
         for i in range(points.shape[0]):
             point = np.array([points[i,0], points[i,1], 1])
@@ -561,7 +559,6 @@ class EM_ops():
             precision.append(np.mean(precision_i))
             num_points += 1
 
-        print(calc_points)
         precision = np.array(precision) * self.pixel_size[0]
         return precision
 

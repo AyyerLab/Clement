@@ -99,12 +99,6 @@ class Project(QtWidgets.QWidget):
         self.fm.map_btn.setChecked(fmdict['Show z map'])
         self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
 
-        self.fm._refined = fmdict['Refined']
-        if self.fm._refined:
-            self.fm.ops._refine_shape = tuple(fmdict['Refine shape'])
-            self.fm.ops._refine_matrix = np.array(fmdict['Refine matrix'])
-            self.fm.ops._refine_history.append(self.fm.ops._refine_matrix)
-            self.fm.ops.apply_refinement()
         try:
             self.fm._merge_points = np.array(fmdict['Merge points'])
             self.fm._merge_points_z = np.array(fmdict['Merge points z'])
@@ -278,33 +272,34 @@ class Project(QtWidgets.QWidget):
                 emdict = project['EM']
                 em = self.em
 
-            self.fm.select_btn.setChecked(True)
             points_corr_fm = fmdict['Correlated points']
-            qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
-            [self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
-            for point in qpoints]
+            if len(points_corr_fm) != 0:
+                self.fm.select_btn.setChecked(True)
+                qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
+                [self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
+                for point in qpoints]
 
-            #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
-            try:
-                points_corr_em = emdict['Correlated points']
-                qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_em)]
-                roi_list_em = [pg.CircleROI(qpoints[i],em.size, parent=em.imview.getImageItem(),
-                                            movable=True, removable=True) for i in range(len(qpoints))]
-                [roi.setPen(0,255,255) for roi in roi_list_em]
-                [roi.removeHandle(0) for roi in roi_list_em]
+                #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
+                try:
+                    points_corr_em = emdict['Correlated points']
+                    qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_em)]
+                    roi_list_em = [pg.CircleROI(qpoints[i],em.size, parent=em.imview.getImageItem(),
+                                                movable=True, removable=True) for i in range(len(qpoints))]
+                    [roi.setPen(0,255,255) for roi in roi_list_em]
+                    [roi.removeHandle(0) for roi in roi_list_em]
 
-                anno_list = [pg.TextItem(str(idx+1), color=(0,255,255), anchor=(0,0))
-                             for idx in self.fm._points_corr_indices]
-                for i in range(len(anno_list)):
-                    anno_list[i].setPos(qpoints[i].x()+5, qpoints[i].y()+5)
+                    anno_list = [pg.TextItem(str(idx+1), color=(0,255,255), anchor=(0,0))
+                                 for idx in self.fm._points_corr_indices]
+                    for i in range(len(anno_list)):
+                        anno_list[i].setPos(qpoints[i].x()+5, qpoints[i].y()+5)
 
-                [em.imview.removeItem(point) for point in em._points_corr]
-                [em.imview.removeItem(anno) for anno in em.anno_list]
-                [em.imview.addItem(anno) for anno in anno_list]
-                em._points_corr = roi_list_em
-                em.anno_list = anno_list
-            except KeyError:
-                pass
+                    [em.imview.removeItem(point) for point in em._points_corr]
+                    [em.imview.removeItem(anno) for anno in em.anno_list]
+                    [em.imview.addItem(anno) for anno in anno_list]
+                    em._points_corr = roi_list_em
+                    em.anno_list = anno_list
+                except KeyError:
+                    pass
         except KeyError:
             pass
 
@@ -426,12 +421,6 @@ class Project(QtWidgets.QWidget):
         fmdict['Original correlated points'] = self.fm._orig_points_corr
         fmdict['Correlated points indices'] = self.fm._points_corr_indices
 
-        total_refine_matrix = np.identity(3)
-        for i in range(len(self.fm.ops._refine_history)):
-            total_refine_matrix = self.fm.ops._refine_history[i] @ total_refine_matrix
-        fmdict['Refine matrix'] = total_refine_matrix.tolist()
-        fmdict['Refine shape'] = list(self.fm.ops._refine_shape) if self.fm.ops._refine_shape is not None else None
-        fmdict['Refined'] = self.fm._refined
         if self.fib._refined:
             fmdict['Merge points'] = self.fm._merge_points.tolist()
             fmdict['Merge points z'] = self.fm._merge_points_z.tolist()
@@ -466,6 +455,7 @@ class Project(QtWidgets.QWidget):
         emdict['Correlated points indices'] = self.em._points_corr_indices
         emdict['Refined'] = self.em._refined
         if self.em._refined:
+            emdict['Refine matrix'] = self.em.ops._refine_matrix.tolist()
             emdict['Error distribution'] = self.em._err[0].tolist()
             emdict['Std'] = np.array(self.em._std[0]).tolist()
             emdict['Error gauss'] = self.em._dist.tolist()
