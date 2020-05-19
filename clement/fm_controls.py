@@ -514,13 +514,14 @@ class FMControls(BaseControls):
         if self.ops is not None:
             if self.peak_btn.isChecked():
                 flip = False
-                if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
-                    fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
-                    self.fliph.setChecked(False)
-                    self.flipv.setChecked(False)
-                    self.transpose.setChecked(False)
-                    self.rotate.setChecked(False)
-                    flip = True
+                if not self._refined:
+                    if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
+                        fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
+                        self.fliph.setChecked(False)
+                        self.flipv.setChecked(False)
+                        self.transpose.setChecked(False)
+                        self.rotate.setChecked(False)
+                        flip = True
 
                 if self.map_btn.isChecked():
                     if self.ops._transformed:
@@ -653,14 +654,13 @@ class FMControls(BaseControls):
                             self.other._points_corr])
             fm_points = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
                                   for point in self._points_corr])
-            self.ops.undo_refinement(fm_points, em_points, self.other.ops.points)
+            self.ops.undo_refinement(self.other.ops.points)
             self._recalc_grid()
             if len(self.ops._refine_history) == 1:
                 self._refined = False
                 self.other._refined = False
                 self.undo_refine_btn.setEnabled(False)
                 self.other.err_btn.setText('0')
-
             else:
                 self._estimate_precision(idx, self.ops._refine_matrix)
             self._update_imview()

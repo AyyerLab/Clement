@@ -422,6 +422,8 @@ class BaseControls(QtWidgets.QWidget):
                     else:
                         self.ops.load_channel(ind=2)
                 else:
+                    if not self.other._refined:
+                        self.peak_btn.setChecked(True)
                     src_sorted = np.array(
                         sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
                     dst_sorted = np.array(
@@ -430,6 +432,7 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 if hasattr(self.other, 'fib') and self.ops.channel is not None:
                     self.ops.clear_channel()
+                self.refine_btn.setEnabled(True)
                 print('Done selecting points of interest on %s image'%self.tag)
         else:
             if checked:
@@ -580,7 +583,6 @@ class BaseControls(QtWidgets.QWidget):
                 [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
 
 
-
     def _refine(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if len(self._points_corr) > 3:
@@ -614,7 +616,7 @@ class BaseControls(QtWidgets.QWidget):
                     idx = 0
                     refine_matrix_old = copy.copy(self.ops._refine_matrix)
                     self.ops.calc_refine_matrix(src, dst)
-                    self.ops.apply_refinement()
+                    self.ops.apply_refinement(self.other.ops.points)
                     self._refined = True
                     self.other._refined = True
                     self.ops.refine_grid(fm_points, em_points, self.other.ops.points)
@@ -629,7 +631,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.rotate.setEnabled(False)
                 self.other.err_plt_btn.setEnabled(True)
                 self.other.convergence_btn.setEnabled(True)
+                self.refine_btn.setEnabled(False)
                 self.undo_refine_btn.setEnabled(True)
+                self.auto_opt_btn.setChecked(False)
 
                 [self.imview.removeItem(point) for point in self._points_corr]
                 [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -637,7 +641,6 @@ class BaseControls(QtWidgets.QWidget):
                 [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
 
                 self._update_imview()
-                self.auto_opt_btn.setChecked(False)
                 print('merge_points: ', self._merge_points)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
