@@ -139,15 +139,6 @@ class EMControls(BaseControls):
         line.addWidget(self.convergence_btn)
         line.addStretch(1)
 
-
-        # ---- Quit button
-        vbox.addStretch(1)
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        line.addStretch(1)
-        self.quit_button = QtWidgets.QPushButton('Quit', self)
-        line.addWidget(self.quit_button)
-
         self.show()
 
     def _load_mrc(self, jump=False):

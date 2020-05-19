@@ -72,6 +72,7 @@ class GUI(QtGui.QMainWindow):
         layout.addLayout(options)
 
         self.fmcontrols = FMControls(self.fm_imview, self.colors)
+        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
         self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fmcontrols)
 
@@ -91,6 +92,7 @@ class GUI(QtGui.QMainWindow):
         self.tab_3d.setLayout(vbox_3d)
 
         self.emcontrols = EMControls(self.tem_imview, vbox_2d)
+        self.tem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.emcontrols._couple_views)
         self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_2d.addWidget(self.emcontrols)
         self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops)
@@ -99,10 +101,8 @@ class GUI(QtGui.QMainWindow):
 
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
-        self.emcontrols.quit_button.clicked.connect(self.close)
         self.emcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
         self.emcontrols.other = self.fmcontrols
-        self.fibcontrols.quit_button.clicked.connect(self.close)
         self.fibcontrols.err_plt_btn.clicked.connect(lambda : self._show_scatter(idx=1))
         self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
@@ -174,8 +174,8 @@ class GUI(QtGui.QMainWindow):
 
     def select_tab(self, idx):
         self.fmcontrols.select_btn.setChecked(False)
-        self.fmcontrols.select_btn.setChecked(True)
-        self.fmcontrols.select_btn.setChecked(False)
+        for i in range(len(self.fmcontrols._points_corr)):
+            self.fmcontrols._remove_correlated_points(self.fmcontrols._points_corr[0])
         if idx == 0:
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
@@ -196,6 +196,8 @@ class GUI(QtGui.QMainWindow):
             self.fibcontrols.sem_ops = self.emcontrols.ops
             self.fmcontrols.other = self.fibcontrols
             if self.emcontrols.ops is not None:
+                if self.emcontrols.ops._tf_points is not None:
+                    self.fibcontrols.ops._transformed = True
                 if self.emcontrols.ops._orig_points is not None:
                     self.fibcontrols.enable_buttons(enable=True)
                 else:

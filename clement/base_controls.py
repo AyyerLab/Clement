@@ -46,13 +46,15 @@ class BaseControls(QtWidgets.QWidget):
         self.peaks = []
         self.num_slices = None
         self.min_conv_points = 10
+        self.my_z = []
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
 
     def _imview_clicked(self, event):
         if event.button() == QtCore.Qt.RightButton:
-            event.ignore()
+            #event.ignore()
+            self._couple_views()
             return
 
         if self.ops is None:
@@ -96,7 +98,34 @@ class BaseControls(QtWidgets.QWidget):
                 print('Oops, something went wrong. Try again!')
 
     def _couple_views(self):
-        pass
+        if self.other.ops is not None:
+            if self.ops._transformed and self.other.ops._transformed:
+                vrange = self.imview.getImageItem().getViewBox().targetRect()
+                p1 = np.array([vrange.bottomLeft().x(), vrange.bottomLeft().y()])
+                p2 = np.array([vrange.bottomRight().x(), vrange.bottomRight().y()])
+                p3 = np.array([vrange.topRight().x(), vrange.topRight().y()])
+                p4 = np.array([vrange.topLeft().x(), vrange.topLeft().y()])
+                points = [p1, p2, p3, p4]
+                tf_points = []
+                if hasattr(self, 'select_btn') and not self.other.fib:
+                    src_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    dst_sorted = np.array(sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+                    tf_points = np.array([(tr_matrices @ np.array([point[0], point[1], 1]))[:2] for point in points])
+                elif hasattr(self.other, 'select_btn') and not self.fib:
+                    src_sorted = np.array(sorted(self.other.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    dst_sorted = np.array(sorted(self.ops.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
+                    tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
+                    tf_points = np.array([(np.linalg.inv(tr_matrices) @ np.array([point[0], point[1], 1]))[:2] for point in points])
+                else:
+                    return
+                xmin = tf_points.min(0)[0]
+                xmax = tf_points.max(0)[0]
+                ymin = tf_points.min(0)[1]
+                ymax = tf_points.max(0)[1]
+                self.other.imview.getImageItem().getViewBox().blockSignals(True)
+                self.other.imview.getImageItem().getViewBox().setRange(xRange=(xmin, xmax), yRange=(ymin, ymax))
+                self.other.imview.getImageItem().getViewBox().blockSignals(False)
 
     def _draw_correlated_points(self, pos, item):
         if self.other.ops is None:
@@ -123,7 +152,6 @@ class BaseControls(QtWidgets.QWidget):
                 if self.tr_matrices is not None:
                     peaks = None
                     if self.other.fib and self.ops.tf_peaks_z is not None:
-                        print('heeeeeeeeeeeeeeeeeeeeeere')
                         ind = self.ops.check_peak_index(point, self.size)
                         if ind is None and not self.other._refined:
                             print('You have to select a bead for the first refinement!')

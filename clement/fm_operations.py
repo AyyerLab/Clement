@@ -839,9 +839,6 @@ class FM_ops(Peak_finding):
         print('Merged.shape: ', self.merged_2d.shape)
 
     def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values, corr_points_fib, channel):
-        print(corr_points_fm)
-        print(corr_points_fib)
-
         rot_matrix = np.identity(3)
         if self.transp:
             rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -951,3 +948,4 @@ class FM_ops(Peak_finding):
             return
         self.corr_matrix = tf.estimate_transform('affine', source, dest).params
         return self.corr_matrix
+
