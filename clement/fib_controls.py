@@ -234,8 +234,42 @@ class FIBControls(BaseControls):
         if self.show_grid_btn.isChecked():
            self.imview.removeItem(self.grid_box)
 
+        self._box_coordinate = None
         self._points_corr = []
-        self._points_corr_indices= []
+        self._points_corr_z = []
+        self._orig_points_corr = []
+        self._points_corr_indices = []
+        self._refined = False
+        self._err = [None, None]
+        self._std = [[None, None], [None, None]]
+        self._conv = [None, None]
+        self._dist = None
+
+        self._points_corr_history = []
+        self._points_corr_z_history = []
+        self._orig_points_corr_history = []
+        self._fib_vs_sem_history = []
+
+        self.flips = [False, False, False, False]
+        self.tr_matrices = None
+        self.show_grid_box = False
+        self.show_tr_grid_box = False
+        self.clicked_points = []
+        self.grid_box = None
+        self.tr_grid_box = None
+        self.boxes = []
+        self.tr_boxes = []
+        self.redo_tr = False
+        self.setContentsMargins(0, 0, 0, 0)
+        self.counter = 0
+        self.anno_list = []
+        self.size = 10
+        self.orig_size = 10
+        self.fixed_orientation = False
+        self.peaks = []
+        self.num_slices = None
+        self.min_conv_points = 10
+
         self.show_grid_box = False
         self.grid_box = None
         self.transp_btn.setEnabled(False)

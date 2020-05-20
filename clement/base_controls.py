@@ -27,6 +27,7 @@ class BaseControls(QtWidgets.QWidget):
 
         self._points_corr_history = []
         self._points_corr_z_history = []
+        self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
 
 
@@ -49,7 +50,6 @@ class BaseControls(QtWidgets.QWidget):
         self.peaks = []
         self.num_slices = None
         self.min_conv_points = 10
-        self.my_z = []
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -198,6 +198,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.anno_list.append(annotation_obj)
 
                     self._points_corr_indices.append(self.counter-1)
+                    self.other._points_corr_indices.append(self.counter-1)
 
                     print('2d init: ', init)
                     if hasattr(self.other, 'fib') and self.other.fib:
@@ -249,6 +250,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other.anno_list.remove(self.other.anno_list[idx])
 
         self._points_corr_indices.remove(self._points_corr_indices[idx])
+        self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
 
         if (hasattr(self, 'fib') and self.fib) or (hasattr(self.other, 'fib') and self.other.fib):
             self._points_corr_z.remove(self._points_corr_z[idx])
@@ -419,25 +421,9 @@ class BaseControls(QtWidgets.QWidget):
         if condition:
             if checked:
                 print('Select points of interest on %s image'%self.tag)
-                if len(self._points_corr) != 0:
-                    [self.imview.removeItem(point) for point in self._points_corr]
-                    [self.other.imview.removeItem(point) for point in self.other._points_corr]
-                    [self.imview.removeItem(anno) for anno in self.anno_list]
-                    [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
-                    self.anno_list = []
-                    self.other.anno_list = []
-                    self.counter = 0
-                    self.other.counter = 0
-                    self._points_corr = []
-                    self.other._points_corr = []
-                    self._points_corr_z = []
-                    self.other._points_corr_z = []
-                    self._orig_points_corr = []
-                    self.other._orig_points_corr = []
-                    self._points_corr_indices = []
-                    self.other._points_corr_indices = []
-                    self.other.size = self.orig_size
-
+                for i in range(len(self._points_corr)):
+                    self._remove_correlated_points(self._points_corr[0])
+                self.counter = 0
                 if self.other.fib:
                     src_sorted = np.array(
                         sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -617,9 +603,11 @@ class BaseControls(QtWidgets.QWidget):
                                 self.other._orig_points_corr])
 
                 self._points_corr_history.append(copy.copy(self._points_corr))
-                self.other._points_corr_history.append(copy.copy(self.other._points_corr))
                 self._points_corr_z_history.append(copy.copy(self._points_corr_z))
+                self._orig_points_corr_history.append(copy.copy(self._orig_points_corr))
+                self.other._points_corr_history.append(copy.copy(self.other._points_corr))
                 self.other._points_corr_z_history.append(copy.copy(self.other._points_corr_z))
+                self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
                 self._fib_vs_sem_history.append(self.other.fib)
 
                 if self.other.fib:
@@ -646,10 +634,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.other.convergence_btn.setEnabled(True)
                 self.undo_refine_btn.setEnabled(True)
 
-                [self.imview.removeItem(point) for point in self._points_corr]
-                [self.other.imview.removeItem(point) for point in self.other._points_corr]
-                [self.imview.removeItem(anno) for anno in self.anno_list]
-                [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
+                for i in range(len(self._points_corr)):
+                    self._remove_correlated_points(self._points_corr[0])
 
                 self._update_imview()
             else:
@@ -660,11 +646,32 @@ class BaseControls(QtWidgets.QWidget):
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()
-        for i in range(len(self._points_corr)):
-            self._remove_correlated_points(self._points_corr[0])
+        for idx in range(len(self._points_corr)):
+            self._points_corr.remove(self._points_corr[idx])
+            self.other._points_corr.remove(self.other._points_corr[idx])
+
+            self.anno_list.remove(self.anno_list[idx])
+            self.other.anno_list.remove(self.other.anno_list[idx])
+
+            self._points_corr_indices.remove(self._points_corr_indices[idx])
+            self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
+
+            if (hasattr(self, 'fib') and self.fib) or (hasattr(self.other, 'fib') and self.other.fib):
+                self._points_corr_z.remove(self._points_corr_z[idx])
+                self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+
+            self._orig_points_corr.remove(self._orig_points_corr[idx])
+            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
+        #for i in range(len(self._points_corr)):
+        #    self._remove_correlated_points(self._points_corr[0])
+
         del self._points_corr_history[-1]
         del self._points_corr_z_history[-1]
+        del self._orig_points_corr_history[-1]
+
         del self.other._points_corr_history[-1]
+        del self.other._points_corr_z_history[-1]
+        del self.other._orig_points_corr_history[-1]
 
         self.other._recalc_grid()
 
@@ -682,13 +689,22 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self._points_corr = copy.copy(self._points_corr_history[-1])
             self._points_corr_z = copy.copy(self._points_corr_z_history[-1])
+            self._orig_points_corr = copy.copy(self._orig_points_corr_history[-1])
+
             self.other._points_corr = copy.copy(self.other._points_corr_history[-1])
+            self.other._points_corr_z = copy.copy(self.other._points_corr_z_history[-1])
+            self.other._orig_points_corr = copy.copy(self.other._orig_points_corr_history[-1])
+
             idx = 1 if self.other.fib else 0
             self._estimate_precision(idx, self.other.ops._refine_matrix)
 
+        if self.other._show_peaks_btn.isChecked():
+            self.other._show_peaks_btn.setChecked(False)
+            self.other._show_peaks_btn.setChecked(True)
+
     def _estimate_precision(self, idx, refine_matrix_old):
-        sel_points = [[point.x() + self.other.size/2, point.y()+self.other.size/2] for point in self.other._points_corr]
-        orig_fm_points = np.copy(self._points_corr)
+        sel_points = [[point.x() + self.other.size/2, point.y()+self.other.size/2] for point in self.other._points_corr_history[-1]]
+        orig_fm_points = np.copy(self._points_corr_history[-1])
 
         refined_points = []
         corr_points = []
@@ -729,15 +745,6 @@ class BaseControls(QtWidgets.QWidget):
             self.other._conv[idx] = convergence
         else:
             self.other._conv[idx] = []
-
-    def _convergence_plot(self, idx):
-        if self._conv[idx] is not None:
-            if len(self._conv[idx]) == 0:
-                print('To use this feature, you have to use at least 10 points for the refinement!')
-            else:
-                pg.plot(np.arange(self.min_conv_points-4, self.min_conv_points-4+len(self._conv[idx])), self._conv[idx])
-        else:
-            print('Data not refined yet!')
 
     def fit_circles(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

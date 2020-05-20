@@ -647,10 +647,11 @@ class FMControls(BaseControls):
         self._box_coordinate = None
         self._points_corr = []
         self._points_corr_indices= []
-        self._refine_history = []
-        self._refine_counter = 0 
-        #self._merged = False
-        
+        self._points_corr_history = []
+        self._points_corr_z_history = []
+        self._orig_points_corr_history = []
+        self._fib_vs_sem_history = []
+
         self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False

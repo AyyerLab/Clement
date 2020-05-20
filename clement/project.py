@@ -101,12 +101,6 @@ class Project(QtWidgets.QWidget):
 
         if 'Align colors' in fmdict:
             self.fm.align_btn.setChecked(fmdict['Align colors'])
-        #try:
-        #    self.fm._points_corr_history = [[QtCore.QPointF(p[0], p[1]) for p in plist] for plist in
-        #                                    fmdict['Correlated points history']]
-        #    self.fm._points_corr_z_history = fmdict['Correlated points z history']
-        #except KeyError:
-        #    pass
         self.fm._update_imview()
 
     def _load_em(self, project):
@@ -196,19 +190,6 @@ class Project(QtWidgets.QWidget):
         self.em.show_assembled_btn.setChecked(emdict['Show assembled'])
         self.em.show_btn.setChecked(emdict['Show original'])
 
-        #try:
-        #    self.em._points_corr_history = [[QtCore.QPointF(p[0], p[1]) for p in plist] for plist in
-                                            project['EM/Correlated points history']]
-            #self.em._err[1] = np.array(emdict['Error distribution'])
-            #self.em._std[1] = emdict['Std']
-            #self.em.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.em._std[0][0], self.em._std[0][1]))
-            #self.em._dist = np.array(emdict['Error gauss'])
-        #    self.fm._refine()
-        #    self.em.convergence_btn.setEnabled(True)
-        #    self.em.err_plt_btn.setEnabled(True)
-        #except KeyError:
-        #    pass
-
     def _load_fib(self, project):
         if 'FIB' not in project:
             return
@@ -233,27 +214,8 @@ class Project(QtWidgets.QWidget):
             self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
             self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
             self.fib._refine_grid()
-            #self.fib.ops.points = np.copy(self.fib.ops._orig_points)
-            #self.fib.ops.calc_grid_shift(new_points)
         except KeyError:
             pass
-
-        #try:
-        #    if fibdict['Refined']:
-                #self.fib._refined = fibdict['Refined']
-                #self.fib.ops._refine_matrix = np.array(fibdict['Refine matrix'])
-                #self.fib.ops.apply_refinement(self.fib.ops.points)
-                #self.fib._recalc_grid()
-                #self.fib._err[1] = np.array(fibdict['Error distribution'])
-                #self.fib._std[1] = fibdict['Std']
-                #self.fib.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.fib._std[1][0], self.fib._std[1][1]))
-                #self.fib._dist = np.array(fibdict['Error gauss'])
-        #        self.fib._points_corr_history = [[QtCore.QPointF(p[0], p[1]) for p in plist] for plist in project['FIB/Correlated points history']]
-        #        self.fm._refine()
-        #        self.fib.convergence_btn.setEnabled(True)
-        #        self.fib.err_plt_btn.setEnabled(True)
-        #except KeyError:
-        #    pass
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index']:
@@ -268,8 +230,59 @@ class Project(QtWidgets.QWidget):
     def _load_base(self, project):
         try:
             fmdict = project['FM']
-            print('show fib: ', self.show_fib)
-            if self.show_fib:
+            self.fm._fib_vs_sem_history = fmdict['FIB vs SEM history']
+            print('heeeeeeeeeeeeeeeeeeeeere')
+            print(self.fm._fib_vs_sem_history)
+            fib_counter = 0
+            sem_counter = 0
+            for i in range(len(self.fm._fib_vs_sem_history)):
+                if self.fm._fib_vs_sem_history[i]:
+                    emdict = project['FIB']
+                    em = self.fib
+                    counter = fib_counter
+                    fib_counter += 1
+                    em.fib = True
+                else:
+                    emdict = project['EM']
+                    em = self.em
+                    counter = sem_counter
+                    sem_counter += 1
+                    em.fib = False
+
+                self.fm.select_btn.setChecked(True)
+
+                fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
+                fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
+                                            movable=True, removable=True) for i in range(len(fm_qpoints))]
+                [circle.setPen(0, 255, 255) for circle in fm_circles]
+                [circle.removeHandle(0) for circle in fm_circles]
+                self.fm._points_corr = fm_circles
+                self.fm._points_corr_z = fmdict['Correlated points z history'][i]
+                self.fm._orig_points_corr = fmdict['Original correlated points history'][i]
+
+                em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter]]
+                em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
+                                            movable=True, removable=True) for i in range(len(em_qpoints))]
+                [circle.setPen(0, 255, 255) for circle in em_circles]
+                [circle.removeHandle(0) for circle in em_circles]
+                em._points_corr = em_circles
+                em._points_corr_z = emdict['Correlated points z history'][counter]
+                em._orig_points_corr = emdict['Original correlated points history'][counter]
+                em.ops._refine_matrix = np.array(emdict['Refinement history'][counter])
+
+                #This is just to avoid index error when removing points during refinement
+                [self.fm.anno_list.append(pg.TextItem(str(0), color=(0,255,0), anchor=(0,0))) for i in range(len(fm_qpoints))]
+                [em.anno_list.append(pg.TextItem(str(0), color=(0,255,0), anchor=(0,0))) for i in range(len(fm_qpoints))]
+                [self.fm._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
+                [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
+
+                self.fm.select_btn.setChecked(False)
+                self.fm._refine()
+
+        except KeyError:
+            pass
+        try:
+            if self.fib.show_fib:
                 emdict = project['FIB']
                 em = self.fib
             else:
@@ -427,6 +440,8 @@ class Project(QtWidgets.QWidget):
         fmdict['Correlated points indices'] = self.fm._points_corr_indices
         fmdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.fm._points_corr_history]
         fmdict['Correlated points z history'] = np.array(self.fm._points_corr_z_history).tolist()
+        fmdict['Original correlated points history'] = self.fm._orig_points_corr_history
+        fmdict['FIB vs SEM history'] = self.fm._fib_vs_sem_history
 
     def _save_em(self, project):
         emdict = {}
@@ -457,14 +472,10 @@ class Project(QtWidgets.QWidget):
         emdict['Original correlated points '] = self.em._orig_points_corr
         emdict['Correlated points indices'] = self.em._points_corr_indices
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.em._points_corr_history]
+        emdict['Correlated points z history'] = np.array(self.em._points_corr_z_history).tolist()
+        emdict['Original correlated points history'] = self.em._orig_points_corr_history
         emdict['Refined'] = self.em._refined
-        if self.em._refined:
-            emdict['Refine matrix'] = self.em.ops._refine_matrix.tolist()
-            emdict['Error distribution'] = self.em._err[0].tolist()
-            emdict['Std'] = np.array(self.em._std[0]).tolist()
-            emdict['Error gauss'] = self.em._dist.tolist()
-        if self.em._conv[1] is not None:
-            fibdict['Convergence'] = str(self.em._conv[0])
+        emdict['Refinement history'] = np.array(self.em.ops._refine_history).tolist()
 
     def _save_fib(self, project):
         fibdict = {}
@@ -476,8 +487,6 @@ class Project(QtWidgets.QWidget):
         fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
         fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
-        #if self.fib.ops.points is not None:
-        #    fibdict['Grid points'] = self.fib.ops._grid_points_tmp.tolist() if self.fib.ops._grid_points_tmp is not None else None
         if self.fib.ops._orig_points is not None:
             fibdict['Original points'] = self.fib.ops._orig_points.tolist()
         if self.fib.ops._total_shift is not None:
@@ -488,14 +497,10 @@ class Project(QtWidgets.QWidget):
         fibdict['Original correlated points {}'] = self.fib._orig_points_corr
         fibdict['Correlated points indices'] = self.fib._points_corr_indices
         fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.fib._points_corr_history]
+        fibdict['Correlated points z history'] = np.array(self.fib._points_corr_z_history).tolist()
+        fibdict['Original correlated points history'] = self.fib._orig_points_corr_history
         fibdict['Refined'] = self.fib._refined
-        if self.fib._refined:
-            fibdict['Refine matrix'] = self.fib.ops._refine_matrix.tolist()
-            fibdict['Error distribution'] = self.fib._err[1].tolist()
-            fibdict['Std'] = np.array(self.fib._std[1]).tolist()
-            fibdict['Error gauss'] = self.fib._dist.tolist()
-            if self.fib._conv[1] is not None:
-                fibdict['Convergence'] = str(self.fib._conv[1])
+        fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

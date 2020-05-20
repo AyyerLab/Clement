@@ -58,8 +58,8 @@ class Scatter_Plot(MplCanvas):
             cbar.set_label('z position of beads in FM')
         else:
             self.axes.scatter(diff[:, 0], diff[:, 1])
-        self.axes.tick_params(axis="y", direction="in", pad=-22)
-        self.axes.tick_params(axis="x", direction="in", pad=-15)
+        self.axes.tick_params(axis="y", direction="in")
+        self.axes.tick_params(axis="x", direction="in")
         self.axes.set_xlabel('x error [nm]')
         self.axes.set_ylabel('y error [nm]')
         self.axes.title.set_text('Error distribution and GMM model confidence intervals')

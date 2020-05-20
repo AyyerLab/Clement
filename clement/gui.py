@@ -220,11 +220,14 @@ class GUI(QtGui.QMainWindow):
         self.scatter.show()
 
     def _show_convergence(self, idx):
-        if idx == 0:
-            self.convergence = Convergence(self, self.emcontrols)
+        if len(self.fmcontrols.other._conv[idx]) == 3:
+            if idx == 0:
+                self.convergence = Convergence(self, self.emcontrols)
+            else:
+                self.convergence = Convergence(self, self.fibcontrols)
+            self.convergence.show()
         else:
-            self.convergence = Convergence(self, self.fibcontrols)
-        self.convergence.show()
+            print('To use this feature, you have to use at least 10 points for the refinement!')
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
