@@ -353,9 +353,9 @@ class EM_ops():
             src[i,:] = [points[i,0], points[i,1], int(num_slices/2), 1]
             dst[i,:] = self.fib_matrix @ src[i,:]
         self.points = np.array(dst[:,:2])
-        if self._orig_points is None:
-            self._orig_points = np.copy(self.points)
-            self._tf_points = np.copy(self.points)
+        self._tf_points = np.copy(self.points)
+        #if self._orig_points is None:
+        self._orig_points = np.copy(self.points)
 
     def get_selected_region(self, coordinate, transformed):
         coordinate = coordinate.astype(int)
@@ -430,6 +430,7 @@ class EM_ops():
         else:
             self._total_shift += shift
         self.points += shift
+        self._tf_points = np.copy(self.points)
         self._orig_points = np.copy(self.points)
         self.fib_matrix[:2, 3] = shift
 
@@ -447,8 +448,9 @@ class EM_ops():
     def apply_refinement(self, points=None):
         update_points = False
         if points is None:
-            points = np.copy(self._tf_points)
+            points = np.copy(self.points)
             update_points = True
+        print(points)
         for i in range(points.shape[0]):
             point = np.array([points[i,0], points[i,1], 1])
             points[i] = (self._refine_matrix @ point)[:2]
@@ -539,28 +541,48 @@ class EM_ops():
 
         num_sims = len(em_points) - min_points + 1
         num_iterations = 100
-        precision = []
+        precision_refined = []
+        precision_free = []
+        precision_all = []
         num_points = min_points
         for i in range(num_sims):
-            precision_i = []
+            precision_i_refined = []
+            precision_i_free = []
+            precision_i_all = []
             for k in range(num_iterations):
                 indices = random.sample(range(len(em_points)), num_points)
                 p_em = em_points[indices]
                 p_corr = corr_points_refined[indices]
+
                 refine_matrix = tf.estimate_transform('affine', p_corr, p_em).params
                 calc_points = []
                 for l in range(len(corr_points)):
                     p = np.array([corr_points_refined[l, 0], corr_points_refined[l, 1], 1])
                     p_refined = refine_matrix @ p
                     calc_points.append(p_refined[:2])
-                diff = em_points - np.array(calc_points)
-                rms = np.sqrt(1 / len(diff) * (diff ** 2).sum())
-                precision_i.append(rms)
-            precision.append(np.mean(precision_i))
+
+                diff_all = em_points - np.array(calc_points)
+                diff_refined = diff_all[indices]
+                diff_free = np.array([diff_all[i] for i in range(len(diff_all)) if i not in indices])
+
+                rms_all = np.sqrt(1 / len(diff_all) * (diff_all ** 2).sum())
+                rms_refined = np.sqrt(1 / len(diff_refined) * (diff_refined**2).sum())
+                if len(diff_free) > 0:
+                    rms_free = np.sqrt(1 / len(diff_free) * (diff_free ** 2).sum())
+                else:
+                    rms_free = 0
+                precision_i_refined.append(rms_refined)
+                precision_i_free.append(rms_free)
+                precision_i_all.append(rms_all)
+            precision_refined.append(np.mean(precision_i_refined))
+            precision_free.append(np.mean(precision_i_free))
+            precision_all.append(np.mean(precision_i_all))
             num_points += 1
 
-        precision = np.array(precision) * self.pixel_size[0]
-        return precision
+        precision_refined = np.array(precision_refined) * self.pixel_size[0]
+        precision_free = np.array(precision_free) * self.pixel_size[0]
+        precision_all = np.array(precision_all) * self.pixel_size[0]
+        return [precision_refined, precision_free, precision_all]
 
     @classmethod
     def get_transform(self, source, dest):

@@ -30,8 +30,11 @@ class MplCanvas(FigureCanvas):
     def _scatter_plot(self):
         pass
 
-class Plot(MplCanvas):
-    def __init__(self, base, widget):
+    def _convergence_plot(self):
+        pass
+
+class Scatter_Plot(MplCanvas):
+    def __init__(self, base):
         MplCanvas.__init__(self)
         self.base = base
         self._scatter_plot()
@@ -50,14 +53,45 @@ class Plot(MplCanvas):
         cset = self.axes.contour(X, Y, 1 - self.base._dist, colors='k', levels=levels)
         self.axes.clabel(cset, inline=1, fontsize=10)
         if self.base.fib:
-            scatter = self.axes.scatter(diff[:, 0], diff[:, 1], c=self.base.other._merge_points_z)
+            scatter = self.axes.scatter(diff[:, 0], diff[:, 1], c=self.base.other._points_corr_z_history[-1])
             cbar = self.fig.colorbar(scatter)
             cbar.set_label('z position of beads in FM')
         else:
             self.axes.scatter(diff[:, 0], diff[:, 1])
+        self.axes.tick_params(axis="y", direction="in", pad=-22)
+        self.axes.tick_params(axis="x", direction="in", pad=-15)
         self.axes.set_xlabel('x error [nm]')
         self.axes.set_ylabel('y error [nm]')
         self.axes.title.set_text('Error distribution and GMM model confidence intervals')
+
+class Convergence_Plot(MplCanvas):
+    def __init__(self, base):
+        MplCanvas.__init__(self)
+        self.base = base
+        self.min_points = self.base.min_conv_points
+        self._convergence_plot()
+
+    def _convergence_plot(self):
+        if self.base.fib:
+            idx = 1
+        else:
+            idx = 0
+        refined, free, all = self.base._conv[idx]
+
+        x = np.arange(self.min_points-4, self.min_points-4 + len(refined))
+        self.axes.plot(x, refined, label='Refined beads')
+        self.axes.plot(x, free, label='Non-refined beads')
+        self.axes.plot(x, all, label='All beads')
+
+        self.axes.set_xticks(x)
+        self.axes.set_xticklabels(x)
+        self.axes.tick_params(axis="y",direction="in", pad=-22)
+        self.axes.tick_params(axis="x",direction="in", pad=-15)
+
+        self.axes.legend()
+        self.axes.set_xlabel('Number of beads used for refinement')
+        self.axes.set_ylabel('RMS error [nm]')
+        self.axes.title.set_text('RMS error convergence')
 
 class Scatter(QtWidgets.QMainWindow):
     def __init__(self, parent, base):
@@ -71,7 +105,22 @@ class Scatter(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
-        sc = Plot(base, widget)
+        sc = Scatter_Plot(base)
+        layout.addWidget(sc)
+
+class Convergence(QtWidgets.QMainWindow):
+    def __init__(self, parent, base):
+        super(Convergence, self).__init__(parent)
+        self.parent = parent
+        self.theme = self.parent.theme
+        self.resize(800, 800)
+        self.parent._set_theme(self.theme)
+        widget = QtWidgets.QWidget()
+        self.setCentralWidget(widget)
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        widget.setLayout(layout)
+        sc = Convergence_Plot(base)
         layout.addWidget(sc)
 
 class Merge(QtGui.QMainWindow,):

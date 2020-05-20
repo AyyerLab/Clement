@@ -10,7 +10,7 @@ from .em_controls import EMControls
 from .fm_controls import FMControls
 from .fib_controls import FIBControls
 from .project import Project
-from .popup import Merge, Scatter
+from .popup import Merge, Scatter, Convergence
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -102,8 +102,10 @@ class GUI(QtGui.QMainWindow):
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
         self.emcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
+        self.emcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
         self.emcontrols.other = self.fmcontrols
-        self.fibcontrols.err_plt_btn.clicked.connect(lambda : self._show_scatter(idx=1))
+        self.fibcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=1))
+        self.fibcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=1))
         self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
@@ -111,6 +113,7 @@ class GUI(QtGui.QMainWindow):
 
         self.popup = None
         self.scatter = None
+        self.convergence = None
         self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self)
         # Menu Bar
         self._init_menubar()
@@ -196,12 +199,13 @@ class GUI(QtGui.QMainWindow):
             self.fibcontrols.sem_ops = self.emcontrols.ops
             self.fmcontrols.other = self.fibcontrols
             if self.emcontrols.ops is not None:
-                if self.emcontrols.ops._tf_points is not None:
-                    self.fibcontrols.ops._transformed = True
                 if self.emcontrols.ops._orig_points is not None:
                     self.fibcontrols.enable_buttons(enable=True)
                 else:
                     self.fibcontrols.enable_buttons(enable=False)
+                if self.fibcontrols.ops is not None and self.emcontrols.ops._tf_points is not None:
+                    self.fibcontrols.ops._transformed = True
+
             if self.fibcontrols.num_slices is None:
                 self.fibcontrols.num_slices = self.fmcontrols.num_slices
                 if self.fibcontrols.ops is not None:
@@ -214,6 +218,13 @@ class GUI(QtGui.QMainWindow):
         else:
             self.scatter = Scatter(self, self.fibcontrols)
         self.scatter.show()
+
+    def _show_convergence(self, idx):
+        if idx == 0:
+            self.convergence = Convergence(self, self.emcontrols)
+        else:
+            self.convergence = Convergence(self, self.fibcontrols)
+        self.convergence.show()
 
     def merge(self,project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

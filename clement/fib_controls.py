@@ -109,7 +109,6 @@ class FIBControls(BaseControls):
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
         self.err_plt_btn.setEnabled(False)
         self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
-        self.convergence_btn.clicked.connect(lambda : self._convergence_plot(idx=1))
         self.convergence_btn.setEnabled(False)
         line.addWidget(self.err_btn)
         line.addWidget(self.err_plt_btn)
@@ -171,6 +170,7 @@ class FIBControls(BaseControls):
             self.shift_btn.setEnabled(enable)
 
     def _show_grid(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.show_grid_btn.isChecked():
             self._recalc_grid()
             self.show_grid_box = True
@@ -178,8 +178,10 @@ class FIBControls(BaseControls):
         else:
             self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _recalc_grid(self, transpose=False, scaling=1):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if not transpose:
             if self.sem_ops is not None:
                 if self.ops.fib_matrix is None:
@@ -198,8 +200,10 @@ class FIBControls(BaseControls):
             self.show_peaks_btn.setEnabled(True)
             self.shift_x_btn.setEnabled(True)
             self.shift_y_btn.setEnabled(True)
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _refine_grid(self):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops.points is not None:
             print('Orig Points: \n', self.ops.points)
             xshift = int(self.shift_x_btn.text())
@@ -211,6 +215,7 @@ class FIBControls(BaseControls):
             self.shift_y_btn.setText('0')
         else:
             print('You have to calculate the grid box first!')
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _save_mrc_montage(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)

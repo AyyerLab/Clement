@@ -132,7 +132,6 @@ class EMControls(BaseControls):
         self.err_plt_btn.setEnabled(False)
 
         self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
-        self.convergence_btn.clicked.connect(lambda : self._convergence_plot(idx=0))
         self.convergence_btn.setEnabled(False)
         line.addWidget(self.err_btn)
         line.addWidget(self.err_plt_btn)

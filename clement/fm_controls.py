@@ -595,11 +595,9 @@ class FMControls(BaseControls):
                             peaks_2d = None
                         else:
                             peaks_2d = self.ops.peak_slices[-1]
-                    if peaks_2d is None or peaks_2d is not None:
+                    if peaks_2d is None:
                         self.peak_btn.setChecked(True)
                         self.peak_btn.setChecked(False)
-                        #fm_max = np.copy(self.ops.data[:, :, -1])
-                        #self.ops.peak_finding(fm_max, self.ops._transformed)
                         if self.ops._transformed:
                             peaks_2d = self.ops.orig_tf_peak_slices[-1]
                         else:
