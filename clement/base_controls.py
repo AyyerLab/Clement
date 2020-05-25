@@ -101,7 +101,7 @@ class BaseControls(QtWidgets.QWidget):
                 print('Oops, something went wrong. Try again!')
 
     def _couple_views(self):
-        if self.other.ops is not None:
+        if self.ops is not None and self.other.ops is not None:
             if self.ops._transformed and self.other.ops._transformed:
                 vrange = self.imview.getImageItem().getViewBox().targetRect()
                 p1 = np.array([vrange.bottomLeft().x(), vrange.bottomLeft().y()])
@@ -450,6 +450,8 @@ class BaseControls(QtWidgets.QWidget):
                 if hasattr(self.other, 'fib') and self.ops.channel is not None:
                     self.ops.clear_channel()
                 print('Done selecting points of interest on %s image'%self.tag)
+                if self.auto_opt_btn.isChecked():
+                    self.fit_circles()
         else:
             if checked:
                 print('Select and transform both data first')

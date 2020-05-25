@@ -219,7 +219,7 @@ class Project(QtWidgets.QWidget):
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index']:
-            self.fib.show_fib = True
+            self.fib.fib = True
             self.show_fib = True
 
         if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
@@ -282,7 +282,7 @@ class Project(QtWidgets.QWidget):
         except KeyError:
             pass
         try:
-            if self.fib.show_fib:
+            if self.fib.fib:
                 emdict = project['FIB']
                 em = self.fib
             else:
