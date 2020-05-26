@@ -33,8 +33,8 @@ setuptools.setup(
         'read-lif==0.4.0',
         'tifffile',
         'matplotlib'
-        #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=pyqtgraph',
-        'pyqtgraph',
+        'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=c715c5ac2855bc6208ef2f3b810af305969a5748',
+        #'pyqtgraph',
         'pyyaml'
 
     ],
