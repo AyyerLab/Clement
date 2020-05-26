@@ -95,6 +95,7 @@ class EM_ops():
 
     def parse_3d(self, step, fname):
         f = mrc.open(fname, 'r', permissive=True)
+        self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
         if len(self.dimensions) == 3 and self.dimensions[0] > 1:
             self.stacked_data = True
             self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
