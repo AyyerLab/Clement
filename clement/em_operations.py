@@ -387,9 +387,6 @@ class EM_ops():
                         return counter
         except(IndexError):
             print('Watch out, index error. Try again!')
-            print(coordinate)
-            print(x_range.min(),x_range.max())
-            print(y_range.min(),y_range.max())
 
     def select_region(self,coordinate,transformed):
         self.assembled = False

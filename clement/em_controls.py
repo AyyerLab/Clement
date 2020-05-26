@@ -288,9 +288,7 @@ class EMControls(BaseControls):
                     self.show_grid_btn.setEnabled(True)
                 else:
                     self.show_grid_btn.setEnabled(False)
-                self.original_help = False
                 self.show_btn.setChecked(True)
-                self.original_help = True
                 self.show_btn.setEnabled(False)
                 self.transform_btn.setEnabled(True)
             else:
@@ -300,8 +298,10 @@ class EMControls(BaseControls):
     def _show_assembled(self):
         if self.ops is None:
             return
-        self.imview.removeItem(self.grid_box)
-        self.imview.removeItem(self.tr_grid_box)
+        if self.grid_box is not None:
+            self.imview.removeItem(self.grid_box)
+        if self.tr_grid_box is not None:
+            self.imview.removeItem(self.tr_grid_box)
         if self.show_assembled_btn.isChecked():
             self.ops.assembled = True
             if self.ops._orig_points is None:
