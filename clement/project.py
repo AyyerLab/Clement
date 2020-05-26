@@ -231,8 +231,6 @@ class Project(QtWidgets.QWidget):
         try:
             fmdict = project['FM']
             self.fm._fib_vs_sem_history = fmdict['FIB vs SEM history']
-            print('heeeeeeeeeeeeeeeeeeeeere')
-            print(self.fm._fib_vs_sem_history)
             fib_counter = 0
             sem_counter = 0
             for i in range(len(self.fm._fib_vs_sem_history)):

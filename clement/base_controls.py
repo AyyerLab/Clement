@@ -331,8 +331,10 @@ class BaseControls(QtWidgets.QWidget):
                 poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
-                        self.imview.removeItem(self.tr_grid_box)
-                        self.imview.removeItem(self.grid_box)
+                        if self.tr_grid_box is not None:
+                            self.imview.removeItem(self.tr_grid_box)
+                        if self.grid_box is not None:
+                            self.imview.removeItem(self.grid_box)
                         self.show_grid_box = False
                 print('Recalculating original grid...')
                 self.grid_box = poly_line
@@ -341,11 +343,14 @@ class BaseControls(QtWidgets.QWidget):
                 poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
                 if self.show_grid_btn.isChecked():
                     if not toggle_orig:
-                        self.imview.removeItem(self.grid_box)
-                        self.imview.removeItem(self.tr_grid_box)
+                        if self.grid_box is not None:
+                            self.imview.removeItem(self.grid_box)
+                        if self.tr_grid_box is not None:
+                            self.imview.removeItem(self.tr_grid_box)
                         self.show_tr_grid_box = False
                     if self.redo_tr:
-                        self.imview.removeItem(self.tr_grid_box)
+                        if self.tr_grid_box is not None:
+                            self.imview.removeItem(self.tr_grid_box)
                         self.redo_tr = False
                 print('Recalculating transformed grid...')
                 self.tr_grid_box = poly_line
@@ -370,22 +375,26 @@ class BaseControls(QtWidgets.QWidget):
                 self.show_grid_box = True
                 self.imview.addItem(self.grid_box)
                 if self.show_tr_grid_box:
-                    self.imview.removeItem(self.tr_grid_box)
+                    if self.tr_grid_box is not None:
+                        self.imview.removeItem(self.tr_grid_box)
                     self.show_tr_grid_box = False
             else:
                 self.show_tr_grid_box = True
                 self.imview.addItem(self.tr_grid_box)
                 if self.show_grid_box:
-                    self.imview.removeItem(self.grid_box)
+                    if self.grid_box is not None:
+                        self.imview.removeItem(self.grid_box)
                     self.show_grid_box = False
         else:
             if self.show_btn.isChecked():
                 if self.show_grid_box:
-                    self.imview.removeItem(self.grid_box)
+                    if self.grid_box is not None:
+                        self.imview.removeItem(self.grid_box)
                     self.show_grid_box = False
             else:
                 if self.show_tr_grid_box:
-                    self.imview.removeItem(self.tr_grid_box)
+                    if self.tr_grid_box is not None:
+                        self.imview.removeItem(self.tr_grid_box)
                     self.show_tr_grid_box = False
 
     def _define_corr_toggled(self, checked):
@@ -789,12 +798,9 @@ class BaseControls(QtWidgets.QWidget):
                 print('Select FM data first')
                 return
             else:
-                if self.fib and self.other.ops.tf_peak_slices[-1] is None:
-                        print('Calculate 3d FM peaks first!')
-                        return
-                elif (self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[-1] is None):
-                        print('Calculate FM peak positions for maximum projection first')
-                        return
+                if (self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[-1] is None):
+                    print('Calculate FM peak positions for maximum projection first')
+                    return
 
             if len(self.peaks) != 0:
                 self.peaks = []

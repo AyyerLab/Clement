@@ -176,7 +176,8 @@ class FIBControls(BaseControls):
             self.show_grid_box = True
             self.imview.addItem(self.grid_box)
         else:
-            self.imview.removeItem(self.grid_box)
+            if self.grid_box is not None:
+                self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -189,7 +190,7 @@ class FIBControls(BaseControls):
                     self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
-            if self.show_grid_btn.isChecked():
+            if self.show_grid_btn.isChecked() and self.grid_box is not None:
                 self.imview.removeItem(self.grid_box)
             pos = list(self.ops.points)
             self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
@@ -231,7 +232,7 @@ class FIBControls(BaseControls):
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def reset_init(self):
-        if self.show_grid_btn.isChecked():
+        if self.show_grid_btn.isChecked() and self.grid_box is not None:
            self.imview.removeItem(self.grid_box)
 
         self._box_coordinate = None

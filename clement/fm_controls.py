@@ -640,9 +640,11 @@ class FMControls(BaseControls):
         #self.other = None # The other controls object
         if self.show_grid_btn.isChecked():
             if self.ops._transformed:
-                self.imview.removeItem(self.tr_grid_box)
+                if self.tr_grid_box is not None:
+                    self.imview.removeItem(self.tr_grid_box)
             else:
-                self.imview.removeItem(self.grid_box)
+                if self.grid_box is not None:
+                    self.imview.removeItem(self.grid_box)
 
         self._box_coordinate = None
         self._points_corr = []

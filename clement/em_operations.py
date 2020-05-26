@@ -580,6 +580,7 @@ class EM_ops():
         precision_refined = np.array(precision_refined) * self.pixel_size[0]
         precision_free = np.array(precision_free) * self.pixel_size[0]
         precision_all = np.array(precision_all) * self.pixel_size[0]
+        print('RMS error: ', precision_all[-1])
         return [precision_refined, precision_free, precision_all]
 
     @classmethod

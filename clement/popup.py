@@ -528,7 +528,7 @@ class Merge(QtGui.QMainWindow,):
 
 
         self._channels_popup = []
-        self._colors_popup = None  
+        self._colors_popup = []
         self._current_slice_popup = None
         self._overlay_popup = True
         self._clicked_points_popup = []
@@ -541,6 +541,7 @@ class Merge(QtGui.QMainWindow,):
     def closeEvent(self, event):
         if self.parent is not None:
             self.parent.fmcontrols.progress.setValue(0)
+        self.parent.project.merged = False
         self._reset_init()
         event.accept()
 
