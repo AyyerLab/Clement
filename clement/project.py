@@ -70,14 +70,16 @@ class Project(QtWidgets.QWidget):
             self.fm.slice_select_btn.setValue(fmdict['Slice'])
             self.fm._slice_changed()
 
-
         try:
-            self.fm.ops._orig_points = np.array(fmdict['Original grid points'])
-            self.fm.ops.points = np.copy(self.fm.ops._orig_points)
-            self.fm.show_grid_btn.setEnabled(True)
-            self.fm._recalc_grid()
+            if 'Original grid points' in fmdict:
+                self.fm.ops._orig_points = np.array(fmdict['Original grid points'])
+                self.fm.ops.points = np.copy(self.fm.ops._orig_points)
+                self.fm.show_grid_btn.setEnabled(True)
+                self.fm._recalc_grid()
             self.fm.show_grid_btn.setChecked(fmdict['Show grid box'])
             self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
+            if 'Align colors' in fmdict:
+                self.fm.align_btn.setChecked(fmdict['Align colors'])
             try:
                 self.fm.ops._tf_points = np.array(fmdict['Transformed grid points'])
                 self.fm._affine_transform(toggle_orig=False)
@@ -100,26 +102,7 @@ class Project(QtWidgets.QWidget):
         self.fm.show_btn.setChecked(fmdict['Show original'])
         self.fm.map_btn.setChecked(fmdict['Show z map'])
         self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
-
-        if 'Align colors' in fmdict:
-            self.fm.align_btn.setChecked(fmdict['Align colors'])
         self.fm._update_imview()
-
-        #Draw for fun
-        #fname = '/home/tamme/Desktop/Tamme/Doktorarbeit/Clement/projects/refined11.yml'
-        #with open(fname, 'r') as f:
-        #    project = yaml.load(f, Loader=yaml.FullLoader)
-
-        #fmdict = project['FM']
-        #emdict = project['FIB']
-        #em = self.fib
-        #self.fm.other = em
-        #points_corr_fm = fmdict['Correlated points']
-        #self.fm.select_btn.setChecked(True)
-        #qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
-        #[self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
-        # for point in qpoints]
-
 
     def _load_em(self, project):
         if 'EM' not in project:
@@ -265,23 +248,17 @@ class Project(QtWidgets.QWidget):
                     em.fib = False
 
                 self.fm.select_btn.setChecked(True)
+                em_size = emdict['Size history'][i]
+                em.size = em_size
 
                 fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
                 fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
                                             movable=True, removable=True) for i in range(len(fm_qpoints))]
-                [circle.setPen(0, 255, 255) for circle in fm_circles]
+                [circle.setPen(0, 255, 0) for circle in fm_circles]
                 [circle.removeHandle(0) for circle in fm_circles]
                 self.fm._points_corr = copy.copy(fm_circles)
-                self.fm._points_corr_z = fmdict['Correlated points z history'][i]
-                self.fm._orig_points_corr = fmdict['Original correlated points history'][i]
-
-                #Draw for fun
-                #em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Original correlated points history'][counter]]
-                #em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
-                #                            movable=True, removable=True) for i in range(len(em_qpoints))]
-                #[circle.setPen(0, 255, 255) for circle in em_circles]
-                #[circle.removeHandle(0) for circle in em_circles]
-                #[em.imview.addItem(circle) for circle in em_circles]
+                self.fm._points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
+                self.fm._orig_points_corr = copy.copy(fmdict['Original correlated points history'][i])
 
                 em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter]]
                 em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
@@ -289,11 +266,9 @@ class Project(QtWidgets.QWidget):
                 [circle.setPen(0, 255, 255) for circle in em_circles]
                 [circle.removeHandle(0) for circle in em_circles]
 
-
-
                 em._points_corr = copy.copy(em_circles)
-                em._points_corr_z = emdict['Correlated points z history'][counter]
-                em._orig_points_corr = emdict['Original correlated points history'][counter]
+                em._points_corr_z = copy.copy(emdict['Correlated points z history'][counter])
+                em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter])
                 em.ops._refine_matrix = np.array(emdict['Refinement history'][counter])
 
                 #This is just to avoid index error when removing points during refinement
@@ -303,23 +278,19 @@ class Project(QtWidgets.QWidget):
                 [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
 
                 self.fm.select_btn.setChecked(False)
-                em.size = emdict['Size history'][i]
                 self.fm._refine()
 
                 em.show_peaks_btn.setChecked(emdict['Show peaks'])
-                #Draw for fun
-                #[self.fm.imview.addItem(circle) for circle in fm_circles]
-                #[em.imview.addItem(circle) for circle in em_circles]
-                #for i in range(len(em_circles)):
-                #    annotation_other = pg.TextItem(str(i), color=(0, 255, 255), anchor=(0, 0))
-                #    annotation_other.setPos(em_circles[i].x() + 5, em_circles[i].y() + 5)
-                #    em.imview.addItem(annotation_other)
-
-                #self.fm.select_btn.setChecked(True)
-                #qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
-                #[self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
-                #for point in qpoints]
-
+            #Draw for fun
+            #indices = [11,12,10,9,8,7,6,5,4,3]
+            #self.fm.select_btn.setChecked(True)
+            #for i in range(len(fm_circles)):
+            #    if i in indices:
+            #        point = np.array(fmdict['Correlated points history'][0])[i-1]
+            #        print(point)
+            #        qpoint = QtCore.QPointF(point[0], point[1])
+            #        self.fm._draw_correlated_points(qpoint, self.fm.imview.getImageItem())
+            #        em.imview.addItem(em_circles[i-1])
         except KeyError:
             pass
         try:

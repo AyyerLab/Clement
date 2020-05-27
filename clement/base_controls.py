@@ -216,6 +216,7 @@ class BaseControls(QtWidgets.QWidget):
                     pos = QtCore.QPointF(transf[0]-self.other.size/2, transf[1]-self.other.size/2)
                     point_other = pg.CircleROI(pos, self.other.size, parent=self.other.imview.getImageItem(), movable=True, removable=True)
                     point_other.setPen(0,255,255)
+                    #point_other.setPen(255,0,0)
                     point_other.removeHandle(0)
                     self.other.imview.addItem(point_other)
                     self.other._points_corr.append(point_other)
@@ -623,7 +624,6 @@ class BaseControls(QtWidgets.QWidget):
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked():
                 print('Refining...')
-                self.other._size_history.append(self.other.size)
                 dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
                                 self.other._points_corr])
                 src = np.array([[point[0], point[1]] for point in
@@ -665,7 +665,7 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(len(self._points_corr)):
                     self._remove_correlated_points(self._points_corr[0])
 
-                self.other.size = copy.copy(self.size)
+#                self.other.size = copy.copy(self.size)
                 self._update_imview()
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
@@ -807,11 +807,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.other._points_corr.append(point)
                 self.other.imview.addItem(point)
             self.other.size = circle_size_em
-            print('heelllllo')
-            print(self)
-            print(self.other)
-            print(self.size)
-            print(self.other.size)
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _show_FM_peaks(self):
@@ -850,8 +845,6 @@ class BaseControls(QtWidgets.QWidget):
                     point.removeHandle(0)
                     self.peaks.append(point)
                     self.imview.addItem(point)
-                    print('heeeeeeeeeeeeeee')
-                    print(self.ops._refine_matrix)
             else:
                 src_sorted = np.array(
                     sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -868,9 +861,6 @@ class BaseControls(QtWidgets.QWidget):
                     point.removeHandle(0)
                     self.peaks.append(point)
                     self.imview.addItem(point)
-            print('heeeeeeeeeeeere')
-            print(self.size)
-            print(self.other.size)
         else:
             [self.imview.removeItem(point) for point in self.peaks]
         QtWidgets.QApplication.restoreOverrideCursor()
