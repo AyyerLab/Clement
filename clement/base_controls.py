@@ -228,8 +228,22 @@ class BaseControls(QtWidgets.QWidget):
 
                     point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
                     point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
+                    point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
             else:
                 print('Transform both images before point selection')
+
+    def _update_annotations(self, point):
+        idx = None
+        for i in range(len(self.other._points_corr)):
+            print(self.other._points_corr[i])
+            if self.other._points_corr[i] == point:
+                idx = i
+                break
+
+        anno = self.other.anno_list[idx]
+        self.other.imview.removeItem(anno)
+        anno.setPos(point.x()+5, point.y()+5)
+        self.other.imview.addItem(anno)
 
     def _remove_correlated_points(self, point):
         idx = None
