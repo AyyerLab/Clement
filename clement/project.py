@@ -5,6 +5,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 from operator import itemgetter
 import yaml
+import copy
 
 class Project(QtWidgets.QWidget):
     def __init__(self, fm, em, fib, parent):
@@ -27,6 +28,7 @@ class Project(QtWidgets.QWidget):
                                                              self._project_folder,
                                                              '*.yml')
         if file_name is not '':
+            print('Load ', file_name)
             self.fm.reset_base()
             self.fm.reset_init()
             self.em.reset_init()
@@ -102,6 +104,22 @@ class Project(QtWidgets.QWidget):
         if 'Align colors' in fmdict:
             self.fm.align_btn.setChecked(fmdict['Align colors'])
         self.fm._update_imview()
+
+        #Draw for fun
+        #fname = '/home/tamme/Desktop/Tamme/Doktorarbeit/Clement/projects/refined11.yml'
+        #with open(fname, 'r') as f:
+        #    project = yaml.load(f, Loader=yaml.FullLoader)
+
+        #fmdict = project['FM']
+        #emdict = project['FIB']
+        #em = self.fib
+        #self.fm.other = em
+        #points_corr_fm = fmdict['Correlated points']
+        #self.fm.select_btn.setChecked(True)
+        #qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
+        #[self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
+        # for point in qpoints]
+
 
     def _load_em(self, project):
         if 'EM' not in project:
@@ -225,7 +243,6 @@ class Project(QtWidgets.QWidget):
         if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
             if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
                 self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            self.fib.show_peaks_btn.setChecked(fibdict['Show peaks'])
 
     def _load_base(self, project):
         try:
@@ -254,16 +271,27 @@ class Project(QtWidgets.QWidget):
                                             movable=True, removable=True) for i in range(len(fm_qpoints))]
                 [circle.setPen(0, 255, 255) for circle in fm_circles]
                 [circle.removeHandle(0) for circle in fm_circles]
-                self.fm._points_corr = fm_circles
+                self.fm._points_corr = copy.copy(fm_circles)
                 self.fm._points_corr_z = fmdict['Correlated points z history'][i]
                 self.fm._orig_points_corr = fmdict['Original correlated points history'][i]
+
+                #Draw for fun
+                #em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Original correlated points history'][counter]]
+                #em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
+                #                            movable=True, removable=True) for i in range(len(em_qpoints))]
+                #[circle.setPen(0, 255, 255) for circle in em_circles]
+                #[circle.removeHandle(0) for circle in em_circles]
+                #[em.imview.addItem(circle) for circle in em_circles]
 
                 em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter]]
                 em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
                                             movable=True, removable=True) for i in range(len(em_qpoints))]
                 [circle.setPen(0, 255, 255) for circle in em_circles]
                 [circle.removeHandle(0) for circle in em_circles]
-                em._points_corr = em_circles
+
+
+
+                em._points_corr = copy.copy(em_circles)
                 em._points_corr_z = emdict['Correlated points z history'][counter]
                 em._orig_points_corr = emdict['Original correlated points history'][counter]
                 em.ops._refine_matrix = np.array(emdict['Refinement history'][counter])
@@ -275,7 +303,22 @@ class Project(QtWidgets.QWidget):
                 [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
 
                 self.fm.select_btn.setChecked(False)
+                em.size = emdict['Size history'][i]
                 self.fm._refine()
+
+                em.show_peaks_btn.setChecked(emdict['Show peaks'])
+                #Draw for fun
+                #[self.fm.imview.addItem(circle) for circle in fm_circles]
+                #[em.imview.addItem(circle) for circle in em_circles]
+                #for i in range(len(em_circles)):
+                #    annotation_other = pg.TextItem(str(i), color=(0, 255, 255), anchor=(0, 0))
+                #    annotation_other.setPos(em_circles[i].x() + 5, em_circles[i].y() + 5)
+                #    em.imview.addItem(annotation_other)
+
+                #self.fm.select_btn.setChecked(True)
+                #qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
+                #[self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
+                #for point in qpoints]
 
         except KeyError:
             pass
@@ -472,6 +515,7 @@ class Project(QtWidgets.QWidget):
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.em._points_corr_history]
         emdict['Correlated points z history'] = np.array(self.em._points_corr_z_history).tolist()
         emdict['Original correlated points history'] = self.em._orig_points_corr_history
+        emdict['Size history'] = np.array(self.em._size_history).tolist()
         emdict['Refined'] = self.em._refined
         emdict['Refinement history'] = np.array(self.em.ops._refine_history).tolist()
 
@@ -497,6 +541,7 @@ class Project(QtWidgets.QWidget):
         fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.fib._points_corr_history]
         fibdict['Correlated points z history'] = np.array(self.fib._points_corr_z_history).tolist()
         fibdict['Original correlated points history'] = self.fib._orig_points_corr_history
+        fibdict['Size history'] = np.array(self.fib._size_history).tolist()
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
 

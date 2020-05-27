@@ -29,6 +29,7 @@ class BaseControls(QtWidgets.QWidget):
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
+        self._size_history = []
 
 
         self.flips = [False, False, False, False]
@@ -190,7 +191,7 @@ class BaseControls(QtWidgets.QWidget):
                     point_obj.removeHandle(0)
                     self.imview.addItem(point_obj)
                     self._points_corr.append(point_obj)
-                    self._orig_points_corr.append([pos.x(), pos.y()])
+                    self._orig_points_corr.append([pos.x()+self.size/2, pos.y()+self.size/2])
                     self.counter += 1
                     annotation_obj = pg.TextItem(str(self.counter), color=(0,255,0), anchor=(0,0))
                     annotation_obj.setPos(pos.x()+5, pos.y()+5)
@@ -218,7 +219,7 @@ class BaseControls(QtWidgets.QWidget):
                     point_other.removeHandle(0)
                     self.other.imview.addItem(point_other)
                     self.other._points_corr.append(point_other)
-                    self.other._orig_points_corr.append([pos.x(), pos.y()])
+                    self.other._orig_points_corr.append([pos.x()+self.other.size/2, pos.y()+self.other.size/2])
 
                     self.other.counter = self.counter
                     annotation_other = pg.TextItem(str(self.counter), color=(0,255,255), anchor=(0,0))
@@ -622,9 +623,10 @@ class BaseControls(QtWidgets.QWidget):
         if len(self._points_corr) > 3:
             if not self.select_btn.isChecked():
                 print('Refining...')
+                self.other._size_history.append(self.other.size)
                 dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
                                 self.other._points_corr])
-                src = np.array([[point[0] + self.orig_size / 2, point[1] + self.orig_size / 2] for point in
+                src = np.array([[point[0], point[1]] for point in
                                 self.other._orig_points_corr])
 
                 self._points_corr_history.append(copy.copy(self._points_corr))
@@ -634,6 +636,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.other._points_corr_z_history.append(copy.copy(self.other._points_corr_z))
                 self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
                 self._fib_vs_sem_history.append(self.other.fib)
+                self.other._size_history.append(self.other.size)
 
                 if self.other.fib:
                     idx = 1
@@ -662,6 +665,7 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(len(self._points_corr)):
                     self._remove_correlated_points(self._points_corr[0])
 
+                self.other.size = copy.copy(self.size)
                 self._update_imview()
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
@@ -802,18 +806,26 @@ class BaseControls(QtWidgets.QWidget):
                 point.removeHandle(0)
                 self.other._points_corr.append(point)
                 self.other.imview.addItem(point)
-                self.other.size = circle_size_em
+            self.other.size = circle_size_em
+            print('heelllllo')
+            print(self)
+            print(self.other)
+            print(self.size)
+            print(self.other.size)
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _show_FM_peaks(self):
+        print(self.other.ops.tf_peak_slices)
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.show_peaks_btn.isChecked():
             if self.other.ops is None:
                 print('Select FM data first')
+                QtWidgets.QApplication.restoreOverrideCursor()
                 return
             else:
-                if (self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[-1] is None):
+                if (self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[-1] is None or self.other.ops.tf_peaks_z is None) :
                     print('Calculate FM peak positions for maximum projection first')
+                    QtWidgets.QApplication.restoreOverrideCursor()
                     return
 
             if len(self.peaks) != 0:
@@ -838,6 +850,8 @@ class BaseControls(QtWidgets.QWidget):
                     point.removeHandle(0)
                     self.peaks.append(point)
                     self.imview.addItem(point)
+                    print('heeeeeeeeeeeeeee')
+                    print(self.ops._refine_matrix)
             else:
                 src_sorted = np.array(
                     sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -854,6 +868,9 @@ class BaseControls(QtWidgets.QWidget):
                     point.removeHandle(0)
                     self.peaks.append(point)
                     self.imview.addItem(point)
+            print('heeeeeeeeeeeere')
+            print(self.size)
+            print(self.other.size)
         else:
             [self.imview.removeItem(point) for point in self.peaks]
         QtWidgets.QApplication.restoreOverrideCursor()
