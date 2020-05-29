@@ -58,7 +58,6 @@ class FM_ops(Peak_finding):
         self.tf_hsv_map_no_tilt = None
         self.max_proj_status = False #status of max_projection before doing the mapping
         self.counter_clockwise = False
-        self.rotated = False
         self.corr_matrix = None
         self.merged_2d = None
         self.merged_3d = None
@@ -447,23 +446,12 @@ class FM_ops(Peak_finding):
         print('New points: \n', self._tf_points)
 
     def calc_rot_transform(self, my_points):
-        print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
         self.side_length = np.mean(side_list)
-        print('ROI side length:', self.side_length, '\xb1', side_list.std())
-
         self.tf_matrix = self.calc_rot_matrix(my_points)
-
         center = np.mean(my_points,axis=0)
         tf_center = (self.tf_matrix @ np.array([center[0],center[1],1]))[:2]
-
-        nx, ny = self.data.shape[:-1]
-        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-        self.tf_corners = np.dot(self.tf_matrix, corners)
-        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
-        self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
-        print('Tf: ', self.tf_matrix)
 
         self._tf_points = np.zeros_like(my_points)
         self._tf_points[0] = tf_center + (-self.side_length/2, -self.side_length/2)
@@ -471,12 +459,38 @@ class FM_ops(Peak_finding):
         self._tf_points[2] = tf_center + (self.side_length/2, self.side_length/2)
         self._tf_points[3] = tf_center + (-self.side_length/2,self.side_length/2)
 
+        nx, ny = self.data.shape[:-1]
+        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+        self.tf_corners = np.dot(self.tf_matrix, corners)
+        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
+        self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
+        print('Tf: ', self.tf_matrix)
         if not self._transformed:
             self._orig_points = np.copy(my_points)
         self.apply_transform()
         self.points = np.copy(self._tf_points)
-        self.rotated = True
-        print('New points: \n', self._tf_points)
+
+    def calc_rot_matrix(self, pts):
+        angles = []
+        ref = np.array([-1,0])
+        for i in range(1,len(pts)+1):
+            if i < len(pts):
+                side = pts[i] - pts[i-1]
+            else:
+                side = pts[-1] - pts[0]
+            if side[1] > 0:
+                side *= -1
+            angle = np.arctan2(ref[0]*side[1]-ref[1]*side[0],ref[0]*side[0]+ref[1]*side[1])
+            if angle < 0:
+                angle = angle * -1 + np.pi
+            angles.append(angle)
+
+        theta = np.min(angles)
+        theta = np.pi/2 - theta
+        tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
+                             [np.sin(theta), np.cos(theta), 0],
+                             [0,0,1]])
+        return tf_matrix
 
     def calc_orientation(self,points):
         my_list = []
@@ -492,28 +506,6 @@ class FM_ops(Peak_finding):
             print('clockwise --> transpose points')
             order = [0,3,2,1]
             return points[order]
-
-    def calc_rot_matrix(self,pts):
-            sides = np.zeros_like(pts)
-            sides[:3] = np.diff(pts,axis=0)
-            sides[3] = pts[0]-pts[-1]
-            sides = np.array(sorted(sides, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1])))
-
-            dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]])
-            dst_sides = np.array(sorted(dst_sides, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1])))
-
-            angles = []
-            for i in range(len(pts)):
-                angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
-            angles_deg = [angle * 180/np.pi for angle in angles]
-
-            angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg]
-            print('angles_deg: ', angles_deg)
-            if self._transformed:
-                theta = (np.pi/180*np.mean(angles_deg))
-            else:
-                theta = -(np.pi/180*np.mean(angles_deg))
-            tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
             return tf_matrix
 
     def apply_transform(self,shift_points=True):

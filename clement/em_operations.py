@@ -53,7 +53,6 @@ class EM_ops():
         self.clockwise = False
         self.rot_angle = None
         self.first_rotation = False
-        self.rotated = False
         self.tf_prev = np.identity(3)
 
         self.stage_origin = None
@@ -209,29 +208,26 @@ class EM_ops():
         self.apply_transform(points_tmp)
 
     def calc_rot_transform(self, my_points):
-        print('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
         self.side_length = np.mean(side_list)
-        print('ROI side length:', self.side_length, '\xb1', side_list.std())
-
         self.tf_matrix = self.calc_rot_matrix(my_points)
 
         center = np.mean(my_points,axis=0)
         tf_center = (self.tf_matrix @ np.array([center[0],center[1],1]))[:2]
 
-        nx, ny = self.data.shape
-        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-        self.tf_corners = np.dot(self.tf_matrix, corners)
-        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
-        self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
-        print('Tf: ', self.tf_matrix)
-
-        points_tmp  = np.zeros_like(my_points)
+        points_tmp = np.zeros_like(my_points)
         points_tmp[0] = tf_center + (-self.side_length/2, -self.side_length/2)
         points_tmp[1] = tf_center + (self.side_length/2, -self.side_length/2)
         points_tmp[2] = tf_center + (self.side_length/2, self.side_length/2)
         points_tmp[3] = tf_center + (-self.side_length/2,self.side_length/2)
+
+        nx, ny = self.data.shape
+        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+        self.tf_corners = np.dot(self.tf_matrix, corners)
+        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
+        self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
+        print('Tf: ', self.tf_matrix)
 
         if not self._transformed:
             if self.assembled:
@@ -239,7 +235,6 @@ class EM_ops():
             else:
                 self._orig_points_region = np.copy(my_points)
         self.apply_transform(points_tmp)
-        self.rotated = True
         print('New points: \n', self._tf_points)
 
     def calc_orientation(self,points):
@@ -257,29 +252,28 @@ class EM_ops():
             return points[order]
 
     def calc_rot_matrix(self,pts):
-            sides = np.zeros_like(pts)
-            sides[:3] = np.diff(pts,axis=0)
-            sides[3] = pts[0]-pts[-1]
-            sides = np.array(sorted(sides, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1])))
-
-            dst_sides = np.array([[1, 0], [0, -1], [-1, 0], [0, 1]])
-            dst_sides = np.array(sorted(dst_sides, key=lambda k: np.cos(30*np.pi/180*k[0]+k[1])))
-
-            angles = []
-            for i in range(len(pts)):
-                angles.append(np.arccos(np.dot(sides[i],dst_sides[i])/(np.linalg.norm(sides[i])*np.linalg.norm(dst_sides[i]))))
-            angles_deg = [angle * 180/np.pi for angle in angles]
-
-            angles_deg = [np.min([angle,np.abs((angle%90)-90),np.abs(angle-90)]) for angle in angles_deg]
-            print('angles_deg: ', angles_deg)
-            if self._transformed:
-                theta = (np.pi/180*np.mean(angles_deg))
+        angles = []
+        ref = np.array([-1,0])
+        for i in range(1,len(pts)+1):
+            if i < len(pts):
+                side = pts[i] - pts[i-1]
             else:
-                theta = -(np.pi/180*np.mean(angles_deg))
-            tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
-            return tf_matrix
+                side = pts[-1] - pts[0]
+            if side[1] > 0:
+                side *= -1
+            angle = np.arctan2(ref[0]*side[1]-ref[1]*side[0],ref[0]*side[0]+ref[1]*side[1])
+            if angle < 0:
+                angle = angle * -1 + np.pi
+            angles.append(angle)
 
-    def apply_transform(self,pts):
+        theta = np.min(angles)
+        theta = np.pi/2 - theta
+        tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
+                             [np.sin(theta), np.cos(theta), 0],
+                             [0,0,1]])
+        return tf_matrix
+
+    def apply_transform(self, pts):
         if self.tf_matrix is None:
             print('Calculate transform matrix first')
             return
@@ -295,6 +289,7 @@ class EM_ops():
             self.tf_region = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
 
         self.transform_shift = -self.tf_corners.min(1)[:2]
+
         pts = np.array([point + self.transform_shift for point in pts])
         if self.assembled:
             self._tf_points = np.copy(pts)
@@ -491,8 +486,6 @@ class EM_ops():
                         break
                     except np.linalg.LinAlgError:
                         counter += 1
-                        if counter % 1 == 0:
-                            print('\rLinAlgError: ', counter)
                         if counter == 100:
                             break
             if successfull:
@@ -500,9 +493,6 @@ class EM_ops():
                     cx, cy = ransac.best_fit[0], ransac.best_fit[1]
                     coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
                     points_model.append(coor)
-                #else:
-                #    print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
-                #    points_model.append(np.array([x, y]))
             else:
                 print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 points_model.append(np.array([x,y]))
@@ -512,7 +502,6 @@ class EM_ops():
         clf = mixture.GaussianMixture(n_components=1, covariance_type='full')
         clf.fit(diff)
         cov = clf.covariances_[0]
-        print(cov)
         max = np.max(np.abs(diff))
         x = np.linspace(-max, max)
         y = np.linspace(-max, max)
