@@ -717,8 +717,6 @@ class FM_ops(Peak_finding):
                 orig_point = self.calc_original_coordinates(corr_points_fm[i], self.tf_matrix, flips, self.data.shape[:2])
                 orig_points.append(orig_point)
 
-            #np.save('orig_points.npy', np.array(orig_points))
-
             if self.merge_shift is None:
                 tf_points = []
                 tf_img = []

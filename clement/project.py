@@ -267,8 +267,7 @@ class Project(QtWidgets.QWidget):
                     em.fib = False
 
                 self.fm.select_btn.setChecked(True)
-                em_size = emdict['Size history'][i]
-                em.size = em_size
+                em.size = emdict['Size history'][i]
 
                 fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
                 fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),

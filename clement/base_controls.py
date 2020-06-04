@@ -469,8 +469,6 @@ class BaseControls(QtWidgets.QWidget):
                     self._remove_correlated_points(self._points_corr[0])
                 self.counter = 0
                 if self.other.fib:
-                    print('heeeeeeeeeeeeeeeere')
-                    print(self._fib_flips)
                     self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
                     self.other.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
                     if not self.other._refined:
@@ -742,14 +740,23 @@ class BaseControls(QtWidgets.QWidget):
             self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
             idx = 1 if self.other.fib else 0
-            self.other.size = copy.copy(self.other._size_history[-1])
             del self.other._size_history[-1]
+            self.other.size = copy.copy(self.other._size_history[-1])
             self._estimate_precision(idx, self.other.ops._refine_matrix)
             self.other.size = copy.copy(self.size)
 
         if self.other.show_peaks_btn.isChecked():
             self.other.show_peaks_btn.setChecked(False)
             self.other.show_peaks_btn.setChecked(True)
+
+        if self.other.fib:
+            self.ops.merged_3d = None
+            id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(True) - 1
+        else:
+            self.ops.merged_2d = None
+            id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(False) - 1
+        del self._fib_vs_sem_history[id]
+
 
     def _estimate_precision(self, idx, refine_matrix_old):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -891,12 +898,13 @@ class BaseControls(QtWidgets.QWidget):
 
     def merge(self):
         if self.other._refined:
-            dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
+            size_other = copy.copy(self.other._size_history[-1])
+            dst = np.array([[point.x() + size_other / 2, point.y() + size_other / 2] for point in
                             self.other._points_corr_history[-1]])
             src = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
                                   for point in self._points_corr_history[-1]])
 
-            src_z = np.copy(self._points_corr_z_history[-1])
+            src_z = copy.copy(self._points_corr_z_history[-1])
 
             if not self.other.fib:
                 if self.ops.merged_2d is None:
@@ -921,8 +929,10 @@ class BaseControls(QtWidgets.QWidget):
                     self.progress.setValue(100)
                 if self.ops.merged_3d is not None:
                     print('Merged shape: ', self.ops.merged_3d.shape)
+                return True
         else:
             print('You have to do at least one round of refinement before merging is allowed!')
+            return False
 
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]

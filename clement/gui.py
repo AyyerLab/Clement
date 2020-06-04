@@ -247,17 +247,19 @@ class GUI(QtGui.QMainWindow):
                 print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
                 if self.fm._tf_points is not None and (em._tf_points is not None or em._tf_points_region is not None):
-                    self.fmcontrols.merge()
-                    if self.popup is not None:
-                        self.popup.close()
-                    self.popup = Merge(self)
-                    self.project.merged = True
-                    self.project.popup = self.popup
-                    if self.project.load_merge:
-                        self.project._load_merge(project)
-                        self.project.load_merge = False
+                    condition = self.fmcontrols.merge()
+                    if condition:
+                        if self.popup is not None:
+                            self.popup.close()
+                        self.popup = Merge(self)
+                        self.project.merged = True
+                        self.project.popup = self.popup
+                        if self.project.load_merge:
+                            self.project._load_merge(project)
+                            self.project.load_merge = False
+                        QtWidgets.QApplication.restoreOverrideCursor()
+                        self.popup.show()
                     QtWidgets.QApplication.restoreOverrideCursor()
-                    self.popup.show()
                 else:
                     print('You have to transform the FM and the TEM/SEM images first!')
                     QtWidgets.QApplication.restoreOverrideCursor()
