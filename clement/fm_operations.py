@@ -765,13 +765,41 @@ class FM_ops(Peak_finding):
                 self.merged_3d = np.concatenate((np.expand_dims(self.merged_3d,axis=2), np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
                 #self.merged_3d = np.concatenate((np.expand_dims(self.merged_3d,axis=2), np.expand_dims(np.sum(z_data, axis=0),axis=2)), axis=2)
             else:
-                self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
-                #self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.sum(z_data, axis=0),axis=2)), axis=2)
+                if channel == 2:
+                    self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.sum(z_data, axis=0),axis=2)), axis=2)
+                else:
+                    self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.max(z_data, axis=0),axis=2)), axis=2)
         if channel == self.num_channels-1:
             fib_img = np.zeros_like(refined)
             fib_img[:fib_data.shape[0],:fib_data.shape[1]] = fib_data / fib_data.max() * self.merged_3d.max()
             self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(fib_img, axis=2)), axis=2)
+            #self.merged_3d[:,:,2] = self.merged_3d[:,:,2] / self.merged_3d[:,:,2].max() * self.merged_3d[:,:,3].max()
 
+    def update_tr_matrix(self, tr_matrix, flips):
+        points = np.copy(self._tf_points)
+        transp, rot, fliph, flipv = self.transp, self.rot, self.fliph, self.flipv
+        if 0 in flips:
+            transp = not self.transp
+        if 1 in flips:
+            rot = not self.rot
+        if 2 in flips:
+            fliph = not self.fliph
+        if 3 in flips:
+            flipv = not self.flipv
+
+        if transp:
+            points = np.array([np.flip(point) for point in points])
+        if rot:
+            temp = self.data.shape[0] - 1 - points[:,1]
+            points[:,1] = points[:,0]
+            points[:,0] = temp
+        if fliph:
+            points[:,0] = self.data.shape[0] - points[:,0]
+        if flipv:
+            points[:,1] = self.data.shape[1] - points[:,1]
+
+        rot_matrix = np.linalg.inv(tf.estimate_transform('affine', points, self.points).params)
+        return tr_matrix @ rot_matrix
 
     def get_transform(self, source, dest):
         if len(source) != len(dest):

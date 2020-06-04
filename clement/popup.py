@@ -10,6 +10,8 @@ import copy
 from skimage.color import hsv2rgb
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator, FormatStrFormatter
+
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -51,15 +53,17 @@ class Scatter_Plot(MplCanvas):
         X, Y = np.meshgrid(x, y)
         levels = np.array([0.5, 0.75, 0.95])
         cset = self.axes.contour(X, Y, 1 - self.base._dist, colors='k', levels=levels)
-        self.axes.clabel(cset, inline=1, fontsize=10)
+        self.axes.clabel(cset, fmt='%1.2f', inline=1, fontsize=10)
         if self.base.fib:
             scatter = self.axes.scatter(diff[:, 0], diff[:, 1], c=self.base.other._points_corr_z_history[-1])
             cbar = self.fig.colorbar(scatter)
             cbar.set_label('z position of beads in FM')
         else:
             self.axes.scatter(diff[:, 0], diff[:, 1])
-        self.axes.tick_params(axis="y", direction="in")
-        self.axes.tick_params(axis="x", direction="in")
+        self.axes.xaxis.set_minor_locator(AutoMinorLocator())
+        self.axes.yaxis.set_minor_locator(AutoMinorLocator())
+        self.axes.tick_params(which='both', axis="y", direction="in")
+        self.axes.tick_params(which='both', axis="x", direction="in")
         self.axes.set_xlabel('x error [nm]')
         self.axes.set_ylabel('y error [nm]')
         self.axes.title.set_text('Error distribution and GMM model confidence intervals')
@@ -77,16 +81,19 @@ class Convergence_Plot(MplCanvas):
         else:
             idx = 0
         refined, free, all = self.base._conv[idx]
-
+        final = all[-1]
         x = np.arange(self.min_points-4, self.min_points-4 + len(refined))
         self.axes.plot(x, refined, label='Refined beads')
         self.axes.plot(x, free, label='Non-refined beads')
         self.axes.plot(x, all, label='All beads')
-
-        self.axes.set_xticks(x)
-        self.axes.set_xticklabels(x)
-        self.axes.tick_params(axis="y",direction="in", pad=-22)
-        self.axes.tick_params(axis="x",direction="in", pad=-15)
+        self.axes.axhspan(final, final+0.1*final, facecolor='0.2', alpha=0.3)
+        #self.axes.set_xticks(x)
+        #self.axes.set_xticklabels(x)
+        self.axes.xaxis.set_major_locator(MultipleLocator(5))
+        self.axes.xaxis.set_minor_locator(MultipleLocator(1))
+        self.axes.yaxis.set_minor_locator(AutoMinorLocator())
+        self.axes.tick_params(which='both', axis="y",direction="in")
+        self.axes.tick_params(which='both', axis="x",direction="in")
 
         self.axes.legend()
         self.axes.set_xlabel('Number of beads used for refinement')

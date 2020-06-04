@@ -34,6 +34,10 @@ class BaseControls(QtWidgets.QWidget):
 
         self.flips = [False, False, False, False]
         self.tr_matrices = None
+        self.fm_sem_corr = None
+        self.orig_fm_sem_corr = None
+        self.fib_flips = []
+        self.fixed_orientation = False
         self.show_grid_box = False
         self.show_tr_grid_box = False
         self.clicked_points = []
@@ -47,7 +51,6 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list = []
         self.size = 10
         self.orig_size = 10
-        self.fixed_orientation = False
         self.peaks = []
         self.num_slices = None
         self.min_conv_points = 10
@@ -57,8 +60,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _imview_clicked(self, event):
         if event.button() == QtCore.Qt.RightButton:
-            #event.ignore()
-            self._couple_views()
+            event.ignore()
             return
 
         if self.ops is None:
@@ -100,6 +102,7 @@ class BaseControls(QtWidgets.QWidget):
                         print('Oops, something went wrong. Try again!')
             else:
                 print('Oops, something went wrong. Try again!')
+
 
     def _couple_views(self):
         if self.ops is not None and self.other.ops is not None:
@@ -276,11 +279,10 @@ class BaseControls(QtWidgets.QWidget):
         self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
 
     def _remove_points_flip(self):
-        if self.fixed_orientation:
-            for i in range(len(self._points_corr)):
-                self._remove_correlated_points(self._points_corr[0])
-            self.fixed_orientation = False
-            self.select_btn.setChecked(False)
+        for i in range(len(self._points_corr)):
+            self._remove_correlated_points(self._points_corr[0])
+        self.fixed_orientation = False
+        self.select_btn.setChecked(False)
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
@@ -413,6 +415,19 @@ class BaseControls(QtWidgets.QWidget):
                         self.imview.removeItem(self.tr_grid_box)
                     self.show_tr_grid_box = False
 
+    def _calc_tr_matrices(self):
+        src_sorted = np.copy(np.array(
+            sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]])))
+        dst_sorted = np.array(
+            sorted(self.other.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+        self.orig_fm_sem_corr = self.other.ops.get_transform(src_sorted, dst_sorted)
+
+    def _store_fib_flips(self, idx):
+        if idx in self.fib_flips:
+            del self.fib_flips[self.fib_flips == idx]
+        else:
+            self.fib_flips.append(idx)
+
     def _define_corr_toggled(self, checked):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
@@ -445,17 +460,17 @@ class BaseControls(QtWidgets.QWidget):
 
         if condition:
             if checked:
+                self.fliph.setEnabled(False)
+                self.flipv.setEnabled(False)
+                self.transpose.setEnabled(False)
+                self.rotate.setEnabled(False)
                 print('Select points of interest on %s image'%self.tag)
                 for i in range(len(self._points_corr)):
                     self._remove_correlated_points(self._points_corr[0])
                 self.counter = 0
                 if self.other.fib:
-                    src_sorted = np.array(
-                        sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    dst_sorted = np.array(
-                        sorted(self.other.sem_ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    self.tr_matrices = self.other.ops.get_fib_transform(src_sorted, dst_sorted, self.other.sem_ops.tf_matrix)
-
+                    self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self.fib_flips)
+                    self.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
                     if not self.other._refined:
                         self.peak_btn.setChecked(True)
                         self.ops.load_channel(ind=3)
@@ -477,6 +492,11 @@ class BaseControls(QtWidgets.QWidget):
                 print('Done selecting points of interest on %s image'%self.tag)
                 if self.auto_opt_btn.isChecked():
                     self.fit_circles()
+                if not self.other._refined:
+                    self.fliph.setEnabled(True)
+                    self.flipv.setEnabled(True)
+                    self.transpose.setEnabled(True)
+                    self.rotate.setEnabled(True)
         else:
             if checked:
                 print('Select and transform both data first')
@@ -732,6 +752,7 @@ class BaseControls(QtWidgets.QWidget):
             self.other._show_peaks_btn.setChecked(True)
 
     def _estimate_precision(self, idx, refine_matrix_old):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         sel_points = [[point.x() + self.other.size/2, point.y()+self.other.size/2] for point in self.other._points_corr_history[-1]]
         orig_fm_points = np.copy(self._points_corr_history[-1])
 
@@ -774,6 +795,12 @@ class BaseControls(QtWidgets.QWidget):
             self.other._conv[idx] = convergence
         else:
             self.other._conv[idx] = []
+
+        #np.save('err.npy', self.other._err[idx])
+        #np.save('conv.npy', self.other._conv[idx])
+        #np.save('dist.npy', self.other._dist)
+        #np.save('z_values.npy', self._points_corr_z_history[-1])
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def fit_circles(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -830,7 +857,9 @@ class BaseControls(QtWidgets.QWidget):
                     sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
                 dst_sorted = np.array(
                     sorted(self.sem_ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                tr_matrix = self.ops.get_fib_transform(src_sorted, dst_sorted, self.sem_ops.tf_matrix)
+                tr_matrix = self.other.ops.get_transform(src_sorted, dst_sorted)
+                tr_matrix = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ tr_matrix
+
                 for i in range(len(self.other.ops.tf_peak_slices[-1])):
                     z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
                     init = np.array([self.other.ops.tf_peak_slices[-1][i,0], self.other.ops.tf_peak_slices[-1][i,1], 1])
@@ -877,36 +906,39 @@ class BaseControls(QtWidgets.QWidget):
         print('WARNING! Recalculate FIB grid square for z = ', self.num_slices // 2)
 
     def merge(self):
-        dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
-                        self.other._points_corr_history[-1]])
-        src = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
-                              for point in self._points_corr_history[-1]])
+        if self.other._refined:
+            dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
+                            self.other._points_corr_history[-1]])
+            src = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
+                                  for point in self._points_corr_history[-1]])
 
-        src_z = np.copy(self._points_corr_z_history[-1])
+            src_z = np.copy(self._points_corr_z_history[-1])
 
-        if not self.other.fib:
-            if self.ops.merged_2d is None:
-                for i in range(self.ops.num_channels):
-                    self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
-                    self.progress.setValue((i+1)/self.ops.num_channels * 100)
-            else:
-                self.progress.setValue(100)
-            if self.ops.merged_2d is not None:
-                print('Merged shape: ', self.ops.merged_2d.shape)
-        else:
-            if self.ops.merged_3d is None:
-                if self.other._refined:
+            if not self.other.fib:
+                if self.ops.merged_2d is None:
                     for i in range(self.ops.num_channels):
-                        self.ops.load_channel(i)
-                        self.ops.apply_merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
-                                      self.other.ops.data, src, src_z, dst, i)
+                        self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
                         self.progress.setValue((i+1)/self.ops.num_channels * 100)
                 else:
-                    print('You have to perform at least one round of refinement before you can merge the images!')
+                    self.progress.setValue(100)
+                if self.ops.merged_2d is not None:
+                    print('Merged shape: ', self.ops.merged_2d.shape)
             else:
-                self.progress.setValue(100)
-            if self.ops.merged_3d is not None:
-                print('Merged shape: ', self.ops.merged_3d.shape)
+                if self.ops.merged_3d is None:
+                    if self.other._refined:
+                        for i in range(self.ops.num_channels):
+                            self.ops.load_channel(i)
+                            self.ops.apply_merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
+                                          self.other.ops.data, src, src_z, dst, i)
+                            self.progress.setValue((i+1)/self.ops.num_channels * 100)
+                    else:
+                        print('You have to perform at least one round of refinement before you can merge the images!')
+                else:
+                    self.progress.setValue(100)
+                if self.ops.merged_3d is not None:
+                    print('Merged shape: ', self.ops.merged_3d.shape)
+        else:
+            print('You have to do at least one round of refinement before merging is allowed!')
 
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]

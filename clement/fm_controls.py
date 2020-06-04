@@ -35,6 +35,26 @@ class SeriesPicker(QtWidgets.QDialog):
         self.current_series = -1
         event.accept()
 
+
+#class Dragging(pg.ImageItem):
+#    def mouseClickEvent(self, event):
+#        print("Click", event.pos())
+
+#    def mouseDragEvent(self, event):
+#        if event.isStart():
+#            print("Start drag", event.pos())
+#        elif event.isFinish():
+#            print("Stop drag", event.pos())
+#        else:
+#            print("Drag", event.pos())
+
+#    def hoverEvent(self, event):
+#        if not event.isExit():
+            # the mouse is hovering over the image; make sure no otheritems
+            # will receive left click/drag events from here.
+#            event.acceptDrags(pg.QtCore.Qt.LeftButton)
+#            event.acceptClicks(pg.QtCore.Qt.LeftButton)
+
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
         super(FMControls, self).__init__()
@@ -42,6 +62,8 @@ class FMControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
+ #       self.imview.getImageItem().mouseDragEvent = self.mouseDragEvent
+        #self.imview.scene.sigMouseMoved.connect(self._imview_moved)
 
         self._colors = colors
         self._channels = [True, True, True, True]
@@ -54,7 +76,26 @@ class FMControls(BaseControls):
         self._bead_size = None
         self._init_ui()
 
-    
+#    def mouseDragEvent(self, event):
+#        if event.button() == QtCore.Qt.RightButton:
+#            event.accept()
+#            if event.isStart():
+#                print("Start drag", event.pos())
+#                self.start = event.pos()
+#            elif event.isFinish():
+#                print("Stop drag", event.pos())
+#            else:
+#                self.stop = event.pos()
+#                print("Drag", event.pos())
+#                tr = QtGui.QTransform()
+#                tr.rotate(90, axis=1)
+#                m = pg.transformToArray(tr)[:2]
+
+    #def _imview_moved(self, event):
+    #    pass
+        #if (event.buttons() & QtCore.Qt.RightButton):
+        #    print('hello')
+
     def _init_ui(self):
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
@@ -443,6 +484,9 @@ class FMControls(BaseControls):
     def _fliph(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.other.fib:
+                if self.other.ops is not None:
+                    self._store_fib_flips(idx=2)
             if self.fliph.isChecked():
                 self.flips[2] = True
             else:
@@ -457,6 +501,9 @@ class FMControls(BaseControls):
     def _flipv(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.other.fib:
+                if self.other.ops is not None:
+                    self._store_fib_flips(idx=3)
             if self.flipv.isChecked():
                 self.flips[3] = True
             else:
@@ -470,6 +517,9 @@ class FMControls(BaseControls):
     def _trans(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.other.fib:
+                if self.other.ops is not None:
+                    self._store_fib_flips(idx=0)
             if self.transpose.isChecked():
                 self.flips[0] = True
             else:
@@ -483,6 +533,9 @@ class FMControls(BaseControls):
     def _rot(self, state):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
+            if self.other.fib:
+                if self.other.ops is not None:
+                    self._store_fib_flips(idx=1)
             if self.rotate.isChecked():
                 self.flips[1] = True
             else:
@@ -516,10 +569,15 @@ class FMControls(BaseControls):
                 flip = False
                 if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
                     fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
-                    self.fliph.setChecked(False)
-                    self.flipv.setChecked(False)
-                    self.transpose.setChecked(False)
-                    self.rotate.setChecked(False)
+                    #self.fliph.setChecked(False)
+                    #self.flipv.setChecked(False)
+                    #self.transpose.setChecked(False)
+                    #self.rotate.setChecked(False)
+                    self.ops.fliph = False
+                    self.ops.flipv = False
+                    self.ops.rot = False
+                    self.ops.transp = False
+                    self.ops._update_data()
                     flip = True
 
                 if self.map_btn.isChecked():
@@ -558,10 +616,16 @@ class FMControls(BaseControls):
                         self.imview.addItem(point_obj)
                         self._peaks.append(point_obj)
                     if flip:
-                        self.fliph.setChecked(fliph)
-                        self.flipv.setChecked(flipv)
-                        self.transpose.setChecked(transp)
-                        self.rotate.setChecked(rot)
+                        #self.fliph.setChecked(fliph)
+                        #self.flipv.setChecked(flipv)
+                        #self.transpose.setChecked(transp)
+                        #self.rotate.setChecked(rot)
+                        self.ops.fliph = fliph
+                        self.ops.flipv = flipv
+                        self.ops.rot = rot
+                        self.ops.transp = transp
+                        self.ops._update_data()
+                        self._update_imview()
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []
