@@ -30,13 +30,13 @@ class BaseControls(QtWidgets.QWidget):
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
         self._size_history = []
+        self._fib_flips = []
 
 
         self.flips = [False, False, False, False]
         self.tr_matrices = None
         self.fm_sem_corr = None
         self.orig_fm_sem_corr = None
-        self.fib_flips = []
         self.fixed_orientation = False
         self.show_grid_box = False
         self.show_tr_grid_box = False
@@ -156,7 +156,7 @@ class BaseControls(QtWidgets.QWidget):
             if condition:
                 ind = None
                 point = np.array([pos.x() + self.size / 2, pos.y() + self.size / 2])
-                if self.tr_matrices is not None:
+                if self.other.tr_matrices is not None:
                     peaks = None
                     z = None
                     if self.other.fib:
@@ -207,13 +207,13 @@ class BaseControls(QtWidgets.QWidget):
                     print('2d init: ', init)
                     if hasattr(self.other, 'fib') and self.other.fib:
                         print('Clicked point: ', np.array([init[0], init[1], z]))
-                        transf = np.dot(self.tr_matrices, init)
+                        transf = np.dot(self.other.tr_matrices, init)
                         transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                         self.other._points_corr_z.append(transf[2])
                         if self.other._refined:
                             transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                     else:
-                        transf = np.dot(self.tr_matrices, init)
+                        transf = np.dot(self.other.tr_matrices, init)
 
                     print('Transformed point: ', transf)
                     pos = QtCore.QPointF(transf[0]-self.other.size/2, transf[1]-self.other.size/2)
@@ -423,10 +423,10 @@ class BaseControls(QtWidgets.QWidget):
         self.orig_fm_sem_corr = self.other.ops.get_transform(src_sorted, dst_sorted)
 
     def _store_fib_flips(self, idx):
-        if idx in self.fib_flips:
-            del self.fib_flips[self.fib_flips == idx]
+        if idx in self._fib_flips:
+            del self._fib_flips[self._fib_flips == idx]
         else:
-            self.fib_flips.append(idx)
+            self._fib_flips.append(idx)
 
     def _define_corr_toggled(self, checked):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -469,8 +469,10 @@ class BaseControls(QtWidgets.QWidget):
                     self._remove_correlated_points(self._points_corr[0])
                 self.counter = 0
                 if self.other.fib:
-                    self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self.fib_flips)
-                    self.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
+                    print('heeeeeeeeeeeeeeeere')
+                    print(self._fib_flips)
+                    self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
+                    self.other.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
                     if not self.other._refined:
                         self.peak_btn.setChecked(True)
                         self.ops.load_channel(ind=3)
@@ -485,7 +487,7 @@ class BaseControls(QtWidgets.QWidget):
                         sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
                     dst_sorted = np.array(
                         sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+                    self.other.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
             else:
                 if hasattr(self.other, 'fib') and self.ops.channel is not None:
                     self.ops.clear_channel()
@@ -685,8 +687,11 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(len(self._points_corr)):
                     self._remove_correlated_points(self._points_corr[0])
 
-#                self.other.size = copy.copy(self.size)
+                self.other.size = copy.copy(self.size)
                 self._update_imview()
+                if self.other.show_peaks_btn.isChecked():
+                    self.other.show_peaks_btn.setChecked(False)
+                    self.other.show_peaks_btn.setChecked(True)
             else:
                 print('Confirm point selection! (Uncheck Select points of interest)')
         else:
@@ -695,24 +700,8 @@ class BaseControls(QtWidgets.QWidget):
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()
-        for idx in range(len(self._points_corr)):
-            self._points_corr.remove(self._points_corr[idx])
-            self.other._points_corr.remove(self.other._points_corr[idx])
-
-            self.anno_list.remove(self.anno_list[idx])
-            self.other.anno_list.remove(self.other.anno_list[idx])
-
-            self._points_corr_indices.remove(self._points_corr_indices[idx])
-            self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
-
-            if (hasattr(self, 'fib') and self.fib) or (hasattr(self.other, 'fib') and self.other.fib):
-                self._points_corr_z.remove(self._points_corr_z[idx])
-                self.other._points_corr_z.remove(self.other._points_corr_z[idx])
-
-            self._orig_points_corr.remove(self._orig_points_corr[idx])
-            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
-        #for i in range(len(self._points_corr)):
-        #    self._remove_correlated_points(self._points_corr[0])
+        for i in range(len(self._points_corr)):
+            self._remove_correlated_points(self._points_corr[0])
 
         del self._points_corr_history[-1]
         del self._points_corr_z_history[-1]
@@ -739,17 +728,28 @@ class BaseControls(QtWidgets.QWidget):
             self._points_corr = copy.copy(self._points_corr_history[-1])
             self._points_corr_z = copy.copy(self._points_corr_z_history[-1])
             self._orig_points_corr = copy.copy(self._orig_points_corr_history[-1])
+            for i in range(len(self._points_corr)):
+                annotation_obj = pg.TextItem(str(i), color=(0, 255, 0), anchor=(0, 0))
+                self.anno_list.append(annotation_obj)
+            self._points_corr_indices = np.arange(len(self._points_corr)).tolist()
 
             self.other._points_corr = copy.copy(self.other._points_corr_history[-1])
             self.other._points_corr_z = copy.copy(self.other._points_corr_z_history[-1])
             self.other._orig_points_corr = copy.copy(self.other._orig_points_corr_history[-1])
+            for i in range(len(self.other._points_corr)):
+                annotation_obj = pg.TextItem(str(i), color=(0, 255, 0), anchor=(0, 0))
+                self.other.anno_list.append(annotation_obj)
+            self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
             idx = 1 if self.other.fib else 0
+            self.other.size = copy.copy(self.other._size_history[-1])
+            del self.other._size_history[-1]
             self._estimate_precision(idx, self.other.ops._refine_matrix)
+            self.other.size = copy.copy(self.size)
 
-        if self.other._show_peaks_btn.isChecked():
-            self.other._show_peaks_btn.setChecked(False)
-            self.other._show_peaks_btn.setChecked(True)
+        if self.other.show_peaks_btn.isChecked():
+            self.other.show_peaks_btn.setChecked(False)
+            self.other.show_peaks_btn.setChecked(True)
 
     def _estimate_precision(self, idx, refine_matrix_old):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -759,16 +759,11 @@ class BaseControls(QtWidgets.QWidget):
         refined_points = []
         corr_points = []
         if idx == 0:
-            src_sorted = np.array(
-                sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-            dst_sorted = np.array(
-                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-            tr_matrix = self.ops.get_transform(src_sorted, dst_sorted)
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size / 2, orig_point[1] + self.size / 2, 1])
-                corr_points.append(np.copy((tr_matrix @ init)[:2]))
-                transf = self.other.ops._refine_matrix @ tr_matrix @ init
+                corr_points.append(np.copy((self.other.tr_matrices @ init)[:2]))
+                transf = self.other.ops._refine_matrix @ self.other.tr_matrices @ init
                 refined_points.append(transf[:2])
         else:
             orig_fm_points_z = np.copy(self._points_corr_z)
@@ -776,7 +771,7 @@ class BaseControls(QtWidgets.QWidget):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 z = orig_fm_points_z[i]
                 init = np.array([orig_point[0] + self.size / 2, orig_point[1] + self.size / 2, 1])
-                transf = np.dot(self.tr_matrices, init)
+                transf = np.dot(self.other.tr_matrices, init)
                 transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                 corr_points.append(np.copy(transf[:2]))
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
@@ -784,6 +779,7 @@ class BaseControls(QtWidgets.QWidget):
 
         diff = np.array(sel_points) - np.array(refined_points)
         diff *= self.other.ops.pixel_size
+        print(diff.mean(0))
         self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
 
         self.other._err[idx] = diff
@@ -853,17 +849,10 @@ class BaseControls(QtWidgets.QWidget):
             if len(self.peaks) != 0:
                 self.peaks = []
             if self.fib:
-                src_sorted = np.array(
-                    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                dst_sorted = np.array(
-                    sorted(self.sem_ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                tr_matrix = self.other.ops.get_transform(src_sorted, dst_sorted)
-                tr_matrix = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ tr_matrix
-
                 for i in range(len(self.other.ops.tf_peak_slices[-1])):
                     z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
                     init = np.array([self.other.ops.tf_peak_slices[-1][i,0], self.other.ops.tf_peak_slices[-1][i,1], 1])
-                    transf = np.dot(tr_matrix, init)
+                    transf = np.dot(self.tr_matrices, init)
                     transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                     if self._refined:
                         transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
@@ -875,14 +864,9 @@ class BaseControls(QtWidgets.QWidget):
                     self.peaks.append(point)
                     self.imview.addItem(point)
             else:
-                src_sorted = np.array(
-                    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                dst_sorted = np.array(
-                    sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                tr_matrix = self.ops.get_transform(src_sorted, dst_sorted)
                 for i in range(self.other.ops.tf_peak_slices[-1].shape[0]):
                     init = np.array([self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
-                    transf = tr_matrix @ self.other.ops._refine_matrix @ init
+                    transf = self.tr_matrices @ self.ops._refine_matrix @ init
                     pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
                     point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=False)
@@ -928,7 +912,7 @@ class BaseControls(QtWidgets.QWidget):
                     if self.other._refined:
                         for i in range(self.ops.num_channels):
                             self.ops.load_channel(i)
-                            self.ops.apply_merge_3d(self.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
+                            self.ops.apply_merge_3d(self.other.tr_matrices, self.other.ops.fib_matrix, self.other.ops._refine_matrix,
                                           self.other.ops.data, src, src_z, dst, i)
                             self.progress.setValue((i+1)/self.ops.num_channels * 100)
                     else:

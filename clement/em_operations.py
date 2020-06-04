@@ -440,9 +440,12 @@ class EM_ops():
 
     def apply_refinement(self, points=None):
         update_points = False
-        if points is None:
-            points = np.copy(self.points)
-            update_points = True
+        #if points is None:
+        #    points = np.copy(self.points)
+        #    update_points = True
+        #else:
+        points = np.copy(self._tf_points)
+        update_points = True
         print(points)
         for i in range(points.shape[0]):
             point = np.array([points[i,0], points[i,1], 1])

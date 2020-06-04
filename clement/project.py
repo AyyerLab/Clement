@@ -88,10 +88,16 @@ class Project(QtWidgets.QWidget):
                 else:
                     self.fm.slice_select_btn.setValue(fmdict['Slice'])
                     self.fm._slice_changed()
-                self.fm.flipv.setChecked(fmdict['Flipv'])
-                self.fm.fliph.setChecked(fmdict['Fliph'])
-                self.fm.transpose.setChecked(fmdict['Transpose'])
-                self.fm.rotate.setChecked(fmdict['Rotate'])
+
+                self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
+                if (fmdict['Transpose'] and 0 not in self.fm._fib_flips) or (not fmdict['Transpose'] and 0 in self.fm._fib_flips):
+                    self.fm.transpose.setChecked(True)
+                if (fmdict['Rotate'] and 1 not in self.fm._fib_flips) or (not fmdict['Rotate'] and 1 in self.fm._fib_flips):
+                    self.fm.rotate.setChecked(True)
+                if (fmdict['Fliph'] and 2 not in self.fm._fib_flips) or (not fmdict['Fliph'] and 2 in self.fm._fib_flips):
+                    self.fm.fliph.setChecked(True)
+                if (fmdict['Flipv'] and 3 not in self.fm._fib_flips) or (not fmdict['Flipv'] and 3 in self.fm._fib_flips):
+                    self.fm.flipv.setChecked(True)
             except KeyError:
                 pass
         except KeyError:
@@ -229,7 +235,20 @@ class Project(QtWidgets.QWidget):
 
     def _load_base(self, project):
         try:
+            if self.show_fib:
+                if 0 in self.fm._fib_flips:
+                    self.fm.transpose.setChecked(not self.fm.transpose.isChecked())
+                if 1 in self.fm._fib_flips:
+                    print(self.fm.rotate.isChecked())
+                    self.fm.rotate.setChecked(not self.fm.rotate.isChecked())
+                if 2 in self.fm._fib_flips:
+                    print(self.fm.fliph.isChecked())
+                    self.fm.fliph.setChecked(not self.fm.fliph.isChecked())
+                if 3 in self.fm._fib_flips:
+                    print(self.fm.flipv.isChecked())
+                    self.fm.flipv.setChecked(not self.fm.flipv.isChecked())
             fmdict = project['FM']
+            self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
             self.fm._fib_vs_sem_history = fmdict['FIB vs SEM history']
             fib_counter = 0
             sem_counter = 0
@@ -446,6 +465,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Fliph'] = self.fm.fliph.isChecked()
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
+        fmdict['FIB flips'] = self.fm._fib_flips
         points = [[p.pos().x(),p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
         fmdict['Original correlated points'] = self.fm._orig_points_corr

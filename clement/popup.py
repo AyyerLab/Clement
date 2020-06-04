@@ -548,7 +548,7 @@ class Merge(QtGui.QMainWindow,):
     def closeEvent(self, event):
         if self.parent is not None:
             self.parent.fmcontrols.progress.setValue(0)
-        self.parent.project.merged = False
+            self.parent.project.merged = False
         self._reset_init()
         event.accept()
 

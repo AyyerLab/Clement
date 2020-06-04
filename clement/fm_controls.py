@@ -717,6 +717,7 @@ class FMControls(BaseControls):
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
+        self._fib_flips = []
 
         self.tr_matrices = None
         self.show_grid_box = False
