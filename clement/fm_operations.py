@@ -21,6 +21,8 @@ class FM_ops(Peak_finding):
         self._tf_points = None
         self._show_mapping = False
         self._show_no_tilt = False
+        self._alignment = {}
+        self._aligned_channels = []
 
         self.reader = None
         self.voxel_size = None
@@ -141,6 +143,7 @@ class FM_ops(Peak_finding):
                 self.data = np.copy(self.max_proj_data)
             else:
                 self.data = np.copy(self.orig_data)
+
             if self.aligned and not self._show_mapping:
                 self.apply_alignment()
             self.points = np.copy(self._orig_points) if self._orig_points is not None else None
@@ -359,7 +362,7 @@ class FM_ops(Peak_finding):
     def clear_channel(self):
         self.channel = None
 
-    def estimate_alignment(self, peaks_2d):
+    def estimate_alignment(self, peaks_2d, idx):
         if self._transformed:
             if self._show_max_proj:
                 data = np.copy(self.tf_max_proj_data)
@@ -381,10 +384,10 @@ class FM_ops(Peak_finding):
             roi_max_1 = int(peaks_2d[i][1] + roi_size // 2) if int(peaks_2d[i][1] + roi_size // 2) < self.data.shape[
                 1] else self.data.shape[1]
             if self._transformed:
-                green_coor_i = self.peak_finding(data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
+                green_coor_i = self.peak_finding(data[:, :, idx][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
                                                  self._transformed, roi=True)
             else:
-                green_coor_i = self.peak_finding(data[:, :, 2][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
+                green_coor_i = self.peak_finding(data[:, :, idx][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
                                                  self._transformed, roi=True)
             if green_coor_i is not None:
                 green_coor_0 = green_coor_i[0] + peaks_2d[i][0] - roi_size // 2 if green_coor_i[0] + peaks_2d[i][0] \
@@ -396,22 +399,19 @@ class FM_ops(Peak_finding):
                 if np.linalg.norm(diff) < roi_size:
                     green.append(green_i)
                     red.append(peaks_2d[i])
-        if self._transformed:
-            self.tf_color_matrix = tf.estimate_transform('affine', np.array(green), np.array(red)).params
-            print('Align matrix: ', self.tf_color_matrix)
-        else:
-            self.color_matrix = tf.estimate_transform('affine', np.array(green), np.array(red)).params
-            print('Align matrix: ', self.color_matrix)
-
-        self._update_data()
+        self.color_matrix = tf.estimate_transform('affine', np.array(green), np.array(red)).params
+        self._alignment[str(idx)] = self.color_matrix
 
     def apply_alignment(self):
-        print(self.data.shape)
-        if self._transformed:
-            aligned = ndi.affine_transform(self.data[:, :, 2], np.linalg.inv(self.tf_color_matrix), order=1)
-        else:
-            aligned = ndi.affine_transform(self.data[:, :, 2], np.linalg.inv(self.color_matrix), order=1)
-        self.data[:, :, 2] = aligned[:self.data.shape[0], :self.data.shape[1]]
+        for channel in self._alignment:
+            if self._transformed:
+                color_matrix = self.tf_matrix @ self._alignment[channel] @ np.linalg.inv(self.tf_matrix)
+            else:
+                color_matrix = self._alignment[channel]
+            print(color_matrix)
+            if color_matrix is not None:
+                aligned = ndi.affine_transform(self.data[:, :, int(channel)], np.linalg.inv(color_matrix), order=1)
+                self.data[:, :, int(channel)] = np.copy(aligned[:self.data.shape[0], :self.data.shape[1]])
 
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)
