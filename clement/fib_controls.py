@@ -63,7 +63,7 @@ class FIBControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Grid box:')
         line.addWidget(label)
-        self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid square',self)
+        self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid square', self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
@@ -93,7 +93,7 @@ class FIBControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Peaks:')
         line.addWidget(label)
-        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
+        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks', self)
         self.show_peaks_btn.setChecked(False)
         self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
         self.show_peaks_btn.setEnabled(False)
@@ -122,9 +122,9 @@ class FIBControls(BaseControls):
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()
             self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                                 'Select .mrc file',
-                                                                 self._curr_folder,
-                                                                 '*.mrc;;*.tif;;*tiff')
+                                                                       'Select .mrc file',
+                                                                       self._curr_folder,
+                                                                       '*.mrc;;*.tif;;*tiff')
             self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name != '':
@@ -186,7 +186,8 @@ class FIBControls(BaseControls):
         if not transpose:
             if self.sem_ops is not None:
                 if self.ops.fib_matrix is None:
-                    self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape, self.sem_ops.pixel_size)
+                    self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape,
+                                                self.sem_ops.pixel_size)
                     self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
@@ -225,7 +226,8 @@ class FIBControls(BaseControls):
         else:
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()
-            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self._curr_folder, '*.mrc')
+            file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Binned Montage', self._curr_folder,
+                                                                 '*.mrc')
             self._curr_folder = os.path.dirname(file_name)
             if file_name != '':
                 self.ops.save_merge(file_name)
@@ -233,7 +235,7 @@ class FIBControls(BaseControls):
 
     def reset_init(self):
         if self.show_grid_btn.isChecked() and self.grid_box is not None:
-           self.imview.removeItem(self.grid_box)
+            self.imview.removeItem(self.grid_box)
 
         self._box_coordinate = None
         self._points_corr = []
@@ -283,6 +285,3 @@ class FIBControls(BaseControls):
         self.convergence_btn.setEnabled(False)
 
         self.ops.__init__()
-
-
-

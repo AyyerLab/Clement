@@ -14,6 +14,7 @@ from .ransac import Ransac
 import time
 import random
 
+
 class EM_ops():
     def __init__(self):
         self._orig_points = None
@@ -30,7 +31,7 @@ class EM_ops():
         self.eh = None
         self.orig_data = None
         self.tf_data = None
-        self.pixel_size = None #should be in nanometer
+        self.pixel_size = None  # should be in nanometer
         self.old_fname = None
         self.data = None
         self.stacked_data = False
@@ -64,7 +65,7 @@ class EM_ops():
 
         self.fib_matrix = None
         self.fib_shift = None
-        self.fib_angle = None #angle relative to xy-plane
+        self.fib_angle = None  # angle relative to xy-plane
         self.transposed = False
 
     def parse_2d(self, fname):
@@ -84,7 +85,7 @@ class EM_ops():
                 self.eh = np.frombuffer(f.extended_header, dtype='i2')
                 self.old_fname = fname
                 self.pixel_size = np.array([f.voxel_size.x, f.voxel_size.y, f.voxel_size.y]) / 10
-            self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
+            self.dimensions = np.array(f.data.shape)  # (dim_z, dim_y, dim_x)
             if len(self.dimensions) == 2:
                 self.stacked_data = False
                 self.data = np.copy(f.data)
@@ -94,16 +95,16 @@ class EM_ops():
 
     def parse_3d(self, step, fname):
         f = mrc.open(fname, 'r', permissive=True)
-        self.dimensions = np.array(f.data.shape) # (dim_z, dim_y, dim_x)
+        self.dimensions = np.array(f.data.shape)  # (dim_z, dim_y, dim_x)
         if len(self.dimensions) == 3 and self.dimensions[0] > 1:
             self.stacked_data = True
             self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
             self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
-            self.pos_x = self.eh[1:10*self.dimensions[0]:10] // step
-            self.pos_y = self.eh[2:10*self.dimensions[0]:10] // step
+            self.pos_x = self.eh[1:10 * self.dimensions[0]:10] // step
+            self.pos_y = self.eh[2:10 * self.dimensions[0]:10] // step
             self.pos_x -= self.pos_x.min()
             self.pos_y -= self.pos_y.min()
-            self.pos_z = self.eh[3:10*self.dimensions[0]:10]
+            self.pos_z = self.eh[3:10 * self.dimensions[0]:10]
             self.grid_points = []
             for i in range(len(self.pos_x)):
                 point = np.array((self.pos_x[i], self.pos_y[i], 1))
@@ -115,17 +116,18 @@ class EM_ops():
 
             cy, cx = np.indices(self.dimensions[1:3])
 
-            self.data = np.zeros((self.pos_x.max() + self.dimensions[2], self.pos_y.max() + self.dimensions[1]), dtype='f4')
+            self.data = np.zeros((self.pos_x.max() + self.dimensions[2], self.pos_y.max() + self.dimensions[1]),
+                                 dtype='f4')
             self.mcounts = np.zeros_like(self.data)
             self.count_map = np.zeros_like(self.data)
-            sys.stdout.write('Assembling images into %s-shaped array...'% (self.data.shape,))
+            sys.stdout.write('Assembling images into %s-shaped array...' % (self.data.shape,))
             for i in range(self.dimensions[0]):
-                np.add.at(self.mcounts, (cx+self.pos_x[i], cy+self.pos_y[i]), 1)
-                np.add.at(self.data, (cx+self.pos_x[i], cy+self.pos_y[i]), f.data[i, ::step, ::step])
-                np.add.at(self.count_map, (cx+self.pos_x[i], cy+self.pos_y[i]), i)
+                np.add.at(self.mcounts, (cx + self.pos_x[i], cy + self.pos_y[i]), 1)
+                np.add.at(self.data, (cx + self.pos_x[i], cy + self.pos_y[i]), f.data[i, ::step, ::step])
+                np.add.at(self.count_map, (cx + self.pos_x[i], cy + self.pos_y[i]), i)
             sys.stdout.write('done\n')
-            self.data[self.mcounts>0] /= self.mcounts[self.mcounts>0]
-            self.count_map[self.mcounts>1] = 0
+            self.data[self.mcounts > 0] /= self.mcounts[self.mcounts > 0]
+            self.count_map[self.mcounts > 1] = 0
 
         f.close()
         print(self.data.shape)
@@ -142,7 +144,7 @@ class EM_ops():
         print('TRANSPOSE')
         print(self.points)
         if self.points is not None:
-            self.points = np.array([np.flip(point)for point in self.points])
+            self.points = np.array([np.flip(point) for point in self.points])
         print(self.points)
 
     def toggle_original(self):
@@ -183,7 +185,7 @@ class EM_ops():
         self.side_length = np.mean(side_list)
         print('ROI side length:', self.side_length, '\xb1', side_list.std())
 
-        cen = my_points.mean(0) - np.ones(2)*self.side_length/2.
+        cen = my_points.mean(0) - np.ones(2) * self.side_length / 2.
         points_tmp = np.zeros_like(my_points)
         points_tmp[0] = cen + (0, 0)
         points_tmp[1] = cen + (self.side_length, 0)
@@ -213,14 +215,14 @@ class EM_ops():
         self.side_length = np.mean(side_list)
         self.tf_matrix = self.calc_rot_matrix(my_points)
 
-        center = np.mean(my_points,axis=0)
-        tf_center = (self.tf_matrix @ np.array([center[0],center[1],1]))[:2]
+        center = np.mean(my_points, axis=0)
+        tf_center = (self.tf_matrix @ np.array([center[0], center[1], 1]))[:2]
 
         points_tmp = np.zeros_like(my_points)
-        points_tmp[0] = tf_center + (-self.side_length/2, -self.side_length/2)
-        points_tmp[1] = tf_center + (self.side_length/2, -self.side_length/2)
-        points_tmp[2] = tf_center + (self.side_length/2, self.side_length/2)
-        points_tmp[3] = tf_center + (-self.side_length/2,self.side_length/2)
+        points_tmp[0] = tf_center + (-self.side_length / 2, -self.side_length / 2)
+        points_tmp[1] = tf_center + (self.side_length / 2, -self.side_length / 2)
+        points_tmp[2] = tf_center + (self.side_length / 2, self.side_length / 2)
+        points_tmp[3] = tf_center + (-self.side_length / 2, self.side_length / 2)
 
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -237,40 +239,40 @@ class EM_ops():
         self.apply_transform(points_tmp)
         print('New points: \n', self._tf_points)
 
-    def calc_orientation(self,points):
+    def calc_orientation(self, points):
         my_list = []
-        for i in range(1,len(points)):
-            my_list.append((points[i][0]-points[i-1][0])*(points[i][1]+points[i-1][1]))
-        my_list.append((points[0][0]-points[-1][0])*(points[0][1]+points[-1][1]))
+        for i in range(1, len(points)):
+            my_list.append((points[i][0] - points[i - 1][0]) * (points[i][1] + points[i - 1][1]))
+        my_list.append((points[0][0] - points[-1][0]) * (points[0][1] + points[-1][1]))
         my_sum = np.sum(my_list)
         if my_sum > 0:
             print('counter-clockwise')
             return points
         else:
             print('clockwise --> transpose points')
-            order = [0,3,2,1]
+            order = [0, 3, 2, 1]
             return points[order]
 
-    def calc_rot_matrix(self,pts):
+    def calc_rot_matrix(self, pts):
         angles = []
-        ref = np.array([-1,0])
-        for i in range(1,len(pts)+1):
+        ref = np.array([-1, 0])
+        for i in range(1, len(pts) + 1):
             if i < len(pts):
-                side = pts[i] - pts[i-1]
+                side = pts[i] - pts[i - 1]
             else:
                 side = pts[-1] - pts[0]
             if side[1] > 0:
                 side *= -1
-            angle = np.arctan2(ref[0]*side[1]-ref[1]*side[0],ref[0]*side[0]+ref[1]*side[1])
+            angle = np.arctan2(ref[0] * side[1] - ref[1] * side[0], ref[0] * side[0] + ref[1] * side[1])
             if angle < 0:
                 angle = angle * -1 + np.pi
             angles.append(angle)
 
         theta = np.min(angles)
-        theta = np.pi/2 - theta
+        theta = np.pi / 2 - theta
         tf_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
-                             [np.sin(theta), np.cos(theta), 0],
-                             [0,0,1]])
+                              [np.sin(theta), np.cos(theta), 0],
+                              [0, 0, 1]])
         return tf_matrix
 
     def apply_transform(self, pts):
@@ -280,13 +282,17 @@ class EM_ops():
         self._transformed = True
 
         if len(self.dimensions) == 3 and self.dimensions[0] > 1:
-            self.tf_mcounts = ndi.affine_transform(self.mcounts, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
-            self.tf_count_map = ndi.affine_transform(self.count_map, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+            self.tf_mcounts = ndi.affine_transform(self.mcounts, np.linalg.inv(self.tf_matrix), order=1,
+                                                   output_shape=self._tf_shape)
+            self.tf_count_map = ndi.affine_transform(self.count_map, np.linalg.inv(self.tf_matrix), order=1,
+                                                     output_shape=self._tf_shape)
 
         if self.assembled:
-            self.tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+            self.tf_data = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1,
+                                                output_shape=self._tf_shape)
         else:
-            self.tf_region = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1, output_shape=self._tf_shape)
+            self.tf_region = ndi.affine_transform(self.data, np.linalg.inv(self.tf_matrix), order=1,
+                                                  output_shape=self._tf_shape)
 
         self.transform_shift = -self.tf_corners.min(1)[:2]
 
@@ -298,21 +304,21 @@ class EM_ops():
                 tf_box_points = []
                 for point in self.grid_points[i]:
                     x_i, y_i, z_i = self.tf_matrix @ point
-                    tf_box_points.append(np.array([x_i,y_i,z_i]))
+                    tf_box_points.append(np.array([x_i, y_i, z_i]))
                 self.tf_grid_points.append(tf_box_points)
         else:
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
     def calc_fib_transform(self, sigma_angle, sem_shape, sem_pixel_size):
-        #rotate by 90 degrees in plane
+        # rotate by 90 degrees in plane
         phi = 90 * np.pi / 180
-        self.fib_matrix = np.array([[np.cos(phi), -np.sin(phi), 0,0],
+        self.fib_matrix = np.array([[np.cos(phi), -np.sin(phi), 0, 0],
                                     [np.sin(phi), np.cos(phi), 0, 0],
-                                    [0,0,1,0],
-                                    [0,0,0,1]])
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]])
 
-        #flip and scale
+        # flip and scale
         scale = sem_pixel_size / self.pixel_size
         print('SEM shape: ', sem_shape)
         print('FIB shape: ', self.data.shape)
@@ -322,13 +328,13 @@ class EM_ops():
                                     [0, 0, 1, 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
-        #rotate by 77 degrees
+        # rotate by 77 degrees
         self.fib_angle = sigma_angle - 7
-        total_angle = (90-self.fib_angle) * np.pi / 180
-        self.fib_matrix = np.array([[1,0,0,0],
+        total_angle = (90 - self.fib_angle) * np.pi / 180
+        self.fib_matrix = np.array([[1, 0, 0, 0],
                                     [0, np.cos(total_angle), -np.sin(total_angle), 0],
                                     [0, np.sin(total_angle), np.cos(total_angle), 0],
-                                    [0,0,0,1]]) @ self.fib_matrix
+                                    [0, 0, 0, 1]]) @ self.fib_matrix
 
         nx, ny = sem_shape
         corners = np.array([[0, 0, 0, 1], [nx, 0, 0, 1], [nx, ny, 0, 1], [0, ny, 0, 1]]).T
@@ -346,11 +352,11 @@ class EM_ops():
         src = np.zeros((points.shape[0], 4))
         dst = np.zeros_like(src)
         for i in range(points.shape[0]):
-            src[i,:] = [points[i,0], points[i,1], int(num_slices/2), 1]
-            dst[i,:] = self.fib_matrix @ src[i,:]
-        self.points = np.array(dst[:,:2])
+            src[i, :] = [points[i, 0], points[i, 1], int(num_slices / 2), 1]
+            dst[i, :] = self.fib_matrix @ src[i, :]
+        self.points = np.array(dst[:, :2])
         self._tf_points = np.copy(self.points)
-        #if self._orig_points is None:
+        # if self._orig_points is None:
         self._orig_points = np.copy(self.points)
 
     def get_selected_region(self, coordinate, transformed):
@@ -358,33 +364,34 @@ class EM_ops():
         try:
             if not self._transformed:
                 if (0 <= coordinate[0] < self.mcounts.shape[0]) and (0 <= coordinate[1] < self.mcounts.shape[1]):
-                    if self.mcounts[coordinate[0],coordinate[1]] > 1:
+                    if self.mcounts[coordinate[0], coordinate[1]] > 1:
                         print('Selected region ambiguous. Try again!')
                         return
                     else:
                         counter = 0
                         my_bool = False
                         while not my_bool:
-                            x_range = np.arange(self.pos_x[counter],self.pos_x[counter]+self.dimensions[2])
-                            y_range = np.arange(self.pos_y[counter],self.pos_y[counter]+self.dimensions[1])
+                            x_range = np.arange(self.pos_x[counter], self.pos_x[counter] + self.dimensions[2])
+                            y_range = np.arange(self.pos_y[counter], self.pos_y[counter] + self.dimensions[1])
                             if coordinate[0] in x_range and coordinate[1] in y_range:
                                 my_bool = True
                             counter += 1
-                        print('Selected region: ', counter-1)
+                        print('Selected region: ', counter - 1)
                         return counter - 1
             else:
-                if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (0 <= coordinate[1] < self.tf_count_map.shape[1]):
-                    if self.tf_count_map[coordinate[0],coordinate[1]] == 0:
+                if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (
+                        0 <= coordinate[1] < self.tf_count_map.shape[1]):
+                    if self.tf_count_map[coordinate[0], coordinate[1]] == 0:
                         print('Selected region ambiguous. Try again!')
                         return
                     else:
-                        counter = int(self.tf_count_map[coordinate[0],coordinate[1]])
+                        counter = int(self.tf_count_map[coordinate[0], coordinate[1]])
                         print('Selected region: ', counter)
                         return counter
         except(IndexError):
             print('Watch out, index error. Try again!')
 
-    def select_region(self,coordinate,transformed):
+    def select_region(self, coordinate, transformed):
         self.assembled = False
         self.selected_region = self.get_selected_region(coordinate, transformed)
         self._transformed = False
@@ -396,23 +403,23 @@ class EM_ops():
 
     def calc_stage_positions(self, clicked_points, downsampling):
         if self.eh is not None:
-            stage_x = self.eh[4:10*self.dimensions[0]:10]
-            stage_y = self.eh[5:10*self.dimensions[0]:10]
+            stage_x = self.eh[4:10 * self.dimensions[0]:10]
+            stage_y = self.eh[5:10 * self.dimensions[0]:10]
             if self.assembled or self.selected_region is None:
                 curr_region = 0
             else:
                 curr_region = self.selected_region
-            self.stage_origin = np.array([stage_x[curr_region],stage_y[curr_region]])
+            self.stage_origin = np.array([stage_x[curr_region], stage_y[curr_region]])
         else:
             self.stage_origin = 0
-            self.pixel_size = np.array([1,1])
+            self.pixel_size = np.array([1, 1])
         inverse_matrix = np.linalg.inv(self.tf_matrix)
         stage_positions = []
         for i in range(len(clicked_points)):
-            point = np.array([clicked_points[i][0],clicked_points[i][1],1])
+            point = np.array([clicked_points[i][0], clicked_points[i][1], 1])
             coordinate_angstrom = (inverse_matrix @ point)[:2] * self.pixel_size[:2] * downsampling
-            coordinate_microns = coordinate_angstrom * 10**-4
-            stage_positions.append(coordinate_microns + self.stage_origin)       #stage position in microns
+            coordinate_microns = coordinate_angstrom * 10 ** -4
+            stage_positions.append(coordinate_microns + self.stage_origin)  # stage position in microns
         print(stage_positions)
         return stage_positions
 
@@ -440,15 +447,15 @@ class EM_ops():
 
     def apply_refinement(self, points=None):
         update_points = False
-        #if points is None:
+        # if points is None:
         #    points = np.copy(self.points)
         #    update_points = True
-        #else:
+        # else:
         points = np.copy(self._tf_points)
         update_points = True
         print(points)
         for i in range(points.shape[0]):
-            point = np.array([points[i,0], points[i,1], 1])
+            point = np.array([points[i, 0], points[i, 1], 1])
             points[i] = (self._refine_matrix @ point)[:2]
         if update_points:
             self.points = points
@@ -466,20 +473,21 @@ class EM_ops():
     def fit_circles(self, points, bead_size):
         points_model = []
         successfull = False
-        roi_size = int(np.round(bead_size * 1000 / self.pixel_size[0] + bead_size * 1000 / (2 * self.pixel_size[0])) / 2)
+        roi_size = int(
+            np.round(bead_size * 1000 / self.pixel_size[0] + bead_size * 1000 / (2 * self.pixel_size[0])) / 2)
         for i in range(len(points)):
             x = int(np.round(points[i, 0]))
             y = int(np.round(points[i, 1]))
-            x_min = (x-roi_size) if (x-roi_size) > 0 else 0
-            x_max = (x+roi_size) if (x+roi_size) < self.data.shape[0] else self.data.shape[0]
-            y_min = (y-roi_size) if (y-roi_size) > 0 else 0
-            y_max = (y+roi_size) if (y+roi_size) < self.data.shape[1] else self.data.shape[1]
+            x_min = (x - roi_size) if (x - roi_size) > 0 else 0
+            x_max = (x + roi_size) if (x + roi_size) < self.data.shape[0] else self.data.shape[0]
+            y_min = (y - roi_size) if (y - roi_size) > 0 else 0
+            y_max = (y + roi_size) if (y + roi_size) < self.data.shape[1] else self.data.shape[1]
 
             roi = self.data[x_min:x_max, y_min:y_max]
             edges = feature.canny(roi, 3).astype(np.float32)
-            coor_x, coor_y = np.where(edges!=0)
+            coor_x, coor_y = np.where(edges != 0)
             if len(coor_x) != 0:
-                rad = bead_size * 1e3 / self.pixel_size[0] / 2 #bead size is supposed to be in microns
+                rad = bead_size * 1e3 / self.pixel_size[0] / 2  # bead size is supposed to be in microns
                 ransac = Ransac(coor_x, coor_y, 100, rad)
                 counter = 0
                 while True:
@@ -492,13 +500,13 @@ class EM_ops():
                         if counter == 100:
                             break
             if successfull:
-                if ransac.best_fit is not None: #This should not happen, but it happens sometimes...
+                if ransac.best_fit is not None:  # This should not happen, but it happens sometimes...
                     cx, cy = ransac.best_fit[0], ransac.best_fit[1]
                     coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
                     points_model.append(coor)
             else:
                 print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
-                points_model.append(np.array([x,y]))
+                points_model.append(np.array([x, y]))
         return np.array(points_model)
 
     def calc_error(self, diff):
@@ -508,26 +516,28 @@ class EM_ops():
         max = np.max(np.abs(diff))
         x = np.linspace(-max, max)
         y = np.linspace(-max, max)
-        X, Y = np.meshgrid(x,y)
+        X, Y = np.meshgrid(x, y)
         XX = np.array([X.ravel(), Y.ravel()]).T
         Z = -clf.score_samples(XX)
         Z = Z.reshape(X.shape)
         f = np.exp(-Z)
         f /= f.max()
-        return np.sqrt(cov[0,0]), np.sqrt(cov[1,1]), f
+        return np.sqrt(cov[0, 0]), np.sqrt(cov[1, 1]), f
 
     def calc_convergence(self, corr_points, em_points, min_points, refine_matrix):
         em_points = np.array(em_points)
         corr_points = np.array(corr_points)
+
         corr_points_refined = []
         if refine_matrix is None:
             corr_points_refined = corr_points
         else:
             for i in range(len(corr_points)):
-                p = np.array([corr_points[i,0], corr_points[i,1], 1])
+                p = np.array([corr_points[i, 0], corr_points[i, 1], 1])
                 p_new = refine_matrix @ p
                 corr_points_refined.append(p_new[:2])
-            corr_points_refined = np.array(corr_points)
+            # corr_points_refined = np.array(corr_points)
+            corr_points_refined = np.array(corr_points_refined)
 
         num_sims = len(em_points) - min_points + 1
         num_iterations = 100
@@ -556,7 +566,7 @@ class EM_ops():
                 diff_free = np.array([diff_all[i] for i in range(len(diff_all)) if i not in indices])
 
                 rms_all = np.sqrt(1 / len(diff_all) * (diff_all ** 2).sum())
-                rms_refined = np.sqrt(1 / len(diff_refined) * (diff_refined**2).sum())
+                rms_refined = np.sqrt(1 / len(diff_refined) * (diff_refined ** 2).sum())
                 if len(diff_free) > 0:
                     rms_free = np.sqrt(1 / len(diff_free) * (diff_free ** 2).sum())
                 else:
@@ -585,4 +595,3 @@ class EM_ops():
     def get_fib_transform(self, sem_transform):
         inv_tf_sem = np.linalg.inv(sem_transform)
         return inv_tf_sem
-

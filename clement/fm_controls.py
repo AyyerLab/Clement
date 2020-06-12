@@ -10,6 +10,7 @@ from skimage.color import hsv2rgb
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
 
+
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, parent, names):
         super(SeriesPicker, self).__init__(parent)
@@ -36,7 +37,7 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 
-#class Dragging(pg.ImageItem):
+# class Dragging(pg.ImageItem):
 #    def mouseClickEvent(self, event):
 #        print("Click", event.pos())
 
@@ -50,8 +51,8 @@ class SeriesPicker(QtWidgets.QDialog):
 
 #    def hoverEvent(self, event):
 #        if not event.isExit():
-            # the mouse is hovering over the image; make sure no otheritems
-            # will receive left click/drag events from here.
+# the mouse is hovering over the image; make sure no otheritems
+# will receive left click/drag events from here.
 #            event.acceptDrags(pg.QtCore.Qt.LeftButton)
 #            event.acceptClicks(pg.QtCore.Qt.LeftButton)
 
@@ -62,9 +63,8 @@ class FMControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
-        self.actions = None
- #       self.imview.getImageItem().mouseDragEvent = self.mouseDragEvent
-        #self.imview.scene.sigMouseMoved.connect(self._imview_moved)
+        #       self.imview.getImageItem().mouseDragEvent = self.mouseDragEvent
+        # self.imview.scene.sigMouseMoved.connect(self._imview_moved)
 
         self._colors = colors
         self._channels = [True, True, True, True]
@@ -73,31 +73,30 @@ class FMControls(BaseControls):
         self._file_name = None
         self._series = None
         self._current_slice = 0
-        self._peak_reference = 0
         self._peaks = []
         self._bead_size = None
 
         self._init_ui()
 
-#    def mouseDragEvent(self, event):
-#        if event.button() == QtCore.Qt.RightButton:
-#            event.accept()
-#            if event.isStart():
-#                print("Start drag", event.pos())
-#                self.start = event.pos()
-#            elif event.isFinish():
-#                print("Stop drag", event.pos())
-#            else:
-#                self.stop = event.pos()
-#                print("Drag", event.pos())
-#                tr = QtGui.QTransform()
-#                tr.rotate(90, axis=1)
-#                m = pg.transformToArray(tr)[:2]
+    #    def mouseDragEvent(self, event):
+    #        if event.button() == QtCore.Qt.RightButton:
+    #            event.accept()
+    #            if event.isStart():
+    #                print("Start drag", event.pos())
+    #                self.start = event.pos()
+    #            elif event.isFinish():
+    #                print("Stop drag", event.pos())
+    #            else:
+    #                self.stop = event.pos()
+    #                print("Drag", event.pos())
+    #                tr = QtGui.QTransform()
+    #                tr.rotate(90, axis=1)
+    #                m = pg.transformToArray(tr)[:2]
 
-    #def _imview_moved(self, event):
+    # def _imview_moved(self, event):
     #    pass
-        #if (event.buttons() & QtCore.Qt.RightButton):
-        #    print('hello')
+    # if (event.buttons() & QtCore.Qt.RightButton):
+    #    print('hello')
 
     def _init_ui(self):
         vbox = QtWidgets.QVBoxLayout()
@@ -126,15 +125,15 @@ class FMControls(BaseControls):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Show color channels:', self)
         line.addWidget(label)
-        self.channel1_btn = QtWidgets.QCheckBox(' ',self)
-        self.channel2_btn = QtWidgets.QCheckBox(' ',self)
-        self.channel3_btn = QtWidgets.QCheckBox(' ',self)
-        self.channel4_btn = QtWidgets.QCheckBox(' ',self)
-        self.overlay_btn = QtWidgets.QCheckBox('Overlay',self)
-        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state,channel))
-        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state,channel))
-        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_channels(state,channel))
-        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_channels(state,channel))
+        self.channel1_btn = QtWidgets.QCheckBox(' ', self)
+        self.channel2_btn = QtWidgets.QCheckBox(' ', self)
+        self.channel3_btn = QtWidgets.QCheckBox(' ', self)
+        self.channel4_btn = QtWidgets.QCheckBox(' ', self)
+        self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
+        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state, channel))
+        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state, channel))
+        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_channels(state, channel))
+        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_channels(state, channel))
         self.overlay_btn.stateChanged.connect(self._show_overlay)
         self.channel1_btn.setChecked(True)
         self.channel2_btn.setChecked(True)
@@ -185,7 +184,7 @@ class FMControls(BaseControls):
         line.addWidget(self.overlay_btn)
         line.addStretch(1)
 
-        #line.addStretch(1)
+        # line.addStretch(1)
 
         # ---- Peak finding
         line = QtWidgets.QHBoxLayout()
@@ -205,6 +204,7 @@ class FMControls(BaseControls):
         self.align_menu = QtGui.QMenu()
         self.align_btn.setMenu(self.align_menu)
         self.align_btn.setMinimumWidth(150)
+        self.action_btns = []
 
         line.addWidget(self.ref_btn)
         line.addWidget(self.peak_btn)
@@ -238,7 +238,7 @@ class FMControls(BaseControls):
         self.define_btn.toggled.connect(self._define_grid_toggled)
         self.define_btn.setEnabled(False)
         line.addWidget(self.define_btn)
-        self.show_grid_btn = QtWidgets.QCheckBox('Show grid square',self)
+        self.show_grid_btn = QtWidgets.QCheckBox('Show grid square', self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
@@ -263,7 +263,7 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Flips:', self)
         line.addWidget(label)
 
-        #self.fliph = QtWidgets.QPushButton('\u2345', self)
+        # self.fliph = QtWidgets.QPushButton('\u2345', self)
         self.fliph = QtWidgets.QPushButton('', self)
         self.fliph.setObjectName('fliph')
         width = self.fliph.fontMetrics().boundingRect(' ').width() + 25
@@ -277,7 +277,7 @@ class FMControls(BaseControls):
         self.fliph.setEnabled(False)
         line.addWidget(self.fliph)
 
-        #self.flipv = QtWidgets.QPushButton('\u2356', self)
+        # self.flipv = QtWidgets.QPushButton('\u2356', self)
         self.flipv = QtWidgets.QPushButton('', self)
         self.flipv.setObjectName('flipv')
         self.flipv.setCheckable(True)
@@ -288,7 +288,7 @@ class FMControls(BaseControls):
         self.flipv.setEnabled(False)
         line.addWidget(self.flipv)
 
-        #self.transpose = QtWidgets.QPushButton('\u292f', self)
+        # self.transpose = QtWidgets.QPushButton('\u292f', self)
         self.transpose = QtWidgets.QPushButton('', self)
         self.transpose.setObjectName('transpose')
         self.transpose.setCheckable(True)
@@ -300,7 +300,7 @@ class FMControls(BaseControls):
         self.transpose.setEnabled(False)
         line.addWidget(self.transpose)
 
-        #self.rotate = QtWidgets.QPushButton('\u293e', self)
+        # self.rotate = QtWidgets.QPushButton('\u293e', self)
         self.rotate = QtWidgets.QPushButton('', self)
         self.rotate.setObjectName('rotate')
         self.rotate.setCheckable(True)
@@ -335,7 +335,7 @@ class FMControls(BaseControls):
         self.size_box.setEnabled(False)
         self._bead_size = self.size_box.text()
         self.size_box.setMaximumWidth(30)
-        #self.size_box.setFixedWidth(12)
+        # self.size_box.setFixedWidth(12)
 
         self.auto_opt_btn = QtWidgets.QCheckBox('Auto-optimize', self)
         self.auto_opt_btn.setEnabled(False)
@@ -354,12 +354,11 @@ class FMControls(BaseControls):
         line.addWidget(self.undo_refine_btn)
         line.addStretch(1)
 
-
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Merge FM and EM:', self)
         line.addWidget(label)
-        self.merge_btn = QtWidgets.QPushButton('Merge',self)
+        self.merge_btn = QtWidgets.QPushButton('Merge', self)
         self.merge_btn.setEnabled(False)
         label = QtWidgets.QLabel('Progress:')
         self.progress = QtWidgets.QProgressBar(self)
@@ -394,15 +393,15 @@ class FMControls(BaseControls):
             self._curr_folder = os.getcwd()
 
         self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                             'Select FM file',
-                                                             self._curr_folder,
-                                                             '*.lif;;*.tif;;*.tiff')
+                                                                   'Select FM file',
+                                                                   self._curr_folder,
+                                                                   '*.lif;;*.tif;;*.tiff')
         if self._file_name != '':
             self.reset_init()
             self._curr_folder = os.path.dirname(self._file_name)
             self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(self._file_name)
-            
+
     def _parse_fm_images(self, file_name, series=None):
         self.ops = FM_ops()
         retval = self.ops.parse(file_name, z=0, series=series)
@@ -419,10 +418,10 @@ class FMControls(BaseControls):
         self.num_slices = self.ops.num_slices
 
         if file_name != '':
-            self.fm_fname.setText(file_name + ' [0/%d]'%self.num_slices)
-            self.slice_select_btn.setRange(0, self.num_slices-1)
+            self.fm_fname.setText(file_name + ' [0/%d]' % self.num_slices)
+            self.slice_select_btn.setRange(0, self.num_slices - 1)
 
-            self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean()*2))
+            self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.slice_select_btn.setEnabled(True)
@@ -440,14 +439,13 @@ class FMControls(BaseControls):
             self.align_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
-            self.actions = {}
-            for i in range(1,self.ops.num_channels+1):
+            for i in range(1, self.ops.num_channels + 1):
                 self.ref_btn.addItem('Channel ' + str(i))
-                self.actions['Action ' + str(i)] = QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True)
-                self.align_menu.addAction(self.actions['Action ' + str(i)])
-            for i in range(1, self.ops.num_channels+1):
-                self.actions['Action ' + str(i)].toggled.connect(lambda state, i=i: self._select_alignment(i-1, state))
-            self.ref_btn.setCurrentIndex(self.ops.num_channels-1)
+                self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
+                self.align_menu.addAction(self.action_btns[i-1])
+            for i in range(1, self.ops.num_channels + 1):
+                self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
+            self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
 
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -464,18 +462,18 @@ class FMControls(BaseControls):
             QtWidgets.QApplication.restoreOverrideCursor()
 
     def _calc_color_channels(self):
-        self.color_data = np.zeros((len(self._channels),) + self.ops.data[:,:,0].shape + (3,))
+        self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
         for i in range(len(self._channels)):
             if self._channels[i]:
-                my_channel = self.ops.data[:,:,i]
-                my_channel_rgb = np.repeat(my_channel[:,:,np.newaxis],3,axis=2)
-                rgb = tuple([int(self._colors[i][1+2*c:3+2*c], 16)/255. for c in range(3)])
-                self.color_data[i,:,:,:] = my_channel_rgb * rgb
+                my_channel = self.ops.data[:, :, i]
+                my_channel_rgb = np.repeat(my_channel[:, :, np.newaxis], 3, axis=2)
+                rgb = tuple([int(self._colors[i][1 + 2 * c:3 + 2 * c], 16) / 255. for c in range(3)])
+                self.color_data[i, :, :, :] = my_channel_rgb * rgb
             else:
-                self.color_data[i,:,:,:] = np.zeros((self.ops.data[:,:,i].shape + (3,)))
+                self.color_data[i, :, :, :] = np.zeros((self.ops.data[:, :, i].shape + (3,)))
 
         if self.overlay_btn.isChecked():
-            self.color_data = np.sum(self.color_data,axis=0)
+            self.color_data = np.sum(self.color_data, axis=0)
 
     def _show_overlay(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -484,11 +482,11 @@ class FMControls(BaseControls):
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _show_channels(self,checked,my_channel):
+    def _show_channels(self, checked, my_channel):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None and self.ops.data is not None:
-           self._channels[my_channel] = not self._channels[my_channel]
-           self._update_imview()
+            self._channels[my_channel] = not self._channels[my_channel]
+            self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _sel_color(self, index, button):
@@ -577,22 +575,21 @@ class FMControls(BaseControls):
             self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
             self._update_imview()
             fname, indstr = self.fm_fname.text().split()
-            self.fm_fname.setText(fname + ' [%d/%d]'%(num, self.num_slices))
+            self.fm_fname.setText(fname + ' [%d/%d]' % (num, self.num_slices))
             self._current_slice = num
             self.slice_select_btn.clearFocus()
         QtWidgets.QApplication.restoreOverrideCursor()
 
     def _change_ref(self):
         num = self.ref_btn.currentIndex()
-        if num != self._peak_reference:
-            self._peak_reference = num
+        if num != self.ops._peak_reference:
+            self.ops._peak_reference = num
             self.ops.orig_tf_peak_slices = None
             self.ops.tf_peak_slices = None
             self.ops.peak_slices = None
-            self.ops._alignment = {}
+            self.ops._color_matrices = []
+            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
-    def _select_alignment(self, idx, state):
-        self._align_colors(idx, state)
 
     def _find_peaks(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -611,35 +608,39 @@ class FMControls(BaseControls):
                 if self.map_btn.isChecked():
                     if self.ops._transformed:
                         if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.tf_max_proj_data[:,:,self._peak_reference], transformed=True)
+                            self.ops.peak_finding(self.ops.tf_max_proj_data[:, :, self.ops._peak_reference],
+                                                  transformed=True)
                         peaks_2d = self.ops.tf_peak_slices[-1]
                     else:
                         if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.max_proj_data[:, :, self._peak_reference], transformed=False)
+                            self.ops.peak_finding(self.ops.max_proj_data[:, :, self.ops._peak_reference], transformed=False)
                         peaks_2d = self.ops.peak_slices[-1]
                 else:
                     if self.max_proj_btn.isChecked():
                         if self.ops._transformed:
                             if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                                self.ops.peak_finding(self.ops.data[:,:,self._peak_reference], transformed=True)
+                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True)
                             peaks_2d = self.ops.tf_peak_slices[-1]
                         else:
                             if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                                self.ops.peak_finding(self.ops.data[:, :, self._peak_reference], transformed=False)
+                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False)
                             peaks_2d = self.ops.peak_slices[-1]
                     else:
                         if self.ops._transformed:
                             if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
-                                self.ops.peak_finding(self.ops.data[:,:, self._peak_reference], transformed=True, curr_slice=self._current_slice)
+                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True,
+                                                      curr_slice=self._current_slice)
                             peaks_2d = self.ops.tf_peak_slices[self._current_slice]
                         else:
                             if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
-                                self.ops.peak_finding(self.ops.data[:,:,self._peak_reference], transformed=False, curr_slice=self._current_slice)
+                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False,
+                                                      curr_slice=self._current_slice)
                             peaks_2d = self.ops.peak_slices[self._current_slice]
                 if len(peaks_2d.shape) > 0:
                     for i in range(len(peaks_2d)):
-                        pos = QtCore.QPointF(peaks_2d[i][0]-self.size/2, peaks_2d[i][1]-self.size/2)
-                        point_obj= pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False, removable=True)
+                        pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)
+                        point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
+                                                 removable=True)
                         point_obj.removeHandle(0)
                         self.imview.addItem(point_obj)
                         self._peaks.append(point_obj)
@@ -653,7 +654,7 @@ class FMControls(BaseControls):
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []
-                #self.max_proj_btn.setChecked(show_max_proj)
+                # self.max_proj_btn.setChecked(show_max_proj)
         else:
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()
@@ -663,44 +664,79 @@ class FMControls(BaseControls):
         if self.ops is not None:
             if state:
                 print('Align color channels')
-                print(idx)
-                if str(idx) not in self.ops._alignment:
-                    if idx == self._peak_reference:
-                        self.ops._alignment[str(idx)] = np.identity(3)
+                if idx != self.ops._peak_reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
+                    show_transformed = False
+                    if not self.show_btn.isChecked():
+                        self.show_btn.setChecked(True)
+                        show_transformed = True
+                    undo_max_proj = False
+                    if not self.max_proj_btn.isChecked():
+                        self.max_proj_btn.setChecked(True)
+                        undo_max_proj = True
+                    if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                        peaks_2d = None
                     else:
-                        undo_max_proj = False
-                        if not self.max_proj_btn.isChecked():
-                            self.max_proj_btn.setChecked(True)
-                            undo_max_proj = True
-                        if self.ops._transformed:
-                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                                peaks_2d = None
-                            else:
-                                peaks_2d = self.ops.tf_peak_slices[-1]
-                        else:
-                            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                                peaks_2d = None
-                            else:
-                                peaks_2d = self.ops.peak_slices[-1]
-                        if peaks_2d is None:
-                            self.peak_btn.setChecked(True)
-                            self.peak_btn.setChecked(False)
-                            if self.ops._transformed:
-                                peaks_2d = self.ops.orig_tf_peak_slices[-1]
-                            else:
-                                peaks_2d = self.ops.peak_slices[-1]
-                        self.ops.estimate_alignment(peaks_2d, idx)
-                        if undo_max_proj:
-                            self.max_proj_btn.setChecked(False)
-                self.ops.aligned = True
+                        peaks_2d = self.ops.peak_slices[-1]
+                    if peaks_2d is None:
+                        self.peak_btn.setChecked(True)
+                        self.peak_btn.setChecked(False)
+                        peaks_2d = self.ops.peak_slices[-1]
+                    self.ops.estimate_alignment(peaks_2d, idx)
+                    if undo_max_proj:
+                        self.max_proj_btn.setChecked(False)
+                    if show_transformed:
+                        self.show_btn.setChecked(False)
+                self.ops._aligned_channels[idx] = True
             else:
-
-                self.ops.aligned = False
+                self.ops._aligned_channels[idx] = False
             self.ops._update_data()
             self._update_imview()
         else:
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()
+
+#    def _align_colors(self, idx, state):
+#        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+#        if self.ops is not None:
+#            if state:
+#                print('Align color channels')
+#                print(idx)
+#                if str(idx) not in self.ops._alignment:
+#                    if idx == self.ops._peak_reference:
+#                        self.ops._alignment[str(idx)] = np.identity(3)
+#                    else:
+#                        undo_max_proj = False
+#                        if not self.max_proj_btn.isChecked():
+#                            self.max_proj_btn.setChecked(True)
+#                            undo_max_proj = True
+#                        if self.ops._transformed:
+#                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+#                                peaks_2d = None
+#                            else:
+#                                peaks_2d = self.ops.tf_peak_slices[-1]
+#                        else:
+#                            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+#                                peaks_2d = None
+#                            else:
+#                                peaks_2d = self.ops.peak_slices[-1]
+#                        if peaks_2d is None:
+#                            self.peak_btn.setChecked(True)
+#                            self.peak_btn.setChecked(False)
+#                            if self.ops._transformed:
+#                                peaks_2d = self.ops.orig_tf_peak_slices[-1]
+#                            else:
+#                                peaks_2d = self.ops.peak_slices[-1]
+#                        self.ops.estimate_alignment(peaks_2d, idx)
+#                        if undo_max_proj:
+#                            self.max_proj_btn.setChecked(False)
+#                self.ops.aligned = True
+#            else:
+#                self.ops.aligned = False
+#            self.ops._update_data()
+#            self._update_imview()
+#        else:
+#            print('You have to select the data first!')
+#        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _mapping(self):
         self.align_btn.setEnabled(not self.map_btn.isChecked())
@@ -718,11 +754,10 @@ class FMControls(BaseControls):
             self._update_imview()
         QtWidgets.QApplication.restoreOverrideCursor()
 
-
     def reset_init(self):
 
-        #self.ops = None
-        #self.other = None # The other controls object
+        # self.ops = None
+        # self.other = None # The other controls object
         if self.show_grid_btn.isChecked():
             if self.ops._transformed:
                 if self.tr_grid_box is not None:
@@ -731,10 +766,9 @@ class FMControls(BaseControls):
                 if self.grid_box is not None:
                     self.imview.removeItem(self.grid_box)
 
-        self.actions = None
         self._box_coordinate = None
         self._points_corr = []
-        self._points_corr_indices= []
+        self._points_corr_indices = []
         self._points_corr_history = []
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
@@ -755,11 +789,9 @@ class FMControls(BaseControls):
         self.counter = 0
         self.anno_list = []
 
-
-
         self._overlay = True
         self._channels = [True, True, True, True]
-        #self.ind = 0
+        # self.ind = 0
         self._curr_folder = None
         self._series = None
         self._current_slice = 0
@@ -778,7 +810,7 @@ class FMControls(BaseControls):
         self.c2_btn.setEnabled(False)
         self.c3_btn.setEnabled(False)
         self.c4_btn.setEnabled(False)
-        self.max_proj_btn.setChecked(False)        
+        self.max_proj_btn.setChecked(False)
 
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
@@ -790,8 +822,8 @@ class FMControls(BaseControls):
         self.peak_btn.setEnabled(False)
         self.align_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
-        self.refine_btn.setEnabled(False)   
-        #self.auto_opt_btn.setEnabled(False)
+        self.refine_btn.setEnabled(False)
+        # self.auto_opt_btn.setEnabled(False)
         self.fliph.setEnabled(False)
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)
@@ -802,5 +834,7 @@ class FMControls(BaseControls):
         self.map_btn.setChecked(False)
         self.remove_tilt_btn.setEnabled(False)
         self.remove_tilt_btn.setChecked(False)
-        
+
+        self.action_btns = []
+
         self.ops.__init__()

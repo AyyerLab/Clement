@@ -7,9 +7,10 @@ from operator import itemgetter
 import yaml
 import copy
 
+
 class Project(QtWidgets.QWidget):
     def __init__(self, fm, em, fib, parent):
-        super(Project,self).__init__()
+        super(Project, self).__init__()
         self._project_folder = None
         self.fm = fm
         self.em = em
@@ -78,8 +79,12 @@ class Project(QtWidgets.QWidget):
                 self.fm._recalc_grid()
             self.fm.show_grid_btn.setChecked(fmdict['Show grid box'])
             self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
-            if 'Align colors' in fmdict:
-                self.fm.align_btn.setChecked(fmdict['Align colors'])
+
+            self.fm.ref_btn.setCurrentIndex(fmdict['Peak reference'])
+            self.fm.ops._aligned_channels = fmdict['Aligned channels']
+            for i in range(self.fm.ops.num_channels):
+                if self.fm.ops._aligned_channels[i]:
+                    self.fm.action_btns[i].setChecked(True)
             try:
                 self.fm.ops._tf_points = np.array(fmdict['Transformed grid points'])
                 self.fm._affine_transform(toggle_orig=False)
@@ -90,13 +95,17 @@ class Project(QtWidgets.QWidget):
                     self.fm._slice_changed()
 
                 self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
-                if (fmdict['Transpose'] and 0 not in self.fm._fib_flips) or (not fmdict['Transpose'] and 0 in self.fm._fib_flips):
+                if (fmdict['Transpose'] and 0 not in self.fm._fib_flips) or (
+                        not fmdict['Transpose'] and 0 in self.fm._fib_flips):
                     self.fm.transpose.setChecked(True)
-                if (fmdict['Rotate'] and 1 not in self.fm._fib_flips) or (not fmdict['Rotate'] and 1 in self.fm._fib_flips):
+                if (fmdict['Rotate'] and 1 not in self.fm._fib_flips) or (
+                        not fmdict['Rotate'] and 1 in self.fm._fib_flips):
                     self.fm.rotate.setChecked(True)
-                if (fmdict['Fliph'] and 2 not in self.fm._fib_flips) or (not fmdict['Fliph'] and 2 in self.fm._fib_flips):
+                if (fmdict['Fliph'] and 2 not in self.fm._fib_flips) or (
+                        not fmdict['Fliph'] and 2 in self.fm._fib_flips):
                     self.fm.fliph.setChecked(True)
-                if (fmdict['Flipv'] and 3 not in self.fm._fib_flips) or (not fmdict['Flipv'] and 3 in self.fm._fib_flips):
+                if (fmdict['Flipv'] and 3 not in self.fm._fib_flips) or (
+                        not fmdict['Flipv'] and 3 in self.fm._fib_flips):
                     self.fm.flipv.setChecked(True)
             except KeyError:
                 pass
@@ -208,7 +217,7 @@ class Project(QtWidgets.QWidget):
         if fibdict['Transpose']:
             self.fib.transp_btn.setEnabled(True)
             self.fib.transp_btn.setChecked(True)
-            self.fib._transpose() # Why has this function to be called expilicitely???
+            self.fib._transpose()  # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
         self.fib.sem_ops = self.em.ops
@@ -271,7 +280,7 @@ class Project(QtWidgets.QWidget):
 
                 fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
                 fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
-                                            movable=True, removable=True) for i in range(len(fm_qpoints))]
+                                           movable=True, removable=True) for i in range(len(fm_qpoints))]
                 [circle.setPen(0, 255, 0) for circle in fm_circles]
                 [circle.removeHandle(0) for circle in fm_circles]
                 self.fm._points_corr = copy.copy(fm_circles)
@@ -280,7 +289,7 @@ class Project(QtWidgets.QWidget):
 
                 em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter]]
                 em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
-                                            movable=True, removable=True) for i in range(len(em_qpoints))]
+                                           movable=True, removable=True) for i in range(len(em_qpoints))]
                 [circle.setPen(0, 255, 255) for circle in em_circles]
                 [circle.removeHandle(0) for circle in em_circles]
 
@@ -289,9 +298,11 @@ class Project(QtWidgets.QWidget):
                 em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter])
                 em.ops._refine_matrix = np.array(emdict['Refinement history'][counter])
 
-                #This is just to avoid index error when removing points during refinement
-                [self.fm.anno_list.append(pg.TextItem(str(0), color=(0,255,0), anchor=(0,0))) for i in range(len(fm_qpoints))]
-                [em.anno_list.append(pg.TextItem(str(0), color=(0,255,0), anchor=(0,0))) for i in range(len(fm_qpoints))]
+                # This is just to avoid index error when removing points during refinement
+                [self.fm.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
+                 range(len(fm_qpoints))]
+                [em.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
+                 range(len(fm_qpoints))]
                 [self.fm._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
                 [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
 
@@ -299,10 +310,10 @@ class Project(QtWidgets.QWidget):
                 self.fm._refine()
 
                 em.show_peaks_btn.setChecked(emdict['Show peaks'])
-            #Draw for fun
-            #indices = [11,12,10,9,8,7,6,5,4,3]
-            #self.fm.select_btn.setChecked(True)
-            #for i in range(len(fm_circles)):
+            # Draw for fun
+            # indices = [11,12,10,9,8,7,6,5,4,3]
+            # self.fm.select_btn.setChecked(True)
+            # for i in range(len(fm_circles)):
             #    if i in indices:
             #        point = np.array(fmdict['Correlated points history'][0])[i-1]
             #        print(point)
@@ -325,21 +336,21 @@ class Project(QtWidgets.QWidget):
                 self.fm.select_btn.setChecked(True)
                 qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
                 [self.fm._draw_correlated_points(point, self.fm.imview.getImageItem())
-                for point in qpoints]
+                 for point in qpoints]
 
                 #### update/correct points because in draw_correlated_points the unmoved points are drawn in other.imview
                 try:
                     points_corr_em = emdict['Correlated points']
                     qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_em)]
-                    roi_list_em = [pg.CircleROI(qpoints[i],em.size, parent=em.imview.getImageItem(),
+                    roi_list_em = [pg.CircleROI(qpoints[i], em.size, parent=em.imview.getImageItem(),
                                                 movable=True, removable=True) for i in range(len(qpoints))]
-                    [roi.setPen(0,255,255) for roi in roi_list_em]
+                    [roi.setPen(0, 255, 255) for roi in roi_list_em]
                     [roi.removeHandle(0) for roi in roi_list_em]
 
-                    anno_list = [pg.TextItem(str(idx+1), color=(0,255,255), anchor=(0,0))
+                    anno_list = [pg.TextItem(str(idx + 1), color=(0, 255, 255), anchor=(0, 0))
                                  for idx in self.fm._points_corr_indices]
                     for i in range(len(anno_list)):
-                        anno_list[i].setPos(qpoints[i].x()+5, qpoints[i].y()+5)
+                        anno_list[i].setPos(qpoints[i].x() + 5, qpoints[i].y() + 5)
 
                     [em.imview.removeItem(point) for point in em._points_corr]
                     [em.imview.removeItem(anno) for anno in em.anno_list]
@@ -382,10 +393,11 @@ class Project(QtWidgets.QWidget):
         self.popup._update_imview_popup()
 
         self.popup.select_btn_popup.setChecked(True)
-        points  = np.array(mdict['Selected points'])
+        points = np.array(mdict['Selected points'])
         if len(points) > 0:
-            qpoint_list = [QtCore.QPointF(p[0],p[1]) for p in points]
-            [self.popup._draw_correlated_points_popup(pt, 10, self.popup.imview_popup.getImageItem()) for pt in qpoint_list]
+            qpoint_list = [QtCore.QPointF(p[0], p[1]) for p in points]
+            [self.popup._draw_correlated_points_popup(pt, 10, self.popup.imview_popup.getImageItem()) for pt in
+             qpoint_list]
 
         self.popup.select_btn_popup.setChecked(False)
         print('Data Popup:', self.popup.data_popup.shape)
@@ -393,7 +405,10 @@ class Project(QtWidgets.QWidget):
     def _save_project(self):
         if self.fm.ops is not None or self.em.ops is not None:
             if self.fm.select_btn.isChecked():
-                buttonReply = QtWidgets.QMessageBox.question(self, 'Warning', 'Selected points have not been confirmed and will be lost during saving! \r Continue?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                buttonReply = QtWidgets.QMessageBox.question(self, 'Warning',
+                                                             'Selected points have not been confirmed and will be lost during saving! \r Continue?',
+                                                             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                                             QtWidgets.QMessageBox.No)
                 if buttonReply == QtWidgets.QMessageBox.Yes:
                     self._do_save()
                 else:
@@ -437,7 +452,8 @@ class Project(QtWidgets.QWidget):
         fmdict['Slice'] = self.fm._current_slice
         if self.fm._series is not None:
             fmdict['Series'] = self.fm._series
-        fmdict['Align colors'] = self.fm.align_btn.isChecked()
+        fmdict['Peak reference'] = self.fm.ops._peak_reference
+        fmdict['Aligned channels'] = self.fm.ops._aligned_channels
         fmdict['Show peaks'] = self.fm.peak_btn.isChecked()
         fmdict['Show z map'] = self.fm.map_btn.isChecked()
         fmdict['Remove tilt'] = self.fm.remove_tilt_btn.isChecked()
@@ -465,11 +481,12 @@ class Project(QtWidgets.QWidget):
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
         fmdict['FIB flips'] = self.fm._fib_flips
-        points = [[p.pos().x(),p.pos().y()] for p in self.fm._points_corr]
+        points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
         fmdict['Original correlated points'] = self.fm._orig_points_corr
         fmdict['Correlated points indices'] = self.fm._points_corr_indices
-        fmdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.fm._points_corr_history]
+        fmdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
+                                               self.fm._points_corr_history]
         fmdict['Correlated points z history'] = np.array(self.fm._points_corr_z_history).tolist()
         fmdict['Original correlated points history'] = self.fm._orig_points_corr_history
         fmdict['FIB vs SEM history'] = self.fm._fib_vs_sem_history
@@ -498,11 +515,12 @@ class Project(QtWidgets.QWidget):
             emdict['Transformed points subregion'] = self.em.ops._tf_points_region.tolist()
         emdict['Show assembled'] = self.em.show_assembled_btn.isChecked()
 
-        points = [[p.pos().x(),p.pos().y()] for p in self.em._points_corr]
+        points = [[p.pos().x(), p.pos().y()] for p in self.em._points_corr]
         emdict['Correlated points'] = points
         emdict['Original correlated points '] = self.em._orig_points_corr
         emdict['Correlated points indices'] = self.em._points_corr_indices
-        emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.em._points_corr_history]
+        emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
+                                               self.em._points_corr_history]
         emdict['Correlated points z history'] = np.array(self.em._points_corr_z_history).tolist()
         emdict['Original correlated points history'] = self.em._orig_points_corr_history
         emdict['Size history'] = np.array(self.em._size_history).tolist()
@@ -522,13 +540,15 @@ class Project(QtWidgets.QWidget):
         if self.fib.ops._orig_points is not None:
             fibdict['Original points'] = self.fib.ops._orig_points.tolist()
         if self.fib.ops._total_shift is not None:
-            fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [0.0,0.0]
+            fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [
+                0.0, 0.0]
 
-        points = [[p.pos().x(),p.pos().y()] for p in self.fib._points_corr]
+        points = [[p.pos().x(), p.pos().y()] for p in self.fib._points_corr]
         fibdict['Correlated points'] = points
         fibdict['Original correlated points {}'] = self.fib._orig_points_corr
         fibdict['Correlated points indices'] = self.fib._points_corr_indices
-        fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in self.fib._points_corr_history]
+        fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
+                                                self.fib._points_corr_history]
         fibdict['Correlated points z history'] = np.array(self.fib._points_corr_z_history).tolist()
         fibdict['Original correlated points history'] = self.fib._orig_points_corr_history
         fibdict['Size history'] = np.array(self.fib._size_history).tolist()
@@ -541,6 +561,5 @@ class Project(QtWidgets.QWidget):
         mdict['Overlay'] = self.popup._overlay_popup
         mdict['Slice'] = self.popup._current_slice_popup
         mdict['Max projection'] = self.popup.max_proj_btn_popup.isChecked()
-        points = [[p.pos().x(),p.pos().y()] for p in self.popup._clicked_points_popup]
+        points = [[p.pos().x(), p.pos().y()] for p in self.popup._clicked_points_popup]
         mdict['Selected points'] = points
-

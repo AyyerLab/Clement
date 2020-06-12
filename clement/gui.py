@@ -14,12 +14,14 @@ from .popup import Merge, Scatter, Convergence
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
+
 def resource_path(rel_path):
     try:
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, rel_path)
+
 
 class GUI(QtGui.QMainWindow):
     def __init__(self):
@@ -46,7 +48,7 @@ class GUI(QtGui.QMainWindow):
         layout.addWidget(splitter_images, stretch=1)
 
         # -- FM Image view
-        #self.fm_imview = pg.ImageView()
+        # self.fm_imview = pg.ImageView()
         self.fm_stacked_imview = QtWidgets.QStackedWidget()
         self.fm_imview = pg.ImageView()
         self.fm_imview.ui.roiBtn.hide()
@@ -110,7 +112,6 @@ class GUI(QtGui.QMainWindow):
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
-
         self.popup = None
         self.scatter = None
         self.convergence = None
@@ -154,10 +155,10 @@ class GUI(QtGui.QMainWindow):
         thememenu = menubar.addMenu('&Theme')
         agroup = QtWidgets.QActionGroup(self)
         agroup.setExclusive(True)
-        #action = QtWidgets.QAction('None', self)
-        #action.triggered.connect(lambda: self._set_theme('none'))
-        #thememenu.addAction(action)
-        #agroup.addAction(action)
+        # action = QtWidgets.QAction('None', self)
+        # action.triggered.connect(lambda: self._set_theme('none'))
+        # thememenu.addAction(action)
+        # agroup.addAction(action)
         action = QtWidgets.QAction('Dark', self)
         action.triggered.connect(lambda: self._set_theme('dark'))
         thememenu.addAction(action)
@@ -232,7 +233,7 @@ class GUI(QtGui.QMainWindow):
         else:
             print('To use this feature, you have to use at least 10 points for the refinement!')
 
-    def merge(self,project=None):
+    def merge(self, project=None):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
         if self.fibcontrols.fib:
@@ -292,11 +293,11 @@ class GUI(QtGui.QMainWindow):
         key = event.key()
         mod = int(event.modifiers())
 
-        if QtGui.QKeySequence(mod+key) == QtGui.QKeySequence('Ctrl+P'):
+        if QtGui.QKeySequence(mod + key) == QtGui.QKeySequence('Ctrl+P'):
             self._prev_file()
-        elif QtGui.QKeySequence(mod+key) == QtGui.QKeySequence('Ctrl+N'):
+        elif QtGui.QKeySequence(mod + key) == QtGui.QKeySequence('Ctrl+N'):
             self._next_file()
-        elif QtGui.QKeySequence(mod+key) == QtGui.QKeySequence('Ctrl+W'):
+        elif QtGui.QKeySequence(mod + key) == QtGui.QKeySequence('Ctrl+W'):
             self.close()
         else:
             event.ignore()
@@ -309,10 +310,12 @@ class GUI(QtGui.QMainWindow):
         self.settings.setValue('fib_folder', self.fibcontrols.curr_folder)
         event.accept()
 
+
 def main():
     app = QtWidgets.QApplication([])
     gui = GUI()
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()
