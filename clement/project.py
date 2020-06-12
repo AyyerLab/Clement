@@ -82,6 +82,7 @@ class Project(QtWidgets.QWidget):
 
             self.fm.ref_btn.setCurrentIndex(fmdict['Peak reference'])
             self.fm.ops._aligned_channels = fmdict['Aligned channels']
+            self.fm.point_ref_btn.setCurrentIndex(fmdict['Point reference'])
             for i in range(self.fm.ops.num_channels):
                 if self.fm.ops._aligned_channels[i]:
                     self.fm.action_btns[i].setChecked(True)
@@ -481,6 +482,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
         fmdict['FIB flips'] = self.fm._fib_flips
+        fmdict['Point reference'] = self.fm._point_reference
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
         fmdict['Original correlated points'] = self.fm._orig_points_corr

@@ -204,6 +204,7 @@ class FMControls(BaseControls):
         self.align_menu = QtGui.QMenu()
         self.align_btn.setMenu(self.align_menu)
         self.align_btn.setMinimumWidth(150)
+        self.align_btn.setEnabled(False)
         self.action_btns = []
 
         line.addWidget(self.ref_btn)
@@ -321,8 +322,14 @@ class FMControls(BaseControls):
         # Select points
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Point transform:', self)
+        label = QtWidgets.QLabel('Point transform reference:', self)
         line.addWidget(label)
+
+        self.point_ref_btn = QtWidgets.QComboBox()
+        self.point_ref_btn.currentIndexChanged.connect(self._change_point_ref)
+        self.point_ref_btn.setMinimumWidth(100)
+        self.point_ref_btn.setEnabled(False)
+
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
         self.select_btn.toggled.connect(self._define_corr_toggled)
@@ -340,29 +347,35 @@ class FMControls(BaseControls):
         self.auto_opt_btn = QtWidgets.QCheckBox('Auto-optimize', self)
         self.auto_opt_btn.setEnabled(False)
         self.auto_opt_btn.stateChanged.connect(self.fit_circles)
+
+        line.addWidget(self.point_ref_btn)
+        line.addWidget(self.select_btn)
+        line.addWidget(size_label)
+        line.addWidget(self.size_box)
+        line.addWidget(self.auto_opt_btn)
+        #line.addWidget(self.refine_btn)
+        #line.addWidget(self.undo_refine_btn)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Refinement and Merge:', self)
+        line.addWidget(label)
+
         self.refine_btn = QtWidgets.QPushButton('Refinement')
         self.refine_btn.clicked.connect(self._refine)
         self.refine_btn.setEnabled(False)
         self.undo_refine_btn = QtWidgets.QPushButton('Undo last refinement')
         self.undo_refine_btn.clicked.connect(self._undo_refinement)
         self.undo_refine_btn.setEnabled(False)
-        line.addWidget(self.select_btn)
-        line.addWidget(size_label)
-        line.addWidget(self.size_box)
-        line.addWidget(self.auto_opt_btn)
-        line.addWidget(self.refine_btn)
-        line.addWidget(self.undo_refine_btn)
-        line.addStretch(1)
 
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Merge FM and EM:', self)
-        line.addWidget(label)
         self.merge_btn = QtWidgets.QPushButton('Merge', self)
         self.merge_btn.setEnabled(False)
         label = QtWidgets.QLabel('Progress:')
         self.progress = QtWidgets.QProgressBar(self)
         self.progress.setMaximum(100)
+        line.addWidget(self.refine_btn)
+        line.addWidget(self.undo_refine_btn)
         line.addWidget(self.merge_btn)
         line.addWidget(label)
         line.addWidget(self.progress)
@@ -434,18 +447,20 @@ class FMControls(BaseControls):
             self.c3_btn.setEnabled(True)
             self.c4_btn.setEnabled(True)
             self.overlay_btn.setEnabled(True)
+            self.align_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
-            self.align_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
             for i in range(1, self.ops.num_channels + 1):
                 self.ref_btn.addItem('Channel ' + str(i))
+                self.point_ref_btn.addItem('Channel ' + str(i))
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
             for i in range(1, self.ops.num_channels + 1):
                 self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
             self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
+            self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
 
         QtWidgets.QApplication.restoreOverrideCursor()
 
@@ -590,6 +605,10 @@ class FMControls(BaseControls):
             self.ops._color_matrices = []
             [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
+    def _change_point_ref(self):
+        num = self.point_ref_btn.currentIndex()
+        if num != self.ops._point_reference:
+            self.ops._point_reference = num
 
     def _find_peaks(self):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -695,49 +714,6 @@ class FMControls(BaseControls):
             print('You have to select the data first!')
         QtWidgets.QApplication.restoreOverrideCursor()
 
-#    def _align_colors(self, idx, state):
-#        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-#        if self.ops is not None:
-#            if state:
-#                print('Align color channels')
-#                print(idx)
-#                if str(idx) not in self.ops._alignment:
-#                    if idx == self.ops._peak_reference:
-#                        self.ops._alignment[str(idx)] = np.identity(3)
-#                    else:
-#                        undo_max_proj = False
-#                        if not self.max_proj_btn.isChecked():
-#                            self.max_proj_btn.setChecked(True)
-#                            undo_max_proj = True
-#                        if self.ops._transformed:
-#                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-#                                peaks_2d = None
-#                            else:
-#                                peaks_2d = self.ops.tf_peak_slices[-1]
-#                        else:
-#                            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-#                                peaks_2d = None
-#                            else:
-#                                peaks_2d = self.ops.peak_slices[-1]
-#                        if peaks_2d is None:
-#                            self.peak_btn.setChecked(True)
-#                            self.peak_btn.setChecked(False)
-#                            if self.ops._transformed:
-#                                peaks_2d = self.ops.orig_tf_peak_slices[-1]
-#                            else:
-#                                peaks_2d = self.ops.peak_slices[-1]
-#                        self.ops.estimate_alignment(peaks_2d, idx)
-#                        if undo_max_proj:
-#                            self.max_proj_btn.setChecked(False)
-#                self.ops.aligned = True
-#            else:
-#                self.ops.aligned = False
-#            self.ops._update_data()
-#            self._update_imview()
-#        else:
-#            print('You have to select the data first!')
-#        QtWidgets.QApplication.restoreOverrideCursor()
-
     def _mapping(self):
         self.align_btn.setEnabled(not self.map_btn.isChecked())
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -811,7 +787,7 @@ class FMControls(BaseControls):
         self.c3_btn.setEnabled(False)
         self.c4_btn.setEnabled(False)
         self.max_proj_btn.setChecked(False)
-
+        self.align_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
         self.rot_transform_btn.setEnabled(False)
@@ -820,10 +796,10 @@ class FMControls(BaseControls):
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.peak_btn.setEnabled(False)
-        self.align_btn.setEnabled(False)
+        self.point_ref_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
         self.refine_btn.setEnabled(False)
-        # self.auto_opt_btn.setEnabled(False)
+        self.auto_opt_btn.setEnabled(False)
         self.fliph.setEnabled(False)
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)

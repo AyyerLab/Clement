@@ -25,6 +25,7 @@ class FM_ops(Peak_finding):
         self._color_matrices = []
         self._aligned_channels = []
         self._peak_reference = None
+        self._point_reference = None
 
         self.reader = None
         self.voxel_size = None
@@ -719,7 +720,6 @@ class FM_ops(Peak_finding):
             z_reverse = self.num_slices - 1 - z
             fib_new[:2, 2] += z_reverse * z_shift
             total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ self._color_matrices[channel]
-            #total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 
@@ -736,8 +736,7 @@ class FM_ops(Peak_finding):
                     (np.expand_dims(self.merged_3d, axis=2), np.expand_dims(np.max(z_data, axis=0), axis=2)), axis=2)
                 # self.merged_3d = np.concatenate((np.expand_dims(self.merged_3d,axis=2), np.expand_dims(np.sum(z_data, axis=0),axis=2)), axis=2)
             else:
-                #if channel == 2:
-                if channel == 100:
+                if channel == 2:
                     self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.sum(z_data, axis=0), axis=2)),
                                                     axis=2)
                 else:

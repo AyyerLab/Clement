@@ -469,6 +469,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.flipv.setEnabled(False)
                 self.transpose.setEnabled(False)
                 self.rotate.setEnabled(False)
+                self.point_ref_btn.setEnabled(False)
                 print('Select points of interest on %s image' % self.tag)
                 for i in range(len(self._points_corr)):
                     self._remove_correlated_points(self._points_corr[0])
@@ -477,15 +478,14 @@ class BaseControls(QtWidgets.QWidget):
                     self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
                     self.other.tr_matrices = self.other.ops.get_fib_transform(
                         self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
+
+                    self.ops.load_channel(ind=self.ops._point_reference)
                     if not self.other._refined:
                         self.peak_btn.setChecked(True)
-                        self.ops.load_channel(ind=3)
                         if self.ops.tf_peaks_z is None:
                             self.ops.fit_z(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
                                            flips=self.flips, shape=self.ops.data.shape[:-1])
                             self.ops.clear_channel()
-                    else:
-                        self.ops.load_channel(ind=2)
                 else:
                     src_sorted = np.array(
                         sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -503,6 +503,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.flipv.setEnabled(True)
                     self.transpose.setEnabled(True)
                     self.rotate.setEnabled(True)
+                self.point_ref_btn.setEnabled(True)
         else:
             if checked:
                 print('Select and transform both data first')
@@ -553,6 +554,7 @@ class BaseControls(QtWidgets.QWidget):
             self.rot_transform_btn.setEnabled(False)
 
             if hasattr(self, 'select_btn'):
+                self.point_ref_btn.setEnabled(True)
                 self.select_btn.setEnabled(True)
                 self.merge_btn.setEnabled(True)
                 self.refine_btn.setEnabled(True)
@@ -582,6 +584,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.fliph.setEnabled(False)
                 self.transpose.setEnabled(False)
                 self.rotate.setEnabled(False)
+                self.point_ref_btn.setEnabled(False)
                 self.select_btn.setEnabled(False)
                 self.merge_btn.setEnabled(False)
                 self.refine_btn.setEnabled(False)
@@ -592,6 +595,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.fliph.setEnabled(True)
                     self.transpose.setEnabled(True)
                     self.rotate.setEnabled(True)
+                    self.point_ref_btn.setEnabled(True)
                     self.select_btn.setEnabled(True)
                     self.merge_btn.setEnabled(True)
                     self.refine_btn.setEnabled(True)
