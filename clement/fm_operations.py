@@ -324,7 +324,7 @@ class FM_ops(Peak_finding):
     def calc_z(self, ind, pos, channel=None):
         z = None
         if channel is None:
-            channel = 3
+            channel = self._peak_reference
         if ind is not None:
             z = self.tf_peaks_z[ind]
         else:
@@ -334,7 +334,7 @@ class FM_ops(Peak_finding):
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
             z = self.calc_local_z(self.channel, point, tf_aligned, flip_list, self.data.shape[:-1])
         if z is None:
-            print('Oops, something went wrong. Try a different bead!')
+            print('Oops, something went wrong. Try somewhere else!')
             return None
         # flip z axis and scale by voxel size ratio
         z = self.num_slices - 1 - z

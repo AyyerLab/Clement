@@ -141,7 +141,6 @@ class BaseControls(QtWidgets.QWidget):
     def _draw_correlated_points(self, pos, item):
         if self.other.ops is None:
             print('Select both data first')
-
         else:
             condition = False
             if hasattr(self, 'fib') and not self.fib:
@@ -171,7 +170,7 @@ class BaseControls(QtWidgets.QWidget):
                                 return
                             elif ind is not None:
                                 peaks = self.ops.tf_peak_slices[-1]
-                            z = self.ops.calc_z(ind, point)
+                            z = self.ops.calc_z(ind, point, self.ops._point_reference)
                             if z is None:
                                 print('z is None, something went wrong here... Try another bead!')
                                 return
@@ -193,7 +192,7 @@ class BaseControls(QtWidgets.QWidget):
                     else:
                         init = np.array([point[0], point[1], 1])
 
-                    point_obj = pg.CircleROI(pos, self.size, parent=item, movable=False, removable=True)
+                    point_obj = pg.CircleROI(pos, self.size, parent=item, movable=True, removable=True)
                     point_obj.setPen(0, 255, 0)
                     point_obj.removeHandle(0)
                     self.imview.addItem(point_obj)

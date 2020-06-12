@@ -230,7 +230,7 @@ class Peak_finding():
             if point[0] < 0 or point[1] < 0:
                 raise IndexError
             point = np.expand_dims(point, axis=0)
-            z = self.fit_z(data, transformed, local=True, point=point)
+            z = self.fit_z(data, transformed=True, local=True, point=point)
         except IndexError:
             print('You should select a point within the bounds of the image!')
         finally:
