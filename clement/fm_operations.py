@@ -676,15 +676,10 @@ class FM_ops(Peak_finding):
         tf_matrix = np.copy(self.tf_matrix)
         tf_matrix[:2, 2] += self.tf_corners.min(1)[:2]
 
-        if self._aligned_channels[channel]:
-            tf_aligned = tf_matrix @ self._color_matrices[channel]
-        else:
-            tf_aligned = tf_matrix
-
         if refine_matrix is None:
             refine_matrix = np.identity(3)
 
-        total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_aligned
+        total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
 
         nx, ny = self.channel[:, :, 0].shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -694,28 +689,27 @@ class FM_ops(Peak_finding):
         if channel == 0:
             flips = [self.transp, self.rot, self.fliph, self.flipv]
             orig_points = []
+            tf_aligned_orig_shift = self.tf_matrix @ self._color_matrices[0]
             for i in range(len(corr_points_fm)):
-                orig_point = self.calc_original_coordinates(corr_points_fm[i], tf_aligned, flips,
+                orig_point = self.calc_original_coordinates(corr_points_fm[i], tf_aligned_orig_shift, flips,
                                                             self.data.shape[:2])
                 orig_points.append(orig_point)
 
-            if self.merge_shift is None:
-                tf_points = []
-                tf_img = []
-                for i in range(len(orig_points)):
-                    img_tmp = np.zeros_like(self.channel[:, :, 0])
-                    img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
-                    z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
-                    fib_new = np.copy(fib_2d)
-                    fib_new[:2, 2] += z * z_shift
-                    shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
-                    shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
-                    refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
-                                                   output_shape=tf_shape)
-                    tf_img.append(refined)
-                    tf_point = np.where(refined == refined.max())
-                    tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
-
+            tf_points = []
+            tf_img = []
+            for i in range(len(orig_points)):
+                img_tmp = np.zeros_like(self.channel[:, :, 0])
+                img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
+                z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
+                fib_new = np.copy(fib_2d)
+                fib_new[:2, 2] += z * z_shift
+                shift_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ self._color_matrices[0]
+                shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
+                refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
+                                               output_shape=tf_shape)
+                tf_img.append(refined)
+                tf_point = np.where(refined == refined.max())
+                tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
                 self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib, axis=0)
             print('IMG shift: ', self.merge_shift)
 
@@ -724,16 +718,13 @@ class FM_ops(Peak_finding):
             fib_new = np.copy(fib_2d)
             z_reverse = self.num_slices - 1 - z
             fib_new[:2, 2] += z_reverse * z_shift
-            if channel == 2:
-                total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
-            else:
-                total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_aligned
-
+            total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ self._color_matrices[channel]
+            #total_matrix = refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 
-            refined = ndi.affine_transform(self.channel[:, :, z], np.linalg.inv(total_matrix), order=1,
-                                           output_shape=fib_data.shape)
+            refined = np.copy(ndi.affine_transform(self.channel[:, :, z], np.linalg.inv(total_matrix), order=1,
+                                           output_shape=fib_data.shape))
             z_data.append(refined)
 
         if self.merged_3d is None:
