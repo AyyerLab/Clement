@@ -80,6 +80,9 @@ class EM_ops():
                 print('No pixel size found! This might cause the program to crash at some point...')
         else:
             f = mrc.open(fname, 'r', permissive=True)
+            if f.data is None:
+                print('Data is empty! Check file!')
+                return
             if fname != self.old_fname:
                 self.h = f.header
                 self.eh = np.frombuffer(f.extended_header, dtype='i2')

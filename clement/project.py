@@ -34,6 +34,7 @@ class Project(QtWidgets.QWidget):
             self.fm.reset_init()
             self.em.reset_init()
             self.fib.reset_init()
+            self.parent.tabs.setCurrentIndex(0)
             self._project_folder = os.path.dirname(file_name)
             with open(file_name, 'r') as f:
                 project = yaml.load(f, Loader=yaml.FullLoader)
@@ -65,11 +66,11 @@ class Project(QtWidgets.QWidget):
             self.fm._series = fmdict['Series']
         self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
 
-        if fmdict['Max projection orig']:
+        undo_max_proj = False
+        if fmdict['Max projection']:
             self.fm.max_proj_btn.setChecked(True)
         else:
-            self.fm.slice_select_btn.setValue(fmdict['Slice'])
-            self.fm._slice_changed()
+            undo_max_proj = True
 
         try:
             if 'Original grid points' in fmdict:
@@ -77,7 +78,6 @@ class Project(QtWidgets.QWidget):
                 self.fm.ops.points = np.copy(self.fm.ops._orig_points)
                 self.fm.show_grid_btn.setEnabled(True)
                 self.fm._recalc_grid()
-            self.fm.show_grid_btn.setChecked(fmdict['Show grid box'])
             self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
 
             self.fm.ref_btn.setCurrentIndex(fmdict['Peak reference'])
@@ -89,24 +89,24 @@ class Project(QtWidgets.QWidget):
             try:
                 self.fm.ops._tf_points = np.array(fmdict['Transformed grid points'])
                 self.fm._affine_transform(toggle_orig=False)
-                if fmdict['Max projection transformed']:
-                    self.fm.max_proj_btn.setChecked(True)
-                else:
-                    self.fm.slice_select_btn.setValue(fmdict['Slice'])
-                    self.fm._slice_changed()
 
                 self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
+                counter = 0
                 if (fmdict['Transpose'] and 0 not in self.fm._fib_flips) or (
                         not fmdict['Transpose'] and 0 in self.fm._fib_flips):
                     self.fm.transpose.setChecked(True)
+                    counter+=1
                 if (fmdict['Rotate'] and 1 not in self.fm._fib_flips) or (
                         not fmdict['Rotate'] and 1 in self.fm._fib_flips):
                     self.fm.rotate.setChecked(True)
+                    counter += 1
                 if (fmdict['Fliph'] and 2 not in self.fm._fib_flips) or (
                         not fmdict['Fliph'] and 2 in self.fm._fib_flips):
                     self.fm.fliph.setChecked(True)
+                    counter += 1
                 if (fmdict['Flipv'] and 3 not in self.fm._fib_flips) or (
                         not fmdict['Flipv'] and 3 in self.fm._fib_flips):
+                    counter+=1
                     self.fm.flipv.setChecked(True)
             except KeyError:
                 pass
@@ -116,8 +116,14 @@ class Project(QtWidgets.QWidget):
         if 'Show peaks' in fmdict:
             self.fm.peak_btn.setChecked(fmdict['Show peaks'])
         self.fm.show_btn.setChecked(fmdict['Show original'])
+        self.fm.show_grid_btn.setChecked(fmdict['Show grid box'])
         self.fm.map_btn.setChecked(fmdict['Show z map'])
         self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
+
+        if undo_max_proj:
+            self.fm.slice_select_btn.setValue(fmdict['Slice'])
+            self.fm._slice_changed()
+
         self.fm._update_imview()
 
     def _load_em(self, project):
@@ -259,11 +265,12 @@ class Project(QtWidgets.QWidget):
                     self.fm.flipv.setChecked(not self.fm.flipv.isChecked())
             fmdict = project['FM']
             self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
-            self.fm._fib_vs_sem_history = fmdict['FIB vs SEM history']
+            fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
             fib_counter = 0
             sem_counter = 0
-            for i in range(len(self.fm._fib_vs_sem_history)):
-                if self.fm._fib_vs_sem_history[i]:
+            for i in range(len(copy.copy(fmdict['FIB vs SEM history']))):
+                print(i)
+                if fib_vs_sem_history[i]:
                     emdict = project['FIB']
                     em = self.fib
                     counter = fib_counter
@@ -459,16 +466,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Show z map'] = self.fm.map_btn.isChecked()
         fmdict['Remove tilt'] = self.fm.remove_tilt_btn.isChecked()
 
-        if self.fm.ops._show_max_proj:
-            if self.fm.show_btn.isChecked():
-                fmdict['Max projection orig'] = True
-                fmdict['Max projection transformed'] = False
-            else:
-                fmdict['Max projection orig'] = False
-                fmdict['Max projection transformed'] = True
-        else:
-            fmdict['Max projection orig'] = False
-            fmdict['Max projection transformed'] = False
+        fmdict['Max projection'] = self.fm.max_proj_btn.isChecked()
 
         fmdict['Show grid box'] = self.fm.show_grid_btn.isChecked()
         fmdict['Rotation only'] = self.fm.rot_transform_btn.isChecked()
@@ -482,7 +480,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
         fmdict['FIB flips'] = self.fm._fib_flips
-        fmdict['Point reference'] = self.fm._point_reference
+        fmdict['Point reference'] = self.fm.ops._point_reference
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
         fmdict['Original correlated points'] = self.fm._orig_points_corr

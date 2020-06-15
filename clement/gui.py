@@ -190,7 +190,7 @@ class GUI(QtGui.QMainWindow):
                 self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols.fib = False
         else:
-            if self.emcontrols.ops is not None:
+            if self.emcontrols.ops is not None and self.fmcontrols.ops is not None:
                 if self.fmcontrols.ops.points is not None and self.emcontrols.ops.points is not None:
                     self.fmcontrols._calc_tr_matrices()
             self.fibcontrols.fib = True

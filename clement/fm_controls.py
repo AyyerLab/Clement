@@ -452,6 +452,7 @@ class FMControls(BaseControls):
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
+
             for i in range(1, self.ops.num_channels + 1):
                 self.ref_btn.addItem('Channel ' + str(i))
                 self.point_ref_btn.addItem('Channel ' + str(i))
@@ -742,24 +743,34 @@ class FMControls(BaseControls):
                 if self.grid_box is not None:
                     self.imview.removeItem(self.grid_box)
 
+        self.peak_btn.setChecked(False)
+        self.peak_btn.setEnabled(False)
+
+
         self._box_coordinate = None
         self._points_corr = []
+        self._points_corr_z = []
+        self._orig_points_corr = []
         self._points_corr_indices = []
+        self._refined = False
+        self._err = [None, None]
+        self._std = [[None, None], [None, None]]
+        self._conv = [None, None]
+        self._dist = None
+
         self._points_corr_history = []
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
-        self._fib_flips = []
+        self._size_history = []
 
+        self._fib_flips = []
         self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False
         self.clicked_points = []
         self.grid_box = None
         self.tr_grid_box = None
-        self.boxes = []
-        self.tr_boxes = []
-        self.original_help = True
         self.redo_tr = False
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
@@ -770,6 +781,8 @@ class FMControls(BaseControls):
         # self.ind = 0
         self._curr_folder = None
         self._series = None
+
+
         self._current_slice = 0
         self.channel1_btn.setChecked(True)
         self.channel2_btn.setChecked(True)
@@ -787,6 +800,12 @@ class FMControls(BaseControls):
         self.c3_btn.setEnabled(False)
         self.c4_btn.setEnabled(False)
         self.max_proj_btn.setChecked(False)
+
+        for i in range(len(self.action_btns)):
+            self.align_menu.removeAction(self.action_btns[i])
+            self.ref_btn.removeItem(0)
+            self.point_ref_btn.removeItem(0)
+        self.action_btns = []
         self.align_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
@@ -795,22 +814,27 @@ class FMControls(BaseControls):
         self.show_btn.setChecked(True)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
-        self.peak_btn.setEnabled(False)
+
         self.point_ref_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
         self.refine_btn.setEnabled(False)
         self.auto_opt_btn.setEnabled(False)
+
         self.fliph.setEnabled(False)
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)
         self.rotate.setEnabled(False)
+        self.fliph.setChecked(False)
+        self.flipv.setChecked(False)
+        self.transpose.setChecked(False)
+        self.rotate.setChecked(False)
+
+
         self.merge_btn.setEnabled(False)
 
         self.map_btn.setEnabled(False)
         self.map_btn.setChecked(False)
         self.remove_tilt_btn.setEnabled(False)
         self.remove_tilt_btn.setChecked(False)
-
-        self.action_btns = []
 
         self.ops.__init__()

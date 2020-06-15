@@ -194,6 +194,7 @@ class EMControls(BaseControls):
             self.define_btn.setEnabled(True)
             self.show_btn.setChecked(True)
             self.transform_btn.setEnabled(False)
+            self.rot_transform_btn.setEnabled(False)
             self.transp_btn.setEnabled(True)
             if self.tr_grid_box is not None:
                 self.imview.removeItem(self.tr_grid_box)
@@ -377,6 +378,8 @@ class EMControls(BaseControls):
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
+        self._size_history = []
+        self._fib_flips = []
 
         self.flips = [False, False, False, False]
         self.tr_matrices = None
@@ -401,17 +404,21 @@ class EMControls(BaseControls):
         self.show_boxes = False
         self._downsampling = None
 
-        self.step_box.setEnabled(False)   
+
+        self.step_box.setEnabled(False)
         self.assemble_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
-        self.transform_btn.setEnabled(False)
-        self.rot_transform_btn.setEnabled(False)
-        self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
+        self.show_btn.setEnabled(False)
+        self.rot_transform_btn.setEnabled(False)
+        self.transform_btn.setEnabled(False)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_assembled_btn.setChecked(True)
         self.show_assembled_btn.setEnabled(False)
+
+        self.show_peaks_btn.setChecked(False)
+        self.show_peaks_btn.setEnabled(False)
 
         self.err_plt_btn.setEnabled(False)
         self.convergence_btn.setEnabled(False)

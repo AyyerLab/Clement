@@ -236,6 +236,8 @@ class FIBControls(BaseControls):
     def reset_init(self):
         if self.show_grid_btn.isChecked() and self.grid_box is not None:
             self.imview.removeItem(self.grid_box)
+        self.show_peaks_btn.setChecked(False)
+        self.show_peaks_btn.setEnabled(False)
 
         self._box_coordinate = None
         self._points_corr = []
@@ -252,6 +254,8 @@ class FIBControls(BaseControls):
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
+        self._size_history = []
+        self._fib_flips = []
 
         self.flips = [False, False, False, False]
         self.tr_matrices = None
@@ -279,8 +283,8 @@ class FIBControls(BaseControls):
         self.transp_btn.setChecked(False)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
-        self.show_peaks_btn.setEnabled(False)
-        self.show_peaks_btn.setChecked(False)
+
+
         self.err_plt_btn.setEnabled(False)
         self.convergence_btn.setEnabled(False)
 

@@ -426,6 +426,8 @@ class BaseControls(QtWidgets.QWidget):
             sorted(self.other.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
         self.orig_fm_sem_corr = self.other.ops.get_transform(src_sorted, dst_sorted)
 
+
+
     def _store_fib_flips(self, idx):
         if idx in self._fib_flips:
             del self._fib_flips[self._fib_flips == idx]
@@ -861,7 +863,7 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 if (self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[
                     -1] is None or self.other.ops.tf_peaks_z is None):
-                    print('Calculate FM peak positions for maximum projection first')
+                    print('Calculate FM peak positions for aligned maximum projection first')
                     QtWidgets.QApplication.restoreOverrideCursor()
                     return
 
@@ -884,10 +886,19 @@ class BaseControls(QtWidgets.QWidget):
                     self.peaks.append(point)
                     self.imview.addItem(point)
             else:
+                if self.tr_matrices is None:
+                    src_sorted = np.array(
+                        sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                    dst_sorted = np.array(
+                        sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                    self.tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
                 for i in range(self.other.ops.tf_peak_slices[-1].shape[0]):
                     init = np.array(
                         [self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
-                    transf = self.tr_matrices @ self.ops._refine_matrix @ init
+                    if self._refined:
+                        transf = self.tr_matrices @ self.ops._refine_matrix @ init
+                    else:
+                        transf = self.tr_matrices @ init
                     pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
                     point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=False)
