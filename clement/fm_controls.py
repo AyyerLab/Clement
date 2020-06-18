@@ -671,6 +671,7 @@ class FMControls(BaseControls):
                         self.ops.transp = transp
                         self.ops._update_data()
                         self._update_imview()
+                print(self.ops.tf_peak_slices)
             else:
                 [self.imview.removeItem(point) for point in self._peaks]
                 self._peaks = []

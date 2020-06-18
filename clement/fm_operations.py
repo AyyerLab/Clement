@@ -372,8 +372,11 @@ class FM_ops(Peak_finding):
                 if np.linalg.norm(diff) < roi_size:
                     tmp.append(tmp_i)
                     ref.append(peaks_2d[i])
-        self._color_matrices[idx] = tf.estimate_transform('affine', np.array(tmp), np.array(ref)).params
-        self._aligned_channels[idx] = True
+        if len(ref) != 0 and len(tmp) != 0:
+            self._color_matrices[idx] = tf.estimate_transform('affine', np.array(tmp), np.array(ref)).params
+            self._aligned_channels[idx] = True
+        else:
+            print('Unable to align channels. Be sure you select a fluorescence channel!')
 
     def apply_alignment(self):
         for i in range(self.num_channels):

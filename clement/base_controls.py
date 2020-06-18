@@ -520,11 +520,6 @@ class BaseControls(QtWidgets.QWidget):
 
         if grid_box is not None:
             if hasattr(self, 'fliph'):
-                if self.align_btn.isChecked():
-                    aligned = True
-                    self.align_btn.setChecked(False)
-                else:
-                    aligned = False
                 self.fliph.setChecked(False)
                 self.fliph.setEnabled(True)
                 self.flipv.setChecked(False)
@@ -553,14 +548,13 @@ class BaseControls(QtWidgets.QWidget):
             self._update_imview()
             self.transform_btn.setEnabled(False)
             self.rot_transform_btn.setEnabled(False)
+            self.define_btn.setEnabled(False)
 
             if hasattr(self, 'select_btn'):
                 self.point_ref_btn.setEnabled(True)
                 self.select_btn.setEnabled(True)
                 self.merge_btn.setEnabled(True)
                 self.refine_btn.setEnabled(True)
-                #if aligned:
-                #    self.align_btn.setChecked(True)
 
             if self.ops is not None and self.other.ops is not None:
                 if hasattr(self, 'select_btn') and not self.other.fib:
@@ -628,9 +622,11 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops._transformed:
                 self.transform_btn.setEnabled(False)
                 self.rot_transform_btn.setEnabled(False)
+                self.define_btn.setEnabled(False)
             else:
                 self.transform_btn.setEnabled(True)
                 self.rot_transform_btn.setEnabled(True)
+                self.define_btn.setEnabled(True)
 
             if show_peaks:
                 self.peak_btn.setChecked(True)
@@ -796,7 +792,6 @@ class BaseControls(QtWidgets.QWidget):
 
         diff = np.array(sel_points) - np.array(refined_points)
         diff *= self.other.ops.pixel_size
-        print(diff.mean(0))
         self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
 
         self.other._err[idx] = diff
@@ -858,54 +853,64 @@ class BaseControls(QtWidgets.QWidget):
         if self.show_peaks_btn.isChecked():
             if self.other.ops is None:
                 print('Select FM data first')
+                self.show_peaks_btn.setChecked(False)
                 QtWidgets.QApplication.restoreOverrideCursor()
                 return
             else:
-                if (self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[
-                    -1] is None or self.other.ops.tf_peaks_z is None):
-                    print('Calculate FM peak positions for aligned maximum projection first')
+                if self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[-1] is None:
+                    print('Calculate FM peak positions for maximum projection first')
                     QtWidgets.QApplication.restoreOverrideCursor()
+                    self.show_peaks_btn.setChecked(False)
                     return
+                elif self.fib and self.other.ops.tf_peaks_z is None:
+                    self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
+                    self.tr_matrices = self.ops.get_fib_transform(
+                        self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
 
-            if len(self.peaks) != 0:
-                self.peaks = []
-            if self.fib:
-                for i in range(len(self.other.ops.tf_peak_slices[-1])):
-                    z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
-                    init = np.array(
-                        [self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
-                    transf = np.dot(self.tr_matrices, init)
-                    transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-                    if self._refined:
-                        transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
-                    pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                    point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
-                                         removable=False)
-                    point.setPen(255, 0, 0)
-                    point.removeHandle(0)
-                    self.peaks.append(point)
-                    self.imview.addItem(point)
-            else:
-                if self.tr_matrices is None:
-                    src_sorted = np.array(
-                        sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    dst_sorted = np.array(
-                        sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    self.tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
-                for i in range(self.other.ops.tf_peak_slices[-1].shape[0]):
-                    init = np.array(
-                        [self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
-                    if self._refined:
-                        transf = self.tr_matrices @ self.ops._refine_matrix @ init
-                    else:
-                        transf = self.tr_matrices @ init
-                    pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                    point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
-                                         removable=False)
-                    point.setPen(255, 0, 0)
-                    point.removeHandle(0)
-                    self.peaks.append(point)
-                    self.imview.addItem(point)
+                    self.other.ops.load_channel(ind=self.other.ops._point_reference)
+                    self.other.ops.fit_z(self.other.ops.channel, transformed=True, tf_matrix=self.other.ops.tf_matrix,
+                                   flips=self.other.flips, shape=self.other.ops.data.shape[:-1])
+                    self.other.ops.clear_channel()
+
+                if len(self.peaks) != 0:
+                    self.peaks = []
+                if self.fib:
+                    for i in range(len(self.other.ops.tf_peak_slices[-1])):
+                        z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
+                        init = np.array(
+                            [self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
+                        transf = np.dot(self.tr_matrices, init)
+                        transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+                        if self._refined:
+                            transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
+                        pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
+                        point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
+                                             removable=False)
+                        point.setPen(255, 0, 0)
+                        point.removeHandle(0)
+                        self.peaks.append(point)
+                        self.imview.addItem(point)
+                else:
+                    if self.tr_matrices is None:
+                        src_sorted = np.array(
+                            sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                        dst_sorted = np.array(
+                            sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                        self.tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
+                    for i in range(self.other.ops.tf_peak_slices[-1].shape[0]):
+                        init = np.array(
+                            [self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
+                        if self._refined:
+                            transf = self.tr_matrices @ self.ops._refine_matrix @ init
+                        else:
+                            transf = self.tr_matrices @ init
+                        pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
+                        point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
+                                             removable=False)
+                        point.setPen(255, 0, 0)
+                        point.removeHandle(0)
+                        self.peaks.append(point)
+                        self.imview.addItem(point)
         else:
             [self.imview.removeItem(point) for point in self.peaks]
         QtWidgets.QApplication.restoreOverrideCursor()

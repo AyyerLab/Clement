@@ -124,7 +124,7 @@ class FIBControls(BaseControls):
             self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                                        'Select .mrc file',
                                                                        self._curr_folder,
-                                                                       '*.mrc;;*.tif;;*tiff')
+                                                                       '*.tif;;*tiff;;*.mrc')
             self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name != '':
@@ -284,7 +284,7 @@ class FIBControls(BaseControls):
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
 
-
+        self.err_btn.setText('0')
         self.err_plt_btn.setEnabled(False)
         self.convergence_btn.setEnabled(False)
 
