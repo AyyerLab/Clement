@@ -26,18 +26,17 @@ setuptools.setup(
         'numpy',
         'scipy>=1.0.0',
         'scikit-image',
-        'scikit-learn'
+        'scikit-learn',
         'pyqt5',
         'numexpr',
         'mrcfile',
         'read-lif==0.4.0',
         'tifffile',
-        'matplotlib'
+        'matplotlib',
         #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=c715c5ac2855bc6208ef2f3b810af305969a5748',
         #'pyqtgraph',
-        'pyqtgraph==0.11.0rc0'
-        'pyyaml'
-
+        'pyqtgraph==0.11.0rc0',
+        'pyyaml',
     ],
     package_data={'clement': ['styles/*.qss']},
     entry_points={'gui_scripts': [
