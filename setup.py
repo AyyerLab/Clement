@@ -5,7 +5,7 @@ with open('README.md', 'r') as fptr:
 
 setuptools.setup(
     name='clement',
-    version='0.2.1',
+    version='0.2.2',
     author='CNI Group at MPSD',
     author_email='kartik.ayyer@mpsd.mpg.de',
     description='GUI for Correlative Light and Electron Microscopy',
