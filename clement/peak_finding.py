@@ -8,7 +8,7 @@ import time
 
 
 class Peak_finding():
-    def __init__(self, threshold=0, plt=50, put=200):
+    def __init__(self, threshold=0, plt=10, put=200):
         self.num_slices = None
         self.peak_slices = None
         self.tf_peak_slices = None
