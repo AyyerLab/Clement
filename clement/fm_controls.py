@@ -10,6 +10,12 @@ from skimage.color import hsv2rgb
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
 
+def wait_cursor(func):
+    def wrapper(*args, **kwargs):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        func(*args, **kwargs)
+        QtWidgets.QApplication.restoreOverrideCursor()
+    return wrapper
 
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, parent, names):
@@ -77,26 +83,6 @@ class FMControls(BaseControls):
         self._bead_size = None
 
         self._init_ui()
-
-    #    def mouseDragEvent(self, event):
-    #        if event.button() == QtCore.Qt.RightButton:
-    #            event.accept()
-    #            if event.isStart():
-    #                print("Start drag", event.pos())
-    #                self.start = event.pos()
-    #            elif event.isFinish():
-    #                print("Stop drag", event.pos())
-    #            else:
-    #                self.stop = event.pos()
-    #                print("Drag", event.pos())
-    #                tr = QtGui.QTransform()
-    #                tr.rotate(90, axis=1)
-    #                m = pg.transformToArray(tr)[:2]
-
-    # def _imview_moved(self, event):
-    #    pass
-    # if (event.buttons() & QtCore.Qt.RightButton):
-    #    print('hello')
 
     def _init_ui(self):
         vbox = QtWidgets.QVBoxLayout()
@@ -362,7 +348,7 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Refinement and Merge:', self)
         line.addWidget(label)
 
-        self.refine_btn = QtWidgets.QPushButton('Refinement')
+        self.refine_btn = QtWidgets.QPushButton('Refine')
         self.refine_btn.clicked.connect(self._refine)
         self.refine_btn.setEnabled(False)
         self.undo_refine_btn = QtWidgets.QPushButton('Undo last refinement')
@@ -415,6 +401,7 @@ class FMControls(BaseControls):
             self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(self._file_name)
 
+    @wait_cursor
     def _parse_fm_images(self, file_name, series=None):
         self.ops = FM_ops()
         retval = self.ops.parse(file_name, z=0, series=series)
@@ -425,7 +412,6 @@ class FMControls(BaseControls):
             if self._series < 0:
                 self.ops = None
                 return
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self.ops.parse(file_name, z=0, series=self._series)
 
         self.num_slices = self.ops.num_slices
@@ -463,19 +449,16 @@ class FMControls(BaseControls):
             self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
             self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
 
-        QtWidgets.QApplication.restoreOverrideCursor()
-
-    def _show_max_projection(self):
+    @wait_cursor
+    def _show_max_projection(self, state=None):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
         if self.max_proj_btn.isChecked():
             self.ops.selected_slice = None
         else:
             self.ops.selected_slice = self.slice_select_btn.value()
         if self.ops is not None:
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self.ops.calc_max_projection()
             self._update_imview()
-            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _calc_color_channels(self):
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
@@ -491,19 +474,17 @@ class FMControls(BaseControls):
         if self.overlay_btn.isChecked():
             self.color_data = np.sum(self.color_data, axis=0)
 
-    def _show_overlay(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+    @wait_cursor
+    def _show_overlay(self, state=None):
         if self.ops is not None:
             self._overlay = not self._overlay
             self._update_imview()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _show_channels(self, checked, my_channel):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None and self.ops.data is not None:
             self._channels[my_channel] = not self._channels[my_channel]
             self._update_imview()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _sel_color(self, index, button):
         color = QtWidgets.QColorDialog.getColor()
@@ -515,8 +496,8 @@ class FMControls(BaseControls):
         else:
             print('Invalid color')
 
+    @wait_cursor
     def _fliph(self, state):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             if self.other.fib:
                 if self.other.ops is not None:
@@ -530,10 +511,8 @@ class FMControls(BaseControls):
             self._recalc_grid()
             self._update_imview()
 
-        QtWidgets.QApplication.restoreOverrideCursor()
-
+    @wait_cursor
     def _flipv(self, state):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             if self.other.fib:
                 if self.other.ops is not None:
@@ -546,10 +525,9 @@ class FMControls(BaseControls):
             self.ops.flip_vertical(state)
             self._recalc_grid()
             self._update_imview()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _trans(self, state):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             if self.other.fib:
                 if self.other.ops is not None:
@@ -562,10 +540,9 @@ class FMControls(BaseControls):
             self.ops.transpose(state)
             self._recalc_grid()
             self._update_imview()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _rot(self, state):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             if self.other.fib:
                 if self.other.ops is not None:
@@ -578,10 +555,9 @@ class FMControls(BaseControls):
             self.ops.rotate_clockwise(state)
             self._recalc_grid()
             self._update_imview()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _slice_changed(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is None:
             print('Pick FM image first')
             return
@@ -594,9 +570,8 @@ class FMControls(BaseControls):
             self.fm_fname.setText(fname + ' [%d/%d]' % (num, self.num_slices))
             self._current_slice = num
             self.slice_select_btn.clearFocus()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _change_ref(self):
+    def _change_ref(self, state=None):
         num = self.ref_btn.currentIndex()
         if num != self.ops._peak_reference:
             self.ops._peak_reference = num
@@ -611,8 +586,8 @@ class FMControls(BaseControls):
         if num != self.ops._point_reference:
             self.ops._point_reference = num
 
-    def _find_peaks(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+    @wait_cursor
+    def _find_peaks(self, state=None):
         if self.ops is not None:
             if self.peak_btn.isChecked():
                 flip = False
@@ -678,10 +653,9 @@ class FMControls(BaseControls):
                 # self.max_proj_btn.setChecked(show_max_proj)
         else:
             print('You have to select the data first!')
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _align_colors(self, idx, state):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is not None:
             if state:
                 print('Align color channels')
@@ -714,26 +688,22 @@ class FMControls(BaseControls):
             self._update_imview()
         else:
             print('You have to select the data first!')
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _mapping(self):
         self.align_btn.setEnabled(not self.map_btn.isChecked())
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.ops.calc_mapping()
         self._update_imview()
         if self.remove_tilt_btn.isChecked():
             self._remove_tilt()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _remove_tilt(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.map_btn.isChecked():
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())
             self._update_imview()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
     def reset_init(self):
-
         # self.ops = None
         # self.other = None # The other controls object
         if self.show_grid_btn.isChecked():
@@ -839,3 +809,24 @@ class FMControls(BaseControls):
         self.remove_tilt_btn.setChecked(False)
 
         self.ops.__init__()
+
+    #    def mouseDragEvent(self, event):
+    #        if event.button() == QtCore.Qt.RightButton:
+    #            event.accept()
+    #            if event.isStart():
+    #                print("Start drag", event.pos())
+    #                self.start = event.pos()
+    #            elif event.isFinish():
+    #                print("Stop drag", event.pos())
+    #            else:
+    #                self.stop = event.pos()
+    #                print("Drag", event.pos())
+    #                tr = QtGui.QTransform()
+    #                tr.rotate(90, axis=1)
+    #                m = pg.transformToArray(tr)[:2]
+
+    # def _imview_moved(self, event):
+    #    pass
+    # if (event.buttons() & QtCore.Qt.RightButton):
+    #    print('hello')
+
