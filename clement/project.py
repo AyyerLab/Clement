@@ -11,7 +11,7 @@ import copy
 class Project(QtWidgets.QWidget):
     def __init__(self, fm, em, fib, parent):
         super(Project, self).__init__()
-        self._project_folder = None
+        self._project_folder = os.getcwd()
         self.fm = fm
         self.em = em
         self.fib = fib
@@ -21,13 +21,12 @@ class Project(QtWidgets.QWidget):
         self.parent = parent
         self.load_merge = False
 
-    def _load_project(self):
-        self._project_folder = os.getcwd()
-
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                             'Select project',
-                                                             self._project_folder,
-                                                             '*.yml')
+    def _load_project(self, file_name=None):
+        if file_name is None:
+            file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                                 'Select project',
+                                                                 self._project_folder,
+                                                                 '*.yml')
         if file_name is not '':
             print('Load ', file_name)
             self.fm.reset_base()
@@ -138,6 +137,11 @@ class Project(QtWidgets.QWidget):
         self.em.step_box.setText(emdict['Downsampling'])
         self.em._load_mrc(jump=True)
         self.em._assemble_mrc()
+        if emdict['Transpose']:
+            self.em.transp_btn.setEnabled(True)
+            self.em.transp_btn.setChecked(True)
+            self.em._transpose()
+
         try:
             self.em._select_region_original = emdict['Select subregion original']
             try:
@@ -236,7 +240,7 @@ class Project(QtWidgets.QWidget):
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
             self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
             self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
-            self.fib._refine_grid()
+            self.fib._recalc_grid()
         except KeyError:
             pass
 
@@ -318,18 +322,9 @@ class Project(QtWidgets.QWidget):
                 self.fm._refine()
 
                 em.show_peaks_btn.setChecked(emdict['Show peaks'])
-            # Draw for fun
-            # indices = [11,12,10,9,8,7,6,5,4,3]
-            # self.fm.select_btn.setChecked(True)
-            # for i in range(len(fm_circles)):
-            #    if i in indices:
-            #        point = np.array(fmdict['Correlated points history'][0])[i-1]
-            #        print(point)
-            #        qpoint = QtCore.QPointF(point[0], point[1])
-            #        self.fm._draw_correlated_points(qpoint, self.fm.imview.getImageItem())
-            #        em.imview.addItem(em_circles[i-1])
         except KeyError:
             pass
+
         try:
             if self.fib.fib:
                 emdict = project['FIB']
@@ -339,7 +334,7 @@ class Project(QtWidgets.QWidget):
                 em = self.em
 
             self.fm.other = em
-            points_corr_fm = fmdict['Correlated points']
+            points_corr_fm = project['FM']['Correlated points']
             if len(points_corr_fm) != 0:
                 self.fm.select_btn.setChecked(True)
                 qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(points_corr_fm)]
@@ -445,6 +440,7 @@ class Project(QtWidgets.QWidget):
                 project['MERGE']['Merged'] = self.merged
                 if self.merged:
                     self._save_merge(project['MERGE'])
+            self._project_folder = os.path.dirname(file_name)
             with open(file_name, 'w') as fptr:
                 yaml.dump(project, fptr)
 
@@ -497,6 +493,7 @@ class Project(QtWidgets.QWidget):
 
         emdict['Directory'] = self.em._curr_folder
         emdict['File'] = self.em._file_name
+        emdict['Transpose'] = self.em.transp_btn.isChecked()
         emdict['Downsampling'] = self.em._downsampling
         emdict['Show grid box'] = self.em.show_grid_btn.isChecked()
         emdict['Rotation only'] = self.em.rot_transform_btn.isChecked()
