@@ -14,6 +14,12 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator, FormatStrFormat
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
+def wait_cursor(func):
+    def wrapper(*args, **kwargs):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        func(*args, **kwargs)
+        QtWidgets.QApplication.restoreOverrideCursor()
+    return wrapper
 
 class MplCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -371,17 +377,15 @@ class Merge(QtGui.QMainWindow, ):
         self.imview_popup.removeItem(anno)
         self.annotations_popup.remove(anno)
 
+    @wait_cursor
     def _show_overlay_popup(self, checked):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self._overlay_popup = not self._overlay_popup
         self._update_imview_popup()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _show_channels_popup(self, checked, my_channel):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self._channels_popup[my_channel] = not self._channels_popup[my_channel]
         self._update_imview_popup()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _sel_color_popup(self, index, button):
         color = QtWidgets.QColorDialog.getColor()
@@ -449,22 +453,20 @@ class Merge(QtGui.QMainWindow, ):
                                                                                              self.downsampling)
             print('Done selecting points of interest!')
 
+    @wait_cursor
     def _save_data_popup(self):
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder_popup)
         if file_name != '':
             try:
-                QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
                 file_name = file_name.split('.', 1)[0]
                 screenshot = self.imview_popup.grab()
                 screenshot.save(file_name, 'tif')
                 self._save_merge_popup(file_name)
                 self._save_coordinates_popup(file_name)
-                QtWidgets.QApplication.restoreOverrideCursor()
             except PermissionError:
                 print('Permission error! Choose a different directory!')
-                QtWidgets.QApplication.restoreOverrideCursor()
 
     def _save_merge_popup(self, fname):
         with mrc.new(fname + '.mrc', overwrite=True) as f:
@@ -479,12 +481,11 @@ class Merge(QtGui.QMainWindow, ):
                 with open(fname + '.txt', 'a', newline='') as f:
                     csv.writer(f, delimiter=' ').writerows(enumerated)
 
+    @wait_cursor
     def _show_max_projection_popup(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.max_help:
             self.max_help = False
             self.slice_select_btn_popup.setEnabled(False)
-            QtWidgets.QApplication.restoreOverrideCursor()
             return
         else:
             if self.fm_copy is None:
@@ -494,10 +495,9 @@ class Merge(QtGui.QMainWindow, ):
             self.fm_copy.apply_merge()
             self.data_popup = np.copy(self.fm_copy.merged)
             self._update_imview_popup()
-            QtWidgets.QApplication.restoreOverrideCursor()
 
+    @wait_cursor
     def _slice_changed_popup(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.fm_copy is None:
             self.fm_copy = copy.copy(self.parent.fm)
         num = self.slice_select_btn_popup.value()
@@ -510,7 +510,6 @@ class Merge(QtGui.QMainWindow, ):
             self.fm_fname_popup = (fname + ' [%d/%d]' % (num, self.fm_copy.num_slices))
             self._current_slice_popup = num
             self.slice_select_btn_popup.clearFocus()
-        QtWidgets.QApplication.restoreOverrideCursor()
 
     def _set_theme(self, name):
         if name == 'none':
