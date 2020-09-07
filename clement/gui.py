@@ -14,21 +14,32 @@ from .popup import Merge, Scatter, Convergence
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
+def wait_cursor(func):
+    def wrapper(*args, **kwargs):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        func(*args, **kwargs)
+        QtWidgets.QApplication.restoreOverrideCursor()
+    return wrapper
 
 def resource_path(rel_path):
     try:
         base_path = sys._MEIPASS
-    except Exception:
+    except AttributeError:
         base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, rel_path)
 
 
-class GUI(QtGui.QMainWindow):
-    def __init__(self):
+class GUI(QtWidgets.QMainWindow):
+    def __init__(self, project_fname=None, no_restore=False):
         super(GUI, self).__init__()
-        self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
+        if not no_restore:
+            self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
+        else:
+            self.settings = QtCore.QSettings()
         self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080'])
         self._init_ui()
+        if project_fname is not None:
+            self.project._load_project(project_fname)
 
     def _init_ui(self):
         geom = self.settings.value('geometry')
@@ -116,6 +127,7 @@ class GUI(QtGui.QMainWindow):
         self.scatter = None
         self.convergence = None
         self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self)
+        self.project._project_folder = self.settings.value('project_folder', defaultValue=os.getcwd())
         # Menu Bar
         self._init_menubar()
 
@@ -233,8 +245,8 @@ class GUI(QtGui.QMainWindow):
         else:
             print('To use this feature, you have to use at least 10 points for the refinement!')
 
+    @wait_cursor
     def merge(self, project=None):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.fm = self.fmcontrols.ops
         if self.fibcontrols.fib:
             self.em = self.fibcontrols.ops
@@ -258,15 +270,11 @@ class GUI(QtGui.QMainWindow):
                         if self.project.load_merge:
                             self.project._load_merge(project)
                             self.project.load_merge = False
-                        QtWidgets.QApplication.restoreOverrideCursor()
                         self.popup.show()
-                    QtWidgets.QApplication.restoreOverrideCursor()
                 else:
                     print('You have to transform the FM and the TEM/SEM images first!')
-                    QtWidgets.QApplication.restoreOverrideCursor()
         else:
             print('Select FM and EM data first!')
-            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _set_theme(self, name):
         self.setStyleSheet('')
@@ -308,12 +316,20 @@ class GUI(QtGui.QMainWindow):
         self.settings.setValue('fm_folder', self.fmcontrols.curr_folder)
         self.settings.setValue('em_folder', self.emcontrols.curr_folder)
         self.settings.setValue('fib_folder', self.fibcontrols.curr_folder)
+        self.settings.setValue('project_folder', self.project._project_folder)
         event.accept()
 
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Clement: GUI for Correlative Light and Electron Microscopy')
+    parser.add_argument('-p', '--project_fname', help='Path to project .yml file')
+    parser.add_argument('--no-restore', help='Do not restore QSettings from last time Clement closed', action='store_true')
+    args = parser.parse_args()
+
     app = QtWidgets.QApplication([])
-    gui = GUI()
+    gui = GUI(args.project_fname, args.no_restore)
     sys.exit(app.exec_())
 
 
