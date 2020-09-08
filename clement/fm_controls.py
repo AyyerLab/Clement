@@ -27,9 +27,11 @@ class SeriesPicker(QtWidgets.QDialog):
         self.setLayout(layout)
 
         self.picker = QtWidgets.QComboBox(self)
-        layout.addWidget(self.picker)
+        listview = QtWidgets.QListView(self)
+        self.picker.setView(listview)
         self.picker.addItems(names)
         self.picker.currentIndexChanged.connect(self.series_changed)
+        layout.addWidget(self.picker)
 
         button = QtWidgets.QPushButton('Confirm', self)
         layout.addWidget(button)
@@ -178,6 +180,8 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Peak finding reference:', self)
         line.addWidget(label)
         self.ref_btn = QtWidgets.QComboBox()
+        listview = QtWidgets.QListView(self)
+        self.ref_btn.setView(listview)
         self.ref_btn.currentIndexChanged.connect(self._change_ref)
         self.ref_btn.setMinimumWidth(100)
 
@@ -312,6 +316,8 @@ class FMControls(BaseControls):
         line.addWidget(label)
 
         self.point_ref_btn = QtWidgets.QComboBox()
+        listview = QtWidgets.QListView(self)
+        self.point_ref_btn.setView(listview)
         self.point_ref_btn.currentIndexChanged.connect(self._change_point_ref)
         self.point_ref_btn.setMinimumWidth(100)
         self.point_ref_btn.setEnabled(False)
@@ -566,8 +572,8 @@ class FMControls(BaseControls):
         if num != self._current_slice:
             self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
             self._update_imview()
-            fname, indstr = self.fm_fname.text().split()
-            self.fm_fname.setText(fname + ' [%d/%d]' % (num, self.num_slices))
+            fname = self.fm_fname.text().split('[')[0]
+            self.fm_fname.setText(fname + '[%d/%d]' % (num, self.num_slices))
             self._current_slice = num
             self.slice_select_btn.clearFocus()
 
