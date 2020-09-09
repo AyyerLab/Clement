@@ -128,6 +128,12 @@ class EMControls(BaseControls):
         self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
         self.show_peaks_btn.setEnabled(False)
         line.addWidget(self.show_peaks_btn)
+        self.adjust_peaks = QtWidgets.QPushButton('Translate', self)
+        self.adjust_peaks.setCheckable(True)
+        self.adjust_peaks.setChecked(False)
+        self.adjust_peaks.toggled.connect(self._translate_peaks)
+        self.adjust_peaks.setEnabled(False)
+        line.addWidget(self.adjust_peaks)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
