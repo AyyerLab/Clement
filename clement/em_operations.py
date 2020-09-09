@@ -362,6 +362,8 @@ class EM_ops():
         for i in range(points.shape[0]):
             src[i, :] = [points[i, 0], points[i, 1], int(num_slices / 2), 1]
             dst[i, :] = self.fib_matrix @ src[i, :]
+            if self._refine_matrix is not None:
+                dst[i, :3] = self._refine_matrix @ np.array([dst[i, 0], dst[i, 1], 1])
         self.points = np.array(dst[:, :2])
         self._tf_points = np.copy(self.points)
         # if self._orig_points is None:
