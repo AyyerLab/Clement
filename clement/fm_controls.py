@@ -696,7 +696,7 @@ class FMControls(BaseControls):
             print('You have to select the data first!')
 
     @wait_cursor
-    def _mapping(self):
+    def _mapping(self, state=None):
         self.align_btn.setEnabled(not self.map_btn.isChecked())
         self.ops.calc_mapping()
         self._update_imview()
