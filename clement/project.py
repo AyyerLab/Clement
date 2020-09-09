@@ -37,6 +37,8 @@ class Project(QtWidgets.QWidget):
             self._project_folder = os.path.dirname(file_name)
             with open(file_name, 'r') as f:
                 project = yaml.load(f, Loader=yaml.FullLoader)
+                # For numpy array debugging only!
+                #project = yaml.load(f, Loader=yaml.UnsafeLoader)
             self._load_fm(project)
             self._load_em(project)
             self._load_fib(project)
@@ -231,6 +233,9 @@ class Project(QtWidgets.QWidget):
             self.fib._transpose()  # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
+        if 'Phi angle' not in fibdict:
+            fibdict['Phi angle'] = 0
+        self.fib.phi_box.setCurrentIndex(fibdict['Phi angle'] // 90)
         self.fib.sem_ops = self.em.ops
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
@@ -238,8 +243,10 @@ class Project(QtWidgets.QWidget):
         try:
             self.fib.ops._orig_points = np.array(fibdict['Original points'])
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
-            self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
+            #self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
+            #self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
+            self.fib.shift_x_btn.setText(fibdict['Grid shifts'][0])
+            self.fib.shift_y_btn.setText(fibdict['Grid shifts'][1])
             self.fib._recalc_grid()
         except KeyError:
             pass
@@ -286,6 +293,7 @@ class Project(QtWidgets.QWidget):
                     counter = sem_counter
                     sem_counter += 1
                     em.fib = False
+                self.fm.other = em
 
                 self.fm.select_btn.setChecked(True)
                 em.size = emdict['Size history'][i]
@@ -479,12 +487,12 @@ class Project(QtWidgets.QWidget):
         fmdict['Point reference'] = self.fm.ops._point_reference
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
-        fmdict['Original correlated points'] = self.fm._orig_points_corr
+        fmdict['Original correlated points'] = np.array(self.fm._orig_points_corr).tolist()
         fmdict['Correlated points indices'] = self.fm._points_corr_indices
         fmdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                self.fm._points_corr_history]
-        fmdict['Correlated points z history'] = np.array(self.fm._points_corr_z_history).tolist()
-        fmdict['Original correlated points history'] = self.fm._orig_points_corr_history
+        fmdict['Correlated points z history'] = [np.array(zhist).tolist() for zhist in self.fm._points_corr_z_history]
+        fmdict['Original correlated points history'] = np.array(self.fm._orig_points_corr_history).tolist()
         fmdict['FIB vs SEM history'] = self.fm._fib_vs_sem_history
 
     def _save_em(self, project):
@@ -514,12 +522,12 @@ class Project(QtWidgets.QWidget):
 
         points = [[p.pos().x(), p.pos().y()] for p in self.em._points_corr]
         emdict['Correlated points'] = points
-        emdict['Original correlated points '] = self.em._orig_points_corr
+        emdict['Original correlated points '] = np.array(self.em._orig_points_corr).tolist()
         emdict['Correlated points indices'] = self.em._points_corr_indices
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                self.em._points_corr_history]
         emdict['Correlated points z history'] = np.array(self.em._points_corr_z_history).tolist()
-        emdict['Original correlated points history'] = self.em._orig_points_corr_history
+        emdict['Original correlated points history'] = np.array(self.em._orig_points_corr_history).tolist()
         emdict['Size history'] = np.array(self.em._size_history).tolist()
         emdict['Refined'] = self.em._refined
         emdict['Refinement history'] = np.array(self.em.ops._refine_history).tolist()
@@ -547,10 +555,12 @@ class Project(QtWidgets.QWidget):
         fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                 self.fib._points_corr_history]
         fibdict['Correlated points z history'] = np.array(self.fib._points_corr_z_history).tolist()
-        fibdict['Original correlated points history'] = self.fib._orig_points_corr_history
+        fibdict['Original correlated points history'] = np.array(self.fib._orig_points_corr_history).tolist()
         fibdict['Size history'] = np.array(self.fib._size_history).tolist()
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
+        fibdict['Phi angle'] = self.fib.phi_box.currentIndex() * 90
+        fibdict['Grid shifts'] = [self.fib.shift_x_btn.text(), self.fib.shift_y_btn.text()]
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]
