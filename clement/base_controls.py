@@ -13,6 +13,41 @@ def wait_cursor(func):
         QtWidgets.QApplication.restoreOverrideCursor()
     return wrapper
 
+class PeakROI(pg.CircleROI):
+    def __init__(self, pos, size, parent):
+        super(PeakROI, self).__init__(pos, size, parent=parent,
+                                      movable=False, removable=False, resizable=False)
+        self.original_color = (255, 0, 0)
+        self.moved_color = (0, 255, 255)
+        self.original_pos = copy.copy(self.pos())
+        self.has_moved = False
+
+        self.setPen(self.original_color)
+        self.removeHandle(0)
+
+    def contextMenuEnabled(self):
+        return True
+
+    def getMenu(self):
+        if self.menu is None:
+            self.menu = QtWidgets.QMenu()
+            self.menu.setTitle('ROI')
+            resetAct = QtWidgets.QAction('Reset Peak', self.menu)
+            resetAct.triggered.connect(self.resetPos)
+            self.menu.addAction(resetAct)
+            self.menu.resetAct = resetAct
+        self.menu.setEnabled(True)
+        return self.menu
+
+    def resetPos(self):
+        self.setPos(self.original_pos)
+        self.setPen(self.original_color)
+        self.has_moved = False
+
+    def peakMoved(self, item):
+        self.setPen(self.moved_color)
+        self.has_moved = True
+
 class BaseControls(QtWidgets.QWidget):
     def __init__(self):
         super(BaseControls, self).__init__()
@@ -848,8 +883,10 @@ class BaseControls(QtWidgets.QWidget):
         if not self.show_peaks_btn.isChecked():
             # Remove already shown peaks
             [self.imview.removeItem(point) for point in self.peaks]
-            self.adjust_peaks.setChecked(False)
-            self.adjust_peaks.setEnabled(False)
+            self.translate_peaks_btn.setChecked(False)
+            self.translate_peaks_btn.setEnabled(False)
+            self.refine_peaks_btn.setChecked(False)
+            self.refine_peaks_btn.setEnabled(False)
             return
 
         if self.other.ops is None:
@@ -889,10 +926,11 @@ class BaseControls(QtWidgets.QWidget):
                 if self._refined:
                     transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
                 pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
-                                     removable=False)
-                point.setPen(255, 0, 0)
-                point.removeHandle(0)
+                point = PeakROI(pos, self.other.size, self.imview.getImageItem())
+                #point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
+                #                     removable=False)
+                #point.setPen(255, 0, 0)
+                #point.removeHandle(0)
                 self.peaks.append(point)
                 self.imview.addItem(point)
         else:
@@ -913,18 +951,21 @@ class BaseControls(QtWidgets.QWidget):
                 '''
                 transf = np.dot(self.tr_matrices, init)
                 pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
-                                     removable=False)
-                point.setPen(255, 0, 0)
-                point.removeHandle(0)
+                point = PeakROI(pos, self.other.size, self.imview.getImageItem())
+                #point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
+                #                     removable=False)
+                #point.setPen(255, 0, 0)
+                #point.removeHandle(0)
                 self.peaks.append(point)
                 self.imview.addItem(point)
 
         self.peaks = np.array(self.peaks)
-        self.adjust_peaks.setEnabled(True)
+        self.translate_peaks_btn.setEnabled(True)
+        self.refine_peaks_btn.setEnabled(True)
 
     def _translate_peaks(self, active):
         if active:
+            self.refine_peaks_btn.setChecked(False)
             for p in self.peaks:
                 p.translatable = True
                 p.sigRegionChangeFinished.connect(self._translate_peaks_slot)
@@ -939,10 +980,23 @@ class BaseControls(QtWidgets.QWidget):
         shift = item.pos() - self._old_peak_pos[ind]
         print(ind, shift)
         for i in range(len(self.peaks)):
+            if self.peaks[i].has_moved:
+                continue
             self._old_peak_pos[i][0] += shift.x()
             self._old_peak_pos[i][1] += shift.y()
             if i != ind:
                 self.peaks[i].setPos(self._old_peak_pos[i], finish=False)
+
+    def _refine_peaks(self, active):
+        if active:
+            self.translate_peaks_btn.setChecked(False)
+            for p in self.peaks:
+                p.translatable = True
+                p.sigRegionChangeFinished.connect(p.peakMoved)
+        else:
+            for p in self.peaks:
+                p.sigRegionChangeFinished.disconnect()
+                p.translatable = False
 
     def correct_grid_z(self):
         self.ops.fib_matrix = None
