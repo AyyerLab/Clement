@@ -351,7 +351,7 @@ class FMControls(BaseControls):
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Refinement and Merge:', self)
+        label = QtWidgets.QLabel('Refinement & Merging:', self)
         line.addWidget(label)
 
         self.refine_btn = QtWidgets.QPushButton('Refine')
