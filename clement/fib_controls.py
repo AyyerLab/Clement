@@ -7,6 +7,12 @@ import pyqtgraph as pg
 from .base_controls import BaseControls
 from .em_operations import EM_ops
 
+def wait_cursor(func):
+    def wrapper(*args, **kwargs):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        func(*args, **kwargs)
+        QtWidgets.QApplication.restoreOverrideCursor()
+    return wrapper
 
 class FIBControls(BaseControls):
     def __init__(self, imview, vbox, sem_ops):
@@ -56,36 +62,44 @@ class FIBControls(BaseControls):
         self._sigma_angle = int(self.sigma_btn.text())
         self.sigma_btn.setEnabled(False)
         line.addWidget(self.sigma_btn)
+
+        label = QtWidgets.QLabel('Phi:', self)
+        line.addWidget(label)
+        self.phi_box = QtWidgets.QComboBox(self)
+        listview = QtWidgets.QListView(self)
+        self.phi_box.setView(listview)
+        self.phi_box.addItems([str(i) for i in range(0,360,90)])
+        self.phi_box.setCurrentIndex(1)
+        self.phi_box.currentIndexChanged.connect(self._phi_changed)
+        line.addWidget(self.phi_box)
+
         line.addStretch(1)
 
         # ---- Calculate grid square
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid box:')
+        label = QtWidgets.QLabel('Grid:')
         line.addWidget(label)
-        self.show_grid_btn = QtWidgets.QCheckBox('Recalculate grid square', self)
+        self.show_grid_btn = QtWidgets.QCheckBox('Show grid square', self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
-        shift_x_label = QtWidgets.QLabel('Shift x:')
-        shift_y_label = QtWidgets.QLabel('Shift y:')
-        self.shift_x_btn = QtWidgets.QLineEdit(self)
-        self.shift_y_btn = QtWidgets.QLineEdit(self)
-        self.shift_x_btn.setText('-1000')
-        self.shift_y_btn.setText('250')
-        self.shift_x = int(self.shift_x_btn.text())
-        self.shift_y = int(self.shift_y_btn.text())
-        self.shift_x_btn.setEnabled(False)
-        self.shift_y_btn.setEnabled(False)
-        self.shift_btn = QtWidgets.QPushButton('Shift box')
-        self.shift_btn.clicked.connect(self._refine_grid)
-        self.shift_btn.setEnabled(False)
         line.addWidget(self.show_grid_btn)
+        shift_x_label = QtWidgets.QLabel('Shift x:')
         line.addWidget(shift_x_label)
+        self.shift_x_btn = QtWidgets.QLineEdit(self)
+        self.shift_x_btn.setText('0')
+        self.shift_x_btn.setEnabled(False)
         line.addWidget(self.shift_x_btn)
+        shift_y_label = QtWidgets.QLabel('Shift y:')
         line.addWidget(shift_y_label)
+        self.shift_y_btn = QtWidgets.QLineEdit(self)
+        self.shift_y_btn.setText('0')
+        self.shift_y_btn.setEnabled(False)
         line.addWidget(self.shift_y_btn)
-        line.addWidget(self.shift_btn)
+        button = QtWidgets.QPushButton('Recalculate', self)
+        button.clicked.connect(self._recalc_grid)
+        line.addWidget(button)
         line.addStretch(1)
 
         # ---- Show FM peaks
@@ -98,6 +112,12 @@ class FIBControls(BaseControls):
         self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
         self.show_peaks_btn.setEnabled(False)
         line.addWidget(self.show_peaks_btn)
+        self.adjust_peaks = QtWidgets.QPushButton('Translate', self)
+        self.adjust_peaks.setCheckable(True)
+        self.adjust_peaks.setChecked(False)
+        self.adjust_peaks.toggled.connect(self._translate_peaks)
+        self.adjust_peaks.setEnabled(False)
+        line.addWidget(self.adjust_peaks)
         line.addStretch(1)
 
         # ---- Refinement
@@ -117,6 +137,7 @@ class FIBControls(BaseControls):
 
         self.show()
 
+    @wait_cursor
     def _load_mrc(self, jump=False):
         if not jump:
             if self._curr_folder is None:
@@ -131,7 +152,6 @@ class FIBControls(BaseControls):
             self.reset_init()
             self.mrc_fname.setText(self._file_name)
 
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self.ops = EM_ops()
             self.ops.parse_2d(self._file_name)
             self.imview.setImage(self.ops.data)
@@ -140,11 +160,9 @@ class FIBControls(BaseControls):
             self.sigma_btn.setEnabled(True)
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
-                self.shift_btn.setEnabled(True)
                 self.shift_x_btn.setEnabled(True)
                 self.shift_y_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
-            QtWidgets.QApplication.restoreOverrideCursor()
         else:
             print('You have to choose a file first!')
 
@@ -161,66 +179,70 @@ class FIBControls(BaseControls):
 
     def _transpose(self):
         self.ops.transpose()
-        self._recalc_grid(transpose=True)
+        self._recalc_grid(recalc_matrix=False)
         self._update_imview()
 
     def enable_buttons(self, enable=False):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
-            self.shift_btn.setEnabled(enable)
 
-    def _show_grid(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if self.show_grid_btn.isChecked():
-            self._recalc_grid()
+    @wait_cursor
+    def _show_grid(self, state=None):
+        if state > 0:
             self.show_grid_box = True
+            if self.grid_box is None:
+                self._recalc_grid()
             self.imview.addItem(self.grid_box)
         else:
             if self.grid_box is not None:
                 self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
-        QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _recalc_grid(self, transpose=False, scaling=1):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if not transpose:
-            if self.sem_ops is not None:
-                if self.ops.fib_matrix is None:
-                    self.ops.calc_fib_transform(int(self.sigma_btn.text()), self.sem_ops.data.shape,
-                                                self.sem_ops.pixel_size)
-                    self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
+    @wait_cursor
+    def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1):
+        if self.sem_ops is not None and recalc_matrix:
+            sigma_angle = float(self.sigma_btn.text())
+            phi_angle = float(self.phi_box.currentText()) * np.pi / 180.
+            is_transposed = self.transp_btn.isChecked()
+
+            self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
+                                        self.sem_ops.pixel_size, phi_angle, is_transposed)
+
+            if self.ops.points is not None:
+                xshift = float(self.shift_x_btn.text())
+                yshift = float(self.shift_y_btn.text())
+                self.ops.calc_grid_shift(xshift, yshift)
+            print(self.ops.fib_matrix)
+
+            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
-            if self.show_grid_btn.isChecked() and self.grid_box is not None:
-                self.imview.removeItem(self.grid_box)
+            self._show_grid(0) # Hide grid
+
             pos = list(self.ops.points)
-            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=False)
-            if self.show_grid_btn.isChecked():
-                self.imview.addItem(self.grid_box)
+            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True, resizable=False, rotatable=False)
+            self.old_pos0 = [float(self.shift_x_btn.text()), float(self.shift_y_btn.text())]
+            print('Box origin at:', self.old_pos0)
+            self.grid_box.sigRegionChanged.connect(self._update_shifts)
+
+            self._show_grid(2) # Show grid
 
         if self.grid_box is not None:
             self.show_peaks_btn.setEnabled(True)
             self.shift_x_btn.setEnabled(True)
             self.shift_y_btn.setEnabled(True)
-        QtWidgets.QApplication.restoreOverrideCursor()
 
-    def _refine_grid(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if self.ops.points is not None:
-            print('Orig Points: \n', self.ops.points)
-            xshift = int(self.shift_x_btn.text())
-            yshift = int(self.shift_y_btn.text())
-            self.ops.calc_grid_shift(xshift, yshift)
-            print('New Points: \n', self.ops.points)
-            self._recalc_grid()
-            self.shift_x_btn.setText('0')
-            self.shift_y_btn.setText('0')
-        else:
-            print('You have to calculate the grid box first!')
-        QtWidgets.QApplication.restoreOverrideCursor()
+    def _update_shifts(self, state):
+        diff_pos = state.pos() + self.old_pos0
+        self.shift_x_btn.setText('%.2f'%diff_pos.x())
+        self.shift_y_btn.setText('%.2f'%diff_pos.y())
 
+    def _phi_changed(self, index):
+        self.shift_x_btn.setText('0')
+        self.shift_y_btn.setText('0')
+
+    @wait_cursor
     def _save_mrc_montage(self):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.ops is None:
             print('No montage to save!')
         else:
@@ -231,7 +253,6 @@ class FIBControls(BaseControls):
             self._curr_folder = os.path.dirname(file_name)
             if file_name != '':
                 self.ops.save_merge(file_name)
-        QtWidgets.QApplication.restoreOverrideCursor()
 
     def reset_init(self):
         if self.show_grid_btn.isChecked() and self.grid_box is not None:
