@@ -145,39 +145,41 @@ class BaseControls(QtWidgets.QWidget):
                 print('Oops, something went wrong. Try again!')
 
     def _couple_views(self):
-        if self.ops is not None and self.other.ops is not None:
-            if self.ops._transformed and self.other.ops._transformed:
-                vrange = self.imview.getImageItem().getViewBox().targetRect()
-                p1 = np.array([vrange.bottomLeft().x(), vrange.bottomLeft().y()])
-                p2 = np.array([vrange.bottomRight().x(), vrange.bottomRight().y()])
-                p3 = np.array([vrange.topRight().x(), vrange.topRight().y()])
-                p4 = np.array([vrange.topLeft().x(), vrange.topLeft().y()])
-                points = [p1, p2, p3, p4]
-                tf_points = []
-                if hasattr(self, 'select_btn') and not self.other.fib:
-                    src_sorted = np.array(
-                        sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    dst_sorted = np.array(
-                        sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
-                    tf_points = np.array([(tr_matrices @ np.array([point[0], point[1], 1]))[:2] for point in points])
-                elif hasattr(self.other, 'select_btn') and not self.fib:
-                    src_sorted = np.array(
-                        sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    dst_sorted = np.array(
-                        sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
-                    tf_points = np.array(
-                        [(np.linalg.inv(tr_matrices) @ np.array([point[0], point[1], 1]))[:2] for point in points])
-                else:
-                    return
-                xmin = tf_points.min(0)[0]
-                xmax = tf_points.max(0)[0]
-                ymin = tf_points.min(0)[1]
-                ymax = tf_points.max(0)[1]
-                self.other.imview.getImageItem().getViewBox().blockSignals(True)
-                self.other.imview.getImageItem().getViewBox().setRange(xRange=(xmin, xmax), yRange=(ymin, ymax))
-                self.other.imview.getImageItem().getViewBox().blockSignals(False)
+        if (self.ops is None or self.other.ops is None or
+                not self.ops._transformed or not self.other.ops._transformed):
+            return
+
+        vrange = self.imview.getImageItem().getViewBox().targetRect()
+        p1 = np.array([vrange.bottomLeft().x(), vrange.bottomLeft().y()])
+        p2 = np.array([vrange.bottomRight().x(), vrange.bottomRight().y()])
+        p3 = np.array([vrange.topRight().x(), vrange.topRight().y()])
+        p4 = np.array([vrange.topLeft().x(), vrange.topLeft().y()])
+        points = [p1, p2, p3, p4]
+        tf_points = []
+        if hasattr(self, 'select_btn') and not self.other.fib:
+            src_sorted = np.array(
+                sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            dst_sorted = np.array(
+                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+            tf_points = np.array([(tr_matrices @ np.array([point[0], point[1], 1]))[:2] for point in points])
+        elif hasattr(self.other, 'select_btn') and not self.fib:
+            src_sorted = np.array(
+                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            dst_sorted = np.array(
+                sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
+            tf_points = np.array(
+                [(np.linalg.inv(tr_matrices) @ np.array([point[0], point[1], 1]))[:2] for point in points])
+        else:
+            return
+        xmin = tf_points.min(0)[0]
+        xmax = tf_points.max(0)[0]
+        ymin = tf_points.min(0)[1]
+        ymax = tf_points.max(0)[1]
+        self.other.imview.getImageItem().getViewBox().blockSignals(True)
+        self.other.imview.getImageItem().getViewBox().setRange(xRange=(xmin, xmax), yRange=(ymin, ymax))
+        self.other.imview.getImageItem().getViewBox().blockSignals(False)
 
     def _draw_correlated_points(self, pos, item):
         if self.other.ops is None:
@@ -199,92 +201,95 @@ class BaseControls(QtWidgets.QWidget):
                     if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
                         condition = True
 
-        if condition:
-            ind = None
-            point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
-            if self.other.tr_matrices is not None:
-                peaks = None
-                z = None
-                if self.other.fib:
-                    if self.ops.tf_peaks_z is not None:
-                        ind = self.ops.check_peak_index(point, self.size)
-                        if ind is None and not self.other._refined:
-                            print('You have to select a bead for the first refinement!')
-                            return
-                        elif ind is not None:
-                            peaks = self.ops.tf_peak_slices[-1]
-                        z = self.ops.calc_z(ind, point, self.ops._point_reference)
-                        if z is None:
-                            print('z is None, something went wrong here... Try another bead!')
-                            return
-                        self._points_corr_z.append(z)
-                    else:
-                        print('This message should not be visible!!!')
-                        return
-
-                elif not self.other.fib:
-                    if self.ops.tf_peak_slices is not None and self.ops.tf_peak_slices[-1] is not None:
-                        ind = self.ops.check_peak_index(point, self.size)
-                    if ind is not None:
-                        peaks = self.ops.tf_peak_slices[-1]
-
-                if ind is not None:
-                    pos.setX(peaks[ind, 0] - self.size / 2)
-                    pos.setY(peaks[ind, 1] - self.size / 2)
-                    init = np.array([peaks[ind, 0], peaks[ind, 1], 1])
-                else:
-                    init = np.array([point[0], point[1], 1])
-
-                point_obj = pg.CircleROI(pos, self.size, parent=item, movable=True, removable=True)
-                point_obj.setPen(0, 255, 0)
-                point_obj.removeHandle(0)
-                self.imview.addItem(point_obj)
-                self._points_corr.append(point_obj)
-                self._orig_points_corr.append([pos.x() + self.size // 2, pos.y() + self.size // 2])
-                self.counter += 1
-                annotation_obj = pg.TextItem(str(self.counter), color=(0, 255, 0), anchor=(0, 0))
-                annotation_obj.setPos(pos.x() + 5, pos.y() + 5)
-                self.imview.addItem(annotation_obj)
-                self.anno_list.append(annotation_obj)
-
-                self._points_corr_indices.append(self.counter - 1)
-                self.other._points_corr_indices.append(self.counter - 1)
-
-                print('2d init: ', init)
-                print('Other class:', self.other, self.other.ops)
-                print('tr_matrices:\n', self.other.tr_matrices)
-                if hasattr(self.other, 'fib') and self.other.fib:
-                    print('Clicked point: ', np.array([init[0], init[1], z]))
-                    transf = np.dot(self.other.tr_matrices, init)
-                    transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-                    self.other._points_corr_z.append(transf[2])
-                    if self.other._refined:
-                        transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
-                else:
-                    transf = np.dot(self.other.tr_matrices, init)
-
-                print('Transformed point: ', transf)
-                pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                point_other = pg.CircleROI(pos, self.other.size, parent=self.other.imview.getImageItem(),
-                                           movable=True, removable=True)
-                point_other.setPen(0, 255, 255)
-                # point_other.setPen(255,0,0)
-                point_other.removeHandle(0)
-                self.other.imview.addItem(point_other)
-                self.other._points_corr.append(point_other)
-                self.other._orig_points_corr.append([pos.x() + self.other.size / 2, pos.y() + self.other.size / 2])
-
-                self.other.counter = self.counter
-                annotation_other = pg.TextItem(str(self.counter), color=(0, 255, 255), anchor=(0, 0))
-                annotation_other.setPos(pos.x() + 5, pos.y() + 5)
-                self.other.imview.addItem(annotation_other)
-                self.other.anno_list.append(annotation_other)
-
-                point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
-                point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
-                point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
-        else:
+        if not condition:
             print('Transform both images before point selection')
+            return
+
+        if self.other.tr_matrices is None:
+            return
+
+        ind = None
+        point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
+        peaks = None
+        z = None
+        if self.other.fib:
+            if self.ops.tf_peaks_z is not None:
+                ind = self.ops.check_peak_index(point, self.size)
+                if ind is None and not self.other._refined:
+                    print('You have to select a bead for the first refinement!')
+                    return
+                elif ind is not None:
+                    peaks = self.ops.tf_peak_slices[-1]
+                z = self.ops.calc_z(ind, point, self.ops._point_reference)
+                if z is None:
+                    print('z is None, something went wrong here... Try another bead!')
+                    return
+                self._points_corr_z.append(z)
+            else:
+                print('This message should not be visible!!!')
+                return
+
+        elif not self.other.fib:
+            if self.ops.tf_peak_slices is not None and self.ops.tf_peak_slices[-1] is not None:
+                ind = self.ops.check_peak_index(point, self.size)
+            if ind is not None:
+                peaks = self.ops.tf_peak_slices[-1]
+
+        if ind is not None:
+            pos.setX(peaks[ind, 0] - self.size / 2)
+            pos.setY(peaks[ind, 1] - self.size / 2)
+            init = np.array([peaks[ind, 0], peaks[ind, 1], 1])
+        else:
+            init = np.array([point[0], point[1], 1])
+
+        point_obj = pg.CircleROI(pos, self.size, parent=item, movable=True, removable=True)
+        point_obj.setPen(0, 255, 0)
+        point_obj.removeHandle(0)
+        self.imview.addItem(point_obj)
+        self._points_corr.append(point_obj)
+        self._orig_points_corr.append([pos.x() + self.size // 2, pos.y() + self.size // 2])
+        self.counter += 1
+        annotation_obj = pg.TextItem(str(self.counter), color=(0, 255, 0), anchor=(0, 0))
+        annotation_obj.setPos(pos.x() + 5, pos.y() + 5)
+        self.imview.addItem(annotation_obj)
+        self.anno_list.append(annotation_obj)
+
+        self._points_corr_indices.append(self.counter - 1)
+        self.other._points_corr_indices.append(self.counter - 1)
+
+        print('2d init: ', init)
+        print('Other class:', self.other, self.other.ops)
+        print('tr_matrices:\n', self.other.tr_matrices)
+        if hasattr(self.other, 'fib') and self.other.fib:
+            print('Clicked point: ', np.array([init[0], init[1], z]))
+            transf = np.dot(self.other.tr_matrices, init)
+            transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+            self.other._points_corr_z.append(transf[2])
+            if self.other._refined:
+                transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
+        else:
+            transf = np.dot(self.other.tr_matrices, init)
+
+        print('Transformed point: ', transf)
+        pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
+        point_other = pg.CircleROI(pos, self.other.size, parent=self.other.imview.getImageItem(),
+                                   movable=True, removable=True)
+        point_other.setPen(0, 255, 255)
+        # point_other.setPen(255,0,0)
+        point_other.removeHandle(0)
+        self.other.imview.addItem(point_other)
+        self.other._points_corr.append(point_other)
+        self.other._orig_points_corr.append([pos.x() + self.other.size / 2, pos.y() + self.other.size / 2])
+
+        self.other.counter = self.counter
+        annotation_other = pg.TextItem(str(self.counter), color=(0, 255, 255), anchor=(0, 0))
+        annotation_other.setPos(pos.x() + 5, pos.y() + 5)
+        self.other.imview.addItem(annotation_other)
+        self.other.anno_list.append(annotation_other)
+
+        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
+        point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
+        point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
 
     def _update_annotations(self, point):
         idx = None
@@ -341,87 +346,91 @@ class BaseControls(QtWidgets.QWidget):
         if checked:
             print('Defining grid on %s image: Click on corners' % self.tag)
             self.show_grid_btn.setChecked(False)
+            return
+
+        print('Done defining grid on %s image: Manually adjust fine positions' % self.tag)
+        if len(self.clicked_points) != 4:
+            print('You have to select exactly 4 points. Try again!')
+            [self.imview.removeItem(roi) for roi in self.clicked_points]
+            self._show_grid()
+            self.clicked_points = []
+            return
+
+        # Initialize grid_box on original or transformed image
+        if self.show_btn.isChecked():
+            self.grid_box = None
         else:
-            print('Done defining grid on %s image: Manually adjust fine positions' % self.tag)
-            if len(self.clicked_points) == 4:
-                # Initialize grid_box on original or transformed image
-                if self.show_btn.isChecked():
-                    self.grid_box = None
+            self.tr_grid_box = None
+
+        # Calculate circle centers
+        positions = [c.pos() for c in self.clicked_points]
+        sizes = [c.size()[0] for c in self.clicked_points]
+        for pos, s in zip(positions, sizes):
+            pos.setX(pos.x() + s / 2)
+            pos.setY(pos.y() + s / 2)
+        points = np.array([(point.x(), point.y()) for point in positions])
+
+        # If original image
+        if self.show_btn.isChecked():
+            self.grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
+            self.grid_box.sigRegionChangeFinished.connect(self.store_grid_box_points)
+            # If assembly is an option (EM image)
+            if hasattr(self, 'show_assembled_btn'):
+                if self.show_assembled_btn.isChecked():
+                    self.ops._orig_points = points
                 else:
-                    self.tr_grid_box = None
-
-                # Calculate circle centers
-                positions = [c.pos() for c in self.clicked_points]
-                sizes = [c.size()[0] for c in self.clicked_points]
-                for pos, s in zip(positions, sizes):
-                    pos.setX(pos.x() + s / 2)
-                    pos.setY(pos.y() + s / 2)
-                points = np.array([(point.x(), point.y()) for point in positions])
-
-                # If original image
-                if self.show_btn.isChecked():
-                    self.grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
-                    self.grid_box.sigRegionChangeFinished.connect(self.store_grid_box_points)
-                    # If assembly is an option (EM image)
-                    if hasattr(self, 'show_assembled_btn'):
-                        if self.show_assembled_btn.isChecked():
-                            self.ops._orig_points = points
-                        else:
-                            self.ops._orig_points_region = points
-                    else:
-                        self.ops._orig_points = points
-                    self.ops.points = points
-                else:
-                    self.tr_grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
-                [self.imview.removeItem(roi) for roi in self.clicked_points]
-                self.clicked_points = []
-
-                self.transform_btn.setEnabled(True)
-                self.rot_transform_btn.setEnabled(True)
-                self.show_grid_btn.setEnabled(True)
-                self.show_grid_btn.setChecked(True)
-
-                if self.show_btn.isChecked():
-                    self.show_grid_box = True
-                else:
-                    self.show_tr_grid_box = True
+                    self.ops._orig_points_region = points
             else:
-                print('You have to select exactly 4 points. Try again!')
-                [self.imview.removeItem(roi) for roi in self.clicked_points]
-                self._show_grid()
-                self.clicked_points = []
+                self.ops._orig_points = points
+            self.ops.points = points
+        else:
+            self.tr_grid_box = pg.PolyLineROI(positions, closed=True, movable=False)
+        [self.imview.removeItem(roi) for roi in self.clicked_points]
+        self.clicked_points = []
+
+        self.transform_btn.setEnabled(True)
+        self.rot_transform_btn.setEnabled(True)
+        self.show_grid_btn.setEnabled(True)
+        self.show_grid_btn.setChecked(True)
+
+        if self.show_btn.isChecked():
+            self.show_grid_box = True
+        else:
+            self.show_tr_grid_box = True
 
     def _recalc_grid(self, toggle_orig=False):
-        if self.ops.points is not None:
-            if self.show_btn.isChecked():
-                pos = list(self.ops.points)
-                poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
-                if self.show_grid_btn.isChecked():
-                    if not toggle_orig:
-                        if self.tr_grid_box is not None:
-                            self.imview.removeItem(self.tr_grid_box)
-                        if self.grid_box is not None:
-                            self.imview.removeItem(self.grid_box)
-                        self.show_grid_box = False
-                print('Recalculating original grid...')
-                self.grid_box = poly_line
-            else:
-                pos = list(self.ops.points)
-                poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
-                if self.show_grid_btn.isChecked():
-                    if not toggle_orig:
-                        if self.grid_box is not None:
-                            self.imview.removeItem(self.grid_box)
-                        if self.tr_grid_box is not None:
-                            self.imview.removeItem(self.tr_grid_box)
-                        self.show_tr_grid_box = False
-                    if self.redo_tr:
-                        if self.tr_grid_box is not None:
-                            self.imview.removeItem(self.tr_grid_box)
-                        self.redo_tr = False
-                print('Recalculating transformed grid...')
-                self.tr_grid_box = poly_line
-            self._show_grid()
+        if self.ops.points is None:
+            return
+
+        if self.show_btn.isChecked():
+            pos = list(self.ops.points)
+            poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
+            if self.show_grid_btn.isChecked():
+                if not toggle_orig:
+                    if self.tr_grid_box is not None:
+                        self.imview.removeItem(self.tr_grid_box)
+                    if self.grid_box is not None:
+                        self.imview.removeItem(self.grid_box)
+                    self.show_grid_box = False
+            print('Recalculating original grid...')
+            self.grid_box = poly_line
+        else:
+            pos = list(self.ops.points)
+            poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
+            if self.show_grid_btn.isChecked():
+                if not toggle_orig:
+                    if self.grid_box is not None:
+                        self.imview.removeItem(self.grid_box)
+                    if self.tr_grid_box is not None:
+                        self.imview.removeItem(self.tr_grid_box)
+                    self.show_tr_grid_box = False
+                if self.redo_tr:
+                    if self.tr_grid_box is not None:
+                        self.imview.removeItem(self.tr_grid_box)
+                    self.redo_tr = False
+            print('Recalculating transformed grid...')
+            self.tr_grid_box = poly_line
+        self._show_grid()
 
     def store_grid_box_points(self):
         points_obj = self.grid_box.getState()['points']
@@ -498,56 +507,56 @@ class BaseControls(QtWidgets.QWidget):
                     if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
                         condition = True
 
-        if self.other.fib:
-            if self.other.ops.fib_matrix is None:
-                print('You have to calculate the grid box for the FIB view first!')
-                self.select_btn.setChecked(False)
-                return
+        if self.other.fib and self.other.ops.fib_matrix is None:
+            print('You have to calculate the grid box for the FIB view first!')
+            self.select_btn.setChecked(False)
+            return
 
-        if condition:
-            if checked:
-                self.fliph.setEnabled(False)
-                self.flipv.setEnabled(False)
-                self.transpose.setEnabled(False)
-                self.rotate.setEnabled(False)
-                self.point_ref_btn.setEnabled(False)
-                print('Select points of interest on %s image' % self.tag)
-                for i in range(len(self._points_corr)):
-                    self._remove_correlated_points(self._points_corr[0])
-                self.counter = 0
-                if self.other.fib:
-                    self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
-                    self.other.tr_matrices = self.other.ops.get_fib_transform(
-                        self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
-
-                    self.ops.load_channel(ind=self.ops._point_reference)
-                    if not self.other._refined:
-                        self.peak_btn.setChecked(True)
-                        if self.ops.tf_peaks_z is None:
-                            self.ops.fit_z(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
-                                           flips=self.flips, shape=self.ops.data.shape[:-1])
-                            self.ops.clear_channel()
-                else:
-                    src_sorted = np.array(
-                        sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    dst_sorted = np.array(
-                        sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                    self.other.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
-            else:
-                if hasattr(self.other, 'fib') and self.ops.channel is not None:
-                    self.ops.clear_channel()
-                print('Done selecting points of interest on %s image' % self.tag)
-                if self.auto_opt_btn.isChecked():
-                    self.fit_circles()
-                if not self.other._refined:
-                    self.fliph.setEnabled(True)
-                    self.flipv.setEnabled(True)
-                    self.transpose.setEnabled(True)
-                    self.rotate.setEnabled(True)
-                self.point_ref_btn.setEnabled(True)
-        else:
+        if not condition:
             if checked:
                 print('Select and transform both data first')
+            return
+
+        if checked:
+            self.fliph.setEnabled(False)
+            self.flipv.setEnabled(False)
+            self.transpose.setEnabled(False)
+            self.rotate.setEnabled(False)
+            self.point_ref_btn.setEnabled(False)
+            print('Select points of interest on %s image' % self.tag)
+            for i in range(len(self._points_corr)):
+                self._remove_correlated_points(self._points_corr[0])
+            self.counter = 0
+            if self.other.fib:
+                self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
+                self.other.tr_matrices = self.other.ops.get_fib_transform(
+                    self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
+
+                self.ops.load_channel(ind=self.ops._point_reference)
+                if not self.other._refined:
+                    self.peak_btn.setChecked(True)
+                    if self.ops.tf_peaks_z is None:
+                        self.ops.fit_z(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
+                                       flips=self.flips, shape=self.ops.data.shape[:-1])
+                        self.ops.clear_channel()
+            else:
+                src_sorted = np.array(
+                    sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                dst_sorted = np.array(
+                    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                self.other.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+        else:
+            if hasattr(self.other, 'fib') and self.ops.channel is not None:
+                self.ops.clear_channel()
+            print('Done selecting points of interest on %s image' % self.tag)
+            if self.auto_opt_btn.isChecked():
+                self.fit_circles()
+            if not self.other._refined:
+                self.fliph.setEnabled(True)
+                self.flipv.setEnabled(True)
+                self.transpose.setEnabled(True)
+                self.rotate.setEnabled(True)
+            self.point_ref_btn.setEnabled(True)
 
     @wait_cursor
     def _affine_transform(self, toggle_orig=True):
@@ -557,126 +566,128 @@ class BaseControls(QtWidgets.QWidget):
             self.redo_tr = True
             grid_box = self.tr_grid_box
 
-        if grid_box is not None:
-            if hasattr(self, 'fliph'):
-                self.fliph.setChecked(False)
-                self.fliph.setEnabled(True)
-                self.flipv.setChecked(False)
-                self.flipv.setEnabled(True)
-                self.transpose.setChecked(False)
-                self.transpose.setEnabled(True)
-                self.rotate.setChecked(False)
-                self.rotate.setEnabled(True)
-                self.size_box.setEnabled(True)
-                self.auto_opt_btn.setEnabled(True)
+        if grid_box is None:
+            print('Define grid box on %s image first!' % self.tag)
+            return
 
-            points_obj = grid_box.getState()['points']
-            points = np.array([list((point[0], point[1])) for point in points_obj])
-            if self.rot_transform_btn.isChecked():
-                print('Performing rotation on %s image' % self.tag)
-                self.ops.calc_rot_transform(points)
-            else:
-                print('Performing affine transformation on %s image' % self.tag)
-                self.ops.calc_affine_transform(points)
+        if hasattr(self, 'fliph'):
+            self.fliph.setChecked(False)
+            self.fliph.setEnabled(True)
+            self.flipv.setChecked(False)
+            self.flipv.setEnabled(True)
+            self.transpose.setChecked(False)
+            self.transpose.setEnabled(True)
+            self.rotate.setChecked(False)
+            self.rotate.setEnabled(True)
+            self.size_box.setEnabled(True)
+            self.auto_opt_btn.setEnabled(True)
 
-            self.show_btn.blockSignals(True)
-            self.show_btn.setEnabled(True)
-            self.show_btn.setChecked(False)
-            self.show_btn.blockSignals(False)
-            self._recalc_grid(toggle_orig=toggle_orig)
-            self._update_imview()
+        points_obj = grid_box.getState()['points']
+        points = np.array([list((point[0], point[1])) for point in points_obj])
+        if self.rot_transform_btn.isChecked():
+            print('Performing rotation on %s image' % self.tag)
+            self.ops.calc_rot_transform(points)
+        else:
+            print('Performing affine transformation on %s image' % self.tag)
+            self.ops.calc_affine_transform(points)
+
+        self.show_btn.blockSignals(True)
+        self.show_btn.setEnabled(True)
+        self.show_btn.setChecked(False)
+        self.show_btn.blockSignals(False)
+        self._recalc_grid(toggle_orig=toggle_orig)
+        self._update_imview()
+        self.transform_btn.setEnabled(False)
+        self.rot_transform_btn.setEnabled(False)
+        self.define_btn.setEnabled(False)
+
+        if hasattr(self, 'select_btn'):
+            self.point_ref_btn.setEnabled(True)
+            self.select_btn.setEnabled(True)
+            self.merge_btn.setEnabled(True)
+            self.refine_btn.setEnabled(True)
+
+        if self.ops is not None and self.other.ops is not None:
+            if hasattr(self, 'select_btn') and not self.other.fib:
+                if self.ops._transformed and self.other.ops._transformed:
+                    self.other.show_peaks_btn.setEnabled(True)
+            if hasattr(self, 'fib') and not self.fib:
+                if self.ops._transformed and self.other.ops._transformed:
+                    self.show_peaks_btn.setEnabled(True)
+
+    def _show_original(self):
+        if self.ops is None:
+            return
+
+        self.ops._transformed = not self.ops._transformed
+        align = False
+        if hasattr(self.ops, 'flipv') and not self.ops._transformed:
+            if self.align_btn.isChecked() and self.ops.color_matrix is None:
+                self.align_btn.setChecked(False)
+                align = True
+            self.flipv.setEnabled(False)
+            self.fliph.setEnabled(False)
+            self.transpose.setEnabled(False)
+            self.rotate.setEnabled(False)
+            self.point_ref_btn.setEnabled(False)
+            self.select_btn.setEnabled(False)
+            self.merge_btn.setEnabled(False)
+            self.refine_btn.setEnabled(False)
+            self.auto_opt_btn.setEnabled(False)
+        elif (hasattr(self.ops, 'flipv') and self.ops._transformed:
+                and not self.fixed_orientation):
+            self.flipv.setEnabled(True)
+            self.fliph.setEnabled(True)
+            self.transpose.setEnabled(True)
+            self.rotate.setEnabled(True)
+            self.point_ref_btn.setEnabled(True)
+            self.select_btn.setEnabled(True)
+            self.merge_btn.setEnabled(True)
+            self.refine_btn.setEnabled(True)
+            self.auto_opt_btn.setEnabled(True)
+
+        print('Transformed?', self.ops._transformed)
+        self.ops.toggle_original()
+        self._recalc_grid(toggle_orig=True)
+
+        show_peaks = False
+        if hasattr(self, 'peak_btn'):
+            if self.peak_btn.isChecked():
+                show_peaks = True
+                self.peak_btn.setChecked(False)
+            if not self.other.fib:
+                if self.other.ops is not None:
+                    if self.ops._transformed and self.other.ops._transformed:
+                        self.other.show_peaks_btn.setEnabled(True)
+
+        if hasattr(self, 'fib') and not self.fib:
+            if self.other.ops is not None:
+                if self.ops._transformed and self.other.ops._transformed:
+                    self.show_peaks_btn.setEnabled(True)
+                else:
+                    self.show_peaks_btn.setChecked(False)
+                    self.show_peaks_btn.setEnabled(False)
+
+        self._update_imview()
+        if self.ops._transformed:
             self.transform_btn.setEnabled(False)
             self.rot_transform_btn.setEnabled(False)
             self.define_btn.setEnabled(False)
-
-            if hasattr(self, 'select_btn'):
-                self.point_ref_btn.setEnabled(True)
-                self.select_btn.setEnabled(True)
-                self.merge_btn.setEnabled(True)
-                self.refine_btn.setEnabled(True)
-
-            if self.ops is not None and self.other.ops is not None:
-                if hasattr(self, 'select_btn') and not self.other.fib:
-                    if self.ops._transformed and self.other.ops._transformed:
-                        self.other.show_peaks_btn.setEnabled(True)
-                if hasattr(self, 'fib') and not self.fib:
-                    if self.ops._transformed and self.other.ops._transformed:
-                        self.show_peaks_btn.setEnabled(True)
         else:
-            print('Define grid box on %s image first!' % self.tag)
+            self.transform_btn.setEnabled(True)
+            self.rot_transform_btn.setEnabled(True)
+            self.define_btn.setEnabled(True)
 
-    def _show_original(self):
-        if self.ops is not None:
-            self.ops._transformed = not self.ops._transformed
-            align = False
-            if hasattr(self.ops, 'flipv') and not self.ops._transformed:
-                if self.align_btn.isChecked() and self.ops.color_matrix is None:
-                    self.align_btn.setChecked(False)
-                    align = True
-                self.flipv.setEnabled(False)
-                self.fliph.setEnabled(False)
-                self.transpose.setEnabled(False)
-                self.rotate.setEnabled(False)
-                self.point_ref_btn.setEnabled(False)
-                self.select_btn.setEnabled(False)
-                self.merge_btn.setEnabled(False)
-                self.refine_btn.setEnabled(False)
-                self.auto_opt_btn.setEnabled(False)
-            elif hasattr(self.ops, 'flipv') and self.ops._transformed:
-                if not self.fixed_orientation:
-                    self.flipv.setEnabled(True)
-                    self.fliph.setEnabled(True)
-                    self.transpose.setEnabled(True)
-                    self.rotate.setEnabled(True)
-                    self.point_ref_btn.setEnabled(True)
-                    self.select_btn.setEnabled(True)
-                    self.merge_btn.setEnabled(True)
-                    self.refine_btn.setEnabled(True)
-                    self.auto_opt_btn.setEnabled(True)
-
-            print('Transformed?', self.ops._transformed)
-            self.ops.toggle_original()
-            self._recalc_grid(toggle_orig=True)
-
-            show_peaks = False
-            if hasattr(self, 'peak_btn'):
-                if self.peak_btn.isChecked():
-                    show_peaks = True
-                    self.peak_btn.setChecked(False)
-                if not self.other.fib:
-                    if self.other.ops is not None:
-                        if self.ops._transformed and self.other.ops._transformed:
-                            self.other.show_peaks_btn.setEnabled(True)
-
-            if hasattr(self, 'fib') and not self.fib:
-                if self.other.ops is not None:
-                    if self.ops._transformed and self.other.ops._transformed:
-                        self.show_peaks_btn.setEnabled(True)
-                    else:
-                        self.show_peaks_btn.setChecked(False)
-                        self.show_peaks_btn.setEnabled(False)
-
-            self._update_imview()
-            if self.ops._transformed:
-                self.transform_btn.setEnabled(False)
-                self.rot_transform_btn.setEnabled(False)
-                self.define_btn.setEnabled(False)
-            else:
-                self.transform_btn.setEnabled(True)
-                self.rot_transform_btn.setEnabled(True)
-                self.define_btn.setEnabled(True)
-
-            if show_peaks:
-                self.peak_btn.setChecked(True)
-            if align:
-                self.align_btn.setChecked(True)
+        if show_peaks:
+            self.peak_btn.setChecked(True)
+        if align:
+            self.align_btn.setChecked(True)
 
         if self.ops._transformed:
             [self.imview.addItem(point) for point in self._points_corr]
             [self.other.imview.addItem(point) for point in self.other._points_corr]
             [self.imview.addItem(anno) for anno in self.anno_list]
             [self.other.imview.addItem(anno) for anno in self.other.anno_list]
-
         else:
             [self.imview.removeItem(point) for point in self._points_corr]
             [self.other.imview.removeItem(point) for point in self.other._points_corr]
@@ -685,59 +696,60 @@ class BaseControls(QtWidgets.QWidget):
 
     @wait_cursor
     def _refine(self, state=None):
-        if len(self._points_corr) > 3:
-            if not self.select_btn.isChecked():
-                print('Refining...')
-                dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
-                                self.other._points_corr])
-                src = np.array([[point[0], point[1]] for point in
-                                self.other._orig_points_corr])
-
-                self._points_corr_history.append(copy.copy(self._points_corr))
-                self._points_corr_z_history.append(copy.copy(self._points_corr_z))
-                self._orig_points_corr_history.append(copy.copy(self._orig_points_corr))
-                self.other._points_corr_history.append(copy.copy(self.other._points_corr))
-                self.other._points_corr_z_history.append(copy.copy(self.other._points_corr_z))
-                self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
-                self._fib_vs_sem_history.append(self.other.fib)
-                self.other._size_history.append(self.other.size)
-
-                if self.other.fib:
-                    idx = 1
-                    self.ops.merged_3d = None
-                else:
-                    idx = 0
-                    self.ops.merged_2d = None
-
-                refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
-                self.other.ops.calc_refine_matrix(src, dst)
-                self.other.ops.apply_refinement()
-                self.other._refined = True
-                self.other._recalc_grid()
-                self._estimate_precision(idx, refine_matrix_old)
-
-                self.fixed_orientation = True
-                self.fliph.setEnabled(False)
-                self.flipv.setEnabled(False)
-                self.transpose.setEnabled(False)
-                self.rotate.setEnabled(False)
-                self.auto_opt_btn.setChecked(False)
-                self.other.err_plt_btn.setEnabled(True)
-                self.other.convergence_btn.setEnabled(True)
-                self.undo_refine_btn.setEnabled(True)
-
-                for i in range(len(self._points_corr)):
-                    self._remove_correlated_points(self._points_corr[0])
-
-                self.other.size = copy.copy(self.size)
-                self._update_imview()
-                if self.other.show_peaks_btn.isChecked():
-                    self.other.show_peaks_btn.setChecked(False)
-                    self.other.show_peaks_btn.setChecked(True)
-            else:
-                print('Confirm point selection! (Uncheck Select points of interest)')
-        else:
+        if len(self._points_corr) < 4:
             print('Select at least 4 points for refinement!')
+            return
+
+        if self.select_btn.isChecked():
+            print('Confirm point selection! (Uncheck Select points of interest)')
+
+        print('Refining...')
+        dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
+                        self.other._points_corr])
+        src = np.array([[point[0], point[1]] for point in
+                        self.other._orig_points_corr])
+
+        self._points_corr_history.append(copy.copy(self._points_corr))
+        self._points_corr_z_history.append(copy.copy(self._points_corr_z))
+        self._orig_points_corr_history.append(copy.copy(self._orig_points_corr))
+        self.other._points_corr_history.append(copy.copy(self.other._points_corr))
+        self.other._points_corr_z_history.append(copy.copy(self.other._points_corr_z))
+        self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
+        self._fib_vs_sem_history.append(self.other.fib)
+        self.other._size_history.append(self.other.size)
+
+        if self.other.fib:
+            idx = 1
+            self.ops.merged_3d = None
+        else:
+            idx = 0
+            self.ops.merged_2d = None
+
+        refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
+        self.other.ops.calc_refine_matrix(src, dst)
+        self.other.ops.apply_refinement()
+        self.other._refined = True
+        self.other._recalc_grid()
+        self._estimate_precision(idx, refine_matrix_old)
+
+        self.fixed_orientation = True
+        self.fliph.setEnabled(False)
+        self.flipv.setEnabled(False)
+        self.transpose.setEnabled(False)
+        self.rotate.setEnabled(False)
+        self.auto_opt_btn.setChecked(False)
+        self.other.err_plt_btn.setEnabled(True)
+        self.other.convergence_btn.setEnabled(True)
+        self.undo_refine_btn.setEnabled(True)
+
+        for i in range(len(self._points_corr)):
+            self._remove_correlated_points(self._points_corr[0])
+
+        self.other.size = copy.copy(self.size)
+        self._update_imview()
+        if self.other.show_peaks_btn.isChecked():
+            self.other.show_peaks_btn.setChecked(False)
+            self.other.show_peaks_btn.setChecked(True)
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()
@@ -844,39 +856,41 @@ class BaseControls(QtWidgets.QWidget):
 
     @wait_cursor
     def fit_circles(self, state=None):
-        if self.auto_opt_btn.isChecked():
-            bead_size = float(self.size_box.text())
+        if not self.auto_opt_btn.isChecked():
+            return
 
-            # points_fm = np.array([[p.x() + self.size/2, p.y() + self.size/2] for p in self._points_corr])
-            points_em = np.array(
-                [[p.x() + self.other.size / 2, p.y() + self.other.size / 2] for p in self.other._points_corr])
+        bead_size = float(self.size_box.text())
 
-            # points_fm_fitted = self.ops.fit_circles(points_fm, bead_size)
-            points_em_fitted = self.other.ops.fit_circles(points_em, bead_size)
-            # [self.imview.removeItem(point) for point in self._points_corr]
-            [self.other.imview.removeItem(point) for point in self.other._points_corr]
-            # self._points_corr = []
-            self.other._points_corr = []
-            # circle_size_fm = bead_size * 1e-6 / self.ops.voxel_size[0]
-            circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0]
-            for i in range(len(points_em_fitted)):
-                # pos = QtCore.QPointF(points_fm_fitted[i,0] - circle_size_fm/2, points_fm_fitted[i,1] - circle_size_fm/2)
-                # point = pg.CircleROI(pos, circle_size_fm, parent=self.imview.getImageItem(), movable=True, removable=True)
-                # point.setPen(0, 255, 255)
-                # point.removeHandle(0)
-                # self._points_corr.append(point)
-                # self.imview.addItem(point)
-                # self.size = circle_size_fm
+        # points_fm = np.array([[p.x() + self.size/2, p.y() + self.size/2] for p in self._points_corr])
+        points_em = np.array(
+            [[p.x() + self.other.size / 2, p.y() + self.other.size / 2] for p in self.other._points_corr])
 
-                pos = QtCore.QPointF(points_em_fitted[i, 0] - circle_size_em / 2,
-                                     points_em_fitted[i, 1] - circle_size_em / 2)
-                point = pg.CircleROI(pos, circle_size_em, parent=self.other.imview.getImageItem(), movable=True,
-                                     removable=True)
-                point.setPen(0, 255, 255)
-                point.removeHandle(0)
-                self.other._points_corr.append(point)
-                self.other.imview.addItem(point)
-            self.other.size = circle_size_em
+        # points_fm_fitted = self.ops.fit_circles(points_fm, bead_size)
+        points_em_fitted = self.other.ops.fit_circles(points_em, bead_size)
+        # [self.imview.removeItem(point) for point in self._points_corr]
+        [self.other.imview.removeItem(point) for point in self.other._points_corr]
+        # self._points_corr = []
+        self.other._points_corr = []
+        # circle_size_fm = bead_size * 1e-6 / self.ops.voxel_size[0]
+        circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0]
+        for i in range(len(points_em_fitted)):
+            # pos = QtCore.QPointF(points_fm_fitted[i,0] - circle_size_fm/2, points_fm_fitted[i,1] - circle_size_fm/2)
+            # point = pg.CircleROI(pos, circle_size_fm, parent=self.imview.getImageItem(), movable=True, removable=True)
+            # point.setPen(0, 255, 255)
+            # point.removeHandle(0)
+            # self._points_corr.append(point)
+            # self.imview.addItem(point)
+            # self.size = circle_size_fm
+
+            pos = QtCore.QPointF(points_em_fitted[i, 0] - circle_size_em / 2,
+                                 points_em_fitted[i, 1] - circle_size_em / 2)
+            point = pg.CircleROI(pos, circle_size_em, parent=self.other.imview.getImageItem(), movable=True,
+                                 removable=True)
+            point.setPen(0, 255, 255)
+            point.removeHandle(0)
+            self.other._points_corr.append(point)
+            self.other.imview.addItem(point)
+        self.other.size = circle_size_em
 
     @wait_cursor
     def _show_FM_peaks(self, state=None):
