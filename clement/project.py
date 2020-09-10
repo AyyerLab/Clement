@@ -522,7 +522,7 @@ class Project(QtWidgets.QWidget):
 
         points = [[p.pos().x(), p.pos().y()] for p in self.em._points_corr]
         emdict['Correlated points'] = points
-        emdict['Original correlated points '] = np.array(self.em._orig_points_corr).tolist()
+        emdict['Original correlated points'] = np.array(self.em._orig_points_corr).tolist()
         emdict['Correlated points indices'] = self.em._points_corr_indices
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                self.em._points_corr_history]
@@ -550,7 +550,7 @@ class Project(QtWidgets.QWidget):
 
         points = [[p.pos().x(), p.pos().y()] for p in self.fib._points_corr]
         fibdict['Correlated points'] = points
-        fibdict['Original correlated points {}'] = self.fib._orig_points_corr
+        fibdict['Original correlated points'] = self.fib._orig_points_corr
         fibdict['Correlated points indices'] = self.fib._points_corr_indices
         fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                 self.fib._points_corr_history]
