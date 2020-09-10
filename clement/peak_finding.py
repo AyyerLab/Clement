@@ -6,7 +6,6 @@ from skimage import measure, morphology
 import read_lif
 import time
 
-
 class Peak_finding():
     def __init__(self, threshold=0, plt=10, put=200):
         self.num_slices = None
@@ -248,27 +247,3 @@ class Peak_finding():
         else:
             return ind_arr[0]
 
-
-if __name__ == '__main__':
-    from matplotlib import pyplot as plt
-
-    plt.ion()
-    fname = '/home/tamme/phd/Clement/data/3D/grid1_05.lif'
-
-    base_reader = read_lif.Reader(fname)
-    reader = base_reader.getSeries()[0]
-
-    num_slices = reader.getFrameShape()[0]
-    num_channels = len(reader.getChannels())
-
-    max_proj = np.array(reader.getFrame(channel=3, dtype='u2').max(2).astype('f4'))
-    t_max = np.sort(max_proj.ravel())[-100:].mean()
-
-    peaks = Peak_finding(threshold=0.1 * t_max)
-    peaks.peak_finding(max_proj)
-    print(peaks.peaks_2d.shape)
-
-    plt.figure()
-    plt.imshow(max_proj)
-    plt.scatter(peaks.peaks_2d[:, 1], peaks.peaks_2d[:, 0], facecolor=None, edgecolor='r')
-    plt.show()
