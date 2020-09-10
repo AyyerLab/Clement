@@ -3,7 +3,11 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 def wait_cursor(func):
     def wrapper(*args, **kwargs):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
+        try:
+            func(*args, **kwargs)
+        except:
+            QtWidgets.QApplication.restoreOverrideCursor()
+            raise
         QtWidgets.QApplication.restoreOverrideCursor()
     return wrapper
 
