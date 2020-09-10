@@ -14,12 +14,7 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator, FormatStrFormat
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
+from . import utils
 
 class MplCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -377,12 +372,12 @@ class Merge(QtGui.QMainWindow, ):
         self.imview_popup.removeItem(anno)
         self.annotations_popup.remove(anno)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_overlay_popup(self, checked):
         self._overlay_popup = not self._overlay_popup
         self._update_imview_popup()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_channels_popup(self, checked, my_channel):
         self._channels_popup[my_channel] = not self._channels_popup[my_channel]
         self._update_imview_popup()
@@ -453,7 +448,7 @@ class Merge(QtGui.QMainWindow, ):
                                                                                              self.downsampling)
             print('Done selecting points of interest!')
 
-    @wait_cursor
+    @utils.wait_cursor
     def _save_data_popup(self):
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
@@ -481,7 +476,7 @@ class Merge(QtGui.QMainWindow, ):
                 with open(fname + '.txt', 'a', newline='') as f:
                     csv.writer(f, delimiter=' ').writerows(enumerated)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_max_projection_popup(self):
         if self.max_help:
             self.max_help = False
@@ -496,7 +491,7 @@ class Merge(QtGui.QMainWindow, ):
             self.data_popup = np.copy(self.fm_copy.merged)
             self._update_imview_popup()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _slice_changed_popup(self):
         if self.fm_copy is None:
             self.fm_copy = copy.copy(self.parent.fm)

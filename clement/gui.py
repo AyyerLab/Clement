@@ -11,15 +11,9 @@ from .fm_controls import FMControls
 from .fib_controls import FIBControls
 from .project import Project
 from .popup import Merge, Scatter, Convergence
+from . import utils
 
 warnings.simplefilter('ignore', category=FutureWarning)
-
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
 
 def resource_path(rel_path):
     try:
@@ -245,7 +239,7 @@ class GUI(QtWidgets.QMainWindow):
         else:
             print('To use this feature, you have to use at least 10 points for the refinement!')
 
-    @wait_cursor
+    @utils.wait_cursor
     def merge(self, project=None):
         self.fm = self.fmcontrols.ops
         if self.fibcontrols.fib:

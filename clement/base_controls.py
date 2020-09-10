@@ -6,12 +6,7 @@ import scipy.ndimage as ndi
 import copy
 from skimage import io, measure, feature, color, draw
 
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
+from . import utils
 
 class PeakROI(pg.CircleROI):
     def __init__(self, pos, size, parent):
@@ -486,7 +481,7 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self._fib_flips.append(idx)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _define_corr_toggled(self, checked):
         if self.ops is None or self.other.ops is None:
             print('Select both data first')
@@ -558,7 +553,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.rotate.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _affine_transform(self, toggle_orig=True):
         if self.show_btn.isChecked():
             grid_box = self.grid_box
@@ -694,7 +689,7 @@ class BaseControls(QtWidgets.QWidget):
             [self.imview.removeItem(anno) for anno in self.anno_list]
             [self.other.imview.removeItem(anno) for anno in self.other.anno_list]
 
-    @wait_cursor
+    @utils.wait_cursor
     def _refine(self, state=None):
         if len(self._points_corr) < 4:
             print('Select at least 4 points for refinement!')
@@ -812,7 +807,7 @@ class BaseControls(QtWidgets.QWidget):
             id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(False) - 1
         del self._fib_vs_sem_history[id]
 
-    @wait_cursor
+    @utils.wait_cursor
     def _estimate_precision(self, idx, refine_matrix_old):
         sel_points = [[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
                       self.other._points_corr_history[-1]]
@@ -854,7 +849,7 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self.other._conv[idx] = []
 
-    @wait_cursor
+    @utils.wait_cursor
     def fit_circles(self, state=None):
         if not self.auto_opt_btn.isChecked():
             return
@@ -892,7 +887,7 @@ class BaseControls(QtWidgets.QWidget):
             self.other.imview.addItem(point)
         self.other.size = circle_size_em
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_FM_peaks(self, state=None):
         if not self.show_peaks_btn.isChecked():
             # Remove already shown peaks
