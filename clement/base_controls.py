@@ -332,7 +332,8 @@ class BaseControls(QtWidgets.QWidget):
         # Remove FIB z-position
         if (hasattr(self, 'fib') and self.fib) or (hasattr(self.other, 'fib') and self.other.fib):
             self._points_corr_z.remove(self._points_corr_z[idx])
-            self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+            if len(self.other._points_corr_z) > 0:
+                self.other._points_corr_z.remove(self.other._points_corr_z[idx])
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
@@ -717,6 +718,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.other._points_corr.append(self.other.peaks[ind])
                 pos = self.other.peaks[ind].original_pos
                 self.other._orig_points_corr.append([pos.x() + self.other.size / 2, pos.y() + self.other.size / 2])
+                if self.other.fib:
+                    z = self.ops.calc_z(ind, self._peaks[ind], self.ops._point_reference)
+                    self._points_corr_z.append(z)
 
         if len(self._points_corr) < 4:
             print('Select at least 4 points for refinement!')
