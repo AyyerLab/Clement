@@ -44,26 +44,6 @@ class SeriesPicker(QtWidgets.QDialog):
         self.current_series = -1
         event.accept()
 
-
-# class Dragging(pg.ImageItem):
-#    def mouseClickEvent(self, event):
-#        print("Click", event.pos())
-
-#    def mouseDragEvent(self, event):
-#        if event.isStart():
-#            print("Start drag", event.pos())
-#        elif event.isFinish():
-#            print("Stop drag", event.pos())
-#        else:
-#            print("Drag", event.pos())
-
-#    def hoverEvent(self, event):
-#        if not event.isExit():
-# the mouse is hovering over the image; make sure no otheritems
-# will receive left click/drag events from here.
-#            event.acceptDrags(pg.QtCore.Qt.LeftButton)
-#            event.acceptClicks(pg.QtCore.Qt.LeftButton)
-
 class FMControls(BaseControls):
     def __init__(self, imview, colors):
         super(FMControls, self).__init__()
@@ -815,24 +795,4 @@ class FMControls(BaseControls):
         self.remove_tilt_btn.setChecked(False)
 
         self.ops.__init__()
-
-    #    def mouseDragEvent(self, event):
-    #        if event.button() == QtCore.Qt.RightButton:
-    #            event.accept()
-    #            if event.isStart():
-    #                print("Start drag", event.pos())
-    #                self.start = event.pos()
-    #            elif event.isFinish():
-    #                print("Stop drag", event.pos())
-    #            else:
-    #                self.stop = event.pos()
-    #                print("Drag", event.pos())
-    #                tr = QtGui.QTransform()
-    #                tr.rotate(90, axis=1)
-    #                m = pg.transformToArray(tr)[:2]
-
-    # def _imview_moved(self, event):
-    #    pass
-    # if (event.buttons() & QtCore.Qt.RightButton):
-    #    print('hello')
 
