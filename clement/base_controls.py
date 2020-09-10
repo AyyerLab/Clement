@@ -306,26 +306,33 @@ class BaseControls(QtWidgets.QWidget):
                 idx = i
                 break
 
+        # Remove circle from imviews
         self.imview.removeItem(self._points_corr[idx])
-        self.imview.removeItem(self.anno_list[idx])
         self.other.imview.removeItem(self.other._points_corr[idx])
-        self.other.imview.removeItem(self.other.anno_list[idx])
 
+        # Remove ROI
         self._points_corr.remove(self._points_corr[idx])
         self.other._points_corr.remove(self.other._points_corr[idx])
 
-        self.anno_list.remove(self.anno_list[idx])
-        self.other.anno_list.remove(self.other.anno_list[idx])
+        # Remove original position
+        self._orig_points_corr.remove(self._orig_points_corr[idx])
+        self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
 
-        self._points_corr_indices.remove(self._points_corr_indices[idx])
-        self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
+        # Remove annotation
+        if len(self.anno_list) > 0:
+            self.other.imview.removeItem(self.other.anno_list[idx])
+            self.anno_list.remove(self.anno_list[idx])
+            self.other.anno_list.remove(self.other.anno_list[idx])
 
+        # Remove correlation index
+        if len(self._points_corr_indices) > 0:
+            self._points_corr_indices.remove(self._points_corr_indices[idx])
+            self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
+
+        # Remove FIB z-position
         if (hasattr(self, 'fib') and self.fib) or (hasattr(self.other, 'fib') and self.other.fib):
             self._points_corr_z.remove(self._points_corr_z[idx])
             self.other._points_corr_z.remove(self.other._points_corr_z[idx])
-
-        self._orig_points_corr.remove(self._orig_points_corr[idx])
-        self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
@@ -691,12 +698,29 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor
     def _refine(self, state=None):
+        if self.select_btn.isChecked():
+            print('Confirm point selection! (Uncheck Select points of interest)')
+            return
+
+        if self.other.translate_peaks_btn.isChecked() or self.other.refine_peaks_btn.isChecked():
+            print('Confirm peak translation (uncheck collective/individual translation)')
+            return
+
+        ref_ind = []
+        if self.other.peaks is not None and len(self.other.peaks) > 0:
+            ref_ind = [i for i in range(len(self.other.peaks)) if self.other.peaks[i].has_moved]
+            print('Processing shown FM peaks: %d peaks refined' % len(ref_ind))
+            for ind in ref_ind:
+                self._points_corr.append(self._peaks[ind])
+                pos = self._peaks[ind].pos()
+                self._orig_points_corr.append([pos.x() + self.size // 2, pos.y() + self.size // 2])
+                self.other._points_corr.append(self.other.peaks[ind])
+                pos = self.other.peaks[ind].original_pos
+                self.other._orig_points_corr.append([pos.x() + self.other.size / 2, pos.y() + self.other.size / 2])
+
         if len(self._points_corr) < 4:
             print('Select at least 4 points for refinement!')
             return
-
-        if self.select_btn.isChecked():
-            print('Confirm point selection! (Uncheck Select points of interest)')
 
         print('Refining...')
         dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
@@ -737,7 +761,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other.convergence_btn.setEnabled(True)
         self.undo_refine_btn.setEnabled(True)
 
-        for i in range(len(self._points_corr)):
+        for i in range(len(ref_ind), len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
 
         self.other.size = copy.copy(self.size)
@@ -896,6 +920,7 @@ class BaseControls(QtWidgets.QWidget):
             self.translate_peaks_btn.setEnabled(False)
             self.refine_peaks_btn.setChecked(False)
             self.refine_peaks_btn.setEnabled(False)
+            self.peaks = []
             return
 
         if self.other.ops is None:
@@ -936,10 +961,6 @@ class BaseControls(QtWidgets.QWidget):
                     transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
                 pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
                 point = PeakROI(pos, self.other.size, self.imview.getImageItem())
-                #point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
-                #                     removable=False)
-                #point.setPen(255, 0, 0)
-                #point.removeHandle(0)
                 self.peaks.append(point)
                 self.imview.addItem(point)
         else:
@@ -952,19 +973,12 @@ class BaseControls(QtWidgets.QWidget):
                 self.tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
             for peak in self.other.ops.tf_peak_slices[-1]:
                 init = np.array([peak[0], peak[1], 1])
-                '''
                 if self._refined:
-                    transf = self.tr_matrices @ self.ops._refine_matrix @ init
+                    transf = self.ops._refine_matrix @ self.tr_matrices @ init
                 else:
                     transf = self.tr_matrices @ init
-                '''
-                transf = np.dot(self.tr_matrices, init)
                 pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
                 point = PeakROI(pos, self.other.size, self.imview.getImageItem())
-                #point = pg.CircleROI(pos, self.other.size, parent=self.imview.getImageItem(), movable=False,
-                #                     removable=False)
-                #point.setPen(255, 0, 0)
-                #point.removeHandle(0)
                 self.peaks.append(point)
                 self.imview.addItem(point)
 
@@ -989,11 +1003,9 @@ class BaseControls(QtWidgets.QWidget):
         shift = item.pos() - self._old_peak_pos[ind]
         print(ind, shift)
         for i in range(len(self.peaks)):
-            if self.peaks[i].has_moved:
-                continue
             self._old_peak_pos[i][0] += shift.x()
             self._old_peak_pos[i][1] += shift.y()
-            if i != ind:
+            if i != ind and not self.peaks[i].has_moved:
                 self.peaks[i].setPos(self._old_peak_pos[i], finish=False)
 
     def _refine_peaks(self, active):
