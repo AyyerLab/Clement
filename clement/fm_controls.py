@@ -9,13 +9,7 @@ from skimage.color import hsv2rgb
 
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
-
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
+from . import utils
 
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, parent, names):
@@ -199,36 +193,8 @@ class FMControls(BaseControls):
         line.addWidget(self.remove_tilt_btn)
         line.addStretch(1)
 
-        # ---- Define and align to grid
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid:', self)
-        line.addWidget(label)
-        self.define_btn = QtWidgets.QPushButton('Define grid square', self)
-        self.define_btn.setCheckable(True)
-        self.define_btn.toggled.connect(self._define_grid_toggled)
-        self.define_btn.setEnabled(False)
-        line.addWidget(self.define_btn)
-        self.show_grid_btn = QtWidgets.QCheckBox('Show grid square', self)
-        self.show_grid_btn.setEnabled(False)
-        self.show_grid_btn.setChecked(False)
-        self.show_grid_btn.stateChanged.connect(self._show_grid)
-        self.show_grid_btn.clicked.connect(self._update_imview)
-        line.addWidget(self.show_grid_btn)
-        line.addStretch(1)
-
-        # ---- Define and align to grid
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Transformations:', self)
-        line.addWidget(label)
-        self.transform_btn = QtWidgets.QPushButton('Transform image', self)
-        self.transform_btn.clicked.connect(self._affine_transform)
-        self.transform_btn.setEnabled(False)
-        line.addWidget(self.transform_btn)
-        self.rot_transform_btn = QtWidgets.QCheckBox('Disable shearing', self)
-        self.rot_transform_btn.setEnabled(False)
-        line.addWidget(self.rot_transform_btn)
+        utils.add_define_grid_line(self, vbox)
+        line = utils.add_transform_grid_line(self, vbox, show_original=False)
 
         # ---- Flips and rotates
         label = QtWidgets.QLabel('Flips:', self)
@@ -387,7 +353,7 @@ class FMControls(BaseControls):
             self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(self._file_name)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _parse_fm_images(self, file_name, series=None):
         self.ops = FM_ops()
         retval = self.ops.parse(file_name, z=0, series=series)
@@ -435,7 +401,7 @@ class FMControls(BaseControls):
             self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
             self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_max_projection(self, state=None):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
         if self.max_proj_btn.isChecked():
@@ -460,13 +426,13 @@ class FMControls(BaseControls):
         if self.overlay_btn.isChecked():
             self.color_data = np.sum(self.color_data, axis=0)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_overlay(self, state=None):
         if self.ops is not None:
             self._overlay = not self._overlay
             self._update_imview()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_channels(self, checked, my_channel):
         if self.ops is not None and self.ops.data is not None:
             self._channels[my_channel] = not self._channels[my_channel]
@@ -482,7 +448,7 @@ class FMControls(BaseControls):
         else:
             print('Invalid color')
 
-    @wait_cursor
+    @utils.wait_cursor
     def _fliph(self, state):
         if self.ops is not None:
             if self.other.fib:
@@ -497,7 +463,7 @@ class FMControls(BaseControls):
             self._recalc_grid()
             self._update_imview()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _flipv(self, state):
         if self.ops is not None:
             if self.other.fib:
@@ -512,7 +478,7 @@ class FMControls(BaseControls):
             self._recalc_grid()
             self._update_imview()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _trans(self, state):
         if self.ops is not None:
             if self.other.fib:
@@ -527,7 +493,7 @@ class FMControls(BaseControls):
             self._recalc_grid()
             self._update_imview()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _rot(self, state):
         if self.ops is not None:
             if self.other.fib:
@@ -542,7 +508,7 @@ class FMControls(BaseControls):
             self._recalc_grid()
             self._update_imview()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _slice_changed(self):
         if self.ops is None:
             print('Pick FM image first')
@@ -572,7 +538,7 @@ class FMControls(BaseControls):
         if num != self.ops._point_reference:
             self.ops._point_reference = num
 
-    @wait_cursor
+    @utils.wait_cursor
     def _find_peaks(self, state=None):
         if self.ops is not None:
             if self.peak_btn.isChecked():
@@ -640,7 +606,7 @@ class FMControls(BaseControls):
         else:
             print('You have to select the data first!')
 
-    @wait_cursor
+    @utils.wait_cursor
     def _align_colors(self, idx, state):
         if self.ops is not None:
             if state:
@@ -675,7 +641,7 @@ class FMControls(BaseControls):
         else:
             print('You have to select the data first!')
 
-    @wait_cursor
+    @utils.wait_cursor
     def _mapping(self, state=None):
         self.align_btn.setEnabled(not self.map_btn.isChecked())
         self.ops.calc_mapping()
@@ -683,7 +649,7 @@ class FMControls(BaseControls):
         if self.remove_tilt_btn.isChecked():
             self._remove_tilt()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _remove_tilt(self):
         if self.map_btn.isChecked():
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())

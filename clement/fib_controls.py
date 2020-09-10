@@ -6,13 +6,7 @@ import pyqtgraph as pg
 
 from .base_controls import BaseControls
 from .em_operations import EM_ops
-
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
+from . import utils
 
 class FIBControls(BaseControls):
     def __init__(self, imview, vbox, sem_ops):
@@ -35,19 +29,7 @@ class FIBControls(BaseControls):
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
-        # ---- Assemble montage
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        button = QtWidgets.QPushButton('Load FIB Image:', self)
-        button.clicked.connect(self._load_mrc)
-        line.addWidget(button)
-        self.mrc_fname = QtWidgets.QLabel(self)
-        line.addWidget(self.mrc_fname, stretch=1)
-
-        self.transp_btn = QtWidgets.QCheckBox('Transpose', self)
-        self.transp_btn.clicked.connect(self._transpose)
-        self.transp_btn.setEnabled(False)
-        line.addWidget(self.transp_btn)
+        utils.add_montage_line(self, vbox, 'FIB', downsampling=False)
 
         # ---- Specify FIB orientation
         line = QtWidgets.QHBoxLayout()
@@ -102,51 +84,13 @@ class FIBControls(BaseControls):
         line.addWidget(button)
         line.addStretch(1)
 
-        # ---- Show FM peaks
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Peaks:')
-        line.addWidget(label)
-        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
-        self.show_peaks_btn.setEnabled(True)
-        self.show_peaks_btn.setChecked(False)
-        self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
-        self.show_peaks_btn.setEnabled(False)
-        line.addWidget(self.show_peaks_btn)
-        label = QtWidgets.QLabel('Translation:', self)
-        line.addWidget(label)
-        self.translate_peaks_btn = QtWidgets.QPushButton('Collective', self)
-        self.translate_peaks_btn.setCheckable(True)
-        self.translate_peaks_btn.setChecked(False)
-        self.translate_peaks_btn.toggled.connect(self._translate_peaks)
-        self.translate_peaks_btn.setEnabled(False)
-        line.addWidget(self.translate_peaks_btn)
-        self.refine_peaks_btn = QtWidgets.QPushButton('Individual', self)
-        self.refine_peaks_btn.setCheckable(True)
-        self.refine_peaks_btn.setChecked(False)
-        self.refine_peaks_btn.toggled.connect(self._refine_peaks)
-        self.refine_peaks_btn.setEnabled(False)
-        line.addWidget(self.refine_peaks_btn)
-        line.addStretch(1)
+        utils.add_fmpeaks_line(self, vbox)
 
-        # ---- Refinement
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Refinement precision [nm]:', self)
-        line.addWidget(label)
-        self.err_btn = QtWidgets.QLabel('0')
-        self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
-        self.err_plt_btn.setEnabled(False)
-        self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
-        self.convergence_btn.setEnabled(False)
-        line.addWidget(self.err_btn)
-        line.addWidget(self.err_plt_btn)
-        line.addWidget(self.convergence_btn)
-        line.addStretch(1)
+        utils.add_precision_line(self, vbox)
 
         self.show()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _load_mrc(self, jump=False):
         if not jump:
             if self._curr_folder is None:
@@ -195,7 +139,7 @@ class FIBControls(BaseControls):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
 
-    @wait_cursor
+    @utils.wait_cursor
     def _show_grid(self, state=None):
         if state > 0:
             self.show_grid_box = True
@@ -207,7 +151,7 @@ class FIBControls(BaseControls):
                 self.imview.removeItem(self.grid_box)
             self.show_grid_box = False
 
-    @wait_cursor
+    @utils.wait_cursor
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1):
         if self.sem_ops is not None and recalc_matrix:
             sigma_angle = float(self.sigma_btn.text())
@@ -250,7 +194,7 @@ class FIBControls(BaseControls):
         self.shift_x_btn.setText('0')
         self.shift_y_btn.setText('0')
 
-    @wait_cursor
+    @utils.wait_cursor
     def _save_mrc_montage(self):
         if self.ops is None:
             print('No montage to save!')

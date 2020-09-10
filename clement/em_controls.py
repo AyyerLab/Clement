@@ -6,13 +6,7 @@ import pyqtgraph as pg
 
 from .base_controls import BaseControls
 from .em_operations import EM_ops
-
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        func(*args, **kwargs)
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
+from . import utils
 
 class EMControls(BaseControls):
     def __init__(self, imview, vbox):
@@ -34,35 +28,7 @@ class EMControls(BaseControls):
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
-        # ---- Assemble montage
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        button = QtWidgets.QPushButton('EM Image:', self)
-        button.clicked.connect(self._load_mrc)
-        line.addWidget(button)
-        self.mrc_fname = QtWidgets.QLabel(self)
-        line.addWidget(self.mrc_fname, stretch=1)
-
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        step_label = QtWidgets.QLabel(self)
-        step_label.setText('Downsampling factor:')
-        self.step_box = QtWidgets.QLineEdit(self)
-        self.step_box.setMaximumWidth(30)
-        self.step_box.setText('10')
-        self.step_box.setEnabled(False)
-        self._downsampling = self.step_box.text()
-        line.addWidget(step_label)
-        line.addWidget(self.step_box)
-        line.addStretch(1)
-        self.assemble_btn = QtWidgets.QPushButton('Assemble', self)
-        self.assemble_btn.clicked.connect(self._assemble_mrc)
-        self.assemble_btn.setEnabled(False)
-        line.addWidget(self.assemble_btn)
-        self.transp_btn = QtWidgets.QCheckBox('Transpose', self)
-        self.transp_btn.clicked.connect(self._transpose)
-        self.transp_btn.setEnabled(False)
-        line.addWidget(self.transp_btn)
+        utils.add_montage_line(self, vbox, 'TEM/SEM', downsampling=True)
 
         # ---- Assembly grid options
         line = QtWidgets.QHBoxLayout()
@@ -81,83 +47,10 @@ class EMControls(BaseControls):
         line.addWidget(self.show_assembled_btn)
         line.addStretch(1)
 
-        # ---- Define grid
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid:', self)
-        line.addWidget(label)
-        self.define_btn = QtWidgets.QPushButton('Define grid square', self)
-        self.define_btn.setCheckable(True)
-        self.define_btn.toggled.connect(self._define_grid_toggled)
-        self.define_btn.setEnabled(False)
-        line.addWidget(self.define_btn)
-        self.show_grid_btn = QtWidgets.QCheckBox('Show grid square',self)
-        self.show_grid_btn.setEnabled(False)
-        self.show_grid_btn.setChecked(False)
-        self.show_grid_btn.stateChanged.connect(self._show_grid)
-        line.addWidget(self.show_grid_btn)
-        line.addStretch(1)
-
-        # ---- Transformations
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Transformations:', self)
-        line.addWidget(label)
-        self.transform_btn = QtWidgets.QPushButton('Transform image', self)
-        self.transform_btn.clicked.connect(self._affine_transform)
-        self.transform_btn.setEnabled(False)
-        line.addWidget(self.transform_btn)
-        self.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', self)
-        self.rot_transform_btn.setEnabled(False)
-        line.addWidget(self.rot_transform_btn)
-        self.show_btn = QtWidgets.QCheckBox('Show original data', self)
-        self.show_btn.setEnabled(False)
-        self.show_btn.setChecked(True)
-        self.show_btn.stateChanged.connect(self._show_original)
-        line.addWidget(self.show_btn)
-        line.addStretch(1)
-
-        # ---- Show FM peaks
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Peaks:')
-        line.addWidget(label)
-        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks',self)
-        self.show_peaks_btn.setEnabled(True)
-        self.show_peaks_btn.setChecked(False)
-        self.show_peaks_btn.stateChanged.connect(self._show_FM_peaks)
-        self.show_peaks_btn.setEnabled(False)
-        line.addWidget(self.show_peaks_btn)
-        label = QtWidgets.QLabel('Translation:', self)
-        line.addWidget(label)
-        self.translate_peaks_btn = QtWidgets.QPushButton('Collective', self)
-        self.translate_peaks_btn.setCheckable(True)
-        self.translate_peaks_btn.setChecked(False)
-        self.translate_peaks_btn.toggled.connect(self._translate_peaks)
-        self.translate_peaks_btn.setEnabled(False)
-        line.addWidget(self.translate_peaks_btn)
-        self.refine_peaks_btn = QtWidgets.QPushButton('Individual', self)
-        self.refine_peaks_btn.setCheckable(True)
-        self.refine_peaks_btn.setChecked(False)
-        self.refine_peaks_btn.toggled.connect(self._refine_peaks)
-        self.refine_peaks_btn.setEnabled(False)
-        line.addWidget(self.refine_peaks_btn)
-        line.addStretch(1)
-
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Refinement precision [nm]:', self)
-        line.addWidget(label)
-        self.err_btn = QtWidgets.QLabel('0')
-        self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
-        self.err_plt_btn.setEnabled(False)
-
-        self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
-        self.convergence_btn.setEnabled(False)
-        line.addWidget(self.err_btn)
-        line.addWidget(self.err_plt_btn)
-        line.addWidget(self.convergence_btn)
-        line.addStretch(1)
+        utils.add_define_grid_line(self, vbox)
+        utils.add_transform_grid_line(self, vbox, show_original=True)
+        utils.add_fmpeaks_line(self, vbox)
+        utils.add_precision_line(self, vbox)
 
         self.show()
 
@@ -201,7 +94,7 @@ class EMControls(BaseControls):
             else:
                 self.show_boxes = False
 
-    @wait_cursor
+    @utils.wait_cursor
     def _assemble_mrc(self):
         if self.step_box.text() == '':
             self._downsampling = 10
@@ -279,7 +172,7 @@ class EMControls(BaseControls):
                 [self.imview.removeItem(box) for box in self.tr_boxes]
         self.show_boxes = False
 
-    @wait_cursor
+    @utils.wait_cursor
     def _select_box(self, state=None):
         if self.select_region_btn.isChecked():
             self._show_boxes()
@@ -353,7 +246,7 @@ class EMControls(BaseControls):
         self._recalc_grid(self.imview)
         self._update_imview()
 
-    @wait_cursor
+    @utils.wait_cursor
     def _save_mrc_montage(self):
         if self.ops is None:
             print('No montage to save!')
