@@ -323,21 +323,22 @@ class FMControls(BaseControls):
         self.show()
 
     def _update_imview(self):
-        if self.ops is not None:
-            print(self.ops.data.shape)
-            if self.peak_btn.isChecked():
-                self.peak_btn.setChecked(False)
-                self.peak_btn.setChecked(True)
-            if self.ops._show_mapping:
-                vr = self.imview.getImageItem().getViewBox().targetRect()
-                self.imview.setImage(hsv2rgb(self.ops.data))
-                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
-            else:
-                self._calc_color_channels()
-                vr = self.imview.getImageItem().getViewBox().targetRect()
-                levels = self.imview.getHistogramWidget().item.getLevels()
-                self.imview.setImage(self.color_data, levels=levels)
-                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if self.ops is None:
+            return
+        print(self.ops.data.shape)
+        if self.peak_btn.isChecked():
+            self.peak_btn.setChecked(False)
+            self.peak_btn.setChecked(True)
+        if self.ops._show_mapping:
+            vr = self.imview.getImageItem().getViewBox().targetRect()
+            self.imview.setImage(hsv2rgb(self.ops.data))
+            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        else:
+            self._calc_color_channels()
+            vr = self.imview.getImageItem().getViewBox().targetRect()
+            levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.setImage(self.color_data, levels=levels)
+            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
         if self._curr_folder is None:
@@ -450,63 +451,63 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor
     def _fliph(self, state):
-        if self.ops is not None:
-            if self.other.fib:
-                if self.other.ops is not None:
-                    self._store_fib_flips(idx=2)
-            if self.fliph.isChecked():
-                self.flips[2] = True
-            else:
-                self.flips[2] = False
-            self._remove_points_flip()
-            self.ops.flip_horizontal(state)
-            self._recalc_grid()
-            self._update_imview()
+        if self.ops is None:
+            return
+        if self.other.fib and self.other.ops is not None:
+            self._store_fib_flips(idx=2)
+        if self.fliph.isChecked():
+            self.flips[2] = True
+        else:
+            self.flips[2] = False
+        self._remove_points_flip()
+        self.ops.flip_horizontal(state)
+        self._recalc_grid()
+        self._update_imview()
 
     @utils.wait_cursor
     def _flipv(self, state):
-        if self.ops is not None:
-            if self.other.fib:
-                if self.other.ops is not None:
-                    self._store_fib_flips(idx=3)
-            if self.flipv.isChecked():
-                self.flips[3] = True
-            else:
-                self.flips[3] = False
-            self._remove_points_flip()
-            self.ops.flip_vertical(state)
-            self._recalc_grid()
-            self._update_imview()
+        if self.ops is None:
+            return
+        if self.other.fib and self.other.ops is not None:
+            self._store_fib_flips(idx=3)
+        if self.flipv.isChecked():
+            self.flips[3] = True
+        else:
+            self.flips[3] = False
+        self._remove_points_flip()
+        self.ops.flip_vertical(state)
+        self._recalc_grid()
+        self._update_imview()
 
     @utils.wait_cursor
     def _trans(self, state):
-        if self.ops is not None:
-            if self.other.fib:
-                if self.other.ops is not None:
-                    self._store_fib_flips(idx=0)
-            if self.transpose.isChecked():
-                self.flips[0] = True
-            else:
-                self.flips[0] = False
-            self._remove_points_flip()
-            self.ops.transpose(state)
-            self._recalc_grid()
-            self._update_imview()
+        if self.ops is None:
+            return
+        if self.other.fib and self.other.ops is not None:
+            self._store_fib_flips(idx=0)
+        if self.transpose.isChecked():
+            self.flips[0] = True
+        else:
+            self.flips[0] = False
+        self._remove_points_flip()
+        self.ops.transpose(state)
+        self._recalc_grid()
+        self._update_imview()
 
     @utils.wait_cursor
     def _rot(self, state):
-        if self.ops is not None:
-            if self.other.fib:
-                if self.other.ops is not None:
-                    self._store_fib_flips(idx=1)
-            if self.rotate.isChecked():
-                self.flips[1] = True
-            else:
-                self.flips[1] = False
-            self._remove_points_flip()
-            self.ops.rotate_clockwise(state)
-            self._recalc_grid()
-            self._update_imview()
+        if self.ops is None:
+            return
+        if self.other.fib and self.other.ops is not None:
+            self._store_fib_flips(idx=1)
+        if self.rotate.isChecked():
+            self.flips[1] = True
+        else:
+            self.flips[1] = False
+        self._remove_points_flip()
+        self.ops.rotate_clockwise(state)
+        self._recalc_grid()
+        self._update_imview()
 
     @utils.wait_cursor
     def _slice_changed(self):
@@ -515,23 +516,25 @@ class FMControls(BaseControls):
             return
 
         num = self.slice_select_btn.value()
-        if num != self._current_slice:
-            self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
-            self._update_imview()
-            fname = self.fm_fname.text().split('[')[0]
-            self.fm_fname.setText(fname + '[%d/%d]' % (num, self.num_slices))
-            self._current_slice = num
-            self.slice_select_btn.clearFocus()
+        if num == self._current_slice:
+            return
+        self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
+        self._update_imview()
+        fname = self.fm_fname.text().split('[')[0]
+        self.fm_fname.setText(fname + '[%d/%d]' % (num, self.num_slices))
+        self._current_slice = num
+        self.slice_select_btn.clearFocus()
 
     def _change_ref(self, state=None):
         num = self.ref_btn.currentIndex()
-        if num != self.ops._peak_reference:
-            self.ops._peak_reference = num
-            self.ops.orig_tf_peak_slices = None
-            self.ops.tf_peak_slices = None
-            self.ops.peak_slices = None
-            self.ops._color_matrices = []
-            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
+        if num == self.ops._peak_reference:
+            return
+        self.ops._peak_reference = num
+        self.ops.orig_tf_peak_slices = None
+        self.ops.tf_peak_slices = None
+        self.ops.peak_slices = None
+        self.ops._color_matrices = []
+        [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
     def _change_point_ref(self):
         num = self.point_ref_btn.currentIndex()
@@ -540,106 +543,111 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor
     def _find_peaks(self, state=None):
-        if self.ops is not None:
-            if self.peak_btn.isChecked():
-                flip = False
-                if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
-                    fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
-                    self.ops.fliph = False
-                    self.ops.flipv = False
-                    self.ops.rot = False
-                    self.ops.transp = False
-                    self.ops._update_data()
-                    flip = True
-
-                if self.map_btn.isChecked():
-                    if self.ops._transformed:
-                        if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.tf_max_proj_data[:, :, self.ops._peak_reference],
-                                                  transformed=True)
-                        peaks_2d = self.ops.tf_peak_slices[-1]
-                    else:
-                        if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                            self.ops.peak_finding(self.ops.max_proj_data[:, :, self.ops._peak_reference], transformed=False)
-                        peaks_2d = self.ops.peak_slices[-1]
-                else:
-                    if self.max_proj_btn.isChecked():
-                        if self.ops._transformed:
-                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True)
-                            peaks_2d = self.ops.tf_peak_slices[-1]
-                        else:
-                            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False)
-                            peaks_2d = self.ops.peak_slices[-1]
-                    else:
-                        if self.ops._transformed:
-                            if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
-                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True,
-                                                      curr_slice=self._current_slice)
-                            peaks_2d = self.ops.tf_peak_slices[self._current_slice]
-                        else:
-                            if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
-                                self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False,
-                                                      curr_slice=self._current_slice)
-                            peaks_2d = self.ops.peak_slices[self._current_slice]
-                if len(peaks_2d.shape) > 0:
-                    for i in range(len(peaks_2d)):
-                        pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)
-                        point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
-                                                 removable=True)
-                        point_obj.removeHandle(0)
-                        self.imview.addItem(point_obj)
-                        self._peaks.append(point_obj)
-                    if flip:
-                        self.ops.fliph = fliph
-                        self.ops.flipv = flipv
-                        self.ops.rot = rot
-                        self.ops.transp = transp
-                        self.ops._update_data()
-                        self._update_imview()
-                print(self.ops.tf_peak_slices)
-            else:
-                [self.imview.removeItem(point) for point in self._peaks]
-                self._peaks = []
-                # self.max_proj_btn.setChecked(show_max_proj)
-        else:
+        if self.ops is None:
             print('You have to select the data first!')
+            return
+
+        if not self.peak_btn.isChecked():
+            [self.imview.removeItem(point) for point in self._peaks]
+            self._peaks = []
+            # self.max_proj_btn.setChecked(show_max_proj)
+            return
+
+        flip = False
+        if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
+            fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
+            self.ops.fliph = False
+            self.ops.flipv = False
+            self.ops.rot = False
+            self.ops.transp = False
+            self.ops._update_data()
+            flip = True
+
+        if self.map_btn.isChecked():
+            if self.ops._transformed:
+                if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                    self.ops.peak_finding(self.ops.tf_max_proj_data[:, :, self.ops._peak_reference],
+                                          transformed=True)
+                peaks_2d = self.ops.tf_peak_slices[-1]
+            else:
+                if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                    self.ops.peak_finding(self.ops.max_proj_data[:, :, self.ops._peak_reference], transformed=False)
+                peaks_2d = self.ops.peak_slices[-1]
+        else:
+            if self.max_proj_btn.isChecked():
+                if self.ops._transformed:
+                    if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
+                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True)
+                    peaks_2d = self.ops.tf_peak_slices[-1]
+                else:
+                    if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False)
+                    peaks_2d = self.ops.peak_slices[-1]
+            else:
+                if self.ops._transformed:
+                    if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
+                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True,
+                                              curr_slice=self._current_slice)
+                    peaks_2d = self.ops.tf_peak_slices[self._current_slice]
+                else:
+                    if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
+                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False,
+                                              curr_slice=self._current_slice)
+                    peaks_2d = self.ops.peak_slices[self._current_slice]
+        if len(peaks_2d.shape) > 0:
+            for i in range(len(peaks_2d)):
+                pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)
+                point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
+                                         removable=True)
+                point_obj.removeHandle(0)
+                self.imview.addItem(point_obj)
+                self._peaks.append(point_obj)
+            if flip:
+                self.ops.fliph = fliph
+                self.ops.flipv = flipv
+                self.ops.rot = rot
+                self.ops.transp = transp
+                self.ops._update_data()
+                self._update_imview()
+        print(self.ops.tf_peak_slices)
 
     @utils.wait_cursor
     def _align_colors(self, idx, state):
-        if self.ops is not None:
-            if state:
-                print('Align color channels')
-                if idx != self.ops._peak_reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
-                    show_transformed = False
-                    if not self.show_btn.isChecked():
-                        self.show_btn.setChecked(True)
-                        show_transformed = True
-                    undo_max_proj = False
-                    if not self.max_proj_btn.isChecked():
-                        self.max_proj_btn.setChecked(True)
-                        undo_max_proj = True
-                    if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                        peaks_2d = None
-                    else:
-                        peaks_2d = self.ops.peak_slices[-1]
-                    if peaks_2d is None:
-                        self.peak_btn.setChecked(True)
-                        self.peak_btn.setChecked(False)
-                        peaks_2d = self.ops.peak_slices[-1]
-                    self.ops.estimate_alignment(peaks_2d, idx)
-                    if undo_max_proj:
-                        self.max_proj_btn.setChecked(False)
-                    if show_transformed:
-                        self.show_btn.setChecked(False)
-                self.ops._aligned_channels[idx] = True
-            else:
-                self.ops._aligned_channels[idx] = False
+        if self.ops is None:
+            print('You have to select the data first!')
+            return
+        if not state:
+            self.ops._aligned_channels[idx] = False
             self.ops._update_data()
             self._update_imview()
-        else:
-            print('You have to select the data first!')
+            return
+
+        print('Aligning color channels')
+        if idx != self.ops._peak_reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
+            show_transformed = False
+            if not self.show_btn.isChecked():
+                self.show_btn.setChecked(True)
+                show_transformed = True
+            undo_max_proj = False
+            if not self.max_proj_btn.isChecked():
+                self.max_proj_btn.setChecked(True)
+                undo_max_proj = True
+            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                peaks_2d = None
+            else:
+                peaks_2d = self.ops.peak_slices[-1]
+            if peaks_2d is None:
+                self.peak_btn.setChecked(True)
+                self.peak_btn.setChecked(False)
+                peaks_2d = self.ops.peak_slices[-1]
+            self.ops.estimate_alignment(peaks_2d, idx)
+            if undo_max_proj:
+                self.max_proj_btn.setChecked(False)
+            if show_transformed:
+                self.show_btn.setChecked(False)
+        self.ops._aligned_channels[idx] = True
+        self.ops._update_data()
+        self._update_imview()
 
     @utils.wait_cursor
     def _mapping(self, state=None):
@@ -668,7 +676,6 @@ class FMControls(BaseControls):
 
         self.peak_btn.setChecked(False)
         self.peak_btn.setEnabled(False)
-
 
         self._box_coordinate = None
         self._points_corr = []
