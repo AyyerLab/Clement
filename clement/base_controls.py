@@ -634,8 +634,8 @@ class BaseControls(QtWidgets.QWidget):
             self.merge_btn.setEnabled(False)
             self.refine_btn.setEnabled(False)
             self.auto_opt_btn.setEnabled(False)
-        elif (hasattr(self.ops, 'flipv') and self.ops._transformed:
-                and not self.fixed_orientation):
+        elif (hasattr(self.ops, 'flipv') and self.ops._transformed and
+                not self.fixed_orientation):
             self.flipv.setEnabled(True)
             self.fliph.setEnabled(True)
             self.transpose.setEnabled(True)
