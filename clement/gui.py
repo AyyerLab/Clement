@@ -307,9 +307,9 @@ class GUI(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self.settings.setValue('channel_colors', self.colors)
         self.settings.setValue('geometry', self.geometry())
-        self.settings.setValue('fm_folder', self.fmcontrols.curr_folder)
-        self.settings.setValue('em_folder', self.emcontrols.curr_folder)
-        self.settings.setValue('fib_folder', self.fibcontrols.curr_folder)
+        self.settings.setValue('fm_folder', self.fmcontrols._curr_folder)
+        self.settings.setValue('em_folder', self.emcontrols._curr_folder)
+        self.settings.setValue('fib_folder', self.fibcontrols._curr_folder)
         self.settings.setValue('project_folder', self.project._project_folder)
         event.accept()
 
