@@ -70,7 +70,8 @@ class EM_ops():
 
     def parse_2d(self, fname):
         if '.tif' in fname or '.tiff' in fname:
-            self.data = np.array(io.imread(fname))
+            # Transposing tif images by default
+            self.data = np.array(io.imread(fname).T)
             self.dimensions = self.data.shape
             self.old_fname = fname
             try:
