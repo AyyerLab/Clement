@@ -37,15 +37,15 @@ class FIBControls(BaseControls):
         label = QtWidgets.QLabel('Angles:', self)
         line.addWidget(label)
 
-        label = QtWidgets.QLabel('Sigma:', self)
+        label = QtWidgets.QLabel('\u03c3_SEM - \u03c3_FIB:', self)
         line.addWidget(label)
         self.sigma_btn = QtWidgets.QLineEdit(self)
-        self.sigma_btn.setText('20')
+        self.sigma_btn.setText('0')
         self._sigma_angle = int(self.sigma_btn.text())
         self.sigma_btn.setEnabled(False)
         line.addWidget(self.sigma_btn)
 
-        label = QtWidgets.QLabel('Phi:', self)
+        label = QtWidgets.QLabel('\u03c6:', self)
         line.addWidget(label)
         self.phi_box = QtWidgets.QComboBox(self)
         listview = QtWidgets.QListView(self)
