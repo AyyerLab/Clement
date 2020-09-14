@@ -70,7 +70,8 @@ class EM_ops():
 
     def parse_2d(self, fname):
         if '.tif' in fname or '.tiff' in fname:
-            self.data = np.array(io.imread(fname))
+            # Transposing tif images by default
+            self.data = np.array(io.imread(fname).T)
             self.dimensions = self.data.shape
             self.old_fname = fname
             try:
@@ -313,32 +314,32 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, sigma_angle, sem_shape, sem_pixel_size, phi_angle, sem_transpose=False):
+    def calc_fib_transform(self, sigma_diff, sem_shape, sem_pixel_size, phi_angle, sem_transpose=False):
         if sem_transpose:
             self.fib_matrix = np.array([[0.,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])
         else:
             self.fib_matrix = np.identity(4)
 
-        # rotate by 90 degrees in plane
+        # rotate by phi angle in plane
         #phi = 90 * np.pi / 180
         self.fib_matrix = np.array([[np.cos(phi_angle), -np.sin(phi_angle), 0, 0],
                                     [np.sin(phi_angle), np.cos(phi_angle), 0, 0],
                                     [0, 0, 1, 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
-        # flip and scale
+        # Scale according to pixel sizes
         scale = sem_pixel_size / self.pixel_size
         print('SEM shape: ', sem_shape)
         print('FIB shape: ', self.data.shape)
         print('Scale: ', scale)
-        self.fib_matrix = np.array([[-scale[0], 0, 0, 0],
+        self.fib_matrix = np.array([[scale[0], 0, 0, 0],
                                     [0, scale[1], 0, 0],
                                     [0, 0, 1, 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
-        # rotate by 77 degrees
-        self.fib_angle = sigma_angle - 7
-        total_angle = (90 - self.fib_angle) * np.pi / 180
+        # Rotate SEM image according to sigma angles
+        self.fib_angle = sigma_diff + 52
+        total_angle = self.fib_angle * np.pi / 180
         self.fib_matrix = np.array([[1, 0, 0, 0],
                                     [0, np.cos(total_angle), -np.sin(total_angle), 0],
                                     [0, np.sin(total_angle), np.cos(total_angle), 0],
