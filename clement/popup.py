@@ -136,7 +136,7 @@ class Convergence(QtWidgets.QMainWindow):
         layout.addWidget(sc)
 
 
-class Merge(QtGui.QMainWindow, ):
+class Merge(QtGui.QMainWindow):
     def __init__(self, parent):
         super(Merge, self).__init__(parent)
         self.parent = parent
@@ -477,7 +477,7 @@ class Merge(QtGui.QMainWindow, ):
                     csv.writer(f, delimiter=' ').writerows(enumerated)
 
     @utils.wait_cursor
-    def _show_max_projection_popup(self):
+    def _show_max_projection_popup(self, state=None):
         if self.max_help:
             self.max_help = False
             self.slice_select_btn_popup.setEnabled(False)
