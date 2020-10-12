@@ -37,7 +37,7 @@ class FIBControls(BaseControls):
         label = QtWidgets.QLabel('Angles:', self)
         line.addWidget(label)
 
-        label = QtWidgets.QLabel('\u03c3_SEM - \u03c3_FIB:', self)
+        label = QtWidgets.QLabel('\u03c3_FIB:', self)
         line.addWidget(label)
         self.sigma_btn = QtWidgets.QLineEdit(self)
         self.sigma_btn.setText('0')
@@ -50,8 +50,8 @@ class FIBControls(BaseControls):
         self.phi_box = QtWidgets.QComboBox(self)
         listview = QtWidgets.QListView(self)
         self.phi_box.setView(listview)
-        self.phi_box.addItems([str(i) for i in range(0,360,90)])
-        self.phi_box.setCurrentIndex(1)
+        self.phi_box.addItems([str(i) for i in range(0,360,180)])
+        self.phi_box.setCurrentIndex(0)
         self.phi_box.currentIndexChanged.connect(self._phi_changed)
         line.addWidget(self.phi_box)
 
