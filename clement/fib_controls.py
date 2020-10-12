@@ -90,7 +90,7 @@ class FIBControls(BaseControls):
 
         self.show()
 
-    @utils.wait_cursor
+    #@utils.wait_cursor
     def _load_mrc(self, jump=False):
         if not jump:
             if self._curr_folder is None:
@@ -140,7 +140,7 @@ class FIBControls(BaseControls):
             self.show_grid_btn.setEnabled(enable)
 
     @utils.wait_cursor
-    def _show_grid(self, state=None):
+    def _show_grid(self, state=2):
         if state > 0:
             self.show_grid_box = True
             if self.grid_box is None:
