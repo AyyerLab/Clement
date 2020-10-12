@@ -800,6 +800,7 @@ class BaseControls(QtWidgets.QWidget):
             self.fixed_orientation = False
             self.other.err_plt_btn.setEnabled(False)
             self.other.convergence_btn.setEnabled(False)
+            self.other.grid_box.movable = True
         else:
             self._points_corr = copy.copy(self._points_corr_history[-1])
             self._points_corr_z = copy.copy(self._points_corr_z_history[-1])
@@ -992,6 +993,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _translate_peaks(self, active):
         if active:
+            self.show_grid_btn.setChecked(False)
             self.refine_peaks_btn.setChecked(False)
             for p in self.peaks:
                 p.translatable = True
@@ -1014,6 +1016,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _refine_peaks(self, active):
         if active:
+            self.show_grid_btn.setChecked(False)
             self.translate_peaks_btn.setChecked(False)
             for p in self.peaks:
                 p.translatable = True

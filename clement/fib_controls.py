@@ -173,15 +173,19 @@ class FIBControls(BaseControls):
             self._show_grid(0) # Hide grid
 
             pos = list(self.ops.points)
-            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=True, resizable=False, rotatable=False)
+            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False, rotatable=False)
             self.old_pos0 = [float(self.shift_x_btn.text()), float(self.shift_y_btn.text())]
             print('Box origin at:', self.old_pos0)
             self.grid_box.sigRegionChanged.connect(self._update_shifts)
-
+            self.grid_box.sigRegionChangeFinished.connect(self._recalc_grid)
             self._show_grid(2) # Show grid
 
         if self.grid_box is not None:
             self.show_peaks_btn.setEnabled(True)
+            if self.show_peaks_btn.isChecked():
+                self.show_peaks_btn.setChecked(False)
+                self.show_peaks_btn.setChecked(True)
+
             self.shift_x_btn.setEnabled(True)
             self.shift_y_btn.setEnabled(True)
 
