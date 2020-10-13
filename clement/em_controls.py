@@ -66,7 +66,7 @@ class EMControls(BaseControls):
 
         if self._file_name != '':
             self.reset_init()
-            self.mrc_fname.setText(self._file_name)
+            self.mrc_fname.setText(os.path.basename(self._file_name))
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
 

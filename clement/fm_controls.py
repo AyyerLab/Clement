@@ -368,9 +368,8 @@ class FMControls(BaseControls):
             self.ops.parse(file_name, z=0, series=self._series)
 
         self.num_slices = self.ops.num_slices
-
         if file_name != '':
-            self.fm_fname.setText(file_name + ' [0/%d]' % self.num_slices)
+            self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))

@@ -104,7 +104,7 @@ class FIBControls(BaseControls):
 
         if self._file_name != '':
             self.reset_init()
-            self.mrc_fname.setText(self._file_name)
+            self.mrc_fname.setText(os.path.basename(self._file_name))
 
             self.ops = EM_ops()
             self.ops.parse_2d(self._file_name)
