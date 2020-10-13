@@ -233,9 +233,9 @@ class Project(QtWidgets.QWidget):
             self.fib._transpose()  # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
-        if 'Phi angle' not in fibdict:
-            fibdict['Phi angle'] = 0
-        self.fib.phi_box.setCurrentIndex(fibdict['Phi angle'] // 90)
+        #if 'Phi angle' not in fibdict:
+        #    fibdict['Phi angle'] = 0
+        #self.fib.phi_box.setCurrentIndex(fibdict['Phi angle'] // 90)
         self.fib.sem_ops = self.em.ops
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)

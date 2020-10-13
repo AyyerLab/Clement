@@ -314,14 +314,13 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, sigma, sem_shape, sem_pixel_size, phi_angle, sem_transpose=False):
+    def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, phi_angle=0, sem_transpose=False):
         if sem_transpose:
             self.fib_matrix = np.array([[0.,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])
         else:
             self.fib_matrix = np.identity(4)
 
         # rotate by phi angle in plane
-        #phi = 90 * np.pi / 180
         self.fib_matrix = np.array([[np.cos(phi_angle), -np.sin(phi_angle), 0, 0],
                                     [np.sin(phi_angle), np.cos(phi_angle), 0, 0],
                                     [0, 0, 1, 0],
@@ -338,12 +337,7 @@ class EM_ops():
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
         # Rotate SEM image according to sigma angles
-        #self.fib_angle = sigma + 52
-        if phi_angle == 0:
-            grid_angle = sigma - 7
-        else:
-            grid_angle = 97 - sigma
-        self.fib_angle = 90 - grid_angle
+        self.fib_angle = delta_sigma + 52
         total_angle = self.fib_angle * np.pi / 180
         self.fib_matrix = np.array([[1, 0, 0, 0],
                                     [0, np.cos(total_angle), -np.sin(total_angle), 0],

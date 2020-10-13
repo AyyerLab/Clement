@@ -344,7 +344,7 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((2, 1, 0))
-        print('Load channel {}'.format(ind))
+        print('Load channel {}'.format(ind+1))
 
     def clear_channel(self):
         self.channel = None

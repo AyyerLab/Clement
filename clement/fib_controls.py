@@ -16,6 +16,7 @@ class FIBControls(BaseControls):
         self.ops = None
         self.sem_ops = sem_ops
         self.fib = False
+        self.num_slices = None
 
         self.show_grid_box = False
         self.grid_box = None
@@ -37,7 +38,7 @@ class FIBControls(BaseControls):
         label = QtWidgets.QLabel('Angles:', self)
         line.addWidget(label)
 
-        label = QtWidgets.QLabel('\u03c3_FIB:', self)
+        label = QtWidgets.QLabel('\u03c3_SEM - \u03c3_FIB:', self)
         line.addWidget(label)
         self.sigma_btn = QtWidgets.QLineEdit(self)
         self.sigma_btn.setText('0')
@@ -45,15 +46,15 @@ class FIBControls(BaseControls):
         self.sigma_btn.setEnabled(False)
         line.addWidget(self.sigma_btn)
 
-        label = QtWidgets.QLabel('\u03c6:', self)
-        line.addWidget(label)
-        self.phi_box = QtWidgets.QComboBox(self)
-        listview = QtWidgets.QListView(self)
-        self.phi_box.setView(listview)
-        self.phi_box.addItems([str(i) for i in range(0,360,180)])
-        self.phi_box.setCurrentIndex(0)
-        self.phi_box.currentIndexChanged.connect(self._phi_changed)
-        line.addWidget(self.phi_box)
+        #label = QtWidgets.QLabel('\u03c6:', self)
+        #line.addWidget(label)
+        #self.phi_box = QtWidgets.QComboBox(self)
+        #listview = QtWidgets.QListView(self)
+        #self.phi_box.setView(listview)
+        #self.phi_box.addItems([str(i) for i in range(0,360,180)])
+        #self.phi_box.setCurrentIndex(0)
+        #self.phi_box.currentIndexChanged.connect(self._phi_changed)
+        #line.addWidget(self.phi_box)
 
         line.addStretch(1)
 
@@ -155,13 +156,14 @@ class FIBControls(BaseControls):
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1):
         if self.sem_ops is not None and recalc_matrix:
             sigma_angle = float(self.sigma_btn.text())
-            phi_angle = float(self.phi_box.currentText()) * np.pi / 180.
+            #phi_angle = float(self.phi_box.currentText()) * np.pi / 180.
             is_transposed = self.transp_btn.isChecked()
 
             self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
-                                        self.sem_ops.pixel_size, phi_angle, is_transposed)
+                                        self.sem_ops.pixel_size,sem_transpose=is_transposed)
 
             if self.ops.points is not None:
+            #if self.ops.points is not None and scaling != 1:
                 xshift = float(self.shift_x_btn.text())
                 yshift = float(self.shift_y_btn.text())
                 self.ops.calc_grid_shift(xshift, yshift)

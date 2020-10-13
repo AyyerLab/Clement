@@ -787,7 +787,6 @@ class BaseControls(QtWidgets.QWidget):
         del self.other._points_corr_z_history[-1]
         del self.other._orig_points_corr_history[-1]
 
-        self.other._recalc_grid()
 
         if len(self.other.ops._refine_history) == 1:
             self.fliph.setEnabled(True)
@@ -795,6 +794,7 @@ class BaseControls(QtWidgets.QWidget):
             self.rotate.setEnabled(True)
             self.transpose.setEnabled(True)
             self.other._refined = False
+            self.other._recalc_grid()
             self.undo_refine_btn.setEnabled(False)
             self.other.err_btn.setText('0')
             self.fixed_orientation = False
@@ -802,6 +802,7 @@ class BaseControls(QtWidgets.QWidget):
             self.other.convergence_btn.setEnabled(False)
             self.other.grid_box.movable = True
         else:
+            self.other._recalc_grid()
             self._points_corr = copy.copy(self._points_corr_history[-1])
             self._points_corr_z = copy.copy(self._points_corr_z_history[-1])
             self._orig_points_corr = copy.copy(self._orig_points_corr_history[-1])
@@ -949,6 +950,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
 
             self.other.ops.load_channel(ind=self.other.ops._point_reference)
+
             self.other.ops.fit_z(self.other.ops.channel, transformed=True, tf_matrix=self.other.ops.tf_matrix,
                            flips=self.other.flips, shape=self.other.ops.data.shape[:-1])
             self.other.ops.clear_channel()
@@ -1030,10 +1032,10 @@ class BaseControls(QtWidgets.QWidget):
         self.ops.fib_matrix = None
         # set FIB matrix to None to recalculate with medium z slice
         self._recalc_grid(scaling=self.other.ops.voxel_size[2] / self.other.ops.voxel_size[0])
-        self.shift_x_btn.setText(str(self.ops._total_shift[0]))
-        self.shift_y_btn.setText(str(self.ops._total_shift[1]))
-        self.ops._total_shift = None
-        self._recalc_grid()
+        #self.shift_x_btn.setText(str(self.ops._total_shift[0]))
+        #self.shift_y_btn.setText(str(self.ops._total_shift[1]))
+        #self.ops._total_shift = None
+        #self._recalc_grid()
         self._show_grid()
         print('WARNING! Recalculate FIB grid square for z = ', self.num_slices // 2)
 

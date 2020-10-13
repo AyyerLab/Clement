@@ -216,11 +216,12 @@ class GUI(QtWidgets.QMainWindow):
                 if self.fibcontrols.ops is not None and self.emcontrols.ops._tf_points is not None:
                     self.fibcontrols.ops._transformed = True
 
-            if self.fibcontrols.num_slices is None:
-                self.fibcontrols.num_slices = self.fmcontrols.num_slices
-                if self.fibcontrols.ops is not None:
-                    if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
-                        self.fibcontrols.correct_grid_z()
+            #if self.fibcontrols.num_slices is None:
+            #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
+            #    if self.fibcontrols.ops is not None:
+            #        if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
+            #            self.fibcontrols.correct_grid_z()
+
 
     def _show_scatter(self, idx):
         if idx == 0:
