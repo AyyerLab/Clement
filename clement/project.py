@@ -243,10 +243,6 @@ class Project(QtWidgets.QWidget):
         try:
             self.fib.ops._orig_points = np.array(fibdict['Original points'])
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            #self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
-            #self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
-            self.fib.shift_x_btn.setText(fibdict['Grid shifts'][0])
-            self.fib.shift_y_btn.setText(fibdict['Grid shifts'][1])
             self.fib._recalc_grid()
         except KeyError:
             pass
@@ -559,8 +555,6 @@ class Project(QtWidgets.QWidget):
         fibdict['Size history'] = np.array(self.fib._size_history).tolist()
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
-        fibdict['Phi angle'] = self.fib.phi_box.currentIndex() * 90
-        fibdict['Grid shifts'] = [self.fib.shift_x_btn.text(), self.fib.shift_y_btn.text()]
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

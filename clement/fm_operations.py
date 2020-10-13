@@ -748,6 +748,8 @@ class FM_ops(Peak_finding):
         if channel == self.num_channels - 1:
             fib_img = np.zeros_like(refined)
             fib_img[:fib_data.shape[0], :fib_data.shape[1]] = fib_data / fib_data.max() * self.merged_3d.max()
+            fib_img /= np.amax(fib_img)
+            fib_img *= np.amax(self.merged_3d)
             self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(fib_img, axis=2)), axis=2)
             # self.merged_3d[:,:,2] = self.merged_3d[:,:,2] / self.merged_3d[:,:,2].max() * self.merged_3d[:,:,3].max()
 

@@ -314,15 +314,15 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, phi_angle=0, sem_transpose=False):
+    def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
         if sem_transpose:
             self.fib_matrix = np.array([[0.,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])
         else:
             self.fib_matrix = np.identity(4)
 
         # rotate by phi angle in plane
-        self.fib_matrix = np.array([[np.cos(phi_angle), -np.sin(phi_angle), 0, 0],
-                                    [np.sin(phi_angle), np.cos(phi_angle), 0, 0],
+        self.fib_matrix = np.array([[1, 0, 0, 0],
+                                    [0, 1, 0, 0],
                                     [0, 0, 1, 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
@@ -349,6 +349,7 @@ class EM_ops():
         fib_corners = np.dot(self.fib_matrix, corners)
         self.fib_shift = -fib_corners.min(1)[:3]
         self.fib_matrix[:3, 3] += self.fib_shift
+        self.fib_matrix[:2, 3] += shift
         print('Shifted fib matrix: ', self.fib_matrix)
 
     def apply_fib_transform(self, points, num_slices, scaling=1):

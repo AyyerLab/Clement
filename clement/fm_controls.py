@@ -45,8 +45,6 @@ class FMControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
-        #       self.imview.getImageItem().mouseDragEvent = self.mouseDragEvent
-        # self.imview.scene.sigMouseMoved.connect(self._imview_moved)
 
         self._colors = colors
         self._channels = [True, True, True, True]

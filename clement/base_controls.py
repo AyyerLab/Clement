@@ -752,7 +752,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other.ops.calc_refine_matrix(src, dst)
         self.other.ops.apply_refinement()
         self.other._refined = True
-        self.other._recalc_grid()
+        self.other._show_grid()
         self._estimate_precision(idx, refine_matrix_old)
 
         self.fixed_orientation = True
@@ -946,8 +946,7 @@ class BaseControls(QtWidgets.QWidget):
             # If not, do the Z-fitting
             print('Fitting Z-positions of FM peaks')
             self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
-            self.tr_matrices = self.ops.get_fib_transform(
-                self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
+            self.tr_matrices = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
 
             self.other.ops.load_channel(ind=self.other.ops._point_reference)
 
@@ -1032,10 +1031,6 @@ class BaseControls(QtWidgets.QWidget):
         self.ops.fib_matrix = None
         # set FIB matrix to None to recalculate with medium z slice
         self._recalc_grid(scaling=self.other.ops.voxel_size[2] / self.other.ops.voxel_size[0])
-        #self.shift_x_btn.setText(str(self.ops._total_shift[0]))
-        #self.shift_y_btn.setText(str(self.ops._total_shift[1]))
-        #self.ops._total_shift = None
-        #self._recalc_grid()
         self._show_grid()
         print('WARNING! Recalculate FIB grid square for z = ', self.num_slices // 2)
 
