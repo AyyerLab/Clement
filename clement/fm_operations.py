@@ -656,7 +656,8 @@ class FM_ops(Peak_finding):
         print('Merged.shape: ', self.merged_2d.shape)
 
     def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,
-                       corr_points_fib, channel):
+                       corr_points_fib, channel, grid_shift):
+
         rot_matrix = np.identity(3)
         if self.transp:
             rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -682,6 +683,7 @@ class FM_ops(Peak_finding):
 
         if refine_matrix is None:
             refine_matrix = np.identity(3)
+        #refine_matrix[:2, 2] -= grid_shift
 
         total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
 
@@ -714,7 +716,8 @@ class FM_ops(Peak_finding):
                 tf_img.append(refined)
                 tf_point = np.where(refined == refined.max())
                 tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
-                self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib, axis=0)
+
+            self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib, axis=0)
             print('IMG shift: ', self.merge_shift)
 
         z_data = []
