@@ -752,7 +752,8 @@ class BaseControls(QtWidgets.QWidget):
         self.other.ops.calc_refine_matrix(src, dst)
         self.other.ops.apply_refinement()
         self.other._refined = True
-        self.other._show_grid()
+        if self.other.show_grid_btn.isChecked():
+            self.other._show_grid()
         self._estimate_precision(idx, refine_matrix_old)
 
         self.fixed_orientation = True

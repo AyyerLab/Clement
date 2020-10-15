@@ -358,7 +358,9 @@ class FMControls(BaseControls):
         retval = self.ops.parse(file_name, z=0, series=series)
         if retval is not None:
             picker = SeriesPicker(self, retval)
+            QtWidgets.QApplication.restoreOverrideCursor()
             picker.exec_()
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self._series = picker.current_series
             if self._series < 0:
                 self.ops = None
