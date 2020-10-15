@@ -160,9 +160,7 @@ class FIBControls(BaseControls):
                 self.show_peaks_btn.setChecked(True)
 
     def _update_shifts(self, state):
-        print('heeeeeeeeeeeeeeeeeeeeeeeere')
         new_pos = state.pos() + self.old_pos0
-        #self.box_shift = np.array(new_pos - self.old_pos0)
         self.box_shift = np.array(new_pos)
         self.ops.points = np.copy([point + self.box_shift for point in self.ops.points])
         self.old_pos0 = new_pos

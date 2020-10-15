@@ -656,7 +656,7 @@ class FM_ops(Peak_finding):
         print('Merged.shape: ', self.merged_2d.shape)
 
     def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,
-                       corr_points_fib, channel, grid_shift):
+                       corr_points_fib, channel):
 
         rot_matrix = np.identity(3)
         if self.transp:
@@ -683,8 +683,6 @@ class FM_ops(Peak_finding):
 
         if refine_matrix is None:
             refine_matrix = np.identity(3)
-        #refine_matrix[:2, 2] -= grid_shift
-
         total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
 
         nx, ny = self.channel[:, :, 0].shape
@@ -702,7 +700,7 @@ class FM_ops(Peak_finding):
                 orig_points.append(orig_point)
 
             tf_points = []
-            tf_img = []
+            corr_points_fib_red = []
             for i in range(len(orig_points)):
                 img_tmp = np.zeros_like(self.channel[:, :, 0])
                 img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
@@ -713,11 +711,13 @@ class FM_ops(Peak_finding):
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
                                                output_shape=tf_shape)
-                tf_img.append(refined)
-                tf_point = np.where(refined == refined.max())
-                tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
+                if refined.max() != 0:
+                    tf_point = np.where(refined == refined.max())
+                    tf_points.append([tf_point[0][0], tf_point[1][0]])
+                    corr_points_fib_red.append(corr_points_fib[i])
 
-            self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib, axis=0)
+            diff = np.array(tf_points) - np.array(corr_points_fib_red)
+            self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib_red, axis=0)
             print('IMG shift: ', self.merge_shift)
 
         z_data = []

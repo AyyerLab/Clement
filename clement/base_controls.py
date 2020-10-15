@@ -1064,7 +1064,7 @@ class BaseControls(QtWidgets.QWidget):
                         self.ops.load_channel(i)
                         self.ops.apply_merge_3d(self.other.tr_matrices, self.other.ops.fib_matrix,
                                                 self.other.ops._refine_matrix,
-                                                self.other.ops.data, src, src_z, dst, i, self.other.box_shift)
+                                                self.other.ops.data, src, src_z, dst, i)
                         self.progress.setValue((i + 1) / self.ops.num_channels * 100)
                 else:
                     print('You have to perform at least one round of refinement before you can merge the images!')

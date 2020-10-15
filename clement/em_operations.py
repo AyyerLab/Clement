@@ -72,6 +72,7 @@ class EM_ops():
         if '.tif' in fname or '.tiff' in fname:
             # Transposing tif images by default
             self.data = np.array(io.imread(fname).T)
+
             self.dimensions = self.data.shape
             self.old_fname = fname
             try:
