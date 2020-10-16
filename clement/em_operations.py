@@ -448,7 +448,6 @@ class EM_ops():
 
     def calc_refine_matrix(self, src, dst):
         refine_matrix = tf.estimate_transform('affine', src, dst).params
-
         if self._refine_matrix is None:
             self._refine_matrix = refine_matrix
         else:

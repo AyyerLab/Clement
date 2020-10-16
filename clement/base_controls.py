@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import sys
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -14,7 +16,7 @@ class PeakROI(pg.CircleROI):
                                       movable=False, removable=False, resizable=False)
         self.original_color = (255, 0, 0)
         self.moved_color = (0, 255, 255)
-        self.original_pos = copy.copy(self.pos())
+        self.original_pos = copy.copy(np.array([pos.x(), pos.y()])+np.array([size/2, size/2]))
         self.has_moved = False
 
         self.setPen(self.original_color)
@@ -42,6 +44,9 @@ class PeakROI(pg.CircleROI):
     def peakMoved(self, item):
         self.setPen(self.moved_color)
         self.has_moved = True
+
+    def peakRefined(self, refined_pos):
+        self.original_pos = refined_pos
 
 class BaseControls(QtWidgets.QWidget):
     def __init__(self):
@@ -320,6 +325,7 @@ class BaseControls(QtWidgets.QWidget):
 
         # Remove annotation
         if len(self.anno_list) > 0:
+            self.imview.removeItem(self.anno_list[idx])
             self.other.imview.removeItem(self.other.anno_list[idx])
             self.anno_list.remove(self.anno_list[idx])
             self.other.anno_list.remove(self.other.anno_list[idx])
@@ -708,19 +714,23 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         ref_ind = []
-        if self.other.peaks is not None and len(self.other.peaks) > 0:
-            ref_ind = [i for i in range(len(self.other.peaks)) if self.other.peaks[i].has_moved]
-            print('Processing shown FM peaks: %d peaks refined' % len(ref_ind))
-            for ind in ref_ind:
-                self._points_corr.append(self._peaks[ind])
-                pos = self._peaks[ind].pos()
-                self._orig_points_corr.append([pos.x() + self.size // 2, pos.y() + self.size // 2])
-                self.other._points_corr.append(self.other.peaks[ind])
-                pos = self.other.peaks[ind].original_pos
-                self.other._orig_points_corr.append([pos.x() + self.other.size / 2, pos.y() + self.other.size / 2])
-                if self.other.fib:
-                    z = self.ops.calc_z(ind, self._peaks[ind], self.ops._point_reference)
-                    self._points_corr_z.append(z)
+        if len(self._points_corr) == 0:
+            if self.other.peaks is not None and len(self.other.peaks) > 0:
+
+                ref_ind = [i for i in range(len(self.other.peaks)) if self.other.peaks[i].has_moved]
+                print('Processing shown FM peaks: %d peaks refined' % len(ref_ind))
+                for ind in ref_ind:
+                    self._points_corr.append(self._peaks[ind])
+                    pos = self._peaks[ind].pos()
+                    self._orig_points_corr.append([pos.x() + self.orig_size // 2, pos.y() + self.orig_size // 2])
+
+                    self.other._points_corr.append(self.other.peaks[ind])
+                    pos = copy.copy(self.other.peaks[ind].original_pos)
+                    self.other._orig_points_corr.append([pos[0], pos[1]])
+
+                    if self.other.fib:
+                        z = self.ops.calc_z(ind, self._peaks[ind], self.ops._point_reference)
+                        self._points_corr_z.append(z)
 
         if len(self._points_corr) < 4:
             print('Select at least 4 points for refinement!')
@@ -729,8 +739,7 @@ class BaseControls(QtWidgets.QWidget):
         print('Refining...')
         dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
                         self.other._points_corr])
-        src = np.array([[point[0], point[1]] for point in
-                        self.other._orig_points_corr])
+        src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
         self._points_corr_history.append(copy.copy(self._points_corr))
         self._points_corr_z_history.append(copy.copy(self._points_corr_z))
@@ -740,6 +749,8 @@ class BaseControls(QtWidgets.QWidget):
         self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
         self._fib_vs_sem_history.append(self.other.fib)
         self.other._size_history.append(self.other.size)
+
+
 
         if self.other.fib:
             idx = 1
@@ -755,6 +766,7 @@ class BaseControls(QtWidgets.QWidget):
         if self.other.show_grid_btn.isChecked():
             self.other._show_grid()
         self._estimate_precision(idx, refine_matrix_old)
+        self.other.size = self.other.orig_size
 
         self.fixed_orientation = True
         self.fliph.setEnabled(False)
@@ -774,6 +786,14 @@ class BaseControls(QtWidgets.QWidget):
         if self.other.show_peaks_btn.isChecked():
             self.other.show_peaks_btn.setChecked(False)
             self.other.show_peaks_btn.setChecked(True)
+
+        self._points_corr = []
+        self._points_corr_z = []
+        self._orig_points_corr = []
+        self.other._points_corr = []
+        self.other._points_corr_z = []
+        self.other._orig_points_corr = []
+
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()
@@ -886,35 +906,38 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         bead_size = float(self.size_box.text())
+        moved_peaks = False
+        original_positions = []
+        if len(self._points_corr) == 0:
+            if self.other.peaks is not None and len(self.other.peaks) > 0:
+                ref_ind = [i for i in range(len(self.other.peaks)) if self.other.peaks[i].has_moved]
+                points_em = []
+                for ind in ref_ind:
+                    self.other.imview.removeItem(self.other.peaks[ind])
+                    pos = self.other.peaks[ind].pos()
+                    original_positions.append(self.other.peaks[ind].original_pos)
+                    points_em.append(pos + np.array([self.other.size /2, self.other.size /2]))
+                points_em = np.array(points_em)
+                moved_peaks = True
+        else:
+            points_em = np.array([[p.x() + self.other.size / 2, p.y() + self.other.size / 2] for p in self.other._points_corr])
+            [self.other.imview.removeItem(point) for point in self.other._points_corr]
 
-        # points_fm = np.array([[p.x() + self.size/2, p.y() + self.size/2] for p in self._points_corr])
-        points_em = np.array(
-            [[p.x() + self.other.size / 2, p.y() + self.other.size / 2] for p in self.other._points_corr])
-
-        # points_fm_fitted = self.ops.fit_circles(points_fm, bead_size)
         points_em_fitted = self.other.ops.fit_circles(points_em, bead_size)
-        # [self.imview.removeItem(point) for point in self._points_corr]
-        [self.other.imview.removeItem(point) for point in self.other._points_corr]
-        # self._points_corr = []
         self.other._points_corr = []
-        # circle_size_fm = bead_size * 1e-6 / self.ops.voxel_size[0]
         circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0]
+        self.other.size = circle_size_em
         for i in range(len(points_em_fitted)):
-            # pos = QtCore.QPointF(points_fm_fitted[i,0] - circle_size_fm/2, points_fm_fitted[i,1] - circle_size_fm/2)
-            # point = pg.CircleROI(pos, circle_size_fm, parent=self.imview.getImageItem(), movable=True, removable=True)
-            # point.setPen(0, 255, 255)
-            # point.removeHandle(0)
-            # self._points_corr.append(point)
-            # self.imview.addItem(point)
-            # self.size = circle_size_fm
-
             pos = QtCore.QPointF(points_em_fitted[i, 0] - circle_size_em / 2,
                                  points_em_fitted[i, 1] - circle_size_em / 2)
-            point = pg.CircleROI(pos, circle_size_em, parent=self.other.imview.getImageItem(), movable=True,
-                                 removable=True)
-            point.setPen(0, 255, 255)
-            point.removeHandle(0)
-            self.other._points_corr.append(point)
+
+            point = PeakROI(pos, circle_size_em, parent=self.imview.getImageItem())
+            point.peakMoved(item=None)
+            if moved_peaks:
+                point.original_pos = copy.copy(original_positions[i] - np.array([self.size//2, self.size//2]))
+                self.other.peaks[ref_ind[i]] = point
+            else:
+                self.other._points_corr.append(point)
             self.other.imview.addItem(point)
         self.other.size = circle_size_em
 
@@ -966,8 +989,8 @@ class BaseControls(QtWidgets.QWidget):
                 transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                 if self._refined:
                     transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
-                pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                point = PeakROI(pos, self.other.size, self.imview.getImageItem())
+                pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
+                point = PeakROI(pos, self.orig_size, self.imview.getImageItem())
                 self.peaks.append(point)
                 self.imview.addItem(point)
         else:
@@ -984,8 +1007,8 @@ class BaseControls(QtWidgets.QWidget):
                     transf = self.ops._refine_matrix @ self.tr_matrices @ init
                 else:
                     transf = self.tr_matrices @ init
-                pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
-                point = PeakROI(pos, self.other.size, self.imview.getImageItem())
+                pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
+                point = PeakROI(pos, self.orig_size, self.imview.getImageItem())
                 self.peaks.append(point)
                 self.imview.addItem(point)
 
@@ -1043,7 +1066,7 @@ class BaseControls(QtWidgets.QWidget):
         size_other = copy.copy(self.other._size_history[-1])
         dst = np.array([[point.x() + size_other / 2, point.y() + size_other / 2] for point in
                         self.other._points_corr_history[-1]])
-        src = np.array([[point.x() + self.size // 2, point.y() + self.size // 2]
+        src = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
                         for point in self._points_corr_history[-1]])
 
         src_z = copy.copy(self._points_corr_z_history[-1])
