@@ -186,6 +186,7 @@ class GUI(QtWidgets.QMainWindow):
         self.fmcontrols.select_btn.setChecked(False)
         for i in range(len(self.fmcontrols._points_corr)):
             self.fmcontrols._remove_correlated_points(self.fmcontrols._points_corr[0])
+
         if idx == 0:
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
@@ -195,6 +196,7 @@ class GUI(QtWidgets.QMainWindow):
             else:
                 self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols.fib = False
+
         else:
             if self.emcontrols.ops is not None and self.fmcontrols.ops is not None:
                 if self.fmcontrols.ops.points is not None and self.emcontrols.ops.points is not None:
@@ -222,6 +224,10 @@ class GUI(QtWidgets.QMainWindow):
             #        if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
             #            self.fibcontrols.correct_grid_z()
 
+        if self.fmcontrols is not None and self.fmcontrols.ops is not None:
+            if self.fmcontrols.ops._transformed:
+                self.fmcontrols.other.size_box.setEnabled(True)
+                self.fmcontrols.other.auto_opt_btn.setEnabled(True)
 
     def _show_scatter(self, idx):
         if idx == 0:

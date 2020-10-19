@@ -271,26 +271,9 @@ class FMControls(BaseControls):
         self.select_btn.toggled.connect(self._define_corr_toggled)
         self.select_btn.setEnabled(False)
 
-        size_label = QtWidgets.QLabel(self)
-        size_label.setText('Bead size [\u03BCm]:')
-        self.size_box = QtWidgets.QLineEdit(self)
-        self.size_box.setText('1')
-        self.size_box.setEnabled(False)
-        self._bead_size = self.size_box.text()
-        self.size_box.setMaximumWidth(30)
-        # self.size_box.setFixedWidth(12)
-
-        self.auto_opt_btn = QtWidgets.QCheckBox('Auto-optimize', self)
-        self.auto_opt_btn.setEnabled(False)
-        self.auto_opt_btn.stateChanged.connect(self.fit_circles)
 
         line.addWidget(self.point_ref_btn)
         line.addWidget(self.select_btn)
-        line.addWidget(size_label)
-        line.addWidget(self.size_box)
-        line.addWidget(self.auto_opt_btn)
-        #line.addWidget(self.refine_btn)
-        #line.addWidget(self.undo_refine_btn)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -747,7 +730,6 @@ class FMControls(BaseControls):
         self.point_ref_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
         self.refine_btn.setEnabled(False)
-        self.auto_opt_btn.setEnabled(False)
 
         self.fliph.setEnabled(False)
         self.flipv.setEnabled(False)

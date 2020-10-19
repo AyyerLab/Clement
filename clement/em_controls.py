@@ -65,7 +65,8 @@ class EMControls(BaseControls):
             self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name != '':
-            self.reset_init()
+            if self.ops is not None:
+                self.reset_init()
             self.mrc_fname.setText(os.path.basename(self._file_name))
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
@@ -330,6 +331,14 @@ class EMControls(BaseControls):
 
         self.show_peaks_btn.setChecked(False)
         self.show_peaks_btn.setEnabled(False)
+
+        self.translate_peaks_btn.setChecked(False)
+        self.translate_peaks_btn.setEnabled(False)
+        self.refine_peaks_btn.setChecked(False)
+        self.refine_peaks_btn.setEnabled(False)
+
+        self.size_box.setEnabled(False)
+        self.auto_opt_btn.setEnabled(False)
 
         self.err_btn.setText('0')
         self.err_plt_btn.setEnabled(False)

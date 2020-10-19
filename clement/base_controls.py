@@ -11,9 +11,9 @@ from skimage import io, measure, feature, color, draw
 from . import utils
 
 class PeakROI(pg.CircleROI):
-    def __init__(self, pos, size, parent):
+    def __init__(self, pos, size, parent, movable=False, removable=False, resizable=False):
         super(PeakROI, self).__init__(pos, size, parent=parent,
-                                      movable=False, removable=False, resizable=False)
+                                      movable=movable, removable=removable, resizable=resizable)
         self.original_color = (255, 0, 0)
         self.moved_color = (0, 255, 255)
         self.original_pos = copy.copy(np.array([pos.x(), pos.y()])+np.array([size/2, size/2]))
@@ -558,8 +558,8 @@ class BaseControls(QtWidgets.QWidget):
             if hasattr(self.other, 'fib') and self.ops.channel is not None:
                 self.ops.clear_channel()
             print('Done selecting points of interest on %s image' % self.tag)
-            if self.auto_opt_btn.isChecked():
-                self.fit_circles()
+            #if self.auto_opt_btn.isChecked():
+            #    self.fit_circles()
             if not self.other._refined:
                 self.fliph.setEnabled(True)
                 self.flipv.setEnabled(True)
@@ -588,8 +588,8 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(True)
             self.rotate.setChecked(False)
             self.rotate.setEnabled(True)
-            self.size_box.setEnabled(True)
-            self.auto_opt_btn.setEnabled(True)
+            self.other.size_box.setEnabled(True)
+            self.other.auto_opt_btn.setEnabled(True)
 
         points_obj = grid_box.getState()['points']
         points = np.array([list((point[0], point[1])) for point in points_obj])
@@ -642,18 +642,17 @@ class BaseControls(QtWidgets.QWidget):
             self.select_btn.setEnabled(False)
             self.merge_btn.setEnabled(False)
             self.refine_btn.setEnabled(False)
-            self.auto_opt_btn.setEnabled(False)
-        elif (hasattr(self.ops, 'flipv') and self.ops._transformed and
-                not self.fixed_orientation):
-            self.flipv.setEnabled(True)
-            self.fliph.setEnabled(True)
-            self.transpose.setEnabled(True)
-            self.rotate.setEnabled(True)
+        elif hasattr(self.ops, 'flipv') and self.ops._transformed:
             self.point_ref_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
-            self.auto_opt_btn.setEnabled(True)
+            if not self.fixed_orientation:
+                self.flipv.setEnabled(True)
+                self.fliph.setEnabled(True)
+                self.transpose.setEnabled(True)
+                self.rotate.setEnabled(True)
+
 
         print('Transformed?', self.ops._transformed)
         self.ops.toggle_original()
@@ -773,7 +772,6 @@ class BaseControls(QtWidgets.QWidget):
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)
         self.rotate.setEnabled(False)
-        self.auto_opt_btn.setChecked(False)
         self.other.err_plt_btn.setEnabled(True)
         self.other.convergence_btn.setEnabled(True)
         self.undo_refine_btn.setEnabled(True)
@@ -902,44 +900,45 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor
     def fit_circles(self, state=None):
-        if not self.auto_opt_btn.isChecked():
+        if self.ops is None:
             return
 
         bead_size = float(self.size_box.text())
         moved_peaks = False
         original_positions = []
-        if len(self._points_corr) == 0:
-            if self.other.peaks is not None and len(self.other.peaks) > 0:
-                ref_ind = [i for i in range(len(self.other.peaks)) if self.other.peaks[i].has_moved]
-                points_em = []
-                for ind in ref_ind:
-                    self.other.imview.removeItem(self.other.peaks[ind])
-                    pos = self.other.peaks[ind].pos()
-                    original_positions.append(self.other.peaks[ind].original_pos)
-                    points_em.append(pos + np.array([self.other.size /2, self.other.size /2]))
-                points_em = np.array(points_em)
-                moved_peaks = True
+        if len(self.other._points_corr) == 0:
+            if self.peaks is None or len(self.peaks) == 0:
+                return
+            ref_ind = [i for i in range(len(self.peaks)) if self.peaks[i].has_moved]
+            points_em = []
+            for ind in ref_ind:
+                self.imview.removeItem(self.peaks[ind])
+                pos = self.peaks[ind].pos()
+                original_positions.append(self.peaks[ind].original_pos)
+                points_em.append(pos + np.array([self.size /2, self.size /2]))
+            points_em = np.array(points_em)
+            moved_peaks = True
         else:
-            points_em = np.array([[p.x() + self.other.size / 2, p.y() + self.other.size / 2] for p in self.other._points_corr])
-            [self.other.imview.removeItem(point) for point in self.other._points_corr]
+            points_em = np.array([[p.x() + self.size / 2, p.y() + self.size / 2] for p in self._points_corr])
+            [self.imview.removeItem(point) for point in self._points_corr]
 
-        points_em_fitted = self.other.ops.fit_circles(points_em, bead_size)
-        self.other._points_corr = []
-        circle_size_em = bead_size * 1e3 / self.other.ops.pixel_size[0]
-        self.other.size = circle_size_em
+        points_em_fitted = self.ops.fit_circles(points_em, bead_size)
+        self._points_corr = []
+        circle_size_em = bead_size * 1e3 / self.ops.pixel_size[0]
+        self.size = circle_size_em
         for i in range(len(points_em_fitted)):
             pos = QtCore.QPointF(points_em_fitted[i, 0] - circle_size_em / 2,
                                  points_em_fitted[i, 1] - circle_size_em / 2)
 
-            point = PeakROI(pos, circle_size_em, parent=self.imview.getImageItem())
+            point = PeakROI(pos, circle_size_em, parent=self.imview.getImageItem(), movable=True)
             point.peakMoved(item=None)
             if moved_peaks:
-                point.original_pos = copy.copy(original_positions[i] - np.array([self.size//2, self.size//2]))
-                self.other.peaks[ref_ind[i]] = point
+                point.original_pos = copy.copy(original_positions[i])
+                self.peaks[ref_ind[i]] = point
             else:
-                self.other._points_corr.append(point)
-            self.other.imview.addItem(point)
-        self.other.size = circle_size_em
+                self._points_corr.append(point)
+            self.imview.addItem(point)
+        self.size = circle_size_em
 
     @utils.wait_cursor
     def _show_FM_peaks(self, state=None):
