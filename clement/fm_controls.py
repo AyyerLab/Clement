@@ -10,6 +10,8 @@ from skimage.color import hsv2rgb
 from .base_controls import BaseControls
 from .fm_operations import FM_ops
 from . import utils
+from .histogram import HistogramWidget
+import time
 
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, parent, names):
@@ -59,6 +61,7 @@ class FMControls(BaseControls):
         self._init_ui()
 
     def _init_ui(self):
+
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
 
@@ -317,8 +320,19 @@ class FMControls(BaseControls):
         else:
             self._calc_color_channels()
             vr = self.imview.getImageItem().getViewBox().targetRect()
-            levels = self.imview.getHistogramWidget().item.getLevels()
-            self.imview.setImage(self.color_data, levels=levels)
+
+            self.hist = HistogramWidget()
+            self.imview.ui.histogram = self.hist
+            self.imview.ui.histogram.setObjectName("histogram")
+            self.imview.ui.histogram.item.setImageItem(self.imview.getImageItem())
+            print('----------------------------------------------')
+            print('Set level item!!!')
+            #self.imview.ui.histogram.setLevelMode('mono')
+            self.imview.ui.histogram.setLevelMode('rgba')
+            #self.imview.getHistogramWidget().item.levelMode = 'custom'
+            self.imview.setImage(self.color_data)
+            #levels = self.imview.getHistogramWidget().item.getLevels()
+            #self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):

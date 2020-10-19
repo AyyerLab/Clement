@@ -12,6 +12,7 @@ from .fib_controls import FIBControls
 from .project import Project
 from .popup import Merge, Scatter, Convergence
 from . import utils
+from .histogram import Imview, Histogram
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -21,6 +22,7 @@ def resource_path(rel_path):
     except AttributeError:
         base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, rel_path)
+
 
 
 class GUI(QtWidgets.QMainWindow):
@@ -52,10 +54,18 @@ class GUI(QtWidgets.QMainWindow):
         splitter_images = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         layout.addWidget(splitter_images, stretch=1)
 
+        # Customize histogram
+        #hist = Histogram(mode='mono')
+
         # -- FM Image view
-        # self.fm_imview = pg.ImageView()
         self.fm_stacked_imview = QtWidgets.QStackedWidget()
         self.fm_imview = pg.ImageView()
+        #self.fm_imview = Imview()
+        #self.fm_imview = pg.ImageView(levelMode='rgba')
+        #self.fm_imview.ui.histogram.setLevelMode = setLevelMode
+        #self.fm_imview.ui.histogram._showRegions = _showRegions
+        #self.fm_imview.ui.histogram.setLevelMode('custom')
+        #self.fm_imview.ui.histogram.setLevelMode('rgba')
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
         self.fm_stacked_imview.addWidget(self.fm_imview)
