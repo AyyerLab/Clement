@@ -54,25 +54,10 @@ class GUI(QtWidgets.QMainWindow):
         splitter_images = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         layout.addWidget(splitter_images, stretch=1)
 
-        # Customize histogram
-        #hist = Histogram(mode='mono')
-
         # -- FM Image view
         self.fm_stacked_imview = QtWidgets.QStackedWidget()
-        #self.fm_imview = pg.ImageView()
         self.fm_imview = Imview()
-        #self.hist = HistogramWidget(self.fm_imview.ui.layoutWidget)
-        #self.fm_imview.ui.histogram = self.hist
-        #self.fm_imview.ui.histogram.setObjectName("histogram")
-        #self.fm_imview.ui.histogram.item.setImageItem(self.fm_imview.getImageItem())
-
-
         self.fm_imview.init_again()
-        #self.fm_imview = pg.ImageView(levelMode='rgba')
-        #self.fm_imview.ui.histogram.setLevelMode = setLevelMode
-        #self.fm_imview.ui.histogram._showRegions = _showRegions
-        #self.fm_imview.ui.histogram.setLevelMode('custom')
-        #self.fm_imview.ui.histogram.setLevelMode('rgba')
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
         self.fm_stacked_imview.addWidget(self.fm_imview)

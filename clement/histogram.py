@@ -270,9 +270,6 @@ class HistogramWidget(GraphicsView):
         self.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.setMinimumWidth(95)
 
-    def printi(self):
-        print('heeeeeeeeeeeeeeeere')
-
     def sizeHint(self):
         return QtCore.QSize(115, 200)
 
@@ -385,6 +382,26 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         if image is not None:
             self.setImageItem(image)
 
+    def changeColors(self, colors):
+        self.regions = [
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block'),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='r',
+                             brush=fn.mkBrush(colors[0]), span=(0., 1 / 3.)),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='g',
+                             brush=fn.mkBrush(colors[1]), span=(1 / 3., 2 / 3.)),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='b',
+                             brush=fn.mkBrush(colors[2]), span=(2 / 3., 1.)),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='w',
+                             brush=fn.mkBrush((255, 255, 255, 50)), span=(2 / 3., 1.))]
+        for region in self.regions:
+            region.setZValue(1000)
+            self.vb.addItem(region)
+            region.lines[0].addMarker('<|', 0.5)
+            region.lines[1].addMarker('|>', 0.5)
+            region.sigRegionChanged.connect(self.regionChanging)
+            region.sigRegionChangeFinished.connect(self.regionChanged)
+
+
     def fillHistogram(self, fill=True, level=0.0, color=(100, 100, 200)):
         colors = [color, (255, 0, 0, 50), (0, 255, 0, 50), (0, 0, 255, 50), (255, 255, 255, 50)]
         for i, plot in enumerate(self.plots):
@@ -492,6 +509,26 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             else:
                 mn, mx = self.imageItem().levels
                 self.region.setRegion([mn, mx])
+        elif self.levelMode == 'rgba':
+            # plot one histogram for each channel
+            self.plots[0].setVisible(False)
+            ch = self.imageItem().getHistogram(perChannel=True)
+            if ch[0] is None:
+                return
+            for i in range(1, 5):
+                if len(ch) >= i:
+                    h = ch[i - 1]
+                    self.plots[i].setVisible(True)
+                    self.plots[i].setData(*h)
+                    if autoLevel:
+                        mn = h[0][0]
+                        mx = h[0][-1]
+                        self.region[i].setRegion([mn, mx])
+                else:
+                    # hide channels not present in image data
+                    self.plots[i].setVisible(False)
+            # make sure we are displaying the correct number of channels
+            self._showRegions()
         else:
             # plot one histogram for each channel
             self.plots[0].setVisible(False)
@@ -547,7 +584,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         """ Set the method of controlling the image levels offered to the user.
         Options are 'mono' or 'rgba'.
         """
-        assert mode in ('mono', 'rgba')
+        assert mode in ('mono', 'rgba', 'custom')
 
         if mode == self.levelMode:
             return
@@ -576,6 +613,18 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             self.regions[i].setVisible(False)
 
         if self.levelMode == 'rgba':
+            imax = 4
+            if self.imageItem() is not None:
+                # Only show rgb channels if connected image lacks alpha.
+                nch = self.imageItem().channels()
+                if nch is None:
+                    nch = 3
+            xdif = 1.0 / nch
+            for i in range(1, nch + 1):
+                self.regions[i].setVisible(True)
+                self.regions[i].setSpan((i - 1) * xdif, i * xdif)
+            self.gradient.hide()
+        elif self.levelMode == 'custom':
             imax = 4
             if self.imageItem() is not None:
                 # Only show rgb channels if connected image lacks alpha.

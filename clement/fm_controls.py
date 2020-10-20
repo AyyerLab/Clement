@@ -320,18 +320,8 @@ class FMControls(BaseControls):
         else:
             self._calc_color_channels()
             vr = self.imview.getImageItem().getViewBox().targetRect()
-
-            #self.hist = HistogramWidget(self.imview.ui.layoutWidget)
-            #self.imview.ui.histogram = self.hist
-            #self.imview.ui.histogram.setObjectName("histogram")
-            #self.imview.ui.histogram.item.setImageItem(self.imview.getImageItem())
-            print('----------------------------------------------')
-            #self.imview.ui.histogram.setLevelMode('mono')
-            #self.imview.ui.histogram.setLevelMode('rgba')
-
-            #self.imview.getHistogramWidget().item.levelMode = 'custom'
-            self.imview.setImage(self.color_data, levelMode='rgba')
-            #levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.ui.histogram.changeColors(self._colors)
+            self.imview.setImage(self.color_data, levelMode='custom')
             #self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
