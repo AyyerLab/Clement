@@ -12,7 +12,7 @@ from .fib_controls import FIBControls
 from .project import Project
 from .popup import Merge, Scatter, Convergence
 from . import utils
-from .histogram import Imview, Histogram
+from .histogram import Imview, Histogram, HistogramWidget
 
 warnings.simplefilter('ignore', category=FutureWarning)
 
@@ -59,8 +59,15 @@ class GUI(QtWidgets.QMainWindow):
 
         # -- FM Image view
         self.fm_stacked_imview = QtWidgets.QStackedWidget()
-        self.fm_imview = pg.ImageView()
-        #self.fm_imview = Imview()
+        #self.fm_imview = pg.ImageView()
+        self.fm_imview = Imview()
+        #self.hist = HistogramWidget(self.fm_imview.ui.layoutWidget)
+        #self.fm_imview.ui.histogram = self.hist
+        #self.fm_imview.ui.histogram.setObjectName("histogram")
+        #self.fm_imview.ui.histogram.item.setImageItem(self.fm_imview.getImageItem())
+
+
+        self.fm_imview.init_again()
         #self.fm_imview = pg.ImageView(levelMode='rgba')
         #self.fm_imview.ui.histogram.setLevelMode = setLevelMode
         #self.fm_imview.ui.histogram._showRegions = _showRegions

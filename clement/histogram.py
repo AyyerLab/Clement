@@ -11,146 +11,267 @@ from PyQt5 import QtCore, QtGui
 import numpy as np
 
 
-from pyqtgraph.functions import mkBrush
+import pyqtgraph as pg
+from pyqtgraph import functions as fn
+from pyqtgraph.graphicsItems import ImageItem
 from pyqtgraph.graphicsItems import GraphicsWidget
-from pyqtgraph.graphicsItems.ViewBox import *
+from pyqtgraph.graphicsItems import ViewBox
 from pyqtgraph.graphicsItems.GradientEditorItem import *
-from pyqtgraph.graphicsItems.LinearRegionItem import *
+from pyqtgraph.graphicsItems import LinearRegionItem
 from pyqtgraph.graphicsItems.PlotDataItem import *
-from pyqtgraph.graphicsItems.AxisItem import *
+from pyqtgraph.graphicsItems import PlotCurveItem
+from pyqtgraph.graphicsItems import VTickGroup
+from pyqtgraph.graphicsItems import InfiniteLine
+from pyqtgraph.graphicsItems import ROI
+from pyqtgraph.graphicsItems import AxisItem
 from pyqtgraph.graphicsItems.GridItem import *
 from pyqtgraph.Point import Point
+from pyqtgraph.graphicsItems import ROI
+from pyqtgraph.SignalProxy import SignalProxy
 
 from pyqtgraph.widgets.GraphicsView import GraphicsView
 from pyqtgraph.graphicsItems.HistogramLUTItem import HistogramLUTItem
 from pyqtgraph.graphicsItems import *
 import weakref
 
-import pyqtgraph as pg
-
-def mkBrush(*args, **kwds):
-    """
-    | Convenience function for constructing Brush.
-    | This function always constructs a solid brush and accepts the same arguments as :func:`mkColor() <pyqtgraph.mkColor>`
-    | Calling mkBrush(None) returns an invisible brush.
-    """
-    if 'color' in kwds:
-        color = kwds['color']
-    elif len(args) == 1:
-        arg = args[0]
-        if arg is None:
-            return QtGui.QBrush(QtCore.Qt.NoBrush)
-        elif isinstance(arg, QtGui.QBrush):
-            return QtGui.QBrush(arg)
-        else:
-            color = arg
-    elif len(args) > 1:
-        color = args
-    return QtGui.QBrush(mkColor(color))
+from pyqtgraph.imageview.ImageViewTemplate_pyqt5 import *
 
 
-def mkColor(*args):
-    """
-    Convenience function for constructing QColor from a variety of argument types. Accepted arguments are:
-
-    ================ ================================================
-     'c'             one of: r, g, b, c, m, y, k, w
-     R, G, B, [A]    integers 0-255
-     (R, G, B, [A])  tuple of integers 0-255
-     float           greyscale, 0.0-1.0
-     int             see :func:`intColor() <pyqtgraph.intColor>`
-     (int, hues)     see :func:`intColor() <pyqtgraph.intColor>`
-     "RGB"           hexadecimal strings; may begin with '#'
-     "RGBA"
-     "RRGGBB"
-     "RRGGBBAA"
-     QColor          QColor instance; makes a copy.
-    ================ ================================================
-    """
-    err = 'Not sure how to make a color from "%s"' % str(args)
-    if len(args) == 1:
-        if isinstance(args[0], str):
-            c = args[0]
-            if c[0] == '#':
-                c = c[1:]
-            if len(c) == 1:
-                try:
-                    return Colors[c]
-                except KeyError:
-                    raise ValueError('No color named "%s"' % c)
-            if len(c) == 3:
-                r = int(c[0] * 2, 16)
-                g = int(c[1] * 2, 16)
-                b = int(c[2] * 2, 16)
-                a = 255
-            elif len(c) == 4:
-                r = int(c[0] * 2, 16)
-                g = int(c[1] * 2, 16)
-                b = int(c[2] * 2, 16)
-                a = int(c[3] * 2, 16)
-            elif len(c) == 6:
-                r = int(c[0:2], 16)
-                g = int(c[2:4], 16)
-                b = int(c[4:6], 16)
-                a = 255
-            elif len(c) == 8:
-                r = int(c[0:2], 16)
-                g = int(c[2:4], 16)
-                b = int(c[4:6], 16)
-                a = int(c[6:8], 16)
-        elif isinstance(args[0], QtGui.QColor):
-            return QtGui.QColor(args[0])
-        elif isinstance(args[0], float):
-            r = g = b = int(args[0] * 255)
-            a = 255
-        elif hasattr(args[0], '__len__'):
-            if len(args[0]) == 3:
-                (r, g, b) = args[0]
-                a = 255
-            elif len(args[0]) == 4:
-                (r, g, b, a) = args[0]
-            elif len(args[0]) == 2:
-                return intColor(*args[0])
-            else:
-                raise TypeError(err)
-        elif type(args[0]) == int:
-            return intColor(args[0])
-        else:
-            raise TypeError(err)
-    elif len(args) == 3:
-        (r, g, b) = args
-        a = 255
-    elif len(args) == 4:
-        (r, g, b, a) = args
-    else:
-        raise TypeError(err)
-
-    args = [r, g, b, a]
-    args = [0 if np.isnan(a) or np.isinf(a) else a for a in args]
-    args = list(map(int, args))
-    return QtGui.QColor(*args)
-
-
+class PlotROI(ROI.ROI):
+    def __init__(self, size):
+        ROI.ROI.__init__(self, pos=[0,0], size=size) #, scaleSnap=True, translateSnap=True)
+        self.addScaleHandle([1, 1], [0, 0])
+        self.addRotateHandle([0, 0], [0.5, 0.5])
 
 
 class Imview(pg.ImageView):
     def __init__(self, levelMode='mono'):
         super(Imview, self).__init__(levelMode=levelMode)
-        #self.ui.histogram = Histogram(self.ui.layoutWidget, mode=levelMode)
-        self.ui.histogram = Histogram(self.ui.layoutWidget)
-        #self.hist = Histogram(mode=levelMode)
-        #self.ui.histogram.setLevelMode(levelMode)
+        print('check')
+
+    def init_again(self, parent=None, name="ImageView", view=None, imageItem=None,
+                 levelMode='mono', *args):
+        QtGui.QWidget.__init__(self, parent, *args)
+        self._imageLevels = None  # [(min, max), ...] per channel image metrics
+        self.levelMin = None  # min / max levels across all channels
+        self.levelMax = None
+
+        self.name = name
+        self.image = None
+        self.axes = {}
+        self.imageDisp = None
+        self.ui = Ui_Form()
+        self.ui.setupUi(self)
+
+        self.ui.histogram.setParent(None)
+        #self.ui.gridLayout.removeWidget(self.ui.histogram)
+        self.hist = HistogramWidget(self.ui.layoutWidget)
+        self.ui.histogram = self.hist
+        self.ui.histogram.setObjectName("histogram")
+        self.ui.gridLayout.addWidget(self.ui.histogram, 0, 1, 1, 2)
+        self.ui.histogram.item.setImageItem(self.getImageItem())
+
+        self.scene = self.ui.graphicsView.scene()
+        self.ui.histogram.setLevelMode(levelMode)
+
+        self.ignorePlaying = False
+
+        if view is None:
+            self.view = ViewBox.ViewBox()
+        else:
+            self.view = view
+        self.ui.graphicsView.setCentralItem(self.view)
+        self.view.setAspectLocked(True)
+        self.view.invertY()
+
+        if imageItem is None:
+            self.imageItem = ImageItem.ImageItem()
+        else:
+            self.imageItem = imageItem
+        self.view.addItem(self.imageItem)
+        self.currentIndex = 0
+
+        self.ui.histogram.setImageItem(self.imageItem)
+
+        self.menu = None
+
+        self.ui.normGroup.hide()
+
+        self.roi = PlotROI(10)
+        self.roi.setZValue(20)
+        self.view.addItem(self.roi)
+        self.roi.hide()
+        self.normRoi = PlotROI(10)
+        self.normRoi.setPen('y')
+        self.normRoi.setZValue(20)
+        self.view.addItem(self.normRoi)
+        self.normRoi.hide()
+        self.roiCurves = []
+        self.timeLine = InfiniteLine.InfiniteLine(0, movable=True, markers=[('^', 0), ('v', 1)])
+        self.timeLine.setPen((255, 255, 0, 200))
+        self.timeLine.setZValue(1)
+        self.ui.roiPlot.addItem(self.timeLine)
+        self.ui.splitter.setSizes([self.height() - 35, 35])
+        self.ui.roiPlot.hideAxis('left')
+        self.frameTicks = VTickGroup.VTickGroup(yrange=[0.8, 1], pen=0.4)
+        self.ui.roiPlot.addItem(self.frameTicks, ignoreBounds=True)
+
+        self.keysPressed = {}
+        self.playTimer = QtCore.QTimer()
+        self.playRate = 0
+        self.lastPlayTime = 0
+
+        self.normRgn = LinearRegionItem.LinearRegionItem()
+        self.normRgn.setZValue(0)
+        self.ui.roiPlot.addItem(self.normRgn)
+        self.normRgn.hide()
+
+        ## wrap functions from view box
+        for fn in ['addItem', 'removeItem']:
+            setattr(self, fn, getattr(self.view, fn))
+
+        ## wrap functions from histogram
+        for fn in ['setHistogramRange', 'autoHistogramRange', 'getLookupTable', 'getLevels']:
+            setattr(self, fn, getattr(self.ui.histogram, fn))
+
+        self.timeLine.sigPositionChanged.connect(self.timeLineChanged)
+        self.ui.roiBtn.clicked.connect(self.roiClicked)
+        self.roi.sigRegionChanged.connect(self.roiChanged)
+        # self.ui.normBtn.toggled.connect(self.normToggled)
+        self.ui.menuBtn.clicked.connect(self.menuClicked)
+        self.ui.normDivideRadio.clicked.connect(self.normRadioChanged)
+        self.ui.normSubtractRadio.clicked.connect(self.normRadioChanged)
+        self.ui.normOffRadio.clicked.connect(self.normRadioChanged)
+        self.ui.normROICheck.clicked.connect(self.updateNorm)
+        self.ui.normFrameCheck.clicked.connect(self.updateNorm)
+        self.ui.normTimeRangeCheck.clicked.connect(self.updateNorm)
+        self.playTimer.timeout.connect(self.timeout)
+
+        self.normProxy = SignalProxy(self.normRgn.sigRegionChanged, slot=self.updateNorm)
+        self.normRoi.sigRegionChangeFinished.connect(self.updateNorm)
+
+        self.ui.roiPlot.registerPlot(self.name + '_ROI')
+        self.view.register(self.name)
+
+        self.noRepeatKeys = [QtCore.Qt.Key_Right, QtCore.Qt.Key_Left, QtCore.Qt.Key_Up, QtCore.Qt.Key_Down,
+                             QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown]
+
+        self.roiClicked()  ## initialize roi plot to correct shape / visibility
+
+    def setImage(self, img, autoRange=True, autoLevels=True, levels=None, axes=None, xvals=None, pos=None, scale=None,
+                 transform=None, autoHistogramRange=True, levelMode=None):
+        if hasattr(img, 'implements') and img.implements('MetaArray'):
+            img = img.asarray()
+
+        if not isinstance(img, np.ndarray):
+            required = ['dtype', 'max', 'min', 'ndim', 'shape', 'size']
+            if not all([hasattr(img, attr) for attr in required]):
+                raise TypeError("Image must be NumPy array or any object "
+                                "that provides compatible attributes/methods:\n"
+                                "  %s" % str(required))
+
+        self.image = img
+        self.imageDisp = None
+        if levelMode is not None:
+            self.ui.histogram.setLevelMode(levelMode)
+
+        if axes is None:
+            x, y = (0, 1) if self.imageItem.axisOrder == 'col-major' else (1, 0)
+
+            if img.ndim == 2:
+                self.axes = {'t': None, 'x': x, 'y': y, 'c': None}
+            elif img.ndim == 3:
+                # Ambiguous case; make a guess
+                if img.shape[2] <= 4:
+                    self.axes = {'t': None, 'x': x, 'y': y, 'c': 2}
+                else:
+                    self.axes = {'t': 0, 'x': x + 1, 'y': y + 1, 'c': None}
+            elif img.ndim == 4:
+                # Even more ambiguous; just assume the default
+                self.axes = {'t': 0, 'x': x + 1, 'y': y + 1, 'c': 3}
+            else:
+                raise Exception("Can not interpret image with dimensions %s" % (str(img.shape)))
+        elif isinstance(axes, dict):
+            self.axes = axes.copy()
+        elif isinstance(axes, list) or isinstance(axes, tuple):
+            self.axes = {}
+            for i in range(len(axes)):
+                self.axes[axes[i]] = i
+        else:
+            raise Exception(
+                "Can not interpret axis specification %s. Must be like {'t': 2, 'x': 0, 'y': 1} or ('t', 'x', 'y', 'c')" % (
+                    str(axes)))
+
+        for x in ['t', 'x', 'y', 'c']:
+            self.axes[x] = self.axes.get(x, None)
+        axes = self.axes
+
+        if xvals is not None:
+            self.tVals = xvals
+        elif axes['t'] is not None:
+            if hasattr(img, 'xvals'):
+                try:
+                    self.tVals = img.xvals(axes['t'])
+                except:
+                    self.tVals = np.arange(img.shape[axes['t']])
+            else:
+                self.tVals = np.arange(img.shape[axes['t']])
+
+
+        self.currentIndex = 0
+        self.updateImage(autoHistogramRange=autoHistogramRange)
+        if levels is None and autoLevels:
+            self.autoLevels()
+        if levels is not None:  ## this does nothing since getProcessedImage sets these values again.
+            self.setLevels(*levels)
+
+        if self.ui.roiBtn.isChecked():
+            self.roiChanged()
+
+
+        if self.axes['t'] is not None:
+            self.ui.roiPlot.setXRange(self.tVals.min(), self.tVals.max())
+            self.frameTicks.setXVals(self.tVals)
+            self.timeLine.setValue(0)
+            if len(self.tVals) > 1:
+                start = self.tVals.min()
+                stop = self.tVals.max() + abs(self.tVals[-1] - self.tVals[0]) * 0.02
+            elif len(self.tVals) == 1:
+                start = self.tVals[0] - 0.5
+                stop = self.tVals[0] + 0.5
+            else:
+                start = 0
+                stop = 1
+            for s in [self.timeLine, self.normRgn]:
+                s.setBounds([start, stop])
+
+
+        self.imageItem.resetTransform()
+        if scale is not None:
+            self.imageItem.scale(*scale)
+        if pos is not None:
+            self.imageItem.setPos(*pos)
+        if transform is not None:
+            self.imageItem.setTransform(transform)
+
+
+        if autoRange:
+            self.autoRange()
+        self.roiClicked()
+
 
 
 class HistogramWidget(GraphicsView):
     def __init__(self, parent=None, *args, **kargs):
         background = kargs.pop('background', 'default')
         GraphicsView.__init__(self, parent, useOpenGL=False, background=background)
-        #self.item = HistogramLUTItem(*args, **kargs)
         self.item = Histogram(*args, **kargs)
         self.setCentralItem(self.item)
         self.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.setMinimumWidth(95)
+
+    def printi(self):
+        print('heeeeeeeeeeeeeeeere')
 
     def sizeHint(self):
         return QtCore.QSize(115, 200)
@@ -159,7 +280,6 @@ class HistogramWidget(GraphicsView):
         return getattr(self.item, attr)
 
 #__all__ = ['HistogramLUTItem']
-__all__ = ['Histogram']
 
 class Histogram(GraphicsWidget.GraphicsWidget):
     """
@@ -214,14 +334,14 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.gradient.loadPreset('grey')
         self.regions = [
             LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block'),
-            LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='r',
-                             brush=mkBrush((255, 50, 50, 50)), span=(0., 1 / 3.)),
-            LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='g',
-                             brush=mkBrush((50, 255, 50, 50)), span=(1 / 3., 2 / 3.)),
-            LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='b',
-                             brush=mkBrush((50, 50, 255, 80)), span=(2 / 3., 1.)),
-            LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='w',
-                             brush=mkBrush((255, 255, 255, 50)), span=(2 / 3., 1.))]
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='r',
+                             brush=fn.mkBrush((255, 50, 50, 50)), span=(0., 1 / 3.)),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='g',
+                             brush=fn.mkBrush((50, 255, 50, 50)), span=(1 / 3., 2 / 3.)),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='b',
+                             brush=fn.mkBrush((50, 50, 255, 80)), span=(2 / 3., 1.)),
+            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='w',
+                             brush=fn.mkBrush((255, 255, 255, 50)), span=(2 / 3., 1.))]
         for region in self.regions:
             region.setZValue(1000)
             self.vb.addItem(region)
@@ -232,7 +352,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
 
         self.region = self.regions[0]  # for backward compatibility.
 
-        self.axis = AxisItem('left', linkView=self.vb, maxTickLength=-10, parent=self)
+        self.axis = AxisItem.AxisItem('left', linkView=self.vb, maxTickLength=-10, parent=self)
         self.layout.addItem(self.axis, 0, 0)
         self.layout.addItem(self.vb, 0, 1)
         self.layout.addItem(self.gradient, 0, 2)
@@ -244,11 +364,11 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.vb.sigRangeChanged.connect(self.viewRangeChanged)
         add = QtGui.QPainter.CompositionMode_Plus
         self.plots = [
-            PlotCurveItem(pen=(200, 200, 200, 100)),  # mono
-            PlotCurveItem(pen=(255, 0, 0, 100), compositionMode=add),  # r
-            PlotCurveItem(pen=(0, 255, 0, 100), compositionMode=add),  # g
-            PlotCurveItem(pen=(0, 0, 255, 100), compositionMode=add),  # b
-            PlotCurveItem(pen=(200, 200, 200, 100), compositionMode=add),  # a
+            PlotCurveItem.PlotCurveItem(pen=(200, 200, 200, 100)),  # mono
+            PlotCurveItem.PlotCurveItem(pen=(255, 0, 0, 100), compositionMode=add),  # r
+            PlotCurveItem.PlotCurveItem(pen=(0, 255, 0, 100), compositionMode=add),  # g
+            PlotCurveItem.PlotCurveItem(pen=(0, 0, 255, 100), compositionMode=add),  # b
+            PlotCurveItem.PlotCurveItem(pen=(200, 200, 200, 100), compositionMode=add),  # a
         ]
 
         self.plot = self.plots[0]  # for backward compatibility.
@@ -343,14 +463,13 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.sigLevelChangeFinished.emit(self)
 
     def regionChanging(self):
-        print('whaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat')
         if self.imageItem() is not None:
             self.imageItem().setLevels(self.getLevels())
         self.update()
         self.sigLevelsChanged.emit(self)
 
     def imageChanged(self, autoLevel=False, autoRange=False):
-        print('not allowed!')
+        print('yeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeees')
         if self.imageItem() is None:
             return
         if self.levelMode == 'mono':
@@ -453,7 +572,6 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.update()
 
     def _showRegions(self):
-        print('noooooooooooooooo')
         for i in range(len(self.regions)):
             self.regions[i].setVisible(False)
 
