@@ -321,6 +321,8 @@ class FMControls(BaseControls):
             self._calc_color_channels()
             vr = self.imview.getImageItem().getViewBox().targetRect()
             self.imview.ui.histogram.changeColors(self._colors)
+            #img = pg.ImageItem(self.color_data, lut=self.imview.ui.histogram.lut)
+            #self.imview.addItem(img)
             self.imview.setImage(self.color_data, levelMode='custom')
             #self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
