@@ -96,7 +96,7 @@ class EMControls(BaseControls):
                 self.show_boxes = False
 
     @utils.wait_cursor
-    def _assemble_mrc(self):
+    def _assemble_mrc(self, state=None):
         if self.step_box.text() == '':
             self._downsampling = 10
         else:

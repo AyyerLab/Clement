@@ -883,8 +883,11 @@ class BaseControls(QtWidgets.QWidget):
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                 refined_points.append(transf[:2])
 
+
         diff = np.array(sel_points) - np.array(refined_points)
-        diff *= self.other.ops.pixel_size
+        print(diff.shape)
+        #diff *= self.other.ops.pixel_size
+        diff *= self.other.ops.pixel_size[0]
         self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
 
         self.other._err[idx] = diff
@@ -1075,9 +1078,9 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(self.ops.num_channels):
                     #self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
                     if self.other.show_assembled_btn.isChecked():
-                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix, self.other.ops.data.shape, self.other.ops.points, i)
+                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig, self.other.ops.data.shape, self.other.ops.points, i)
                     else:
-                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_region, self.other.ops.data.shape, self.other.ops.points, i)
+                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_orig_region, self.other.ops.data.shape, self.other.ops.points, i)
                     self.progress.setValue((i + 1) / self.ops.num_channels * 100)
             else:
                 self.progress.setValue(100)
