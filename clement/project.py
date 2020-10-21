@@ -51,18 +51,6 @@ class Project(QtWidgets.QWidget):
         self.fm._curr_folder = fmdict['Directory']
         self.fm._file_name = fmdict['File']
         self.fm._colors = fmdict['Colors']
-        self.fm.c1_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[0]))
-        self.fm.c2_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[1]))
-        self.fm.c3_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[2]))
-        self.fm.c4_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[3]))
-
-        self.fm._channels = fmdict['Channels']
-        self.fm.channel1_btn.setChecked(self.fm._channels[0])
-        self.fm.channel2_btn.setChecked(self.fm._channels[1])
-        self.fm.channel3_btn.setChecked(self.fm._channels[2])
-        self.fm.channel4_btn.setChecked(self.fm._channels[3])
-        self.fm.overlay_btn.setChecked(fmdict['Overlay'])
-
         if 'Series' in fmdict:
             self.fm._series = fmdict['Series']
         self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
@@ -378,18 +366,18 @@ class Project(QtWidgets.QWidget):
     def _load_merge(self, mdict):
         self.popup._colors_popup = mdict['Colors']
 
-        self.popup.c1_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[0]))
-        self.popup.c2_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[1]))
-        self.popup.c3_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[2]))
-        self.popup.c4_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[3]))
+        #self.popup.c1_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[0]))
+        #self.popup.c2_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[1]))
+        #self.popup.c3_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[2]))
+        #self.popup.c4_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[3]))
 
-        channels = list(mdict['Channels'])
-        self.popup.channel1_btn_popup.setChecked(channels[0])
-        self.popup.channel2_btn_popup.setChecked(channels[1])
-        self.popup.channel3_btn_popup.setChecked(channels[2])
-        self.popup.channel4_btn_popup.setChecked(channels[3])
-        self.popup.channel5_btn_popup.setChecked(channels[4])
-        self.popup.overlay_btn_popup.setChecked(mdict['Overlay'])
+        #channels = list(mdict['Channels'])
+        #self.popup.channel1_btn_popup.setChecked(channels[0])
+        #self.popup.channel2_btn_popup.setChecked(channels[1])
+        #self.popup.channel3_btn_popup.setChecked(channels[2])
+        #self.popup.channel4_btn_popup.setChecked(channels[3])
+        #self.popup.channel5_btn_popup.setChecked(channels[4])
+        #self.popup.overlay_btn_popup.setChecked(mdict['Overlay'])
 
         if mdict['Max projection']:
             self.popup.max_proj_btn_popup.setChecked(True)

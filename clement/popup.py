@@ -145,7 +145,7 @@ class Merge(QtGui.QMainWindow, ):
 
         self.curr_mrc_folder_popup = self.parent.emcontrols.curr_folder
         self.num_slices_popup = self.parent.fmcontrols.num_slices
-        self.downsampling = 4  # per dimension
+        self.downsampling = 2  # per dimension
         self.color_data_popup = None
         self.color_overlay_popup = None
         self.annotations_popup = []
@@ -156,7 +156,7 @@ class Merge(QtGui.QMainWindow, ):
         self.fib = False
         self.size = 10
 
-        self._channels_popup = [True, True, True, True]
+        self._channels_popup = []
         self._colors_popup = list(np.copy(self.parent.colors))
         self._current_slice_popup = self.parent.fmcontrols._current_slice
         self._overlay_popup = True
@@ -171,7 +171,8 @@ class Merge(QtGui.QMainWindow, ):
             self.fib = False
         if merged_data is not None:
             self.data_popup = np.copy(merged_data)
-            self._channels_popup.append(True)
+            for i in range(merged_data.shape[2]):
+                self._channels_popup.append(True)
             self._colors_popup.append('#808080')
         else:
             self.data_popup = np.copy(self.parent.fm.data)
@@ -259,70 +260,37 @@ class Merge(QtGui.QMainWindow, ):
         label = QtWidgets.QLabel(self.em_fname_popup, self)
         line.addWidget(label, stretch=1)
 
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        self.channel_line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(self.channel_line)
         label = QtWidgets.QLabel('Colors:', self)
-        line.addWidget(label)
-        self.channel1_btn_popup = QtWidgets.QCheckBox(' ', self)
-        self.channel2_btn_popup = QtWidgets.QCheckBox(' ', self)
-        self.channel3_btn_popup = QtWidgets.QCheckBox(' ', self)
-        self.channel4_btn_popup = QtWidgets.QCheckBox(' ', self)
-        self.channel5_btn_popup = QtWidgets.QCheckBox(' ', self)
+        self.channel_line.addWidget(label)
+
+        self.channel_btns_popup = []
+        self.color_btns_popup = []
+        for i in range(len(self._channels_popup)):
+            channel_btn = QtWidgets.QCheckBox(' ', self)
+            channel_btn.setChecked(True)
+            channel_btn.stateChanged.connect(lambda state, channel=i: self._show_channels_popup(state, channel))
+            self.channel_btns_popup.append(channel_btn)
+            color_btn = QtWidgets.QPushButton(' ', self)
+            color_btn.clicked.connect(lambda: self._sel_color_popup(i, color_btn))
+            width = color_btn.fontMetrics().boundingRect(' ').width() + 24
+            color_btn.setFixedWidth(width)
+            color_btn.setMaximumHeight(width)
+            color_btn.setStyleSheet('background-color: {}'.format(self._colors_popup[i]))
+            self.color_btns_popup.append(color_btn)
+            self.channel_line.addWidget(color_btn)
+            self.channel_line.addWidget(channel_btn)
+
+        #if len(self._channels_popup) == 5:
+        #    self.c5_btn_popup.clicked.connect(lambda: self._sel_color_popup(4, self.c5_btn_popup))
+        #    self.c5_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[4]))
+
         self.overlay_btn_popup = QtWidgets.QCheckBox('Overlay', self)
-        self.channel1_btn_popup.setChecked(True)
-        self.channel2_btn_popup.setChecked(True)
-        self.channel3_btn_popup.setChecked(True)
-        self.channel4_btn_popup.setChecked(True)
-        self.channel5_btn_popup.setChecked(True)
         self.overlay_btn_popup.setChecked(True)
-        self.channel1_btn_popup.stateChanged.connect(lambda state, channel=0: self._show_channels_popup(state, channel))
-        self.channel2_btn_popup.stateChanged.connect(lambda state, channel=1: self._show_channels_popup(state, channel))
-        self.channel3_btn_popup.stateChanged.connect(lambda state, channel=2: self._show_channels_popup(state, channel))
-        self.channel4_btn_popup.stateChanged.connect(lambda state, channel=3: self._show_channels_popup(state, channel))
-
-        self.channel5_btn_popup.stateChanged.connect(lambda state, channel=4: self._show_channels_popup(state, channel))
         self.overlay_btn_popup.stateChanged.connect(self._show_overlay_popup)
-
-        self.c1_btn_popup = QtWidgets.QPushButton(' ', self)
-        self.c1_btn_popup.clicked.connect(lambda: self._sel_color_popup(0, self.c1_btn_popup))
-        width = self.c1_btn_popup.fontMetrics().boundingRect(' ').width() + 24
-        self.c1_btn_popup.setFixedWidth(width)
-        self.c1_btn_popup.setMaximumHeight(width)
-        self.c1_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[0]))
-        self.c2_btn_popup = QtWidgets.QPushButton(' ', self)
-        self.c2_btn_popup.clicked.connect(lambda: self._sel_color_popup(1, self.c2_btn_popup))
-        self.c2_btn_popup.setMaximumHeight(width)
-        self.c2_btn_popup.setFixedWidth(width)
-        self.c2_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[1]))
-        self.c3_btn_popup = QtWidgets.QPushButton(' ', self)
-        self.c3_btn_popup.setMaximumHeight(width)
-        self.c3_btn_popup.setFixedWidth(width)
-        self.c3_btn_popup.clicked.connect(lambda: self._sel_color_popup(2, self.c3_btn_popup))
-        self.c3_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[2]))
-        self.c4_btn_popup = QtWidgets.QPushButton(' ', self)
-        self.c4_btn_popup.setMaximumHeight(width)
-        self.c4_btn_popup.setFixedWidth(width)
-        self.c4_btn_popup.clicked.connect(lambda: self._sel_color_popup(3, self.c4_btn_popup))
-        self.c4_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[3]))
-        self.c5_btn_popup = QtWidgets.QPushButton(' ', self)
-        self.c5_btn_popup.setMaximumHeight(width)
-        self.c5_btn_popup.setFixedWidth(width)
-        if len(self._channels_popup) == 5:
-            self.c5_btn_popup.clicked.connect(lambda: self._sel_color_popup(4, self.c5_btn_popup))
-            self.c5_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[4]))
-
-        line.addWidget(self.c1_btn_popup)
-        line.addWidget(self.channel1_btn_popup)
-        line.addWidget(self.c2_btn_popup)
-        line.addWidget(self.channel2_btn_popup)
-        line.addWidget(self.c3_btn_popup)
-        line.addWidget(self.channel3_btn_popup)
-        line.addWidget(self.c4_btn_popup)
-        line.addWidget(self.channel4_btn_popup)
-        line.addWidget(self.c5_btn_popup)
-        line.addWidget(self.channel5_btn_popup)
-        line.addWidget(self.overlay_btn_popup)
-        line.addStretch(1)
+        self.channel_line.addWidget(self.overlay_btn_popup)
+        self.channel_line.addStretch(1)
 
         # Select and save coordinates
         line = QtWidgets.QHBoxLayout()
@@ -538,6 +506,9 @@ class Merge(QtGui.QMainWindow, ):
         self.data_popup = None
 
         self.data_orig_popup = None
+        for i in range(len(self.channel_btns_popup)):
+            self.channel_line.removeWidget(self.channel_btns_popup[i])
+            self.channel_line.removeWidget(self.color_btns_popup[i])
 
     def closeEvent(self, event):
         if self.parent is not None:
