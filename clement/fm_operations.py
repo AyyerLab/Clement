@@ -643,7 +643,7 @@ class FM_ops(Peak_finding):
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
 
-    def apply_merge_2d(self, em_data, em_points, channel):
+    def apply_merge_2d(self, em_data, tf_matrix, tf_shape, em_points, channel):
         if channel == 0:
             src = np.array(sorted(self.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
             dst = np.array(sorted(em_points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
@@ -651,8 +651,12 @@ class FM_ops(Peak_finding):
             self.merged_2d = np.zeros(em_data.shape + (self.data.shape[-1] + 1,))
             self.merged_2d[:, :, -1] = em_data / em_data.max() * self.data.max()
 
-        self.merged_2d[:, :, channel] = ndi.affine_transform(self.data[:, :, channel], np.linalg.inv(self.merge_matrix),
-                                                             order=1, output_shape=self.merged_2d.shape[:2])
+        tf_data = ndi.affine_transform(self.data[:, :, channel], np.linalg.inv(self.merge_matrix),
+                                                             order=1, output_shape=tf_shape)
+
+        orig_orientation = ndi.affine_transform(tf_data, tf_matrix, order=1, output_shape=self.merged_2d.shape[:2])
+
+        self.merged_2d[:, :, channel] = orig_orientation
         print('Merged.shape: ', self.merged_2d.shape)
 
     def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,

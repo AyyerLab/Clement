@@ -366,19 +366,6 @@ class Project(QtWidgets.QWidget):
     def _load_merge(self, mdict):
         self.popup._colors_popup = mdict['Colors']
 
-        #self.popup.c1_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[0]))
-        #self.popup.c2_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[1]))
-        #self.popup.c3_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[2]))
-        #self.popup.c4_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[3]))
-
-        #channels = list(mdict['Channels'])
-        #self.popup.channel1_btn_popup.setChecked(channels[0])
-        #self.popup.channel2_btn_popup.setChecked(channels[1])
-        #self.popup.channel3_btn_popup.setChecked(channels[2])
-        #self.popup.channel4_btn_popup.setChecked(channels[3])
-        #self.popup.channel5_btn_popup.setChecked(channels[4])
-        #self.popup.overlay_btn_popup.setChecked(mdict['Overlay'])
-
         if mdict['Max projection']:
             self.popup.max_proj_btn_popup.setChecked(True)
         else:

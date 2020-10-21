@@ -1073,7 +1073,11 @@ class BaseControls(QtWidgets.QWidget):
         if not self.other.fib:
             if self.ops.merged_2d is None:
                 for i in range(self.ops.num_channels):
-                    self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
+                    #self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
+                    if self.other.show_assembled_btn.isChecked():
+                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix, self.other.ops.data.shape, self.other.ops.points, i)
+                    else:
+                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_region, self.other.ops.data.shape, self.other.ops.points, i)
                     self.progress.setValue((i + 1) / self.ops.num_channels * 100)
             else:
                 self.progress.setValue(100)
