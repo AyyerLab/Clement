@@ -302,6 +302,7 @@ class FMControls(BaseControls):
             self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
+
             for i in range(1, self.ops.num_channels + 1):
                 self._channels.append(True)
                 channel_btn = QtWidgets.QCheckBox(' ', self)
@@ -309,7 +310,6 @@ class FMControls(BaseControls):
                 channel_btn.stateChanged.connect(lambda state, channel=(i-1): self._show_channels(state, channel))
                 self.channel_btns.append(channel_btn)
                 color_btn = QtWidgets.QPushButton(' ', self)
-                color_btn.clicked.connect(lambda: self._sel_color(i-1, color_btn))
                 width = color_btn.fontMetrics().boundingRect(' ').width() + 24
                 color_btn.setFixedWidth(width)
                 color_btn.setMaximumHeight(width)
@@ -324,9 +324,15 @@ class FMControls(BaseControls):
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
 
+            print(len(self.color_btns))
+            print(self.color_btns)
+            for i in range(len(self.color_btns)):
+                print(self.color_btns[i])
+                self.color_btns[i].clicked.connect(lambda channel=i: self._sel_color(channel, self.color_btns[channel]))
+                #self.color_btns[i].clicked.connect(self._sel_color(i, self.color_btns[i]))
+
             self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
             self.overlay_btn.stateChanged.connect(self._show_overlay)
-
             self.channel_line.addWidget(self.overlay_btn)
             self.channel_line.addStretch(1)
 
@@ -393,6 +399,8 @@ class FMControls(BaseControls):
             self._update_imview()
 
     def _sel_color(self, index, button):
+        print('heeeeeeeeeeeeeeeeeeeeeeee')
+        print(index)
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
             cname = color.name()
