@@ -344,7 +344,7 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((2, 1, 0))
-        print('Load channel {}'.format(ind))
+        print('Load channel {}'.format(ind+1))
 
     def clear_channel(self):
         self.channel = None
@@ -643,7 +643,7 @@ class FM_ops(Peak_finding):
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
 
-    def apply_merge_2d(self, em_data, em_points, channel):
+    def apply_merge_2d(self, em_data, tf_matrix, tf_shape, em_points, channel):
         if channel == 0:
             src = np.array(sorted(self.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
             dst = np.array(sorted(em_points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
@@ -651,12 +651,17 @@ class FM_ops(Peak_finding):
             self.merged_2d = np.zeros(em_data.shape + (self.data.shape[-1] + 1,))
             self.merged_2d[:, :, -1] = em_data / em_data.max() * self.data.max()
 
-        self.merged_2d[:, :, channel] = ndi.affine_transform(self.data[:, :, channel], np.linalg.inv(self.merge_matrix),
-                                                             order=1, output_shape=self.merged_2d.shape[:2])
+        tf_data = ndi.affine_transform(self.data[:, :, channel], np.linalg.inv(self.merge_matrix),
+                                                             order=1, output_shape=tf_shape)
+
+        orig_orientation = ndi.affine_transform(tf_data, tf_matrix, order=1, output_shape=self.merged_2d.shape[:2])
+
+        self.merged_2d[:, :, channel] = orig_orientation
         print('Merged.shape: ', self.merged_2d.shape)
 
     def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,
                        corr_points_fib, channel):
+
         rot_matrix = np.identity(3)
         if self.transp:
             rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -682,7 +687,6 @@ class FM_ops(Peak_finding):
 
         if refine_matrix is None:
             refine_matrix = np.identity(3)
-
         total_matrix = refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
 
         nx, ny = self.channel[:, :, 0].shape
@@ -700,7 +704,7 @@ class FM_ops(Peak_finding):
                 orig_points.append(orig_point)
 
             tf_points = []
-            tf_img = []
+            corr_points_fib_red = []
             for i in range(len(orig_points)):
                 img_tmp = np.zeros_like(self.channel[:, :, 0])
                 img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
@@ -711,10 +715,13 @@ class FM_ops(Peak_finding):
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
                                                output_shape=tf_shape)
-                tf_img.append(refined)
-                tf_point = np.where(refined == refined.max())
-                tf_points.append(np.array([tf_point[0][0], tf_point[1][0]]))
-                self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib, axis=0)
+                if refined.max() != 0:
+                    tf_point = np.where(refined == refined.max())
+                    tf_points.append([tf_point[0][0], tf_point[1][0]])
+                    corr_points_fib_red.append(corr_points_fib[i])
+
+            diff = np.array(tf_points) - np.array(corr_points_fib_red)
+            self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib_red, axis=0)
             print('IMG shift: ', self.merge_shift)
 
         z_data = []
@@ -748,6 +755,8 @@ class FM_ops(Peak_finding):
         if channel == self.num_channels - 1:
             fib_img = np.zeros_like(refined)
             fib_img[:fib_data.shape[0], :fib_data.shape[1]] = fib_data / fib_data.max() * self.merged_3d.max()
+            fib_img /= np.amax(fib_img)
+            fib_img *= np.amax(self.merged_3d)
             self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(fib_img, axis=2)), axis=2)
             # self.merged_3d[:,:,2] = self.merged_3d[:,:,2] / self.merged_3d[:,:,2].max() * self.merged_3d[:,:,3].max()
 

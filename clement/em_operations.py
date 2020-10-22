@@ -51,6 +51,8 @@ class EM_ops():
         self.count_map = None
         self.tf_count_map = None
         self.tf_matrix = np.identity(3)
+        self.tf_matrix_orig = np.identity(3)
+        self.tf_matrix_orig_region = np.identity(3)
         self.clockwise = False
         self.rot_angle = None
         self.first_rotation = False
@@ -72,6 +74,7 @@ class EM_ops():
         if '.tif' in fname or '.tiff' in fname:
             # Transposing tif images by default
             self.data = np.array(io.imread(fname).T)
+
             self.dimensions = self.data.shape
             self.old_fname = fname
             try:
@@ -178,6 +181,11 @@ class EM_ops():
                 self.data = np.copy(self.orig_region)
                 self.points = copy.copy(self._orig_points_region)
 
+        if self._transformed and self._refine_matrix is not None:
+            for i in range(self.points.shape[0]):
+                point = np.array([self.points[i, 0], self.points[i, 1], 1])
+                self.points[i] = (self._refine_matrix @ point)[:2]
+
     def toggle_region(self):
         self.toggle_original()
 
@@ -209,14 +217,17 @@ class EM_ops():
         if not self._transformed:
             if self.assembled:
                 self._orig_points = np.copy(my_points)
+                self.tf_matrix_orig = np.copy(self.tf_matrix)
             else:
                 self._orig_points_region = np.copy(my_points)
+                self.tf_matrix_orig_region = np.copy(self.tf_matrix)
         self.apply_transform(points_tmp)
 
     def calc_rot_transform(self, my_points):
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
         self.side_length = np.mean(side_list)
+
         self.tf_matrix = self.calc_rot_matrix(my_points)
 
         center = np.mean(my_points, axis=0)
@@ -238,8 +249,10 @@ class EM_ops():
         if not self._transformed:
             if self.assembled:
                 self._orig_points = np.copy(my_points)
+                self.tf_matrix_orig = np.copy(self.tf_matrix)
             else:
                 self._orig_points_region = np.copy(my_points)
+                self.tf_matrix_orig_region = np.copy(self.tf_matrix)
         self.apply_transform(points_tmp)
         print('New points: \n', self._tf_points)
 
@@ -314,16 +327,15 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, sigma_diff, sem_shape, sem_pixel_size, phi_angle, sem_transpose=False):
+    def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
         if sem_transpose:
-            self.fib_matrix = np.array([[0.,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])
+            self.fib_matrix = np.array([[0., 1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         else:
             self.fib_matrix = np.identity(4)
 
         # rotate by phi angle in plane
-        #phi = 90 * np.pi / 180
-        self.fib_matrix = np.array([[np.cos(phi_angle), -np.sin(phi_angle), 0, 0],
-                                    [np.sin(phi_angle), np.cos(phi_angle), 0, 0],
+        self.fib_matrix = np.array([[1, 0, 0, 0],
+                                    [0, 1, 0, 0],
                                     [0, 0, 1, 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
@@ -338,7 +350,7 @@ class EM_ops():
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
         # Rotate SEM image according to sigma angles
-        self.fib_angle = sigma_diff + 52
+        self.fib_angle = delta_sigma + 52
         total_angle = self.fib_angle * np.pi / 180
         self.fib_matrix = np.array([[1, 0, 0, 0],
                                     [0, np.cos(total_angle), -np.sin(total_angle), 0],
@@ -350,6 +362,7 @@ class EM_ops():
         fib_corners = np.dot(self.fib_matrix, corners)
         self.fib_shift = -fib_corners.min(1)[:3]
         self.fib_matrix[:3, 3] += self.fib_shift
+        self.fib_matrix[:2, 3] += shift
         print('Shifted fib matrix: ', self.fib_matrix)
 
     def apply_fib_transform(self, points, num_slices, scaling=1):
@@ -447,7 +460,6 @@ class EM_ops():
 
     def calc_refine_matrix(self, src, dst):
         refine_matrix = tf.estimate_transform('affine', src, dst).params
-
         if self._refine_matrix is None:
             self._refine_matrix = refine_matrix
         else:
@@ -462,7 +474,10 @@ class EM_ops():
         #    points = np.copy(self.points)
         #    update_points = True
         # else:
-        points = np.copy(self._tf_points)
+        if self.assembled:
+            points = np.copy(self._tf_points)
+        else:
+            points = np.copy(self._tf_points_region)
         update_points = True
         print(points)
         for i in range(points.shape[0]):

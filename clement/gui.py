@@ -30,7 +30,7 @@ class GUI(QtWidgets.QMainWindow):
             self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         else:
             self.settings = QtCore.QSettings()
-        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080'])
+        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080', '#00ffff'])
         self._init_ui()
         if project_fname is not None:
             self.project._load_project(project_fname)
@@ -186,15 +186,17 @@ class GUI(QtWidgets.QMainWindow):
         self.fmcontrols.select_btn.setChecked(False)
         for i in range(len(self.fmcontrols._points_corr)):
             self.fmcontrols._remove_correlated_points(self.fmcontrols._points_corr[0])
+
         if idx == 0:
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
             self.fmcontrols.other = self.emcontrols
-            if self.fmcontrols._refined:
+            if self.emcontrols._refined:
                 self.fmcontrols.undo_refine_btn.setEnabled(True)
             else:
                 self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols.fib = False
+
         else:
             if self.emcontrols.ops is not None and self.fmcontrols.ops is not None:
                 if self.fmcontrols.ops.points is not None and self.emcontrols.ops.points is not None:
@@ -216,11 +218,16 @@ class GUI(QtWidgets.QMainWindow):
                 if self.fibcontrols.ops is not None and self.emcontrols.ops._tf_points is not None:
                     self.fibcontrols.ops._transformed = True
 
-            if self.fibcontrols.num_slices is None:
-                self.fibcontrols.num_slices = self.fmcontrols.num_slices
-                if self.fibcontrols.ops is not None:
-                    if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
-                        self.fibcontrols.correct_grid_z()
+            #if self.fibcontrols.num_slices is None:
+            #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
+            #    if self.fibcontrols.ops is not None:
+            #        if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
+            #            self.fibcontrols.correct_grid_z()
+
+        if self.fmcontrols is not None and self.fmcontrols.ops is not None:
+            if self.fmcontrols.ops._transformed:
+                self.fmcontrols.other.size_box.setEnabled(True)
+                self.fmcontrols.other.auto_opt_btn.setEnabled(True)
 
     def _show_scatter(self, idx):
         if idx == 0:

@@ -51,18 +51,6 @@ class Project(QtWidgets.QWidget):
         self.fm._curr_folder = fmdict['Directory']
         self.fm._file_name = fmdict['File']
         self.fm._colors = fmdict['Colors']
-        self.fm.c1_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[0]))
-        self.fm.c2_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[1]))
-        self.fm.c3_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[2]))
-        self.fm.c4_btn.setStyleSheet('background-color: {}'.format(self.fm._colors[3]))
-
-        self.fm._channels = fmdict['Channels']
-        self.fm.channel1_btn.setChecked(self.fm._channels[0])
-        self.fm.channel2_btn.setChecked(self.fm._channels[1])
-        self.fm.channel3_btn.setChecked(self.fm._channels[2])
-        self.fm.channel4_btn.setChecked(self.fm._channels[3])
-        self.fm.overlay_btn.setChecked(fmdict['Overlay'])
-
         if 'Series' in fmdict:
             self.fm._series = fmdict['Series']
         self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
@@ -233,9 +221,9 @@ class Project(QtWidgets.QWidget):
             self.fib._transpose()  # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
-        if 'Phi angle' not in fibdict:
-            fibdict['Phi angle'] = 0
-        self.fib.phi_box.setCurrentIndex(fibdict['Phi angle'] // 90)
+        #if 'Phi angle' not in fibdict:
+        #    fibdict['Phi angle'] = 0
+        #self.fib.phi_box.setCurrentIndex(fibdict['Phi angle'] // 90)
         self.fib.sem_ops = self.em.ops
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
@@ -243,10 +231,6 @@ class Project(QtWidgets.QWidget):
         try:
             self.fib.ops._orig_points = np.array(fibdict['Original points'])
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            #self.fib.shift_x_btn.setText(str(fibdict['Total shift'][0]))
-            #self.fib.shift_y_btn.setText(str(fibdict['Total shift'][1]))
-            self.fib.shift_x_btn.setText(fibdict['Grid shifts'][0])
-            self.fib.shift_y_btn.setText(fibdict['Grid shifts'][1])
             self.fib._recalc_grid()
         except KeyError:
             pass
@@ -381,19 +365,6 @@ class Project(QtWidgets.QWidget):
 
     def _load_merge(self, mdict):
         self.popup._colors_popup = mdict['Colors']
-
-        self.popup.c1_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[0]))
-        self.popup.c2_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[1]))
-        self.popup.c3_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[2]))
-        self.popup.c4_btn_popup.setStyleSheet('background-color: {}'.format(self.popup._colors_popup[3]))
-
-        channels = list(mdict['Channels'])
-        self.popup.channel1_btn_popup.setChecked(channels[0])
-        self.popup.channel2_btn_popup.setChecked(channels[1])
-        self.popup.channel3_btn_popup.setChecked(channels[2])
-        self.popup.channel4_btn_popup.setChecked(channels[3])
-        self.popup.channel5_btn_popup.setChecked(channels[4])
-        self.popup.overlay_btn_popup.setChecked(mdict['Overlay'])
 
         if mdict['Max projection']:
             self.popup.max_proj_btn_popup.setChecked(True)
@@ -559,8 +530,6 @@ class Project(QtWidgets.QWidget):
         fibdict['Size history'] = np.array(self.fib._size_history).tolist()
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
-        fibdict['Phi angle'] = self.fib.phi_box.currentIndex() * 90
-        fibdict['Grid shifts'] = [self.fib.shift_x_btn.text(), self.fib.shift_y_btn.text()]
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

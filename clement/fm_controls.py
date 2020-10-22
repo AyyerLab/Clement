@@ -45,11 +45,11 @@ class FMControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
-        #       self.imview.getImageItem().mouseDragEvent = self.mouseDragEvent
-        # self.imview.scene.sigMouseMoved.connect(self._imview_moved)
 
         self._colors = colors
-        self._channels = [True, True, True, True]
+        print(len(colors))
+        print(self._colors)
+        self._channels = []
         self._overlay = True
         self._curr_folder = None
         self._file_name = None
@@ -83,68 +83,12 @@ class FMControls(BaseControls):
         line.addWidget(self.slice_select_btn)
 
         # ---- Select channels
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        self.channel_line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(self.channel_line)
         label = QtWidgets.QLabel('Show color channels:', self)
-        line.addWidget(label)
-        self.channel1_btn = QtWidgets.QCheckBox(' ', self)
-        self.channel2_btn = QtWidgets.QCheckBox(' ', self)
-        self.channel3_btn = QtWidgets.QCheckBox(' ', self)
-        self.channel4_btn = QtWidgets.QCheckBox(' ', self)
-        self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
-        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state, channel))
-        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state, channel))
-        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_channels(state, channel))
-        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_channels(state, channel))
-        self.overlay_btn.stateChanged.connect(self._show_overlay)
-        self.channel1_btn.setChecked(True)
-        self.channel2_btn.setChecked(True)
-        self.channel3_btn.setChecked(True)
-        self.channel4_btn.setChecked(True)
-        self.overlay_btn.setChecked(True)
-        self.channel1_btn.setEnabled(False)
-        self.channel2_btn.setEnabled(False)
-        self.channel3_btn.setEnabled(False)
-        self.channel4_btn.setEnabled(False)
-        self.overlay_btn.setEnabled(False)
-
-        self.c1_btn = QtWidgets.QPushButton(' ', self)
-        self.c1_btn.clicked.connect(lambda: self._sel_color(0, self.c1_btn))
-        width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 24
-        self.c1_btn.setFixedWidth(width)
-        self.c1_btn.setMaximumHeight(width)
-        self.c1_btn.setStyleSheet('background-color: {}'.format(self._colors[0]))
-        self.c2_btn = QtWidgets.QPushButton(' ', self)
-        self.c2_btn.clicked.connect(lambda: self._sel_color(1, self.c2_btn))
-        self.c2_btn.setMaximumHeight(width)
-        self.c2_btn.setFixedWidth(width)
-        self.c2_btn.setStyleSheet('background-color: {}'.format(self._colors[1]))
-        self.c3_btn = QtWidgets.QPushButton(' ', self)
-        self.c3_btn.setMaximumHeight(width)
-        self.c3_btn.setFixedWidth(width)
-        self.c3_btn.clicked.connect(lambda: self._sel_color(2, self.c3_btn))
-        self.c3_btn.setStyleSheet('background-color: {}'.format(self._colors[2]))
-        self.c4_btn = QtWidgets.QPushButton(' ', self)
-        self.c4_btn.setMaximumHeight(width)
-        self.c4_btn.setFixedWidth(width)
-        self.c4_btn.clicked.connect(lambda: self._sel_color(3, self.c4_btn))
-        self.c4_btn.setStyleSheet('background-color: {}'.format(self._colors[3]))
-
-        self.c1_btn.setEnabled(False)
-        self.c2_btn.setEnabled(False)
-        self.c3_btn.setEnabled(False)
-        self.c4_btn.setEnabled(False)
-
-        line.addWidget(self.c1_btn)
-        line.addWidget(self.channel1_btn)
-        line.addWidget(self.c2_btn)
-        line.addWidget(self.channel2_btn)
-        line.addWidget(self.c3_btn)
-        line.addWidget(self.channel3_btn)
-        line.addWidget(self.c4_btn)
-        line.addWidget(self.channel4_btn)
-        line.addWidget(self.overlay_btn)
-        line.addStretch(1)
+        self.channel_line.addWidget(label)
+        self.channel_btns = []
+        self.color_btns = []
 
         # line.addStretch(1)
 
@@ -273,26 +217,9 @@ class FMControls(BaseControls):
         self.select_btn.toggled.connect(self._define_corr_toggled)
         self.select_btn.setEnabled(False)
 
-        size_label = QtWidgets.QLabel(self)
-        size_label.setText('Bead size [\u03BCm]:')
-        self.size_box = QtWidgets.QLineEdit(self)
-        self.size_box.setText('1')
-        self.size_box.setEnabled(False)
-        self._bead_size = self.size_box.text()
-        self.size_box.setMaximumWidth(30)
-        # self.size_box.setFixedWidth(12)
-
-        self.auto_opt_btn = QtWidgets.QCheckBox('Auto-optimize', self)
-        self.auto_opt_btn.setEnabled(False)
-        self.auto_opt_btn.stateChanged.connect(self.fit_circles)
 
         line.addWidget(self.point_ref_btn)
         line.addWidget(self.select_btn)
-        line.addWidget(size_label)
-        line.addWidget(self.size_box)
-        line.addWidget(self.auto_opt_btn)
-        #line.addWidget(self.refine_btn)
-        #line.addWidget(self.undo_refine_btn)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -360,47 +287,71 @@ class FMControls(BaseControls):
         retval = self.ops.parse(file_name, z=0, series=series)
         if retval is not None:
             picker = SeriesPicker(self, retval)
+            QtWidgets.QApplication.restoreOverrideCursor()
             picker.exec_()
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
             self._series = picker.current_series
             if self._series < 0:
                 self.ops = None
                 return
             self.ops.parse(file_name, z=0, series=self._series)
+            print(self.ops.data.shape)
 
         self.num_slices = self.ops.num_slices
-
         if file_name != '':
-            self.fm_fname.setText(file_name + ' [0/%d]' % self.num_slices)
+            self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
+
+            for i in range(1, self.ops.num_channels + 1):
+                self._channels.append(True)
+                channel_btn = QtWidgets.QCheckBox(' ', self)
+                channel_btn.setChecked(True)
+                channel_btn.stateChanged.connect(lambda state, channel=(i-1): self._show_channels(state, channel))
+                self.channel_btns.append(channel_btn)
+                color_btn = QtWidgets.QPushButton(' ', self)
+                color_btn.clicked.connect(lambda state, channel=i-1: self._sel_color(state, channel))
+                width = color_btn.fontMetrics().boundingRect(' ').width() + 24
+                color_btn.setFixedWidth(width)
+                color_btn.setMaximumHeight(width)
+                if i > (len(self._colors)-1):
+                    self._colors.append('#ff0000')
+                color_btn.setStyleSheet('background-color: {}'.format(self._colors[i-1]))
+                self.color_btns.append(color_btn)
+                self.channel_line.addWidget(color_btn)
+                self.channel_line.addWidget(channel_btn)
+                self.ref_btn.addItem('Channel ' + str(i))
+                self.point_ref_btn.addItem('Channel ' + str(i))
+                self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
+                self.align_menu.addAction(self.action_btns[i-1])
+
+            self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
+            self.overlay_btn.stateChanged.connect(self._show_overlay)
+            self.channel_line.addWidget(self.overlay_btn)
+            self.channel_line.addStretch(1)
+
+            for i in range(1, self.ops.num_channels + 1):
+                self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
+
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))
+            self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
+            self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.slice_select_btn.setEnabled(True)
-            self.channel1_btn.setEnabled(True)
-            self.channel2_btn.setEnabled(True)
-            self.channel3_btn.setEnabled(True)
-            self.channel4_btn.setEnabled(True)
-            self.c1_btn.setEnabled(True)
-            self.c2_btn.setEnabled(True)
-            self.c3_btn.setEnabled(True)
-            self.c4_btn.setEnabled(True)
-            self.overlay_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
 
-            for i in range(1, self.ops.num_channels + 1):
-                self.ref_btn.addItem('Channel ' + str(i))
-                self.point_ref_btn.addItem('Channel ' + str(i))
-                self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
-                self.align_menu.addAction(self.action_btns[i-1])
-            for i in range(1, self.ops.num_channels + 1):
-                self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
-            self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
-            self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
+            #for i in range(len(self.channel_btns)):
+            #    self.channel_btns[i].setChecked(True)
+            #    self.channel_btns[i].setEnabled(True)
+            #    self.color_btns[i].setEnabled(True)
+
+            self.overlay_btn.setChecked(True)
+            self.overlay_btn.setEnabled(True)
 
     @utils.wait_cursor
     def _show_max_projection(self, state=None):
@@ -415,7 +366,9 @@ class FMControls(BaseControls):
 
     def _calc_color_channels(self):
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
+        print(len(self._channels))
         for i in range(len(self._channels)):
+            print(self._channels[i])
             if self._channels[i]:
                 my_channel = self.ops.data[:, :, i]
                 my_channel_rgb = np.repeat(my_channel[:, :, np.newaxis], 3, axis=2)
@@ -439,7 +392,8 @@ class FMControls(BaseControls):
             self._channels[my_channel] = not self._channels[my_channel]
             self._update_imview()
 
-    def _sel_color(self, index, button):
+    def _sel_color(self, state, index):
+        button = self.color_btns[index]
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
             cname = color.name()
@@ -658,7 +612,7 @@ class FMControls(BaseControls):
             self._remove_tilt()
 
     @utils.wait_cursor
-    def _remove_tilt(self):
+    def _remove_tilt(self, state=None):
         if self.map_btn.isChecked():
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())
             self._update_imview()
@@ -707,28 +661,16 @@ class FMControls(BaseControls):
         self.anno_list = []
 
         self._overlay = True
-        self._channels = [True, True, True, True]
+        self._channels = []
         # self.ind = 0
         self._curr_folder = None
         self._series = None
 
 
         self._current_slice = 0
-        self.channel1_btn.setChecked(True)
-        self.channel2_btn.setChecked(True)
-        self.channel3_btn.setChecked(True)
-        self.channel4_btn.setChecked(True)
-        self.overlay_btn.setChecked(True)
-        self.channel1_btn.setEnabled(False)
-        self.channel2_btn.setEnabled(False)
-        self.channel3_btn.setEnabled(False)
-        self.channel4_btn.setEnabled(False)
-        self.overlay_btn.setEnabled(False)
-
-        self.c1_btn.setEnabled(False)
-        self.c2_btn.setEnabled(False)
-        self.c3_btn.setEnabled(False)
-        self.c4_btn.setEnabled(False)
+        for i in range(len(self.channel_btns)):
+            self.channel_line.removeWidget(self.channel_btns[i])
+            self.channel_line.removeWidget(self.color_btns[i])
         self.max_proj_btn.setChecked(False)
 
         for i in range(len(self.action_btns)):
@@ -748,7 +690,6 @@ class FMControls(BaseControls):
         self.point_ref_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
         self.refine_btn.setEnabled(False)
-        self.auto_opt_btn.setEnabled(False)
 
         self.fliph.setEnabled(False)
         self.flipv.setEnabled(False)

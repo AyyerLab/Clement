@@ -69,6 +69,21 @@ def add_fmpeaks_line(parent, vbox):
     line.addWidget(parent.refine_peaks_btn)
     line.addStretch(1)
 
+    size_label = QtWidgets.QLabel(parent)
+    size_label.setText('Bead size [\u03BCm]:')
+    parent.size_box = QtWidgets.QLineEdit(parent)
+    parent.size_box.setText('1')
+    parent.size_box.setEnabled(False)
+    parent._bead_size = parent.size_box.text()
+    parent.size_box.setMaximumWidth(30)
+    line.addWidget(size_label)
+    line.addWidget(parent.size_box)
+    parent.auto_opt_btn = QtWidgets.QPushButton('Fit beads', parent)
+    parent.auto_opt_btn.setEnabled(False)
+    parent.auto_opt_btn.clicked.connect(parent.fit_circles)
+    line.addWidget(parent.auto_opt_btn)
+    line.addStretch(1)
+
 def add_precision_line(parent, vbox):
     line = QtWidgets.QHBoxLayout()
     vbox.addLayout(line)
