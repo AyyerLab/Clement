@@ -324,12 +324,8 @@ class FMControls(BaseControls):
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
 
-            print(len(self.color_btns))
-            print(self.color_btns)
             for i in range(len(self.color_btns)):
-                print(self.color_btns[i])
-                self.color_btns[i].clicked.connect(lambda channel=i: self._sel_color(channel, self.color_btns[channel]))
-                #self.color_btns[i].clicked.connect(self._sel_color(i, self.color_btns[i]))
+                self.color_btns[i].clicked.connect(lambda state, channel=i: self._sel_color(state, channel))
 
             self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
             self.overlay_btn.stateChanged.connect(self._show_overlay)
@@ -398,7 +394,8 @@ class FMControls(BaseControls):
             self._channels[my_channel] = not self._channels[my_channel]
             self._update_imview()
 
-    def _sel_color(self, index, button):
+    def _sel_color(self, state, index):
+        button = self.color_btns[index]
         print('heeeeeeeeeeeeeeeeeeeeeeee')
         print(index)
         color = QtWidgets.QColorDialog.getColor()

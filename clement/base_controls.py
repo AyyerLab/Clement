@@ -670,11 +670,13 @@ class BaseControls(QtWidgets.QWidget):
 
         if hasattr(self, 'fib') and not self.fib:
             if self.other.ops is not None:
-                if self.ops._transformed and self.other.ops._transformed:
-                    self.show_peaks_btn.setEnabled(True)
-                else:
+                if self.show_peaks_btn.isChecked():
+                #if self.ops._transformed and self.other.ops._transformed:
+                    #self.show_peaks_btn.setEnabled(True)
+                #else:
                     self.show_peaks_btn.setChecked(False)
-                    self.show_peaks_btn.setEnabled(False)
+                    self.show_peaks_btn.setChecked(True)
+                    #self.show_peaks_btn.setEnabled(False)
 
         self._update_imview()
         if self.ops._transformed:
@@ -748,8 +750,6 @@ class BaseControls(QtWidgets.QWidget):
         self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
         self._fib_vs_sem_history.append(self.other.fib)
         self.other._size_history.append(self.other.size)
-
-
 
         if self.other.fib:
             idx = 1
@@ -996,19 +996,29 @@ class BaseControls(QtWidgets.QWidget):
                 self.peaks.append(point)
                 self.imview.addItem(point)
         else:
+            print('Calculating tr_matrices')
+            src_sorted = np.array(
+                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+
+            print(self.ops.points)
+            dst_sorted = np.array(
+                sorted(self.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
             if self.tr_matrices is None:
-                print('Calculating tr_matrices')
-                src_sorted = np.array(
-                    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                dst_sorted = np.array(
-                    sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                self.tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
+                self.tr_matrices = np.copy(tr_matrices)
+
             for peak in self.other.ops.tf_peak_slices[-1]:
                 init = np.array([peak[0], peak[1], 1])
-                if self._refined:
-                    transf = self.ops._refine_matrix @ self.tr_matrices @ init
+                if self.show_btn.isChecked():
+                    if self._refined:
+                        transf = np.linalg.inv(self.ops.tf_matrix) @ self.ops._refine_matrix @ tr_matrices @ init
+                    else:
+                        transf = np.linalg.inv(self.ops.tf_matrix) @ tr_matrices @ init
                 else:
-                    transf = self.tr_matrices @ init
+                    if self._refined:
+                        transf = self.ops._refine_matrix @ tr_matrices @ init
+                    else:
+                        transf = tr_matrices @ init
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
                 point = PeakROI(pos, self.orig_size, self.imview.getImageItem())
                 self.peaks.append(point)
@@ -1064,6 +1074,9 @@ class BaseControls(QtWidgets.QWidget):
         if not self.other._refined:
             print('You have to do at least one round of refinement before merging is allowed!')
             return False
+        if (self.show_btn.isChecked() or self.other.show_btn.isChecked()):
+            print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
+            return
 
         size_other = copy.copy(self.other._size_history[-1])
         dst = np.array([[point.x() + size_other / 2, point.y() + size_other / 2] for point in

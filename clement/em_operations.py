@@ -181,6 +181,11 @@ class EM_ops():
                 self.data = np.copy(self.orig_region)
                 self.points = copy.copy(self._orig_points_region)
 
+        if self._transformed and self._refine_matrix is not None:
+            for i in range(self.points.shape[0]):
+                point = np.array([self.points[i, 0], self.points[i, 1], 1])
+                self.points[i] = (self._refine_matrix @ point)[:2]
+
     def toggle_region(self):
         self.toggle_original()
 
@@ -324,7 +329,7 @@ class EM_ops():
 
     def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
         if sem_transpose:
-            self.fib_matrix = np.array([[0.,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])
+            self.fib_matrix = np.array([[0., 1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         else:
             self.fib_matrix = np.identity(4)
 
