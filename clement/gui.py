@@ -30,7 +30,7 @@ class GUI(QtWidgets.QMainWindow):
             self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         else:
             self.settings = QtCore.QSettings()
-        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080', '#00ffff'])
+        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080', '#2e3436'])
         self._init_ui()
         if project_fname is not None:
             self.project._load_project(project_fname)
@@ -141,7 +141,7 @@ class GUI(QtWidgets.QMainWindow):
         action = QtWidgets.QAction('Load &FM image(s)', self)
         action.triggered.connect(self.fmcontrols._load_fm_images)
         filemenu.addAction(action)
-        action = QtWidgets.QAction('Load &EM montage', self)
+        action = QtWidgets.QAction('Load TEM/SEM', self)
         action.triggered.connect(self.emcontrols._load_mrc)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load project', self)

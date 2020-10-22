@@ -157,7 +157,7 @@ class Merge(QtGui.QMainWindow):
         self.size = 10
 
         self._channels_popup = []
-        self._colors_popup = list(np.copy(self.parent.colors))
+        self._colors_popup = list(np.copy(self.parent.fmcontrols._colors))
         self._current_slice_popup = self.parent.fmcontrols._current_slice
         self._overlay_popup = True
         self._clicked_points_popup = []
@@ -170,6 +170,7 @@ class Merge(QtGui.QMainWindow):
             merged_data = self.parent.fm.merged_2d
             self.fib = False
         if merged_data is not None:
+            print(self._colors_popup)
             self.data_popup = np.copy(merged_data)
             for i in range(merged_data.shape[2]):
                 self._channels_popup.append(True)
@@ -183,7 +184,7 @@ class Merge(QtGui.QMainWindow):
 
     def _init_ui(self):
         self.resize(800, 800)
-        self.parent._set_theme(self.theme)
+        #self.parent._set_theme(self.theme)
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -202,7 +203,7 @@ class Merge(QtGui.QMainWindow):
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
         filemenu.addAction(action)
-        self._set_theme(self.theme)
+        #self._set_theme_popup(self.theme)
 
         self.imview_popup = pg.ImageView()
         self.imview_popup.ui.roiBtn.hide()
@@ -467,7 +468,7 @@ class Merge(QtGui.QMainWindow):
             self._current_slice_popup = num
             self.slice_select_btn_popup.clearFocus()
 
-    def _set_theme(self, name):
+    def _set_theme_popup(self, name):
         if name == 'none':
             self.setStyleSheet('')
         else:
