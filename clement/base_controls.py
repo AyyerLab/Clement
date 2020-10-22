@@ -1075,9 +1075,14 @@ class BaseControls(QtWidgets.QWidget):
         if not self.other._refined:
             print('You have to do at least one round of refinement before merging is allowed!')
             return False
-        if (self.show_btn.isChecked() or self.other.show_btn.isChecked()):
-            print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
-            return
+        if hasattr(self.other, 'show_btn'):
+            if (self.show_btn.isChecked() or self.other.show_btn.isChecked()):
+                print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
+                return
+        else:
+            if self.show_btn.isChecked():
+                print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
+                return
 
         size_other = copy.copy(self.other._size_history[-1])
         dst = np.array([[point.x() + size_other / 2, point.y() + size_other / 2] for point in
