@@ -14,7 +14,7 @@ class EMControls(BaseControls):
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
-        self.fib = None
+        self.fib = False
 
         self.show_boxes = False
         self.mrc_fname = None

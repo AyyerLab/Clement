@@ -310,6 +310,7 @@ class FMControls(BaseControls):
                 channel_btn.stateChanged.connect(lambda state, channel=(i-1): self._show_channels(state, channel))
                 self.channel_btns.append(channel_btn)
                 color_btn = QtWidgets.QPushButton(' ', self)
+                color_btn.clicked.connect(lambda state, channel=i-1: self._sel_color(state, channel))
                 width = color_btn.fontMetrics().boundingRect(' ').width() + 24
                 color_btn.setFixedWidth(width)
                 color_btn.setMaximumHeight(width)
@@ -323,9 +324,6 @@ class FMControls(BaseControls):
                 self.point_ref_btn.addItem('Channel ' + str(i))
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
-
-            for i in range(len(self.color_btns)):
-                self.color_btns[i].clicked.connect(lambda state, channel=i: self._sel_color(state, channel))
 
             self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
             self.overlay_btn.stateChanged.connect(self._show_overlay)
@@ -396,8 +394,6 @@ class FMControls(BaseControls):
 
     def _sel_color(self, state, index):
         button = self.color_btns[index]
-        print('heeeeeeeeeeeeeeeeeeeeeeee')
-        print(index)
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
             cname = color.name()
@@ -616,7 +612,7 @@ class FMControls(BaseControls):
             self._remove_tilt()
 
     @utils.wait_cursor
-    def _remove_tilt(self):
+    def _remove_tilt(self, state=None):
         if self.map_btn.isChecked():
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())
             self._update_imview()

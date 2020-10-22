@@ -854,6 +854,7 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self.ops.merged_2d = None
             id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(False) - 1
+
         del self._fib_vs_sem_history[id]
 
     @utils.wait_cursor

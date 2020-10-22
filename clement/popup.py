@@ -173,7 +173,7 @@ class Merge(QtGui.QMainWindow, ):
             self.data_popup = np.copy(merged_data)
             for i in range(merged_data.shape[2]):
                 self._channels_popup.append(True)
-            self._colors_popup.append('#808080')
+            self._colors_popup.append('#2a2e2b')
         else:
             self.data_popup = np.copy(self.parent.fm.data)
 
@@ -273,7 +273,7 @@ class Merge(QtGui.QMainWindow, ):
             channel_btn.stateChanged.connect(lambda state, channel=i: self._show_channels_popup(state, channel))
             self.channel_btns_popup.append(channel_btn)
             color_btn = QtWidgets.QPushButton(' ', self)
-            color_btn.clicked.connect(lambda: self._sel_color_popup(i, color_btn))
+            color_btn.clicked.connect(lambda state, channel=i: self._sel_color_popup(state, channel))
             width = color_btn.fontMetrics().boundingRect(' ').width() + 24
             color_btn.setFixedWidth(width)
             color_btn.setMaximumHeight(width)
@@ -281,10 +281,6 @@ class Merge(QtGui.QMainWindow, ):
             self.color_btns_popup.append(color_btn)
             self.channel_line.addWidget(color_btn)
             self.channel_line.addWidget(channel_btn)
-
-        #if len(self._channels_popup) == 5:
-        #    self.c5_btn_popup.clicked.connect(lambda: self._sel_color_popup(4, self.c5_btn_popup))
-        #    self.c5_btn_popup.setStyleSheet('background-color: {}'.format(self._colors_popup[4]))
 
         self.overlay_btn_popup = QtWidgets.QCheckBox('Overlay', self)
         self.overlay_btn_popup.setChecked(True)
@@ -350,7 +346,8 @@ class Merge(QtGui.QMainWindow, ):
         self._channels_popup[my_channel] = not self._channels_popup[my_channel]
         self._update_imview_popup()
 
-    def _sel_color_popup(self, index, button):
+    def _sel_color_popup(self, state, index):
+        button = self.color_btns_popup[index]
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
             cname = color.name()
@@ -361,13 +358,9 @@ class Merge(QtGui.QMainWindow, ):
             print('Invalid color')
 
     def _calc_color_channels_popup(self):
-        print(self.data_popup[:, :, 0].shape)
-        print(len(self._channels_popup))
-        # self.color_data_popup = np.zeros((len(self._channels_popup),) + self.data_popup[:,:,0].shape + (3,))
         self.color_data_popup = np.zeros(
             (len(self._channels_popup), int(np.ceil(self.data_popup.shape[0] / self.downsampling)),
              int(np.ceil(self.data_popup.shape[1] / self.downsampling)), 3))
-        print(self.color_data_popup.shape)
         if not self.parent.fm._show_mapping:
             for i in range(len(self._channels_popup)):
                 if self._channels_popup[i]:

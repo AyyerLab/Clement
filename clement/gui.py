@@ -191,7 +191,7 @@ class GUI(QtWidgets.QMainWindow):
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
             self.fmcontrols.other = self.emcontrols
-            if self.fmcontrols._refined:
+            if self.emcontrols._refined:
                 self.fmcontrols.undo_refine_btn.setEnabled(True)
             else:
                 self.fmcontrols.undo_refine_btn.setEnabled(False)
