@@ -95,7 +95,7 @@ class FMControls(BaseControls):
         # ---- Peak finding
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Peak finding reference:', self)
+        label = QtWidgets.QLabel('Set Peak finding parameters:', self)
         line.addWidget(label)
         self.ref_btn = QtWidgets.QComboBox()
         listview = QtWidgets.QListView(self)
@@ -103,19 +103,53 @@ class FMControls(BaseControls):
         self.ref_btn.currentIndexChanged.connect(self._change_ref)
         self.ref_btn.setMinimumWidth(100)
 
+        self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.peaks_t1.setRange(0,200)
+        self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t1.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
+        self.peaks_t1_label = QtWidgets.QDoubleSpinBox(self)
+        self.peaks_t1_label.setRange(0,20)
+        self.peaks_t1_label.setDecimals(1)
+        self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
+        self.peaks_t1.setValue(25)
+
+        self.peaks_t2 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.peaks_t2.setRange(0,100)
+        self.peaks_t2.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t2.valueChanged.connect(lambda state, param=0: self._set_plt_threshold(param, state))
+        self.peaks_t2_label = QtWidgets.QSpinBox(self)
+        self.peaks_t2_label.setRange(0,100)
+        self.peaks_t2_label.editingFinished.connect(lambda param=1: self._set_plt_threshold(param))
+        self.peaks_t2.setValue(10)
+
+        self.peaks_t1.setEnabled(False)
+        self.peaks_t1_label.setEnabled(False)
+        self.peaks_t2.setEnabled(False)
+        self.peaks_t2_label.setEnabled(False)
+
+        line.addWidget(self.ref_btn)
+        line.addWidget(self.peaks_t1)
+        line.addWidget(self.peaks_t1_label)
+        line.addWidget(self.peaks_t2)
+        line.addWidget(self.peaks_t2_label)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Peak finding:', self)
+        line.addWidget(label)
         self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
         self.peak_btn.setCheckable(True)
         self.peak_btn.toggled.connect(self._find_peaks)
         self.peak_btn.setEnabled(False)
 
-        self.align_btn = QtWidgets.QPushButton('---Align color channels---')
+        self.align_btn = QtWidgets.QPushButton('---Align channels---')
         self.align_menu = QtGui.QMenu()
         self.align_btn.setMenu(self.align_menu)
         self.align_btn.setMinimumWidth(150)
         self.align_btn.setEnabled(False)
         self.action_btns = []
 
-        line.addWidget(self.ref_btn)
         line.addWidget(self.peak_btn)
         line.addWidget(self.align_btn)
         line.addStretch(1)
@@ -345,10 +379,13 @@ class FMControls(BaseControls):
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
 
-            #for i in range(len(self.channel_btns)):
-            #    self.channel_btns[i].setChecked(True)
-            #    self.channel_btns[i].setEnabled(True)
-            #    self.color_btns[i].setEnabled(True)
+            self.peaks_t1.setEnabled(True)
+            self.peaks_t1_label.setEnabled(True)
+            self.peaks_t2.setEnabled(True)
+            self.peaks_t2_label.setEnabled(True)
+
+            self.ops.threshold = self.peaks_t1_label.value()
+            self.ops.pixel_lower_threshold = self.peaks_t2_label.value()
 
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
@@ -494,6 +531,48 @@ class FMControls(BaseControls):
         num = self.point_ref_btn.currentIndex()
         if num != self.ops._point_reference:
             self.ops._point_reference = num
+
+    def _set_noise_threshold(self, param, state=None):
+        if param == 0:
+            float_value = float(self.peaks_t1.value()) / 10
+            self.peaks_t1_label.blockSignals(True)
+            self.peaks_t1_label.setValue(float_value)
+            self.peaks_t1_label.blockSignals(False)
+        else:
+            float_value = float(self.peaks_t1_label.value())
+            self.peaks_t1.blockSignals(True)
+            self.peaks_t1.setValue(10*float_value)
+            self.peaks_t1.blockSignals(False)
+            self.peaks_t1_label.clearFocus()
+
+
+        if self.ops is not None:
+            self.ops.threshold = float_value
+            self.ops.orig_tf_peak_slices = None
+            self.ops.tf_peak_slices = None
+            self.ops.peak_slices = None
+            self.ops._color_matrices = []
+            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
+
+    def _set_plt_threshold(self, param, state=None):
+        if param == 0:
+            value = self.peaks_t2.value()
+            self.peaks_t2_label.blockSignals(True)
+            self.peaks_t2_label.setValue(value)
+            self.peaks_t2_label.blockSignals(False)
+        else:
+            value = self.peaks_t2_label.value()
+            self.peaks_t2.blockSignals(True)
+            self.peaks_t2.setValue(value)
+            self.peaks_t2.blockSignals(False)
+            self.peaks_t2_label.clearFocus()
+        if self.ops is not None:
+            self.ops.pixel_lower_threshold = value
+            self.ops.orig_tf_peak_slices = None
+            self.ops.tf_peak_slices = None
+            self.ops.peak_slices = None
+            self.ops._color_matrices = []
+            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
     @utils.wait_cursor
     def _find_peaks(self, state=None):
@@ -700,6 +779,11 @@ class FMControls(BaseControls):
         self.transpose.setChecked(False)
         self.rotate.setChecked(False)
 
+
+        self.peaks_t1.setEnabled(False)
+        self.peaks_t1_label.setEnabled(False)
+        self.peaks_t2.setEnabled(False)
+        self.peaks_t2_label.setEnabled(False)
 
         self.merge_btn.setEnabled(False)
 
