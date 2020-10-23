@@ -175,10 +175,9 @@ class Merge(QtGui.QMainWindow):
             self.data_popup = np.copy(merged_data)
             for i in range(merged_data.shape[2]):
                 self._channels_popup.append(True)
-            self._colors_popup[-1] = '#808080'
             while len(self._colors_popup) < len(self._channels_popup):
                 self._colors_popup.append('#808080')
-            self.parent.colors = self._colors_popup
+            self.parent.colors = copy.copy(self._colors_popup)
         else:
             self.data_popup = np.copy(self.parent.fm.data)
 
