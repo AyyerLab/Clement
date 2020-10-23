@@ -50,7 +50,7 @@ class EMControls(BaseControls):
         utils.add_define_grid_line(self, vbox)
         utils.add_transform_grid_line(self, vbox, show_original=True)
         utils.add_fmpeaks_line(self, vbox)
-        utils.add_precision_line(self, vbox)
+        #utils.add_precision_line(self, vbox)
 
         self.show()
 
@@ -340,7 +340,7 @@ class EMControls(BaseControls):
         self.size_box.setEnabled(False)
         self.auto_opt_btn.setEnabled(False)
 
-        self.err_btn.setText('0')
-        self.err_plt_btn.setEnabled(False)
-        self.convergence_btn.setEnabled(False)
+        #self.err_btn.setText('0')
+        #self.err_plt_btn.setEnabled(False)
+        #self.convergence_btn.setEnabled(False)
         self.ops.__init__()

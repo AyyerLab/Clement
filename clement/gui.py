@@ -78,7 +78,11 @@ class GUI(QtWidgets.QMainWindow):
         options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options)
 
-        self.fmcontrols = FMControls(self.fm_imview, self.colors)
+        merge_options = QtWidgets.QHBoxLayout()
+        merge_options.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(merge_options)
+
+        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
         self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fmcontrols)
@@ -108,11 +112,13 @@ class GUI(QtWidgets.QMainWindow):
 
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
-        self.emcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
-        self.emcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
+        #self.emcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
+        self.fmcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
+        #self.emcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
+        self.fmcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
         self.emcontrols.other = self.fmcontrols
-        self.fibcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=1))
-        self.fibcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=1))
+        #self.fibcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=1))
+        #self.fibcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=1))
         self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)

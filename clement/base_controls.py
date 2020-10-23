@@ -772,8 +772,8 @@ class BaseControls(QtWidgets.QWidget):
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)
         self.rotate.setEnabled(False)
-        self.other.err_plt_btn.setEnabled(True)
-        self.other.convergence_btn.setEnabled(True)
+        self.err_plt_btn.setEnabled(True)
+        self.convergence_btn.setEnabled(True)
         self.undo_refine_btn.setEnabled(True)
 
         for i in range(len(ref_ind), len(self._points_corr)):
@@ -815,10 +815,10 @@ class BaseControls(QtWidgets.QWidget):
             self.other._refined = False
             self.other._recalc_grid()
             self.undo_refine_btn.setEnabled(False)
-            self.other.err_btn.setText('0')
+            self.err_btn.setText('0')
             self.fixed_orientation = False
-            self.other.err_plt_btn.setEnabled(False)
-            self.other.convergence_btn.setEnabled(False)
+            self.err_plt_btn.setEnabled(False)
+            self.convergence_btn.setEnabled(False)
             self.other.grid_box.movable = True
         else:
             self.other._recalc_grid()
@@ -892,7 +892,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
 
         self.other._err[idx] = diff
-        self.other.err_btn.setText(
+        self.err_btn.setText(
             'x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0], self.other._std[idx][1]))
 
         if len(corr_points) >= self.min_conv_points:

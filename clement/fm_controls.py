@@ -39,12 +39,13 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 class FMControls(BaseControls):
-    def __init__(self, imview, colors):
+    def __init__(self, imview, colors, merge_layout):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
+        self.merge_layout = merge_layout
 
         self._colors = colors
         print(len(colors))
@@ -257,7 +258,9 @@ class FMControls(BaseControls):
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        #vbox.addLayout(line)
+        self.merge_layout.addLayout(line)
+        line.addStretch(1)
         label = QtWidgets.QLabel('Refinement & Merging:', self)
         line.addWidget(label)
 
@@ -268,6 +271,12 @@ class FMControls(BaseControls):
         self.undo_refine_btn.clicked.connect(self._undo_refinement)
         self.undo_refine_btn.setEnabled(False)
 
+        self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
+        self.err_plt_btn.setEnabled(False)
+
+        self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
+        self.convergence_btn.setEnabled(False)
+
         self.merge_btn = QtWidgets.QPushButton('Merge', self)
         self.merge_btn.setEnabled(False)
         label = QtWidgets.QLabel('Progress:')
@@ -275,9 +284,18 @@ class FMControls(BaseControls):
         self.progress.setMaximum(100)
         line.addWidget(self.refine_btn)
         line.addWidget(self.undo_refine_btn)
+
         line.addWidget(self.merge_btn)
         line.addWidget(label)
         line.addWidget(self.progress)
+
+        line.addStretch(0.5)
+        label = QtWidgets.QLabel('Refinement precision [nm]:', self)
+        line.addWidget(label)
+        self.err_btn = QtWidgets.QLabel('0')
+        line.addWidget(self.err_btn)
+        line.addWidget(self.err_plt_btn)
+        line.addWidget(self.convergence_btn)
         line.addStretch(1)
         vbox.addStretch(1)
 
@@ -792,6 +810,10 @@ class FMControls(BaseControls):
         self.map_btn.setChecked(False)
         self.remove_tilt_btn.setEnabled(False)
         self.remove_tilt_btn.setChecked(False)
+
+        self.err_btn.setText('0')
+        self.err_plt_btn.setEnabled(False)
+        self.convergence_btn.setEnabled(False)
 
         self.ops.__init__()
 
