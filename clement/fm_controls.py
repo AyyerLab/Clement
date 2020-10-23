@@ -41,15 +41,18 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 class FMControls(BaseControls):
-    def __init__(self, imview, colors):
+    def __init__(self, imview, colors, merge_layout):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
+        self.merge_layout = merge_layout
 
         self._colors = colors
-        self._channels = [True, True, True, True]
+        print(len(colors))
+        print(self._colors)
+        self._channels = []
         self._overlay = True
         self._curr_folder = None
         self._file_name = None
@@ -84,95 +87,76 @@ class FMControls(BaseControls):
         line.addWidget(self.slice_select_btn)
 
         # ---- Select channels
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        self.channel_line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(self.channel_line)
         label = QtWidgets.QLabel('Show color channels:', self)
-        line.addWidget(label)
-        self.channel1_btn = QtWidgets.QCheckBox(' ', self)
-        self.channel2_btn = QtWidgets.QCheckBox(' ', self)
-        self.channel3_btn = QtWidgets.QCheckBox(' ', self)
-        self.channel4_btn = QtWidgets.QCheckBox(' ', self)
-        self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
-        self.channel1_btn.stateChanged.connect(lambda state, channel=0: self._show_channels(state, channel))
-        self.channel2_btn.stateChanged.connect(lambda state, channel=1: self._show_channels(state, channel))
-        self.channel3_btn.stateChanged.connect(lambda state, channel=2: self._show_channels(state, channel))
-        self.channel4_btn.stateChanged.connect(lambda state, channel=3: self._show_channels(state, channel))
-        self.overlay_btn.stateChanged.connect(self._show_overlay)
-        self.channel1_btn.setChecked(True)
-        self.channel2_btn.setChecked(True)
-        self.channel3_btn.setChecked(True)
-        self.channel4_btn.setChecked(True)
-        self.overlay_btn.setChecked(True)
-        self.channel1_btn.setEnabled(False)
-        self.channel2_btn.setEnabled(False)
-        self.channel3_btn.setEnabled(False)
-        self.channel4_btn.setEnabled(False)
-        self.overlay_btn.setEnabled(False)
-
-        self.c1_btn = QtWidgets.QPushButton(' ', self)
-        self.c1_btn.clicked.connect(lambda: self._sel_color(0, self.c1_btn))
-        width = self.c1_btn.fontMetrics().boundingRect(' ').width() + 24
-        self.c1_btn.setFixedWidth(width)
-        self.c1_btn.setMaximumHeight(width)
-        self.c1_btn.setStyleSheet('background-color: {}'.format(self._colors[0]))
-        self.c2_btn = QtWidgets.QPushButton(' ', self)
-        self.c2_btn.clicked.connect(lambda: self._sel_color(1, self.c2_btn))
-        self.c2_btn.setMaximumHeight(width)
-        self.c2_btn.setFixedWidth(width)
-        self.c2_btn.setStyleSheet('background-color: {}'.format(self._colors[1]))
-        self.c3_btn = QtWidgets.QPushButton(' ', self)
-        self.c3_btn.setMaximumHeight(width)
-        self.c3_btn.setFixedWidth(width)
-        self.c3_btn.clicked.connect(lambda: self._sel_color(2, self.c3_btn))
-        self.c3_btn.setStyleSheet('background-color: {}'.format(self._colors[2]))
-        self.c4_btn = QtWidgets.QPushButton(' ', self)
-        self.c4_btn.setMaximumHeight(width)
-        self.c4_btn.setFixedWidth(width)
-        self.c4_btn.clicked.connect(lambda: self._sel_color(3, self.c4_btn))
-        self.c4_btn.setStyleSheet('background-color: {}'.format(self._colors[3]))
-
-        self.c1_btn.setEnabled(False)
-        self.c2_btn.setEnabled(False)
-        self.c3_btn.setEnabled(False)
-        self.c4_btn.setEnabled(False)
-
-        line.addWidget(self.c1_btn)
-        line.addWidget(self.channel1_btn)
-        line.addWidget(self.c2_btn)
-        line.addWidget(self.channel2_btn)
-        line.addWidget(self.c3_btn)
-        line.addWidget(self.channel3_btn)
-        line.addWidget(self.c4_btn)
-        line.addWidget(self.channel4_btn)
-        line.addWidget(self.overlay_btn)
-        line.addStretch(1)
+        self.channel_line.addWidget(label)
+        self.channel_btns = []
+        self.color_btns = []
 
         # line.addStretch(1)
 
         # ---- Peak finding
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Peak finding reference:', self)
+        label = QtWidgets.QLabel('Set Peak finding parameters:', self)
         line.addWidget(label)
         self.ref_btn = QtWidgets.QComboBox()
         listview = QtWidgets.QListView(self)
         self.ref_btn.setView(listview)
         self.ref_btn.currentIndexChanged.connect(self._change_ref)
         self.ref_btn.setMinimumWidth(100)
+        line.addWidget(self.ref_btn)
+        label = QtWidgets.QLabel('Noise threshold:')
+        line.addWidget(label)
+        self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.peaks_t1.setRange(0,200)
+        self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t1.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
+        self.peaks_t1_label = QtWidgets.QDoubleSpinBox(self)
+        self.peaks_t1_label.setRange(0,20)
+        self.peaks_t1_label.setDecimals(1)
+        self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
+        self.peaks_t1.setValue(25)
+        line.addWidget(self.peaks_t1)
+        line.addWidget(self.peaks_t1_label)
 
+        self.peaks_t2 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.peaks_t2.setRange(0,100)
+        self.peaks_t2.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t2.valueChanged.connect(lambda state, param=0: self._set_plt_threshold(param, state))
+        self.peaks_t2_label = QtWidgets.QSpinBox(self)
+        self.peaks_t2_label.setRange(0,100)
+        self.peaks_t2_label.editingFinished.connect(lambda param=1: self._set_plt_threshold(param))
+        self.peaks_t2.setValue(10)
+
+        self.peaks_t1.setEnabled(False)
+        self.peaks_t1_label.setEnabled(False)
+        self.peaks_t2.setEnabled(False)
+        self.peaks_t2_label.setEnabled(False)
+
+        label = QtWidgets.QLabel('Min pixel/peak:')
+        line.addWidget(label)
+        line.addWidget(self.peaks_t2)
+        line.addWidget(self.peaks_t2_label)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Peak finding:', self)
+        line.addWidget(label)
         self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
         self.peak_btn.setCheckable(True)
         self.peak_btn.toggled.connect(self._find_peaks)
         self.peak_btn.setEnabled(False)
 
-        self.align_btn = QtWidgets.QPushButton('---Align color channels---')
+        self.align_btn = QtWidgets.QPushButton('---Align channels---')
         self.align_menu = QtGui.QMenu()
         self.align_btn.setMenu(self.align_menu)
         self.align_btn.setMinimumWidth(150)
         self.align_btn.setEnabled(False)
         self.action_btns = []
 
-        line.addWidget(self.ref_btn)
         line.addWidget(self.peak_btn)
         line.addWidget(self.align_btn)
         line.addStretch(1)
@@ -280,7 +264,8 @@ class FMControls(BaseControls):
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
+        self.merge_layout.addLayout(line)
+        line.addStretch(1)
         label = QtWidgets.QLabel('Refinement & Merging:', self)
         line.addWidget(label)
 
@@ -291,6 +276,12 @@ class FMControls(BaseControls):
         self.undo_refine_btn.clicked.connect(self._undo_refinement)
         self.undo_refine_btn.setEnabled(False)
 
+        self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
+        self.err_plt_btn.setEnabled(False)
+
+        self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
+        self.convergence_btn.setEnabled(False)
+
         self.merge_btn = QtWidgets.QPushButton('Merge', self)
         self.merge_btn.setEnabled(False)
         label = QtWidgets.QLabel('Progress:')
@@ -298,9 +289,18 @@ class FMControls(BaseControls):
         self.progress.setMaximum(100)
         line.addWidget(self.refine_btn)
         line.addWidget(self.undo_refine_btn)
+
         line.addWidget(self.merge_btn)
         line.addWidget(label)
         line.addWidget(self.progress)
+
+        line.addStretch(0.5)
+        label = QtWidgets.QLabel('Refinement precision [nm]:', self)
+        line.addWidget(label)
+        self.err_btn = QtWidgets.QLabel('0')
+        line.addWidget(self.err_btn)
+        line.addWidget(self.err_plt_btn)
+        line.addWidget(self.convergence_btn)
         line.addStretch(1)
         vbox.addStretch(1)
 
@@ -357,41 +357,69 @@ class FMControls(BaseControls):
                 self.ops = None
                 return
             self.ops.parse(file_name, z=0, series=self._series)
+            print(self.ops.data.shape)
 
         self.num_slices = self.ops.num_slices
         if file_name != '':
             self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
+
             self.imview.ui.histogram.num_channels = self.ops.num_channels
             self.imview.ui.histogram.init_hist(self._colors)
+
+            for i in range(1, self.ops.num_channels + 1):
+                self._channels.append(True)
+                channel_btn = QtWidgets.QCheckBox(' ', self)
+                channel_btn.setChecked(True)
+                channel_btn.stateChanged.connect(lambda state, channel=(i-1): self._show_channels(state, channel))
+                self.channel_btns.append(channel_btn)
+                color_btn = QtWidgets.QPushButton(' ', self)
+                color_btn.clicked.connect(lambda state, channel=i-1: self._sel_color(state, channel))
+                width = color_btn.fontMetrics().boundingRect(' ').width() + 24
+                color_btn.setFixedWidth(width)
+                color_btn.setMaximumHeight(width)
+                if i > (len(self._colors)-1):
+                    self._colors.append('#808080')
+                color_btn.setStyleSheet('background-color: {}'.format(self._colors[i-1]))
+                self.color_btns.append(color_btn)
+                self.channel_line.addWidget(color_btn)
+                self.channel_line.addWidget(channel_btn)
+                self.ref_btn.addItem('Channel ' + str(i))
+                self.point_ref_btn.addItem('Channel ' + str(i))
+                self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
+                self.align_menu.addAction(self.action_btns[i-1])
+
+            self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
+            self.overlay_btn.stateChanged.connect(self._show_overlay)
+            self.channel_line.addWidget(self.overlay_btn)
+            self.channel_line.addStretch(1)
+
+            for i in range(1, self.ops.num_channels + 1):
+                self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
+
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))
+            self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
+            self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
+            self.max_proj_btn.setChecked(True)
             self.slice_select_btn.setEnabled(True)
-            self.channel1_btn.setEnabled(True)
-            self.channel2_btn.setEnabled(True)
-            self.channel3_btn.setEnabled(True)
-            self.channel4_btn.setEnabled(True)
-            self.c1_btn.setEnabled(True)
-            self.c2_btn.setEnabled(True)
-            self.c3_btn.setEnabled(True)
-            self.c4_btn.setEnabled(True)
-            self.overlay_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
 
-            for i in range(1, self.ops.num_channels + 1):
-                self.ref_btn.addItem('Channel ' + str(i))
-                self.point_ref_btn.addItem('Channel ' + str(i))
-                self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
-                self.align_menu.addAction(self.action_btns[i-1])
-            for i in range(1, self.ops.num_channels + 1):
-                self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
-            self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
-            self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
+            self.peaks_t1.setEnabled(True)
+            self.peaks_t1_label.setEnabled(True)
+            self.peaks_t2.setEnabled(True)
+            self.peaks_t2_label.setEnabled(True)
+
+            self.ops.threshold = self.peaks_t1_label.value()
+            self.ops.pixel_lower_threshold = self.peaks_t2_label.value()
+
+            self.overlay_btn.setChecked(True)
+            self.overlay_btn.setEnabled(True)
 
     @utils.wait_cursor
     def _show_max_projection(self, state=None):
@@ -406,7 +434,9 @@ class FMControls(BaseControls):
 
     def _calc_color_channels(self):
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
+        print(len(self._channels))
         for i in range(len(self._channels)):
+            print(self._channels[i])
             if self._channels[i]:
                 my_channel = self.ops.data[:, :, i]
                 my_channel_rgb = np.repeat(my_channel[:, :, np.newaxis], 3, axis=2)
@@ -430,7 +460,8 @@ class FMControls(BaseControls):
             self._channels[my_channel] = not self._channels[my_channel]
             self._update_imview()
 
-    def _sel_color(self, index, button):
+    def _sel_color(self, state, index):
+        button = self.color_btns[index]
         color = QtWidgets.QColorDialog.getColor()
         if color.isValid():
             cname = color.name()
@@ -531,6 +562,48 @@ class FMControls(BaseControls):
         num = self.point_ref_btn.currentIndex()
         if num != self.ops._point_reference:
             self.ops._point_reference = num
+
+    def _set_noise_threshold(self, param, state=None):
+        if param == 0:
+            float_value = float(self.peaks_t1.value()) / 10
+            self.peaks_t1_label.blockSignals(True)
+            self.peaks_t1_label.setValue(float_value)
+            self.peaks_t1_label.blockSignals(False)
+        else:
+            float_value = float(self.peaks_t1_label.value())
+            self.peaks_t1.blockSignals(True)
+            self.peaks_t1.setValue(10*float_value)
+            self.peaks_t1.blockSignals(False)
+            self.peaks_t1_label.clearFocus()
+
+
+        if self.ops is not None:
+            self.ops.threshold = float_value
+            self.ops.orig_tf_peak_slices = None
+            self.ops.tf_peak_slices = None
+            self.ops.peak_slices = None
+            self.ops._color_matrices = []
+            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
+
+    def _set_plt_threshold(self, param, state=None):
+        if param == 0:
+            value = self.peaks_t2.value()
+            self.peaks_t2_label.blockSignals(True)
+            self.peaks_t2_label.setValue(value)
+            self.peaks_t2_label.blockSignals(False)
+        else:
+            value = self.peaks_t2_label.value()
+            self.peaks_t2.blockSignals(True)
+            self.peaks_t2.setValue(value)
+            self.peaks_t2.blockSignals(False)
+            self.peaks_t2_label.clearFocus()
+        if self.ops is not None:
+            self.ops.pixel_lower_threshold = value
+            self.ops.orig_tf_peak_slices = None
+            self.ops.tf_peak_slices = None
+            self.ops.peak_slices = None
+            self.ops._color_matrices = []
+            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
     @utils.wait_cursor
     def _find_peaks(self, state=None):
@@ -649,7 +722,7 @@ class FMControls(BaseControls):
             self._remove_tilt()
 
     @utils.wait_cursor
-    def _remove_tilt(self):
+    def _remove_tilt(self, state=None):
         if self.map_btn.isChecked():
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())
             self._update_imview()
@@ -698,28 +771,16 @@ class FMControls(BaseControls):
         self.anno_list = []
 
         self._overlay = True
-        self._channels = [True, True, True, True]
+        self._channels = []
         # self.ind = 0
         self._curr_folder = None
         self._series = None
 
 
         self._current_slice = 0
-        self.channel1_btn.setChecked(True)
-        self.channel2_btn.setChecked(True)
-        self.channel3_btn.setChecked(True)
-        self.channel4_btn.setChecked(True)
-        self.overlay_btn.setChecked(True)
-        self.channel1_btn.setEnabled(False)
-        self.channel2_btn.setEnabled(False)
-        self.channel3_btn.setEnabled(False)
-        self.channel4_btn.setEnabled(False)
-        self.overlay_btn.setEnabled(False)
-
-        self.c1_btn.setEnabled(False)
-        self.c2_btn.setEnabled(False)
-        self.c3_btn.setEnabled(False)
-        self.c4_btn.setEnabled(False)
+        for i in range(len(self.channel_btns)):
+            self.channel_line.removeWidget(self.channel_btns[i])
+            self.channel_line.removeWidget(self.color_btns[i])
         self.max_proj_btn.setChecked(False)
 
         for i in range(len(self.action_btns)):
@@ -750,12 +811,21 @@ class FMControls(BaseControls):
         self.rotate.setChecked(False)
 
 
+        self.peaks_t1.setEnabled(False)
+        self.peaks_t1_label.setEnabled(False)
+        self.peaks_t2.setEnabled(False)
+        self.peaks_t2_label.setEnabled(False)
+
         self.merge_btn.setEnabled(False)
 
         self.map_btn.setEnabled(False)
         self.map_btn.setChecked(False)
         self.remove_tilt_btn.setEnabled(False)
         self.remove_tilt_btn.setChecked(False)
+
+        self.err_btn.setText('0')
+        self.err_plt_btn.setEnabled(False)
+        self.convergence_btn.setEnabled(False)
 
         self.ops.__init__()
 

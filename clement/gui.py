@@ -32,7 +32,7 @@ class GUI(QtWidgets.QMainWindow):
             self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         else:
             self.settings = QtCore.QSettings()
-        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080'])
+        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080', '#808080'])
         self._init_ui()
         if project_fname is not None:
             self.project._load_project(project_fname)
@@ -80,7 +80,11 @@ class GUI(QtWidgets.QMainWindow):
         options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options)
 
-        self.fmcontrols = FMControls(self.fm_imview, self.colors)
+        merge_options = QtWidgets.QHBoxLayout()
+        merge_options.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(merge_options)
+
+        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
         self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fmcontrols)
@@ -110,11 +114,9 @@ class GUI(QtWidgets.QMainWindow):
 
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
-        self.emcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
-        self.emcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
+        self.fmcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
+        self.fmcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
         self.emcontrols.other = self.fmcontrols
-        self.fibcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=1))
-        self.fibcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=1))
         self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
@@ -143,7 +145,7 @@ class GUI(QtWidgets.QMainWindow):
         action = QtWidgets.QAction('Load &FM image(s)', self)
         action.triggered.connect(self.fmcontrols._load_fm_images)
         filemenu.addAction(action)
-        action = QtWidgets.QAction('Load &EM montage', self)
+        action = QtWidgets.QAction('Load TEM/SEM', self)
         action.triggered.connect(self.emcontrols._load_mrc)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load project', self)
@@ -193,7 +195,7 @@ class GUI(QtWidgets.QMainWindow):
             self.em_imview.setCurrentIndex(0)
             self.emcontrols._update_imview()
             self.fmcontrols.other = self.emcontrols
-            if self.fmcontrols._refined:
+            if self.emcontrols._refined:
                 self.fmcontrols.undo_refine_btn.setEnabled(True)
             else:
                 self.fmcontrols.undo_refine_btn.setEnabled(False)

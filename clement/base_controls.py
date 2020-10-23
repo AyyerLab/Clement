@@ -670,11 +670,13 @@ class BaseControls(QtWidgets.QWidget):
 
         if hasattr(self, 'fib') and not self.fib:
             if self.other.ops is not None:
-                if self.ops._transformed and self.other.ops._transformed:
-                    self.show_peaks_btn.setEnabled(True)
-                else:
+                if self.show_peaks_btn.isChecked():
+                #if self.ops._transformed and self.other.ops._transformed:
+                    #self.show_peaks_btn.setEnabled(True)
+                #else:
                     self.show_peaks_btn.setChecked(False)
-                    self.show_peaks_btn.setEnabled(False)
+                    self.show_peaks_btn.setChecked(True)
+                    #self.show_peaks_btn.setEnabled(False)
 
         self._update_imview()
         if self.ops._transformed:
@@ -749,8 +751,6 @@ class BaseControls(QtWidgets.QWidget):
         self._fib_vs_sem_history.append(self.other.fib)
         self.other._size_history.append(self.other.size)
 
-
-
         if self.other.fib:
             idx = 1
             self.ops.merged_3d = None
@@ -772,8 +772,8 @@ class BaseControls(QtWidgets.QWidget):
         self.flipv.setEnabled(False)
         self.transpose.setEnabled(False)
         self.rotate.setEnabled(False)
-        self.other.err_plt_btn.setEnabled(True)
-        self.other.convergence_btn.setEnabled(True)
+        self.err_plt_btn.setEnabled(True)
+        self.convergence_btn.setEnabled(True)
         self.undo_refine_btn.setEnabled(True)
 
         for i in range(len(ref_ind), len(self._points_corr)):
@@ -815,10 +815,10 @@ class BaseControls(QtWidgets.QWidget):
             self.other._refined = False
             self.other._recalc_grid()
             self.undo_refine_btn.setEnabled(False)
-            self.other.err_btn.setText('0')
+            self.err_btn.setText('0')
             self.fixed_orientation = False
-            self.other.err_plt_btn.setEnabled(False)
-            self.other.convergence_btn.setEnabled(False)
+            self.err_plt_btn.setEnabled(False)
+            self.convergence_btn.setEnabled(False)
             self.other.grid_box.movable = True
         else:
             self.other._recalc_grid()
@@ -854,6 +854,7 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self.ops.merged_2d = None
             id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(False) - 1
+
         del self._fib_vs_sem_history[id]
 
     @utils.wait_cursor
@@ -883,12 +884,15 @@ class BaseControls(QtWidgets.QWidget):
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                 refined_points.append(transf[:2])
 
+
         diff = np.array(sel_points) - np.array(refined_points)
-        diff *= self.other.ops.pixel_size
+        print(diff.shape)
+        #diff *= self.other.ops.pixel_size
+        diff *= self.other.ops.pixel_size[0]
         self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
 
         self.other._err[idx] = diff
-        self.other.err_btn.setText(
+        self.err_btn.setText(
             'x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0], self.other._std[idx][1]))
 
         if len(corr_points) >= self.min_conv_points:
@@ -993,19 +997,29 @@ class BaseControls(QtWidgets.QWidget):
                 self.peaks.append(point)
                 self.imview.addItem(point)
         else:
+            print('Calculating tr_matrices')
+            src_sorted = np.array(
+                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+
+            print(self.ops.points)
+            dst_sorted = np.array(
+                sorted(self.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
             if self.tr_matrices is None:
-                print('Calculating tr_matrices')
-                src_sorted = np.array(
-                    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                dst_sorted = np.array(
-                    sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                self.tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
+                self.tr_matrices = np.copy(tr_matrices)
+
             for peak in self.other.ops.tf_peak_slices[-1]:
                 init = np.array([peak[0], peak[1], 1])
-                if self._refined:
-                    transf = self.ops._refine_matrix @ self.tr_matrices @ init
+                if self.show_btn.isChecked():
+                    if self._refined:
+                        transf = np.linalg.inv(self.ops.tf_matrix) @ self.ops._refine_matrix @ tr_matrices @ init
+                    else:
+                        transf = np.linalg.inv(self.ops.tf_matrix) @ tr_matrices @ init
                 else:
-                    transf = self.tr_matrices @ init
+                    if self._refined:
+                        transf = self.ops._refine_matrix @ tr_matrices @ init
+                    else:
+                        transf = tr_matrices @ init
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
                 point = PeakROI(pos, self.orig_size, self.imview.getImageItem())
                 self.peaks.append(point)
@@ -1061,6 +1075,14 @@ class BaseControls(QtWidgets.QWidget):
         if not self.other._refined:
             print('You have to do at least one round of refinement before merging is allowed!')
             return False
+        if hasattr(self.other, 'show_btn'):
+            if (self.show_btn.isChecked() or self.other.show_btn.isChecked()):
+                print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
+                return
+        else:
+            if self.show_btn.isChecked():
+                print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
+                return
 
         size_other = copy.copy(self.other._size_history[-1])
         dst = np.array([[point.x() + size_other / 2, point.y() + size_other / 2] for point in
@@ -1073,7 +1095,11 @@ class BaseControls(QtWidgets.QWidget):
         if not self.other.fib:
             if self.ops.merged_2d is None:
                 for i in range(self.ops.num_channels):
-                    self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
+                    #self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
+                    if self.other.show_assembled_btn.isChecked():
+                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig, self.other.ops.data.shape, self.other.ops.points, i)
+                    else:
+                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_orig_region, self.other.ops.data.shape, self.other.ops.points, i)
                     self.progress.setValue((i + 1) / self.ops.num_channels * 100)
             else:
                 self.progress.setValue(100)

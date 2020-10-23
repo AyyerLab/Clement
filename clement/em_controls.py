@@ -14,7 +14,7 @@ class EMControls(BaseControls):
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
-        self.fib = None
+        self.fib = False
 
         self.show_boxes = False
         self.mrc_fname = None
@@ -50,7 +50,6 @@ class EMControls(BaseControls):
         utils.add_define_grid_line(self, vbox)
         utils.add_transform_grid_line(self, vbox, show_original=True)
         utils.add_fmpeaks_line(self, vbox)
-        utils.add_precision_line(self, vbox)
 
         self.show()
 
@@ -96,7 +95,7 @@ class EMControls(BaseControls):
                 self.show_boxes = False
 
     @utils.wait_cursor
-    def _assemble_mrc(self):
+    def _assemble_mrc(self, state=None):
         if self.step_box.text() == '':
             self._downsampling = 10
         else:
@@ -340,7 +339,4 @@ class EMControls(BaseControls):
         self.size_box.setEnabled(False)
         self.auto_opt_btn.setEnabled(False)
 
-        self.err_btn.setText('0')
-        self.err_plt_btn.setEnabled(False)
-        self.convergence_btn.setEnabled(False)
         self.ops.__init__()
