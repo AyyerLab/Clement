@@ -310,13 +310,14 @@ class Histogram(GraphicsWidget.GraphicsWidget):
     sigLevelsChanged = QtCore.Signal(object)
     sigLevelChangeFinished = QtCore.Signal(object)
 
-    def __init__(self, image=None, fillHistogram=True, rgbHistogram=False, levelMode='mono'):
+    def __init__(self, image=None, fillHistogram=True, rgbHistogram=False, levelMode='mono', num_channels=4):
         GraphicsWidget.GraphicsWidget.__init__(self)
 
         self.colors = None
         self.lut = None
         self.imageItem = lambda: None  # fake a dead weakref
         self.levelMode = levelMode
+        self.num_channels = num_channels
         # self.levelMode = 'rgba'
         self.rgbHistogram = rgbHistogram
 
@@ -331,25 +332,16 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.gradient = GradientEditorItem.GradientEditorItem()
         self.gradient.setOrientation('right')
         self.gradient.loadPreset('grey')
-        self.regions = [
-            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block'),
-            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='r',
-                             brush=fn.mkBrush((255, 50, 50, 50)), span=(0., 1 / 3.)),
-            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='g',
-                             brush=fn.mkBrush((50, 255, 50, 50)), span=(1 / 3., 2 / 3.)),
-            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='b',
-                             brush=fn.mkBrush((50, 50, 255, 80)), span=(2 / 3., 1.)),
-            LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen='w',
-                             brush=fn.mkBrush((255, 255, 255, 50)), span=(2 / 3., 1.))]
-        for region in self.regions:
-            region.setZValue(1000)
-            self.vb.addItem(region)
-            region.lines[0].addMarker('<|', 0.5)
-            region.lines[1].addMarker('|>', 0.5)
-            region.sigRegionChanged.connect(self.regionChanging)
-            region.sigRegionChangeFinished.connect(self.regionChanged)
 
-        self.region = self.regions[0]  # for backward compatibility.
+
+        self.regions = [LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block')]
+        self.region = self.regions[0]
+
+        self.plots = [PlotCurveItem.PlotCurveItem(pen=(200, 200, 200, 100))]
+        self.plot = self.plots[0]
+
+        for plot in self.plots:
+            plot.rotate(90)
 
         self.axis = AxisItem.AxisItem('left', linkView=self.vb, maxTickLength=-10, parent=self)
         self.layout.addItem(self.axis, 0, 0)
@@ -362,55 +354,60 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.gradient.sigGradientChanged.connect(self.gradientChanged)
         self.vb.sigRangeChanged.connect(self.viewRangeChanged)
         self.add = QtGui.QPainter.CompositionMode_Plus
-        self.plots = [
-            PlotCurveItem.PlotCurveItem(pen=(200, 200, 200, 100)),  # mono
-            PlotCurveItem.PlotCurveItem(pen=(255, 0, 0, 100), compositionMode=self.add),  # r
-            PlotCurveItem.PlotCurveItem(pen=(0, 255, 0, 100), compositionMode=self.add),  # g
-            PlotCurveItem.PlotCurveItem(pen=(0, 0, 255, 100), compositionMode=self.add),  # b
-            PlotCurveItem.PlotCurveItem(pen=(200, 200, 200, 100), compositionMode=self.add),  # a
-        ]
 
-        self.plot = self.plots[0]  # for backward compatibility.
+        if image is not None:
+            self.setImageItem(image)
+
+    def init_hist(self, colors):
+        if self.colors is None:
+            self.colors = copy.copy(colors)
+
+        counter = 0
+        while len(self.regions) <= self.num_channels:
+            self.regions.append(LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=self.colors[counter],
+                             brush=fn.mkBrush(self.colors[counter]), span=(1 / 3., 2 / 3.)))
+            self.plots.append(PlotCurveItem.PlotCurveItem(pen=self.colors[counter], compositionMode=self.add))
+            counter += 1
+
+        for region in self.regions:
+            region.setZValue(1000)
+            self.vb.addItem(region)
+            region.lines[0].addMarker('<|', 0.5)
+            region.lines[1].addMarker('|>', 0.5)
+            region.sigRegionChanged.connect(self.regionChanging)
+            region.sigRegionChangeFinished.connect(self.regionChanged)
+
         for plot in self.plots:
             plot.rotate(90)
             self.vb.addItem(plot)
 
-        self.fillHistogram(fillHistogram)
         self._showRegions()
 
         self.vb.addItem(self.plot)
         self.autoHistogramRange()
 
-        if image is not None:
-            self.setImageItem(image)
-
-
     def changeColors(self, colors):
+        if self.levelMode == 'mono':
+            return
+
         if colors != self.colors:
-            self.colors = copy.copy(colors)
-            for i in range(len(self.regions)):
-                self.vb.removeItem(self.regions[i])
-                self.vb.removeItem(self.plots[i])
+            if colors is not None:
+                self.colors = copy.copy(colors)
+            for i in range(len(self.regions)-1):
+                self.vb.removeItem(self.regions[i+1])
+                self.vb.removeItem(self.plots[i+1])
+            self.regions = [self.regions[0]]
+            self.plots = [self.plots[0]]
 
-            self.regions = [
-                LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block'),
-                LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=colors[0],
-                                 brush=fn.mkBrush(colors[0]), span=(0., 1 / 3.)),
-                LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=colors[1],
-                                 brush=fn.mkBrush(colors[1]), span=(1 / 3., 2 / 3.)),
-                LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=colors[2],
-                                 brush=fn.mkBrush(colors[2]), span=(2 / 3., 1.)),
-                LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=colors[3],
-                                 brush=fn.mkBrush(colors[3]), span=(2 / 3., 1.))]
+            counter = 0
+            while len(self.regions) <= self.num_channels:
+                print(counter)
+                self.regions.append(LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=colors[counter],
+                                                                      brush=fn.mkBrush(colors[counter]),
+                                                                      span=(1 / 3., 2 / 3.)))
+                self.plots.append(PlotCurveItem.PlotCurveItem(pen=colors[counter], compositionMode=self.add))
+                counter += 1
 
-            self.plots = [
-                PlotCurveItem.PlotCurveItem(pen=(200, 200, 200, 100)),  # mono
-                PlotCurveItem.PlotCurveItem(pen=colors[0], compositionMode=self.add),
-                PlotCurveItem.PlotCurveItem(pen=colors[1], compositionMode=self.add),
-                PlotCurveItem.PlotCurveItem(pen=colors[2], compositionMode=self.add),
-                PlotCurveItem.PlotCurveItem(pen=colors[3], compositionMode=self.add),
-            ]
-            print(self.plots)
             for i in range(len(self.regions)-1):
                 region = self.regions[i+1]
                 region.setZValue(1000)
@@ -419,39 +416,38 @@ class Histogram(GraphicsWidget.GraphicsWidget):
                 region.lines[1].addMarker('|>', 0.5)
                 region.sigRegionChanged.connect(self.regionChanging)
                 region.sigRegionChangeFinished.connect(self.regionChanged)
-                plot = self.plots[i]
+                plot = self.plots[i+1]
                 plot.rotate(90)
-                print(plot)
                 self.vb.addItem(plot)
 
-            self.fillHistogram(fill=True)
-
-            lut = self.getLookupTable(self.imageItem())
-            print(lut)
-            raw_colors = [color.lstrip('#') for color in colors]
-            rgb_colors = [tuple(int(color[i:i+2], 16) for i in (0,2,4)) for color in raw_colors]
-            print(rgb_colors)
-            self.gradient.restoreState({'mode': 'rgb',
-                                        'ticks': [(0.0, rgb_colors[0]),
-                                                  (0.25, rgb_colors[1]),
-                                                  (0.5, rgb_colors[2]),
-                                                  (0.75, rgb_colors[3])]})
+            #lut = self.getLookupTable(self.imageItem())
+            #print(lut)
+            #raw_colors = [color.lstrip('#') for color in colors]
+            #rgb_colors = [tuple(int(color[i:i+2], 16) for i in (0,2,4)) for color in raw_colors]
+            #print(rgb_colors)
+            #self.gradient.restoreState({'mode': 'rgb',
+            #                            'ticks': [(0.0, rgb_colors[0]),
+            #                                      (0.25, rgb_colors[1]),
+            #                                      (0.5, rgb_colors[2]),
+            #                                      (0.75, rgb_colors[3])]})
 
             #self.gradient.loadPreset('thermal')
-            self.imageItem().setLookupTable(self.getLookupTable)  ## send function pointer, not the result
+            #self.imageItem().setLookupTable(self.getLookupTable)  ## send function pointer, not the result
 
-            lut2 = self.getLookupTable(self.imageItem())
-            print(lut2)
-            print(lut==lut2)
+            #lut2 = self.getLookupTable(self.imageItem())
 
-            self.sigLookupTableChanged.emit(self)
+            #self.sigLookupTableChanged.emit(self)
 
     def fillHistogram(self, fill=True, level=0.0, color=(100, 100, 200)):
         if self.colors is None:
-            colors = [color, (255, 0, 0, 50), (0, 255, 0, 50), (0, 0, 255, 50), (255, 255, 255, 50)]
+            colors = [color, (255, 0, 0, 50), (0, 255, 0, 50), (0, 0, 255, 50), (255, 255, 255, 50), (255, 255, 255, 50), (255, 255, 255, 50)]
         else:
-            colors = [color, self.colors[0], self.colors[1], self.colors[2], self.colors[3]]
-        for i, plot in enumerate(self.plots):
+            colors = []
+            for i in range(self.num_channels):
+                colors.append(self.colors[i])
+        print(colors)
+        for i in range(len(self.plots)-1):
+            plot = self.plots[i]
             if fill:
                 plot.setFillLevel(level)
                 plot.setBrush(colors[i])
@@ -497,7 +493,6 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.update()
 
     def gradientChanged(self):
-        print('heeeeeeeeeeeeeeeeeeeeeeeeeeeellllllllllllllllllllllllllo')
         if self.imageItem() is not None:
             if self.gradient.isLookupTrivial():
                 self.imageItem().setLookupTable(None)  # lambda x: x.astype(np.uint8))
@@ -534,7 +529,6 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         self.sigLevelsChanged.emit(self)
 
     def imageChanged(self, autoLevel=False, autoRange=False):
-        print('yeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeees')
         if self.imageItem() is None:
             return
         if self.levelMode == 'mono':
@@ -563,7 +557,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             ch = self.imageItem().getHistogram(perChannel=True)
             if ch[0] is None:
                 return
-            for i in range(1, 5):
+            for i in range(1, self.num_channels+1):
                 if len(ch) >= i:
                     h = ch[i - 1]
                     self.plots[i].setVisible(True)
@@ -583,7 +577,8 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             ch = self.imageItem().getHistogram(perChannel=True)
             if ch[0] is None:
                 return
-            for i in range(len(self.colors)):
+
+            for i in range(self.num_channels):
                 if len(ch) >= i:
                     h = ch[i - 1]
                     self.plots[i].setVisible(True)
@@ -608,7 +603,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         else:
             nch = self.imageItem().channels()
             if nch is None:
-                nch = 4
+                nch = self.num_channels
             return [r.getRegion() for r in self.regions[1:nch + 1]]
 
     def setLevels(self, min=None, max=None, rgba=None):
@@ -646,7 +641,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             levels = np.array(oldLevels).mean(axis=0)
             self.setLevels(*levels)
         else:
-            levels = [oldLevels] * 4
+            levels = [oldLevels] * self.num_channels
             self.setLevels(rgba=levels)
 
         # force this because calling self.setLevels might not set the imageItem
@@ -673,7 +668,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
                 self.regions[i].setSpan((i - 1) * xdif, i * xdif)
             self.gradient.hide()
         elif self.levelMode == 'custom':
-            nch = 4
+            nch = self.num_channels
             xdif = 1.0 / nch
             for i in range(1, nch + 1):
                 self.regions[i].setVisible(True)

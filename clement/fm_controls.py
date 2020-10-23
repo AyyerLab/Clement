@@ -11,7 +11,7 @@ from .base_controls import BaseControls
 from .fm_operations import FM_ops
 from . import utils
 from .histogram import HistogramWidget
-import time
+import copy
 
 class SeriesPicker(QtWidgets.QDialog):
     def __init__(self, parent, names):
@@ -323,7 +323,9 @@ class FMControls(BaseControls):
             self.imview.ui.histogram.changeColors(self._colors)
             #img = pg.ImageItem(self.color_data, lut=self.imview.ui.histogram.lut)
             #self.imview.addItem(img)
+            print(self.imview.ui.histogram.num_channels)
             self.imview.setImage(self.color_data, levelMode='custom')
+            #self.imview.setImage(self.color_data, levelMode='mono')
             #self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
@@ -360,7 +362,8 @@ class FMControls(BaseControls):
         if file_name != '':
             self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
-
+            self.imview.ui.histogram.num_channels = self.ops.num_channels
+            self.imview.ui.histogram.init_hist(self._colors)
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
