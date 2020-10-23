@@ -258,7 +258,6 @@ class FMControls(BaseControls):
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
-        #vbox.addLayout(line)
         self.merge_layout.addLayout(line)
         line.addStretch(1)
         label = QtWidgets.QLabel('Refinement & Merging:', self)

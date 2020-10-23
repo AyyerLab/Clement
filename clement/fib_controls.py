@@ -65,8 +65,6 @@ class FIBControls(BaseControls):
 
         utils.add_fmpeaks_line(self, vbox)
 
-        #utils.add_precision_line(self, vbox)
-
         self.show()
 
     #@utils.wait_cursor
@@ -237,9 +235,5 @@ class FIBControls(BaseControls):
         self.refine_peaks_btn.setEnabled(False)
         self.size_box.setEnabled(False)
         self.auto_opt_btn.setEnabled(False)
-
-        #self.err_btn.setText('0')
-        #self.err_plt_btn.setEnabled(False)
-        #self.convergence_btn.setEnabled(False)
 
         self.ops.__init__()

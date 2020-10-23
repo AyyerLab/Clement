@@ -84,22 +84,6 @@ def add_fmpeaks_line(parent, vbox):
     line.addWidget(parent.auto_opt_btn)
     line.addStretch(1)
 
-def add_precision_line(parent, vbox):
-    line = QtWidgets.QHBoxLayout()
-    vbox.addLayout(line)
-    label = QtWidgets.QLabel('Refinement precision [nm]:', parent)
-    line.addWidget(label)
-    parent.err_btn = QtWidgets.QLabel('0')
-    parent.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
-    parent.err_plt_btn.setEnabled(False)
-
-    parent.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
-    parent.convergence_btn.setEnabled(False)
-    line.addWidget(parent.err_btn)
-    line.addWidget(parent.err_plt_btn)
-    line.addWidget(parent.convergence_btn)
-    line.addStretch(1)
-
 def add_define_grid_line(parent, vbox):
     line = QtWidgets.QHBoxLayout()
     vbox.addLayout(line)
