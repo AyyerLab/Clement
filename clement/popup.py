@@ -149,6 +149,7 @@ class Merge(QtGui.QMainWindow):
         self.color_data_popup = None
         self.color_overlay_popup = None
         self.annotations_popup = []
+        self.coordinates = []
         self.counter_popup = 0
         self.stage_positions_popup = None
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
@@ -400,21 +401,23 @@ class Merge(QtGui.QMainWindow):
                 self.annotations_popup = []
                 self.counter_popup = 0
                 self.stage_positions_popup = None
+                self.coordinates = []
         else:
-            coordinates = [np.array([point.x() + self.size / 2, point.y() + self.size / 2]) for point in
+            self.coordinates = [np.array([point.x() + self.size / 2, point.y() + self.size / 2]) for point in
                            self._clicked_points_popup]
-            if self.fib:
-                self.stage_positions_popup = np.copy(coordinates)
-            else:
-                self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates,
-                                                                                             self.downsampling)
+
+            #if self.fib:
+            #    self.stage_positions_popup = np.copy(coordinates)
+            #else:
+            #    self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates,
+            #                                                                                 self.downsampling)
             print('Done selecting points of interest!')
 
     @utils.wait_cursor
-    def _save_data_popup(self):
+    def _save_data_popup(self, state=None):
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
-        file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image', self.curr_mrc_folder_popup)
+        file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image and Coordinates', self.curr_mrc_folder_popup)
         if file_name != '':
             try:
                 file_name = file_name.split('.', 1)[0]
@@ -431,12 +434,14 @@ class Merge(QtGui.QMainWindow):
             f.update_header_stats()
 
     def _save_coordinates_popup(self, fname):
-        if self.stage_positions_popup is not None:
-            enumerated = []
-            for i in range(len(self.stage_positions_popup)):
-                enumerated.append((i + 1, self.stage_positions_popup[i][0], self.stage_positions_popup[i][1]))
-                with open(fname + '.txt', 'a', newline='') as f:
-                    csv.writer(f, delimiter=' ').writerows(enumerated)
+        #if self.stage_positions_popup is not None:
+            #for i in range(len(self.stage_positions_popup)):
+        enumerated = []
+        for i in range(len(self.coordinates)):
+            #enumerated.append((i + 1, self.stage_positions_popup[i][0], self.stage_positions_popup[i][1]))
+            enumerated.append((i + 1, self.coordinates[i][0], self.coordinates[i][1]))
+        with open(fname + '.txt', 'w', newline='') as f:
+            csv.writer(f, delimiter=' ').writerows(enumerated)
 
     @utils.wait_cursor
     def _show_max_projection_popup(self, state=None):

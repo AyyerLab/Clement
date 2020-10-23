@@ -372,6 +372,7 @@ class FMControls(BaseControls):
             self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
+            self.max_proj_btn.setChecked(True)
             self.slice_select_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
