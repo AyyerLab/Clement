@@ -364,8 +364,7 @@ class FMControls(BaseControls):
             self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
-            self.imview.ui.histogram.num_channels = self.ops.num_channels
-            self.imview.ui.histogram.init_hist(self._colors)
+            self.imview.ui.histogram.init_hist(self._colors, self.ops.num_channels)
 
             for i in range(1, self.ops.num_channels + 1):
                 self._channels.append(True)

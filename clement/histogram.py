@@ -47,7 +47,6 @@ class PlotROI(ROI.ROI):
 class Imview(pg.ImageView):
     def __init__(self, levelMode='mono'):
         super(Imview, self).__init__(levelMode=levelMode)
-        print('check')
 
     def init_again(self, parent=None, name="ImageView", view=None, imageItem=None,
                  levelMode='mono', *args):
@@ -358,12 +357,13 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         if image is not None:
             self.setImageItem(image)
 
-    def init_hist(self, colors):
+    def init_hist(self, colors, num_channels):
+        self.num_channels = num_channels
         if self.colors is None:
             self.colors = copy.copy(colors)
 
         counter = 0
-        while len(self.regions) <= self.num_channels:
+        while len(self.regions) <= self.num_channels+1:
             self.regions.append(LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=self.colors[counter],
                              brush=fn.mkBrush(self.colors[counter]), span=(1 / 3., 2 / 3.)))
             self.plots.append(PlotCurveItem.PlotCurveItem(pen=self.colors[counter], compositionMode=self.add))
@@ -400,8 +400,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             self.plots = [self.plots[0]]
 
             counter = 0
-            while len(self.regions) <= self.num_channels:
-                print(counter)
+            while len(self.regions) <= self.num_channels+1:
                 self.regions.append(LinearRegionItem.LinearRegionItem([0, 1], 'horizontal', swapMode='block', pen=colors[counter],
                                                                       brush=fn.mkBrush(colors[counter]),
                                                                       span=(1 / 3., 2 / 3.)))
@@ -421,7 +420,6 @@ class Histogram(GraphicsWidget.GraphicsWidget):
                 self.vb.addItem(plot)
 
             #lut = self.getLookupTable(self.imageItem())
-            #print(lut)
             #raw_colors = [color.lstrip('#') for color in colors]
             #rgb_colors = [tuple(int(color[i:i+2], 16) for i in (0,2,4)) for color in raw_colors]
             #print(rgb_colors)
@@ -445,7 +443,6 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             colors = []
             for i in range(self.num_channels):
                 colors.append(self.colors[i])
-        print(colors)
         for i in range(len(self.plots)-1):
             plot = self.plots[i]
             if fill:
@@ -577,7 +574,6 @@ class Histogram(GraphicsWidget.GraphicsWidget):
             ch = self.imageItem().getHistogram(perChannel=True)
             if ch[0] is None:
                 return
-
             for i in range(self.num_channels):
                 if len(ch) >= i:
                     h = ch[i - 1]
