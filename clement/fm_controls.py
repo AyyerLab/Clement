@@ -103,7 +103,9 @@ class FMControls(BaseControls):
         self.ref_btn.setView(listview)
         self.ref_btn.currentIndexChanged.connect(self._change_ref)
         self.ref_btn.setMinimumWidth(100)
-
+        line.addWidget(self.ref_btn)
+        label = QtWidgets.QLabel('Noise threshold:')
+        line.addWidget(label)
         self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.peaks_t1.setRange(0,200)
         self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -113,6 +115,8 @@ class FMControls(BaseControls):
         self.peaks_t1_label.setDecimals(1)
         self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
         self.peaks_t1.setValue(25)
+        line.addWidget(self.peaks_t1)
+        line.addWidget(self.peaks_t1_label)
 
         self.peaks_t2 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.peaks_t2.setRange(0,100)
@@ -128,9 +132,8 @@ class FMControls(BaseControls):
         self.peaks_t2.setEnabled(False)
         self.peaks_t2_label.setEnabled(False)
 
-        line.addWidget(self.ref_btn)
-        line.addWidget(self.peaks_t1)
-        line.addWidget(self.peaks_t1_label)
+        label = QtWidgets.QLabel('Min pixel/peak:')
+        line.addWidget(label)
         line.addWidget(self.peaks_t2)
         line.addWidget(self.peaks_t2_label)
         line.addStretch(1)
