@@ -51,6 +51,7 @@ class Project(QtWidgets.QWidget):
         self.fm._curr_folder = fmdict['Directory']
         self.fm._file_name = fmdict['File']
         self.fm._colors = fmdict['Colors']
+        self.parent.colors = self.fm._colors
         if 'Series' in fmdict:
             self.fm._series = fmdict['Series']
         self.fm._parse_fm_images(self.fm._file_name, self.fm._series)
