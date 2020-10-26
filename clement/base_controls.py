@@ -95,6 +95,7 @@ class BaseControls(QtWidgets.QWidget):
         self.peaks = []
         self.num_slices = None
         self.min_conv_points = 10
+        self.show_merge = False
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -291,6 +292,9 @@ class BaseControls(QtWidgets.QWidget):
         point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
         point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
 
+        if self.show_merge:
+            self.popup._update_poi(pos, self.other.fib)
+
     def _update_annotations(self, point):
         idx = None
         for i in range(len(self.other._points_corr)):
@@ -340,6 +344,16 @@ class BaseControls(QtWidgets.QWidget):
             self._points_corr_z.remove(self._points_corr_z[idx])
             if len(self.other._points_corr_z) > 0:
                 self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+
+        for i in range(idx, len(self._points_corr)):
+            self.anno_list[i].setText(str(i+1))
+            self.other.anno_list[i].setText(str(i+1))
+            self._points_corr_indices[i] -= 1
+            self.other._points_corr_indices[i] -= 1
+        self.counter -= 1
+
+        print(self.other._points_corr_indices)
+
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
@@ -1097,14 +1111,17 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(self.ops.num_channels):
                     #self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
                     if self.other.show_assembled_btn.isChecked():
-                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig, self.other.ops.data.shape, self.other.ops.points, i)
+                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig,
+                                                self.other.ops.data.shape, self.other.ops.points, i)
                     else:
-                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_orig_region, self.other.ops.data.shape, self.other.ops.points, i)
+                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_orig_region,
+                                                self.other.ops.data.shape, self.other.ops.points, i)
                     self.progress.setValue((i + 1) / self.ops.num_channels * 100)
             else:
                 self.progress.setValue(100)
             if self.ops.merged_2d is not None:
                 print('Merged shape: ', self.ops.merged_2d.shape)
+            self.show_merge = True
             return True
         else:
             if self.ops.merged_3d is None:
@@ -1121,6 +1138,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.progress.setValue(100)
             if self.ops.merged_3d is not None:
                 print('Merged shape: ', self.ops.merged_3d.shape)
+            self.show_merge = True
             return True
 
     def reset_base(self):

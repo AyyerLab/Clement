@@ -273,6 +273,7 @@ class GUI(QtWidgets.QMainWindow):
                         if self.project.load_merge:
                             self.project._load_merge(project)
                             self.project.load_merge = False
+                        self.fmcontrols.popup = self.popup
                         self.popup.show()
                 else:
                     print('You have to transform the FM and the TEM/SEM images first!')

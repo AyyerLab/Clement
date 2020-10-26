@@ -184,6 +184,7 @@ class Merge(QtGui.QMainWindow):
         self.data_orig_popup = np.copy(self.data_popup)
 
         self._init_ui()
+        self._copy_poi()
 
     def _init_ui(self):
         self.resize(800, 800)
@@ -306,6 +307,33 @@ class Merge(QtGui.QMainWindow):
         line.addWidget(self.save_btn_popup)
         line.addStretch(1)
 
+    def _copy_poi(self):
+        #fib_points = self.parent.fibcontrols._points_corr
+        corr_points = self.parent.fmcontrols.other._points_corr
+        if len(corr_points) != 0:
+            self.select_btn_popup.setChecked(True)
+
+        if not self.parent.fmcontrols.other.fib:
+            for point in corr_points:
+                init = np.array([point.pos().x() + self.size/2, point.pos().y() + self.size/2, 1])
+                #transf = np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ self.parent.emcontrols.ops._refine_matrix\
+                #         @ self.parent.emcontrols.tr_matrices @ init
+                transf = (np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ init) / self.downsampling
+                pos = QtCore.QPointF(transf[0] - self.size/2, transf[1] - self.size/2)
+                self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+        else:
+            for i in range(len(corr_points)):
+                pos = corr_points[i].pos()
+                self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+
+    def _update_poi(self, pos, fib):
+        if not fib:
+            init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
+            transf = (np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ init) / self.downsampling
+            pos = QtCore.QPointF(transf[0] - self.size / 2, transf[1] - self.size / 2)
+
+        self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
@@ -320,7 +348,6 @@ class Merge(QtGui.QMainWindow):
             self._draw_correlated_points_popup(pos, item)
 
     def _draw_correlated_points_popup(self, pos, item):
-
         point = pg.CircleROI(pos, self.size, parent=item, movable=False, removable=True)
         point.setPen(0, 255, 0)
         point.removeHandle(0)
@@ -335,6 +362,12 @@ class Merge(QtGui.QMainWindow):
         point.sigRemoveRequested.connect(lambda: self._remove_correlated_points_popup(point, annotation))
 
     def _remove_correlated_points_popup(self, pt, anno):
+        idx = self._clicked_points_popup.index(pt)
+
+        for i in range(idx+1, len(self._clicked_points_popup)):
+            self.annotations_popup[i].setText(str(i))
+        self.counter_popup -= 1
+
         self.imview_popup.removeItem(pt)
         self._clicked_points_popup.remove(pt)
         self.imview_popup.removeItem(anno)
@@ -405,7 +438,7 @@ class Merge(QtGui.QMainWindow):
                 self.stage_positions_popup = None
                 self.coordinates = []
         else:
-            self.coordinates = [np.array([point.x() + self.size / 2, point.y() + self.size / 2]) for point in
+            self.coordinates = [self.downsampling * np.array([point.x() + self.size / 2, point.y() + self.size / 2]) for point in
                            self._clicked_points_popup]
 
             #if self.fib:
@@ -515,5 +548,6 @@ class Merge(QtGui.QMainWindow):
         if self.parent is not None:
             self.parent.fmcontrols.progress.setValue(0)
             self.parent.project.merged = False
+            self.parent.fmcontrols.show_merge = False
         self._reset_init()
         event.accept()

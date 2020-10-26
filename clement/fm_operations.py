@@ -715,7 +715,7 @@ class FM_ops(Peak_finding):
             corr_points_fib_red = []
             for i in range(len(orig_points)):
                 img_tmp = np.zeros_like(self.channel[:, :, 0])
-                img_tmp[int(orig_points[i][0]), int(orig_points[i][1])] = 1
+                img_tmp[int(np.round(orig_points[i][0])), int(np.round(orig_points[i][1]))] = 1
                 z = fm_z_values[i] / (self.voxel_size[2] / self.voxel_size[0])
                 fib_new = np.copy(fib_2d)
                 fib_new[:2, 2] += z * z_shift
