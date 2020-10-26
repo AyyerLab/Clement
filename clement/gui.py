@@ -329,9 +329,10 @@ def main():
     parser = argparse.ArgumentParser(description='Clement: GUI for Correlative Light and Electron Microscopy')
     parser.add_argument('-p', '--project_fname', help='Path to project .yml file')
     parser.add_argument('--no-restore', help='Do not restore QSettings from last time Clement closed', action='store_true')
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
 
-    app = QtWidgets.QApplication([])
+    app = QtWidgets.QApplication(unknown_args)
+    app.setStyle('fusion')
     gui = GUI(args.project_fname, args.no_restore)
     sys.exit(app.exec_())
 
