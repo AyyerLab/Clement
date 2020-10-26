@@ -698,7 +698,9 @@ class FMControls(BaseControls):
                 self.max_proj_btn.setChecked(False)
             if show_transformed:
                 self.show_btn.setChecked(False)
-        self.ops._aligned_channels[idx] = True
+        if not self.ops._aligned_channels[idx]:
+            self.action_btns[idx].setChecked(False)
+        #self.ops._aligned_channels[idx] = True
         self.ops._update_data()
         self._update_imview()
 

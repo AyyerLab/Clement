@@ -376,8 +376,12 @@ class FM_ops(Peak_finding):
                     tmp.append(tmp_i)
                     ref.append(peaks_2d[i])
         if len(ref) != 0 and len(tmp) != 0:
-            self._color_matrices[idx] = tf.estimate_transform('affine', np.array(tmp), np.array(ref)).params
-            self._aligned_channels[idx] = True
+            color_matrix = tf.estimate_transform('affine', np.array(tmp), np.array(ref)).params
+            if np.array_equal(color_matrix[2,:], np.array([0, 0, 1])):
+                self._color_matrices[idx] = np.copy(color_matrix)
+                self._aligned_channels[idx] = True
+            else:
+                print('Unable to align color channels. Try to adjust peak finding parameters!')
         else:
             print('Unable to align channels. Be sure you select a fluorescence channel!')
 
