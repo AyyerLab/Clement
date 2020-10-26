@@ -50,8 +50,6 @@ class FMControls(BaseControls):
         self.merge_layout = merge_layout
 
         self._colors = colors
-        print(len(colors))
-        print(self._colors)
         self._channels = []
         self._overlay = True
         self._curr_folder = None
@@ -323,7 +321,7 @@ class FMControls(BaseControls):
             self.imview.ui.histogram.changeColors(self._colors)
             #img = pg.ImageItem(self.color_data, lut=self.imview.ui.histogram.lut)
             #self.imview.addItem(img)
-            print(self.imview.ui.histogram.num_channels)
+            print('FMCONTROLS set image!!!')
             self.imview.setImage(self.color_data, levelMode='custom')
             #self.imview.setImage(self.color_data, levelMode='mono')
             #self.imview.setImage(self.color_data, levels=levels)
@@ -373,6 +371,7 @@ class FMControls(BaseControls):
                 channel_btn.stateChanged.connect(lambda state, channel=(i-1): self._show_channels(state, channel))
                 self.channel_btns.append(channel_btn)
                 color_btn = QtWidgets.QPushButton(' ', self)
+                color_btn.setEnabled(False)
                 color_btn.clicked.connect(lambda state, channel=i-1: self._sel_color(state, channel))
                 width = color_btn.fontMetrics().boundingRect(' ').width() + 24
                 color_btn.setFixedWidth(width)

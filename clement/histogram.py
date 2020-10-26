@@ -37,6 +37,248 @@ import copy
 from pyqtgraph.imageview.ImageViewTemplate_pyqt5 import *
 
 
+def rescaleData(data, scale, offset, dtype=None, clip=None):
+    """Return data rescaled and optionally cast to a new dtype::
+
+        data => (data-offset) * scale
+
+    """
+    if dtype is None:
+        dtype = data.dtype
+    else:
+        dtype = np.dtype(dtype)
+
+    try:
+        if not getConfigOption('useWeave'):
+            raise Exception('Weave is disabled; falling back to slower version.')
+        try:
+            import scipy.weave
+        except ImportError:
+            raise Exception('scipy.weave is not importable; falling back to slower version.')
+
+        ## require native dtype when using weave
+        if not data.dtype.isnative:
+            data = data.astype(data.dtype.newbyteorder('='))
+        if not dtype.isnative:
+            weaveDtype = dtype.newbyteorder('=')
+        else:
+            weaveDtype = dtype
+
+        newData = np.empty((data.size,), dtype=weaveDtype)
+        flat = np.ascontiguousarray(data).reshape(data.size)
+        size = data.size
+
+        code = """
+        double sc = (double)scale;
+        double off = (double)offset;
+        for( int i=0; i<size; i++ ) {
+            newData[i] = ((double)flat[i] - off) * sc;
+        }
+        """
+        scipy.weave.inline(code, ['flat', 'newData', 'size', 'offset', 'scale'], compiler='gcc')
+        if dtype != weaveDtype:
+            newData = newData.astype(dtype)
+        data = newData.reshape(data.shape)
+    except:
+        if getConfigOption('useWeave'):
+            if getConfigOption('weaveDebug'):
+                debug.printExc("Error; disabling weave.")
+            setConfigOptions(useWeave=False)
+
+        # p = np.poly1d([scale, -offset*scale])
+        # d2 = p(data)
+        d2 = data - float(offset)
+        d2 *= scale
+
+        # Clip before converting dtype to avoid overflow
+        if dtype.kind in 'ui':
+            lim = np.iinfo(dtype)
+            if clip is None:
+                # don't let rescale cause integer overflow
+                d2 = np.clip(d2, lim.min, lim.max)
+            else:
+                d2 = np.clip(d2, max(clip[0], lim.min), min(clip[1], lim.max))
+        else:
+            if clip is not None:
+                d2 = np.clip(d2, *clip)
+        data = d2.astype(dtype)
+    return data
+
+
+def makeARGB(data, lut=None, levels=None, scale=None, useRGBA=False):
+    """
+    Convert an array of values into an ARGB array suitable for building QImages,
+    OpenGL textures, etc.
+
+    Returns the ARGB array (unsigned byte) and a boolean indicating whether
+    there is alpha channel data. This is a two stage process:
+
+        1) Rescale the data based on the values in the *levels* argument (min, max).
+        2) Determine the final output by passing the rescaled values through a
+           lookup table.
+
+    Both stages are optional.
+
+    ============== ==================================================================================
+    **Arguments:**
+    data           numpy array of int/float types. If
+    levels         List [min, max]; optionally rescale data before converting through the
+                   lookup table. The data is rescaled such that min->0 and max->*scale*::
+
+                      rescaled = (clip(data, min, max) - min) * (*scale* / (max - min))
+
+                   It is also possible to use a 2D (N,2) array of values for levels. In this case,
+                   it is assumed that each pair of min,max values in the levels array should be
+                   applied to a different subset of the input data (for example, the input data may
+                   already have RGB values and the levels are used to independently scale each
+                   channel). The use of this feature requires that levels.shape[0] == data.shape[-1].
+    scale          The maximum value to which data will be rescaled before being passed through the
+                   lookup table (or returned if there is no lookup table). By default this will
+                   be set to the length of the lookup table, or 255 if no lookup table is provided.
+    lut            Optional lookup table (array with dtype=ubyte).
+                   Values in data will be converted to color by indexing directly from lut.
+                   The output data shape will be input.shape + lut.shape[1:].
+                   Lookup tables can be built using ColorMap or GradientWidget.
+    useRGBA        If True, the data is returned in RGBA order (useful for building OpenGL textures).
+                   The default is False, which returns in ARGB order for use with QImage
+                   (Note that 'ARGB' is a term used by the Qt documentation; the *actual* order
+                   is BGRA).
+    ============== ==================================================================================
+    """
+
+    print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+    profile = debug.Profiler()
+    #levels = levels[:data.shape[-1],:]
+    if data.ndim not in (2, 3):
+        raise TypeError("data must be 2D or 3D")
+    if data.ndim == 3 and data.shape[2] > 4:
+        raise TypeError("data.shape[2] must be <= 4")
+
+    if lut is not None and not isinstance(lut, np.ndarray):
+        lut = np.array(lut)
+
+    if levels is None:
+        # automatically decide levels based on data dtype
+        if data.dtype.kind == 'u':
+            levels = np.array([0, 2 ** (data.itemsize * 8) - 1])
+        elif data.dtype.kind == 'i':
+            s = 2 ** (data.itemsize * 8 - 1)
+            levels = np.array([-s, s - 1])
+        elif data.dtype.kind == 'b':
+            levels = np.array([0, 1])
+        else:
+            raise Exception('levels argument is required for float input types')
+    if not isinstance(levels, np.ndarray):
+        levels = np.array(levels)
+    levels = levels.astype(np.float)
+    if levels.ndim == 1:
+        if levels.shape[0] != 2:
+            raise Exception('levels argument must have length 2')
+    elif levels.ndim == 2:
+        if lut is not None and lut.ndim > 1:
+            raise Exception('Cannot make ARGB data when both levels and lut have ndim > 2')
+        #if levels.shape != (data.shape[-1], 2):
+        #    raise Exception('levels must have shape (data.shape[-1], 2)')
+    else:
+        raise Exception("levels argument must be 1D or 2D (got shape=%s)." % repr(levels.shape))
+
+    profile()
+
+    # Decide on maximum scaled value
+    if scale is None:
+        if lut is not None:
+            scale = lut.shape[0]
+        else:
+            scale = 255.
+
+    # Decide on the dtype we want after scaling
+    if lut is None:
+        dtype = np.ubyte
+    else:
+        dtype = np.min_scalar_type(lut.shape[0] - 1)
+
+    # awkward, but fastest numpy native nan evaluation
+    #
+    nanMask = None
+    if data.dtype.kind == 'f' and np.isnan(data.min()):
+        nanMask = np.isnan(data)
+    # Apply levels if given
+    if levels is not None:
+        if isinstance(levels, np.ndarray) and levels.ndim == 2:
+            # we are going to rescale each channel independently
+            #if levels.shape[0] != data.shape[-1]:
+            #    raise Exception(
+            #        "When rescaling multi-channel data, there must be the same number of levels as channels (data.shape[-1] == levels.shape[0])")
+            newData = np.empty(data.shape, dtype=int)
+            for i in range(data.shape[-1]):
+                minVal, maxVal = levels[i]
+                if minVal == maxVal:
+                    maxVal = np.nextafter(maxVal, 2 * maxVal)
+                rng = maxVal - minVal
+                rng = 1 if rng == 0 else rng
+                newData[..., i] = rescaleData(data[..., i], scale / rng, minVal, dtype=dtype)
+            data = newData
+        else:
+            # Apply level scaling unless it would have no effect on the data
+            minVal, maxVal = levels
+            if minVal != 0 or maxVal != scale:
+                if minVal == maxVal:
+                    maxVal = np.nextafter(maxVal, 2 * maxVal)
+                data = rescaleData(data, scale / (maxVal - minVal), minVal, dtype=dtype)
+
+    profile()
+    # apply LUT if given
+    if lut is not None:
+        data = applyLookupTable(data, lut)
+    else:
+        if data.dtype is not np.ubyte:
+            data = np.clip(data, 0, 255).astype(np.ubyte)
+
+    profile()
+
+    # this will be the final image array
+    imgData = np.empty(data.shape[:2] + (4,), dtype=np.ubyte)
+
+    profile()
+
+    # decide channel order
+    if useRGBA:
+        order = [0, 1, 2, 3]  # array comes out RGBA
+    else:
+        order = [2, 1, 0, 3]  # for some reason, the colors line up as BGR in the final image.
+
+    # copy data into image array
+    if data.ndim == 2:
+        # This is tempting:
+        #   imgData[..., :3] = data[..., np.newaxis]
+        # ..but it turns out this is faster:
+        for i in range(3):
+            imgData[..., i] = data
+    elif data.shape[2] == 1:
+        for i in range(3):
+            imgData[..., i] = data[..., 0]
+    else:
+        for i in range(0, data.shape[2]):
+            imgData[..., i] = data[..., order[i]]
+
+    profile()
+
+    # add opaque alpha channel if needed
+    if data.ndim == 2 or data.shape[2] == 3:
+        alpha = False
+        imgData[..., 3] = 255
+    else:
+        alpha = True
+
+    # apply nan mask through alpha channel
+    if nanMask is not None:
+        alpha = True
+        imgData[nanMask, 3] = 0
+
+    profile()
+    return imgData, alpha
+
+
 class PlotROI(ROI.ROI):
     def __init__(self, size):
         ROI.ROI.__init__(self, pos=[0,0], size=size) #, scaleSnap=True, translateSnap=True)
@@ -84,7 +326,8 @@ class Imview(pg.ImageView):
         self.view.invertY()
 
         if imageItem is None:
-            self.imageItem = ImageItem.ImageItem()
+            #self.imageItem = ImageItem.ImageItem()
+            self.imageItem = Item()
         else:
             self.imageItem = imageItem
         self.view.addItem(self.imageItem)
@@ -159,6 +402,7 @@ class Imview(pg.ImageView):
 
     def setImage(self, img, autoRange=True, autoLevels=True, levels=None, axes=None, xvals=None, pos=None, scale=None,
                  transform=None, autoHistogramRange=True, levelMode=None):
+        print('uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu')
         if hasattr(img, 'implements') and img.implements('MetaArray'):
             img = img.asarray()
 
@@ -259,6 +503,90 @@ class Imview(pg.ImageView):
         self.roiClicked()
 
 
+class Item(ImageItem.ImageItem):
+    def __init__(self, image=None, **kwargs):
+        super(Item, self).__init__(image)
+
+    def render(self):
+        # Convert data to QImage for display.
+
+        profile = debug.Profiler()
+        if self.image is None or self.image.size == 0:
+            return
+
+        # Request a lookup table if this image has only one channel
+        if self.image.ndim == 2 or self.image.shape[2] == 1:
+            if isinstance(self.lut, Callable):
+                lut = self.lut(self.image)
+            else:
+                lut = self.lut
+        else:
+            lut = None
+
+        if self.autoDownsample:
+            # reduce dimensions of image based on screen resolution
+            o = self.mapToDevice(QtCore.QPointF(0,0))
+            x = self.mapToDevice(QtCore.QPointF(1,0))
+            y = self.mapToDevice(QtCore.QPointF(0,1))
+
+            # Check if graphics view is too small to render anything
+            if o is None or x is None or y is None:
+                return
+
+            w = Point(x-o).length()
+            h = Point(y-o).length()
+            if w == 0 or h == 0:
+                self.qimage = None
+                return
+            xds = max(1, int(1.0 / w))
+            yds = max(1, int(1.0 / h))
+            axes = [1, 0] if self.axisOrder == 'row-major' else [0, 1]
+            image = fn.downsample(self.image, xds, axis=axes[0])
+            image = fn.downsample(image, yds, axis=axes[1])
+            self._lastDownsample = (xds, yds)
+
+            # Check if downsampling reduced the image size to zero due to inf values.
+            if image.size == 0:
+                return
+        else:
+            image = self.image
+
+        # if the image data is a small int, then we can combine levels + lut
+        # into a single lut for better performance
+        levels = self.levels
+        if levels is not None and levels.ndim == 1 and image.dtype in (np.ubyte, np.uint16):
+            if self._effectiveLut is None:
+                eflsize = 2**(image.itemsize*8)
+                ind = np.arange(eflsize)
+                minlev, maxlev = levels
+                levdiff = maxlev - minlev
+                levdiff = 1 if levdiff == 0 else levdiff  # don't allow division by 0
+                if lut is None:
+                    efflut = fn.rescaleData(ind, scale=255./levdiff,
+                                            offset=minlev, dtype=np.ubyte)
+                else:
+                    lutdtype = np.min_scalar_type(lut.shape[0]-1)
+                    efflut = fn.rescaleData(ind, scale=(lut.shape[0]-1)/levdiff,
+                                            offset=minlev, dtype=lutdtype, clip=(0, lut.shape[0]-1))
+                    efflut = lut[efflut]
+
+                self._effectiveLut = efflut
+            lut = self._effectiveLut
+            levels = None
+
+        # Convert single-channel image to 2D array
+        if image.ndim == 3 and image.shape[-1] == 1:
+            image = image[..., 0]
+
+        # Assume images are in column-major order for backward compatibility
+        # (most images are in row-major order)
+        if self.axisOrder == 'col-major':
+            image = image.transpose((1, 0, 2)[:image.ndim])
+
+        #argb, alpha = fn.makeARGB(image, lut=lut, levels=levels)
+        argb, alpha = makeARGB(image, lut=lut, levels=levels)
+        self.qimage = fn.makeQImage(argb, alpha, transpose=False)
+
 
 class HistogramWidget(GraphicsView):
     def __init__(self, parent=None, *args, **kargs):
@@ -276,6 +604,7 @@ class HistogramWidget(GraphicsView):
         return getattr(self.item, attr)
 
 #__all__ = ['HistogramLUTItem']
+
 
 class Histogram(GraphicsWidget.GraphicsWidget):
     """
@@ -314,7 +643,7 @@ class Histogram(GraphicsWidget.GraphicsWidget):
 
         self.colors = None
         self.lut = None
-        self.imageItem = lambda: None  # fake a dead weakref
+        self.imageItem = lambda: None   # fake a dead weakref
         self.levelMode = levelMode
         self.num_channels = num_channels
         # self.levelMode = 'rgba'
@@ -517,13 +846,16 @@ class Histogram(GraphicsWidget.GraphicsWidget):
     def regionChanged(self):
         if self.imageItem() is not None:
             self.imageItem().setLevels(self.getLevels())
-        self.sigLevelChangeFinished.emit(self)
+        #    pass
+        #self.sigLevelChangeFinished.emit(self)
 
     def regionChanging(self):
         if self.imageItem() is not None:
             self.imageItem().setLevels(self.getLevels())
-        self.update()
-        self.sigLevelsChanged.emit(self)
+        #    pass
+        #self.update()
+        #self.sigLevelsChanged.emit(self)
+        pass
 
     def imageChanged(self, autoLevel=False, autoRange=False):
         if self.imageItem() is None:
@@ -597,9 +929,8 @@ class Histogram(GraphicsWidget.GraphicsWidget):
         if self.levelMode == 'mono':
             return self.region.getRegion()
         else:
-            nch = self.imageItem().channels()
-            if nch is None:
-                nch = self.num_channels
+            #nch = self.imageItem().channels()
+            nch = self.num_channels
             return [r.getRegion() for r in self.regions[1:nch + 1]]
 
     def setLevels(self, min=None, max=None, rgba=None):
