@@ -200,11 +200,6 @@ class GUI(QtWidgets.QMainWindow):
             else:
                 self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols.fib = False
-            if self.emcontrols.show_merge:
-                self.fmcontrols.progress_bar.setValue(100)
-            else:
-                self.fmcontrols.progress_bar.setValue(0)
-
         else:
             if self.emcontrols.ops is not None and self.fmcontrols.ops is not None:
                 if self.fmcontrols.ops.points is not None and self.emcontrols.ops.points is not None:
@@ -227,10 +222,16 @@ class GUI(QtWidgets.QMainWindow):
                     self.fibcontrols.enable_buttons(enable=False)
                 if self.fibcontrols.ops is not None and self.emcontrols.ops._tf_points is not None:
                     self.fibcontrols.ops._transformed = True
-            if self.fibcontrols.show_merge:
-                self.fmcontrols.progress_bar.setValue(100)
-            else:
-                self.fmcontrols.progress_bar.setValue(0)
+
+        if self.fmcontrols.other.show_merge:
+            self.fmcontrols.progress_bar.setValue(100)
+        else:
+            self.fmcontrols.progress_bar.setValue(0)
+        if self.fmcontrols.other._refined:
+            self.fmcontrols.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.fmcontrols.other._std[idx][0],
+                                                                           self.fmcontrols.other._std[idx][1]))
+        else:
+            self.fmcontrols.err_btn.setText('0')
 
             #if self.fibcontrols.num_slices is None:
             #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
@@ -242,6 +243,7 @@ class GUI(QtWidgets.QMainWindow):
             if self.fmcontrols.ops._transformed:
                 self.fmcontrols.other.size_box.setEnabled(True)
                 self.fmcontrols.other.auto_opt_btn.setEnabled(True)
+
 
     def _show_scatter(self, idx):
         if idx == 0:

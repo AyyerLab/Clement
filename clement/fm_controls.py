@@ -784,10 +784,6 @@ class FMControls(BaseControls):
         self.channel_line.addWidget(label)
         self.channel_btns = []
         self.color_btns = []
-        #self.channel_line = QtWidgets.QHBoxLayout()
-
-        #for i in reversed(range(self.channel_line.count())):
-        #    self.channel_line.itemAt(i).widget().setParent(None)
 
         self.max_proj_btn.setChecked(False)
 

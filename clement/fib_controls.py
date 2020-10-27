@@ -209,6 +209,8 @@ class FIBControls(BaseControls):
         self._conv = [None, None]
         self._dist = None
 
+        self.popup = None
+
         self._points_corr_history = []
         self._points_corr_z_history = []
         self._orig_points_corr_history = []
