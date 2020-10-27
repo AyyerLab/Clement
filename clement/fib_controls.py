@@ -9,7 +9,7 @@ from .em_operations import EM_ops
 from . import utils
 
 class FIBControls(BaseControls):
-    def __init__(self, imview, vbox, sem_ops):
+    def __init__(self, imview, vbox, sem_ops, merge_layout):
         super(FIBControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
@@ -17,6 +17,9 @@ class FIBControls(BaseControls):
         self.sem_ops = sem_ops
         self.fib = False
         self.num_slices = None
+        self.popup = None
+        self.merge_layout = merge_layout
+        self.show_merge = False
 
         self.show_grid_box = False
         self.grid_box = None

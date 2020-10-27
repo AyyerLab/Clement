@@ -142,6 +142,7 @@ class Merge(QtGui.QMainWindow):
         self.parent = parent
         self.theme = self.parent.theme
         self.fm_copy = None
+        self.other = self.parent.fmcontrols.other
 
         self.curr_mrc_folder_popup = self.parent.emcontrols.curr_folder
         self.num_slices_popup = self.parent.fmcontrols.num_slices
@@ -164,11 +165,11 @@ class Merge(QtGui.QMainWindow):
         self._clicked_points_popup = []
 
         if self.parent.fibcontrols.fib:
-            merged_data = self.parent.fm.merged_3d
+            merged_data = self.parent.em.merged_3d
             self.fib = True
             self.downsampling = 1
         else:
-            merged_data = self.parent.fm.merged_2d
+            merged_data = self.parent.em.merged_2d
             self.fib = False
         if merged_data is not None:
             print(self._colors_popup)
@@ -308,16 +309,12 @@ class Merge(QtGui.QMainWindow):
         line.addStretch(1)
 
     def _copy_poi(self):
-        #fib_points = self.parent.fibcontrols._points_corr
-        corr_points = self.parent.fmcontrols.other._points_corr
+        corr_points = self.other._points_corr
         if len(corr_points) != 0:
             self.select_btn_popup.setChecked(True)
-
-        if not self.parent.fmcontrols.other.fib:
+        if not self.other.fib:
             for point in corr_points:
                 init = np.array([point.pos().x() + self.size/2, point.pos().y() + self.size/2, 1])
-                #transf = np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ self.parent.emcontrols.ops._refine_matrix\
-                #         @ self.parent.emcontrols.tr_matrices @ init
                 transf = (np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ init) / self.downsampling
                 pos = QtCore.QPointF(transf[0] - self.size/2, transf[1] - self.size/2)
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
@@ -546,8 +543,10 @@ class Merge(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         if self.parent is not None:
-            self.parent.fmcontrols.progress.setValue(0)
+            if self.parent.fmcontrols.other == self.other:
+                self.parent.fmcontrols.progress_bar.setValue(0)
+            self.other.progress = 0
             self.parent.project.merged = False
-            self.parent.fmcontrols.show_merge = False
+            self.other.show_merge = False
         self._reset_init()
         event.accept()

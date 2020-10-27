@@ -102,11 +102,11 @@ class GUI(QtWidgets.QMainWindow):
         self.tab_2d.setLayout(vbox_2d)
         self.tab_3d.setLayout(vbox_3d)
 
-        self.emcontrols = EMControls(self.tem_imview, vbox_2d)
+        self.emcontrols = EMControls(self.tem_imview, vbox_2d, merge_options)
         self.tem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.emcontrols._couple_views)
         self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_2d.addWidget(self.emcontrols)
-        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops)
+        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops, merge_options)
         self.fibcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_3d.addWidget(self.fibcontrols)
 
@@ -119,7 +119,8 @@ class GUI(QtWidgets.QMainWindow):
         self.fmcontrols.other = self.emcontrols
         self.fmcontrols.merge_btn.clicked.connect(self.merge)
 
-        self.popup = None
+        self.sem_popup = None
+        self.fib_popup = None
         self.scatter = None
         self.convergence = None
         self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self)
@@ -198,6 +199,10 @@ class GUI(QtWidgets.QMainWindow):
             else:
                 self.fmcontrols.undo_refine_btn.setEnabled(False)
             self.fibcontrols.fib = False
+            if self.emcontrols.show_merge:
+                self.fmcontrols.progress_bar.setValue(100)
+            else:
+                self.fmcontrols.progress_bar.setValue(0)
 
         else:
             if self.emcontrols.ops is not None and self.fmcontrols.ops is not None:
@@ -219,6 +224,10 @@ class GUI(QtWidgets.QMainWindow):
                     self.fibcontrols.enable_buttons(enable=False)
                 if self.fibcontrols.ops is not None and self.emcontrols.ops._tf_points is not None:
                     self.fibcontrols.ops._transformed = True
+            if self.fibcontrols.show_merge:
+                self.fmcontrols.progress_bar.setValue(100)
+            else:
+                self.fmcontrols.progress_bar.setValue(0)
 
             #if self.fibcontrols.num_slices is None:
             #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
@@ -254,27 +263,32 @@ class GUI(QtWidgets.QMainWindow):
         if self.fibcontrols.fib:
             self.em = self.fibcontrols.ops
             em = self.fibcontrols.sem_ops
+            popup = self.fib_popup
+            controls = self.fibcontrols
         else:
             self.em = self.emcontrols.ops
             em = self.em
+            popup = self.sem_popup
+            controls = self.emcontrols
 
         if self.fm is not None and self.em is not None:
             if self.fibcontrols.fib and self.fibcontrols.sem_ops.data is None:
                 print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
                 if self.fm._tf_points is not None and (em._tf_points is not None or em._tf_points_region is not None):
-                    condition = self.fmcontrols.merge()
+                    #condition = self.fmcontrols.merge()
+                    condition = controls.merge()
                     if condition:
-                        if self.popup is not None:
-                            self.popup.close()
-                        self.popup = Merge(self)
+                        if popup is not None:
+                            popup.close()
+                        popup = Merge(self)
                         self.project.merged = True
-                        self.project.popup = self.popup
+                        self.project.popup = popup
                         if self.project.load_merge:
                             self.project._load_merge(project)
                             self.project.load_merge = False
-                        self.fmcontrols.popup = self.popup
-                        self.popup.show()
+                        controls.popup = popup
+                        popup.show()
                 else:
                     print('You have to transform the FM and the TEM/SEM images first!')
         else:

@@ -46,11 +46,9 @@ class FMControls(BaseControls):
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
         self.merge_layout = merge_layout
-        self.popup = None
+        self.num_slices = None
 
         self._colors = colors
-        print(len(colors))
-        print(self._colors)
         self._channels = []
         self._overlay = True
         self._curr_folder = None
@@ -108,14 +106,14 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Noise threshold:')
         line.addWidget(label)
         self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.peaks_t1.setRange(0,200)
+        self.peaks_t1.setRange(0,200) # 10 times the actual value to allow floats
+        self.peaks_t1.setValue(100)
         self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
         self.peaks_t1.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
         self.peaks_t1_label = QtWidgets.QDoubleSpinBox(self)
         self.peaks_t1_label.setRange(0,20)
         self.peaks_t1_label.setDecimals(1)
         self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
-        self.peaks_t1.setValue(100)
         line.addWidget(self.peaks_t1)
         line.addWidget(self.peaks_t1_label)
 
@@ -283,14 +281,14 @@ class FMControls(BaseControls):
         self.merge_btn = QtWidgets.QPushButton('Merge', self)
         self.merge_btn.setEnabled(False)
         label = QtWidgets.QLabel('Progress:')
-        self.progress = QtWidgets.QProgressBar(self)
-        self.progress.setMaximum(100)
+        self.progress_bar = QtWidgets.QProgressBar(self)
+        self.progress_bar.setMaximum(100)
         line.addWidget(self.refine_btn)
         line.addWidget(self.undo_refine_btn)
 
         line.addWidget(self.merge_btn)
         line.addWidget(label)
-        line.addWidget(self.progress)
+        line.addWidget(self.progress_bar)
 
         line.addStretch(0.5)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)

@@ -9,12 +9,15 @@ from .em_operations import EM_ops
 from . import utils
 
 class EMControls(BaseControls):
-    def __init__(self, imview, vbox):
+    def __init__(self, imview, vbox, merge_layout):
         super(EMControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
         self.fib = False
+        self.popup = None
+        self.merge_layout = merge_layout
+        self.show_merge = False
 
         self.show_boxes = False
         self.mrc_fname = None

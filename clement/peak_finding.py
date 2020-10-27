@@ -211,7 +211,6 @@ class Peak_finding():
                 else:
                     self.peaks_z = np.copy(mean_values)
                 no = time.time()
-                print(mean_values)
                 print('Duration:', no - go)
         except RuntimeError:
             if local:

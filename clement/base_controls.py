@@ -96,6 +96,7 @@ class BaseControls(QtWidgets.QWidget):
         self.num_slices = None
         self.min_conv_points = 10
         self.show_merge = False
+        self.progress = 0
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -292,8 +293,8 @@ class BaseControls(QtWidgets.QWidget):
         point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
         point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
 
-        if self.show_merge:
-            self.popup._update_poi(pos, self.other.fib)
+        if self.other.show_merge:
+            self.other.popup._update_poi(pos, self.other.fib)
 
     def _update_annotations(self, point):
         idx = None
@@ -1086,56 +1087,72 @@ class BaseControls(QtWidgets.QWidget):
         print('WARNING! Recalculate FIB grid square for z = ', self.num_slices // 2)
 
     def merge(self):
-        if not self.other._refined:
+        if not self._refined:
             print('You have to do at least one round of refinement before merging is allowed!')
             return False
-        if hasattr(self.other, 'show_btn'):
+        if hasattr(self, 'show_btn'):
             if (self.show_btn.isChecked() or self.other.show_btn.isChecked()):
                 print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
                 return
         else:
-            if self.show_btn.isChecked():
+            if self.other.show_btn.isChecked():
                 print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
                 return
 
-        size_other = copy.copy(self.other._size_history[-1])
-        dst = np.array([[point.x() + size_other / 2, point.y() + size_other / 2] for point in
-                        self.other._points_corr_history[-1]])
-        src = np.array([[point.x() + self.size / 2, point.y() + self.size / 2]
-                        for point in self._points_corr_history[-1]])
+        size_em = copy.copy(self._size_history[-1])
+        dst = np.array([[point.x() + size_em / 2, point.y() + size_em / 2] for point in
+                        self._points_corr_history[-1]])
+        src = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2]
+                        for point in self.other._points_corr_history[-1]])
 
-        src_z = copy.copy(self._points_corr_z_history[-1])
-
-        if not self.other.fib:
+        if not self.fib:
             if self.ops.merged_2d is None:
-                for i in range(self.ops.num_channels):
-                    #self.ops.apply_merge_2d(self.other.ops.data, self.other.ops.points, i)
-                    if self.other.show_assembled_btn.isChecked():
-                        self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig,
-                                                self.other.ops.data.shape, self.other.ops.points, i)
+                for i in range(self.other.ops.num_channels):
+                    if self.show_assembled_btn.isChecked():
+                        show_region = False
+                        #self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig,
+                        #                        self.other.ops.data.shape, self.other.ops.points, i)
                     else:
-                        self.ops.apply_merge_2d(self.other.ops.orig_region, self.other.ops.tf_matrix_orig_region,
-                                                self.other.ops.data.shape, self.other.ops.points, i)
-                    self.progress.setValue((i + 1) / self.ops.num_channels * 100)
+                        show_region = True
+                    self.ops.apply_merge_2d(self.other.ops.data[:,:,i], self.other.ops.points, i,
+                                            show_region, self.other.ops.num_channels)
+                    self.other.progress_bar.setValue((i + 1) / self.other.ops.num_channels * 100)
+                self.progress = 100
             else:
-                self.progress.setValue(100)
+                self.other.progress_bar.setValue(100)
+                self.progress = 100
             if self.ops.merged_2d is not None:
                 print('Merged shape: ', self.ops.merged_2d.shape)
             self.show_merge = True
             return True
         else:
             if self.ops.merged_3d is None:
-                if self.other._refined:
-                    for i in range(self.ops.num_channels):
-                        self.ops.load_channel(i)
-                        self.ops.apply_merge_3d(self.other.tr_matrices, self.other.ops.fib_matrix,
-                                                self.other.ops._refine_matrix,
-                                                self.other.ops.data, src, src_z, dst, i)
-                        self.progress.setValue((i + 1) / self.ops.num_channels * 100)
+                if self._refined:
+                    src_z = copy.copy(self.other._points_corr_z_history[-1])
+                    flip_list = [self.other.ops.transp, self.other.ops.rot, self.other.ops.fliph, self.other.ops.flipv]
+                    for i in range(self.other.ops.num_channels):
+                        self.other.ops.load_channel(i)
+                        #self.ops.apply_merge_3d(self.other.tr_matrices, self.other.ops.fib_matrix,
+                        #                        self.other.ops._refine_matrix,
+                        #                        self.other.ops.data, src, src_z, dst, i)
+                        orig_coor = []
+                        tf_aligned_orig_shift = self.other.ops.tf_matrix @ self.other.ops._color_matrices[0]
+                        for k in range(len(src)):
+                            orig_pt = self.other.ops.calc_original_coordinates(src[k], tf_aligned_orig_shift,
+                                                                               flip_list, self.other.ops.data.shape[:2])
+                            orig_coor.append(orig_pt)
+                        self.ops.apply_merge_3d(self.other.ops.channel, self.tr_matrices, self.other.ops.tf_matrix,
+                                                self.other.ops.tf_corners, self.other.ops._color_matrices, flip_list,
+                                                src, orig_coor, src_z, dst, i, self.other.ops.voxel_size,
+                                                self.other.num_slices, self.other.ops.num_channels,
+                                                self.other.ops.norm_factor)
+                        self.other.progress_bar.setValue((i + 1) / self.other.ops.num_channels * 100)
+                    self.progress = 100
                 else:
                     print('You have to perform at least one round of refinement before you can merge the images!')
             else:
-                self.progress.setValue(100)
+                self.other.progress_bar.setValue(100)
+                self.progress = 100
             if self.ops.merged_3d is not None:
                 print('Merged shape: ', self.ops.merged_3d.shape)
             self.show_merge = True
