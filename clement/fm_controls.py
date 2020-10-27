@@ -107,13 +107,14 @@ class FMControls(BaseControls):
         line.addWidget(label)
         self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.peaks_t1.setRange(0,200) # 10 times the actual value to allow floats
-        self.peaks_t1.setValue(100)
         self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t1.setValue(100)
         self.peaks_t1.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
         self.peaks_t1_label = QtWidgets.QDoubleSpinBox(self)
         self.peaks_t1_label.setRange(0,20)
         self.peaks_t1_label.setDecimals(1)
         self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
+        self.peaks_t1_label.setValue(10)
         line.addWidget(self.peaks_t1)
         line.addWidget(self.peaks_t1_label)
 
@@ -717,6 +718,16 @@ class FMControls(BaseControls):
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())
             self._update_imview()
 
+    def clearLayout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    self.clearLayout(item.layout())
+
     def reset_init(self):
         # self.ops = None
         # self.other = None # The other controls object
@@ -768,9 +779,16 @@ class FMControls(BaseControls):
 
 
         self._current_slice = 0
-        for i in range(len(self.channel_btns)):
-            self.channel_line.removeWidget(self.channel_btns[i])
-            self.channel_line.removeWidget(self.color_btns[i])
+        self.clearLayout(self.channel_line)
+        label = QtWidgets.QLabel('Show color channels:', self)
+        self.channel_line.addWidget(label)
+        self.channel_btns = []
+        self.color_btns = []
+        #self.channel_line = QtWidgets.QHBoxLayout()
+
+        #for i in reversed(range(self.channel_line.count())):
+        #    self.channel_line.itemAt(i).widget().setParent(None)
+
         self.max_proj_btn.setChecked(False)
 
         for i in range(len(self.action_btns)):
