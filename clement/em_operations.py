@@ -71,6 +71,7 @@ class EM_ops():
         self.fib_matrix = None
         self.fib_shift = None
         self.fib_angle = None  # angle relative to xy-plane
+        self.box_shift = None
         self.transposed = False
 
         self.merged_2d = None
@@ -342,6 +343,8 @@ class EM_ops():
         self.toggle_original()
 
     def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
+        if self.box_shift is not None:
+            shift = self.box_shift - shift
         if sem_transpose:
             self.fib_matrix = np.array([[0., 1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         else:
@@ -376,7 +379,7 @@ class EM_ops():
         fib_corners = np.dot(self.fib_matrix, corners)
         self.fib_shift = -fib_corners.min(1)[:3]
         self.fib_matrix[:3, 3] += self.fib_shift
-        self.fib_matrix[:2, 3] += shift
+        self.fib_matrix[:2, 3] -= shift
         print('Shifted fib matrix: ', self.fib_matrix)
 
     def apply_fib_transform(self, points, num_slices, scaling=1):
@@ -393,6 +396,11 @@ class EM_ops():
             if self._refine_matrix is not None:
                 dst[i, :3] = self._refine_matrix @ np.array([dst[i, 0], dst[i, 1], 1])
         self.points = np.array(dst[:, :2])
+
+        if self.box_shift is None:
+            com = self.points.mean(0)
+            img_center = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
+            self.box_shift = com - img_center
         self._tf_points = np.copy(self.points)
         # if self._orig_points is None:
         self._orig_points = np.copy(self.points)

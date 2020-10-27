@@ -132,14 +132,16 @@ class FIBControls(BaseControls):
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):
         if self.sem_ops is not None and recalc_matrix:
             if self.box_shift is None:
-                self.box_shift = np.zeros(2)
+                shift = np.zeros(2)
+                redo = True
+            else:
+                shift = self.box_shift
+                redo = False
             sigma_angle = float(self.sigma_btn.text())
             is_transposed = self.transp_btn.isChecked()
 
             self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
-                                        self.sem_ops.pixel_size, shift=self.box_shift, sem_transpose=is_transposed)
-
-            print(self.ops.fib_matrix)
+                                        self.sem_ops.pixel_size, shift=shift, sem_transpose=is_transposed)
             self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
@@ -147,11 +149,19 @@ class FIBControls(BaseControls):
             if self.show_grid_box and self.grid_box is not None:
                 self.imview.removeItem(self.grid_box)
             self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False, rotatable=False)
-
             if self.old_pos0 is None:
                 self.old_pos0 = [0, 0]
-            print('Box origin at:', self.old_pos0)
             self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
+            if redo:
+                self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
+                                            self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=is_transposed)
+                self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
+                pos = list(self.ops.points)
+                self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False,
+                                               rotatable=False)
+                self.old_pos0 = self.grid_box.pos()
+                self.box_shift = np.zeros(2)
+            print('Box origin at:', self.old_pos0)
 
         if self.grid_box is not None:
             if self.show_grid_box:
@@ -160,6 +170,7 @@ class FIBControls(BaseControls):
             if self.show_peaks_btn.isChecked():
                 self.show_peaks_btn.setChecked(False)
                 self.show_peaks_btn.setChecked(True)
+
 
     def _update_shifts(self, state):
         new_pos = state.pos() + self.old_pos0
