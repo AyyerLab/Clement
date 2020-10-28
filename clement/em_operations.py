@@ -78,6 +78,7 @@ class EM_ops():
         self.merged_3d = None
         self.merge_shift = None
         self.merge_matrix = None
+        self.z_shift = None
 
     def parse_2d(self, fname):
         if '.tif' in fname or '.tiff' in fname:
@@ -670,7 +671,8 @@ class EM_ops():
 
         p0 = np.array([0, 0, 0, 1])
         p1 = np.array([0, 0, voxel_size[2] / voxel_size[0], 1])
-        z_shift = (self.fib_matrix @ p1)[:2] - (self.fib_matrix @ p0)[:2]
+        self.z_shift = (self.fib_matrix @ p1)[:2] - (self.fib_matrix @ p0)[:2]
+        print('z_shift: ', self.z_shift)
 
         fib_2d = np.zeros((3, 3))
         fib_2d[:2, :2] = self.fib_matrix[:2, :2]
@@ -696,7 +698,7 @@ class EM_ops():
                 img_tmp[int(np.round(orig_points[i][0])), int(np.round(orig_points[i][1]))] = 1
                 z = fm_z_values[i] / (voxel_size[2] / voxel_size[0])
                 fib_new = np.copy(fib_2d)
-                fib_new[:2, 2] += z * z_shift
+                fib_new[:2, 2] += z * self.z_shift
                 shift_matrix = self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[0]
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
@@ -714,7 +716,7 @@ class EM_ops():
         for z in range(num_slices):
             fib_new = np.copy(fib_2d)
             z_reverse = num_slices - 1 - z
-            fib_new[:2, 2] += z_reverse * z_shift
+            fib_new[:2, 2] += z_reverse * self.z_shift
             total_matrix = self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[channel]
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T

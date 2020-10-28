@@ -23,6 +23,9 @@ class Peak_finding():
         self.peaks_test = None
         self.background_correction = False
         self.adjusted_params = False
+        self.peaks_z_std = []
+        self.z_profiles = []
+        self.mu = []
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None, test=False):
         start = time.time()
@@ -201,7 +204,7 @@ class Peak_finding():
             return
 
         gauss = lambda x, a, mu, sigma: a * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2))
-        z_profile = data[peaks_2d[:, 0].astype(int), peaks_2d[:, 1].astype(int)]
+        z_profile = data[np.round(peaks_2d[:, 0]).astype(int), np.round(peaks_2d[:, 1]).astype(int)]
         z_max = np.argmax(z_profile, axis=1)
         z_shifted = np.zeros((z_profile.shape[0], z_profile.shape[1] * 2))
         x = np.arange(z_shifted.shape[1])
@@ -219,15 +222,25 @@ class Peak_finding():
                     z_shifted[i, k] = z_shifted[i, -k]
         z_avg = z_shifted.mean(0)
         try:
-            popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, z_profile.shape[1], 1])
-            print('Std z fit: ', np.sqrt(pcov[0,0]), np.sqrt(pcov[1,1]))
-            gauss_stat = lambda x, a, mu: a * np.exp(-(x - mu) ** 2 / (2 * popt[2] ** 2))
+            z_peak = x[z_avg > np.exp(-0.5) * z_avg.max()]
+            sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
+            popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, z_profile.shape[1], sigma_guess])
+            perr = np.sqrt(np.diag(pcov))[1]
+            print('Std z fit: ', perr)
             if local:
+                self.peaks_z_std.append(perr)
+                #self.z_profiles.append(z_avg)
+                self.z_profiles.append(z_profile)
+                self.mu.append(popt[1])
                 return popt[1] - shifts[-1]
             else:
+                gauss_stat = lambda x, a, mu: a * np.exp(-(x - mu) ** 2 / (2 * popt[2] ** 2))
                 for i in range(z_shifted.shape[0]):
                     popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
                     mean_values[i] = (popt_i[1] - shifts[i])
+                    perr = np.sqrt(np.diag(pcov))[1]
+                    print('Std z fit: ', perr)
+                    #self.peaks_z_std.append(perr)
 
                 if transformed:
                     self.tf_peaks_z = np.copy(mean_values)
@@ -235,6 +248,7 @@ class Peak_finding():
                     self.peaks_z = np.copy(mean_values)
                 no = time.time()
                 print('Duration:', no - go)
+
         except RuntimeError:
             if local:
                 print('Unable to fit z profile. Calculate argmax(z).')
@@ -254,8 +268,8 @@ class Peak_finding():
             z = self.fit_z(data, transformed=True, local=True, point=point)
         except IndexError:
             print('You should select a point within the bounds of the image!')
-        finally:
-            return z
+        #finally:
+        return z
 
     def check_peak_index(self, point, size):
         peaks_2d = self.tf_peak_slices[-1]

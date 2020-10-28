@@ -11,7 +11,6 @@ from skimage.color import hsv2rgb
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, FormatStrFormatter
-
 warnings.simplefilter('ignore', category=FutureWarning)
 
 from . import utils
@@ -470,9 +469,13 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.pixel_upper_threshold = self.put.value()
             self.fm.ops.flood_steps = self.flood_steps.value()
             self.fm.ops._peak_reference = self.ref_btn.currentIndex()
+            self.parent.fmcontrols.point_ref_btn.setCurrentIndex(self.ref_btn.currentIndex())
             self.fm.ops.orig_tf_peak_slices = None
             self.fm.ops.tf_peak_slices = None
             self.fm.ops.peak_slices = None
+            for i in range(self.num_channels):
+                self.parent.fmcontrols.action_btns[i].setChecked(False)
+            self.parent.fmcontrols.action_btns[self.ref_btn.currentIndex()].setChecked(True)
             self.fm.ops._color_matrices = []
             [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
         self.close()
@@ -491,6 +494,7 @@ class Merge(QtGui.QMainWindow):
         self.color_data_popup = None
         self.color_overlay_popup = None
         self.annotations_popup = []
+        self.error_bars = []
         self.coordinates = []
         self.counter_popup = 0
         self.stage_positions_popup = None
@@ -663,14 +667,16 @@ class Merge(QtGui.QMainWindow):
             for i in range(len(corr_points)):
                 pos = corr_points[i].pos()
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+            self._draw_err_bars(single=False)
 
     def _update_poi(self, pos, fib):
         if not fib:
             init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
             transf = (np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ init) / self.downsampling
             pos = QtCore.QPointF(transf[0] - self.size / 2, transf[1] - self.size / 2)
-
         self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+        if fib:
+            self._draw_err_bars(single=True)
 
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -684,6 +690,26 @@ class Merge(QtGui.QMainWindow):
 
         if self.select_btn_popup.isChecked():
             self._draw_correlated_points_popup(pos, item)
+
+    def _draw_err_bars(self, single=True):
+        if single:
+            x = self._clicked_points_popup[-1].pos().x()
+            y = self._clicked_points_popup[-1].pos().y()
+            point = np.array([x+self.size/2, y+self.size/2])
+            #ind = self.ops.check_peak_index(point, self.size)
+            z = self.parent.fm.peaks_z_std[-1] * np.abs(self.parent.em.z_shift[1])
+            err = pg.ErrorBarItem(x=np.array([point[0]]), y=np.array([point[1]]), height=2*z, beam=2)
+            self.error_bars.append(err)
+            self.imview_popup.addItem(err)
+        else:
+            for i in range(len(self._clicked_points_popup)):
+                x = self._clicked_points_popup[i].pos().x()
+                y = self._clicked_points_popup[i].pos().y()
+                point = np.array([x + self.size / 2, y + self.size / 2])
+                z = self.parent.fm.peaks_z_std[i] * np.abs(self.parent.em.z_shift[1])
+                err = pg.ErrorBarItem(x=np.array([x]), y=np.array([y]), height=2*z, beam=2)
+                self.error_bars.append(err)
+                self.imview_popup.addItem(err)
 
     def _draw_correlated_points_popup(self, pos, item):
         point = pg.CircleROI(pos, self.size, parent=item, movable=False, removable=True)
@@ -710,6 +736,8 @@ class Merge(QtGui.QMainWindow):
         self._clicked_points_popup.remove(pt)
         self.imview_popup.removeItem(anno)
         self.annotations_popup.remove(anno)
+        self.imview_popup.removeItem(self.error_bars[idx])
+        self.error_bars.remove(self.error_bars[idx])
 
     @utils.wait_cursor
     def _show_overlay_popup(self, checked):
@@ -769,9 +797,12 @@ class Merge(QtGui.QMainWindow):
             print('Select points of interest!')
             if len(self._clicked_points_popup) != 0:
                 [self.imview_popup.removeItem(point) for point in self._clicked_points_popup]
+                [self.imview_popup.removeItem(error) for error in self.error_bars]
                 [self.imview_popup.removeItem(annotation) for annotation in self.annotations_popup]
                 self._clicked_points_popup = []
                 self.annotations_popup = []
+                self.error_bars = []
+
                 self.counter_popup = 0
                 self.stage_positions_popup = None
                 self.coordinates = []

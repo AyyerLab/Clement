@@ -70,7 +70,7 @@ class Project(QtWidgets.QWidget):
                 self.fm._recalc_grid()
             self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
 
-            self.fm.ref_btn.setCurrentIndex(fmdict['Peak reference'])
+            #self.fm.ref_btn.setCurrentIndex(fmdict['Peak reference'])
             self.fm.ops._aligned_channels = fmdict['Aligned channels']
             self.fm.point_ref_btn.setCurrentIndex(fmdict['Point reference'])
             for i in range(self.fm.ops.num_channels):
@@ -428,7 +428,7 @@ class Project(QtWidgets.QWidget):
         fmdict = {}
         project['FM'] = fmdict
 
-        fmdict['Colors'] = self.fm._colors
+        fmdict['Colors'] = np.array(self.fm._colors).tolist()
         fmdict['Channels'] = self.fm._channels
         fmdict['Overlay'] = self.fm._overlay
         fmdict['Directory'] = self.fm._curr_folder

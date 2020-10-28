@@ -584,6 +584,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.transpose.setEnabled(True)
                 self.rotate.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
+            #np.save('z_profiles', np.array(self.ops.z_profiles))
+            #np.save('mu', np.array(self.ops.mu))
 
     @utils.wait_cursor
     def _affine_transform(self, toggle_orig=True):
@@ -771,10 +773,10 @@ class BaseControls(QtWidgets.QWidget):
 
         if self.other.fib:
             idx = 1
-            self.ops.merged_3d = None
+            self.other.ops.merged_3d = None
         else:
             idx = 0
-            self.ops.merged_2d = None
+            self.other.ops.merged_2d = None
 
         refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
         self.other.ops.calc_refine_matrix(src, dst)
@@ -867,10 +869,10 @@ class BaseControls(QtWidgets.QWidget):
             self.other.show_peaks_btn.setChecked(True)
 
         if self.other.fib:
-            self.ops.merged_3d = None
+            self.other.ops.merged_3d = None
             id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(True) - 1
         else:
-            self.ops.merged_2d = None
+            self.other.ops.merged_2d = None
             id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(False) - 1
 
         del self._fib_vs_sem_history[id]
