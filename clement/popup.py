@@ -135,6 +135,184 @@ class Convergence(QtWidgets.QMainWindow):
         sc = Convergence_Plot(base)
         layout.addWidget(sc)
 
+class Peak_Params(QtWidgets.QMainWindow):
+    def __init__(self, parent, fm):
+        super(Peak_Params, self).__init__(parent)
+        self.parent = parent
+        self.fm = fm
+        self.data = self.fm.ops.orig_data
+        self.color_data = None
+        self.num_channels = self.fm.ops.num_channels
+        self.theme = self.parent.theme
+        self.resize(800, 800)
+        self.parent._set_theme(self.theme)
+        self._init_ui()
+        self._calc_max_proj()
+
+    def _init_ui(self):
+        widget = QtWidgets.QWidget()
+        self.setCentralWidget(widget)
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        widget.setLayout(layout)
+        self.peak_imview = pg.ImageView()
+        self.peak_imview.ui.roiBtn.hide()
+        self.peak_imview.ui.menuBtn.hide()
+        layout.addWidget(self.peak_imview)
+        # Options
+        options = QtWidgets.QVBoxLayout()
+        options.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(options)
+        line = QtWidgets.QHBoxLayout()
+        options.addLayout(line)
+        label = QtWidgets.QLabel('Set Peak finding parameters:', self)
+        line.addWidget(label)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        options.addLayout(line)
+        label = QtWidgets.QLabel('Select channel:', self)
+        line.addWidget(label)
+        self.ref_btn = QtWidgets.QComboBox()
+        listview = QtWidgets.QListView(self)
+        self.ref_btn.setView(listview)
+        for i in range(self.num_channels):
+            self.ref_btn.addItem('Channel ' + str(i+1))
+        self.ref_btn.setCurrentIndex(self.num_channels - 1)
+        self.ref_btn.currentIndexChanged.connect(self._change_ref)
+        self.ref_btn.setMinimumWidth(100)
+        line.addWidget(self.ref_btn)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        options.addLayout(line)
+        label = QtWidgets.QLabel('Define ROI:', self)
+        line.addWidget(label)
+        self.draw_btn = QtWidgets.QPushButton('Draw ROI', self)
+        self.draw_btn.setCheckable(True)
+        self.draw_btn.toggled.connect(self._draw_roi)
+        line.addWidget(self.draw_btn)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        options.addLayout(line)
+        label = QtWidgets.QLabel('Noise threshold:')
+        line.addWidget(label)
+        self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.peaks_t1.setRange(0,200) # 10 times the actual value to allow floats
+        self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t1.setValue(100)
+        self.peaks_t1.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
+        self.peaks_t1_label = QtWidgets.QDoubleSpinBox(self)
+        self.peaks_t1_label.setRange(0,20)
+        self.peaks_t1_label.setDecimals(1)
+        self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
+        self.peaks_t1_label.setValue(10)
+        line.addWidget(self.peaks_t1)
+        line.addWidget(self.peaks_t1_label)
+        line.addStretch(1)
+        line = QtWidgets.QHBoxLayout()
+        options.addLayout(line)
+        self.peaks_t2 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.peaks_t2.setRange(0,100)
+        self.peaks_t2.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.peaks_t2.valueChanged.connect(lambda state, param=0: self._set_plt_threshold(param, state))
+        self.peaks_t2_label = QtWidgets.QSpinBox(self)
+        self.peaks_t2_label.setRange(0,100)
+        self.peaks_t2_label.editingFinished.connect(lambda param=1: self._set_plt_threshold(param))
+        self.peaks_t2.setValue(10)
+
+        label = QtWidgets.QLabel('Min pixel/peak:')
+        line.addWidget(label)
+        line.addWidget(self.peaks_t2)
+        line.addWidget(self.peaks_t2_label)
+        line.addStretch(1)
+
+    def _update(self):
+        self._calc_color_channels()
+        #self.peak_imview.setImage(self.color_data, levels=levels)
+        self.peak_imview.setImage(self.color_data)
+        vr = self.peak_imview.getImageItem().getViewBox().targetRect()
+        self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    def _calc_color_channels(self):
+        self.color_data = np.zeros((1,) + self.data[:, :, 0].shape + (3,))
+        idx = self.ref_btn.currentIndex()
+        my_channel = self.data[:, :, idx]
+        my_channel_rgb = np.repeat(my_channel[:, :, np.newaxis], 3, axis=2)
+        rgb = tuple([int(self.fm._colors[idx][1 + 2 * c:3 + 2 * c], 16) / 255. for c in range(3)])
+        self.color_data[0, :, :, :] = my_channel_rgb * rgb
+
+    def _calc_max_proj(self):
+        if self.fm.ops.max_proj_data is None:
+            self.fm.ops.calc_max_proj_data()
+        self.data = self.fm.ops.max_proj_data
+        self._update()
+
+    def _change_ref(self, state=None):
+        num = self.ref_btn.currentIndex()
+        self.fm.ops._peak_reference = num
+        self.fm.ops.orig_tf_peak_slices = None
+        self.fm.ops.tf_peak_slices = None
+        self.fm.ops.peak_slices = None
+        self.fm.ops._color_matrices = []
+        [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
+        self._update()
+
+    def _imview_clicked(self, event):
+        if event.button() == QtCore.Qt.RightButton:
+            event.ignore()
+            return
+
+
+
+    def _draw_roi(self, checked):
+        if checked:
+            print('Draw ROI in the image!')
+        else:
+
+
+    def _set_noise_threshold(self, param, state=None):
+        if param == 0:
+            float_value = float(self.peaks_t1.value()) / 10
+            self.peaks_t1_label.blockSignals(True)
+            self.peaks_t1_label.setValue(float_value)
+            self.peaks_t1_label.blockSignals(False)
+        else:
+            float_value = float(self.peaks_t1_label.value())
+            self.peaks_t1.blockSignals(True)
+            self.peaks_t1.setValue(10*float_value)
+            self.peaks_t1.blockSignals(False)
+            self.peaks_t1_label.clearFocus()
+
+        if self.fm.ops is not None:
+            self.fm.ops.threshold = float_value
+            self.fm.ops.orig_tf_peak_slices = None
+            self.fm.ops.tf_peak_slices = None
+            self.fm.ops.peak_slices = None
+            self.fm.ops._color_matrices = []
+            [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
+
+    def _set_plt_threshold(self, param, state=None):
+        if param == 0:
+            value = self.peaks_t2.value()
+            self.peaks_t2_label.blockSignals(True)
+            self.peaks_t2_label.setValue(value)
+            self.peaks_t2_label.blockSignals(False)
+        else:
+            value = self.peaks_t2_label.value()
+            self.peaks_t2.blockSignals(True)
+            self.peaks_t2.setValue(value)
+            self.peaks_t2.blockSignals(False)
+            self.peaks_t2_label.clearFocus()
+        if self.fm.ops is not None:
+            self.fm.ops.pixel_lower_threshold = value
+            self.fm.ops.orig_tf_peak_slices = None
+            self.fm.ops.tf_peak_slices = None
+            self.fm.ops.peak_slices = None
+            self.fm.ops._color_matrices = []
+            [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
+
 
 class Merge(QtGui.QMainWindow):
     def __init__(self, parent):

@@ -10,7 +10,7 @@ from .em_controls import EMControls
 from .fm_controls import FMControls
 from .fib_controls import FIBControls
 from .project import Project
-from .popup import Merge, Scatter, Convergence
+from .popup import Merge, Scatter, Convergence, Peak_Params
 from . import utils
 
 warnings.simplefilter('ignore', category=FutureWarning)
@@ -114,6 +114,7 @@ class GUI(QtWidgets.QMainWindow):
         # Connect controllers
         self.fmcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
         self.fmcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
+        self.fmcontrols.set_params_btn.clicked.connect(lambda: self._show_peak_params())
         self.emcontrols.other = self.fmcontrols
         self.fibcontrols.other = self.fmcontrols
         self.fmcontrols.other = self.emcontrols
@@ -123,6 +124,7 @@ class GUI(QtWidgets.QMainWindow):
         self.fib_popup = None
         self.scatter = None
         self.convergence = None
+        self.peak_params = None
         self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self)
         self.project._project_folder = self.settings.value('project_folder', defaultValue=os.getcwd())
         # Menu Bar
@@ -261,6 +263,10 @@ class GUI(QtWidgets.QMainWindow):
             self.convergence.show()
         else:
             print('To use this feature, you have to use at least 10 points for the refinement!')
+
+    def _show_peak_params(self):
+        self.peak_params = Peak_Params(self, self.fmcontrols)
+        self.peak_params.show()
 
     @utils.wait_cursor
     def merge(self, project=None):

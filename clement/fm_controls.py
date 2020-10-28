@@ -95,53 +95,13 @@ class FMControls(BaseControls):
         # ---- Peak finding
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Set Peak finding parameters:', self)
-        line.addWidget(label)
-        self.ref_btn = QtWidgets.QComboBox()
-        listview = QtWidgets.QListView(self)
-        self.ref_btn.setView(listview)
-        self.ref_btn.currentIndexChanged.connect(self._change_ref)
-        self.ref_btn.setMinimumWidth(100)
-        line.addWidget(self.ref_btn)
-        label = QtWidgets.QLabel('Noise threshold:')
-        line.addWidget(label)
-        self.peaks_t1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.peaks_t1.setRange(0,200) # 10 times the actual value to allow floats
-        self.peaks_t1.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.peaks_t1.setValue(100)
-        self.peaks_t1.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
-        self.peaks_t1_label = QtWidgets.QDoubleSpinBox(self)
-        self.peaks_t1_label.setRange(0,20)
-        self.peaks_t1_label.setDecimals(1)
-        self.peaks_t1_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
-        self.peaks_t1_label.setValue(10)
-        line.addWidget(self.peaks_t1)
-        line.addWidget(self.peaks_t1_label)
-
-        self.peaks_t2 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.peaks_t2.setRange(0,100)
-        self.peaks_t2.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.peaks_t2.valueChanged.connect(lambda state, param=0: self._set_plt_threshold(param, state))
-        self.peaks_t2_label = QtWidgets.QSpinBox(self)
-        self.peaks_t2_label.setRange(0,100)
-        self.peaks_t2_label.editingFinished.connect(lambda param=1: self._set_plt_threshold(param))
-        self.peaks_t2.setValue(10)
-
-        self.peaks_t1.setEnabled(False)
-        self.peaks_t1_label.setEnabled(False)
-        self.peaks_t2.setEnabled(False)
-        self.peaks_t2_label.setEnabled(False)
-
-        label = QtWidgets.QLabel('Min pixel/peak:')
-        line.addWidget(label)
-        line.addWidget(self.peaks_t2)
-        line.addWidget(self.peaks_t2_label)
-        line.addStretch(1)
-
-        line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Peak finding:', self)
         line.addWidget(label)
+
+        self.set_params_btn = QtWidgets.QPushButton('Set peak finding parameters', self)
+        self.set_params_btn.setEnabled(False)
+
         self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
         self.peak_btn.setCheckable(True)
         self.peak_btn.toggled.connect(self._find_peaks)
@@ -154,6 +114,7 @@ class FMControls(BaseControls):
         self.align_btn.setEnabled(False)
         self.action_btns = []
 
+        line.addWidget(self.set_params_btn)
         line.addWidget(self.peak_btn)
         line.addWidget(self.align_btn)
         line.addStretch(1)
@@ -373,8 +334,6 @@ class FMControls(BaseControls):
                 self.color_btns.append(color_btn)
                 self.channel_line.addWidget(color_btn)
                 self.channel_line.addWidget(channel_btn)
-                self.ref_btn.addItem('Channel ' + str(i))
-                self.point_ref_btn.addItem('Channel ' + str(i))
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
 
@@ -387,25 +346,19 @@ class FMControls(BaseControls):
                 self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
 
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))
-            self.ref_btn.setCurrentIndex(self.ops.num_channels - 1)
-            self.point_ref_btn.setCurrentIndex(self.ops.num_channels - 1)
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.max_proj_btn.setChecked(True)
             self.slice_select_btn.setEnabled(True)
             self.align_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
+            self.set_params_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
 
-            self.peaks_t1.setEnabled(True)
-            self.peaks_t1_label.setEnabled(True)
-            self.peaks_t2.setEnabled(True)
-            self.peaks_t2_label.setEnabled(True)
-
-            self.ops.threshold = self.peaks_t1_label.value()
-            self.ops.pixel_lower_threshold = self.peaks_t2_label.value()
+            #self.ops.threshold = self.peaks_t1_label.value()
+            #self.ops.pixel_lower_threshold = self.peaks_t2_label.value()
 
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
@@ -536,63 +489,12 @@ class FMControls(BaseControls):
         self._current_slice = num
         self.slice_select_btn.clearFocus()
 
-    def _change_ref(self, state=None):
-        num = self.ref_btn.currentIndex()
-        if num == self.ops._peak_reference:
-            return
-        self.ops._peak_reference = num
-        self.ops.orig_tf_peak_slices = None
-        self.ops.tf_peak_slices = None
-        self.ops.peak_slices = None
-        self.ops._color_matrices = []
-        [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
     def _change_point_ref(self):
         num = self.point_ref_btn.currentIndex()
         if num != self.ops._point_reference:
             self.ops._point_reference = num
 
-    def _set_noise_threshold(self, param, state=None):
-        if param == 0:
-            float_value = float(self.peaks_t1.value()) / 10
-            self.peaks_t1_label.blockSignals(True)
-            self.peaks_t1_label.setValue(float_value)
-            self.peaks_t1_label.blockSignals(False)
-        else:
-            float_value = float(self.peaks_t1_label.value())
-            self.peaks_t1.blockSignals(True)
-            self.peaks_t1.setValue(10*float_value)
-            self.peaks_t1.blockSignals(False)
-            self.peaks_t1_label.clearFocus()
-
-
-        if self.ops is not None:
-            self.ops.threshold = float_value
-            self.ops.orig_tf_peak_slices = None
-            self.ops.tf_peak_slices = None
-            self.ops.peak_slices = None
-            self.ops._color_matrices = []
-            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
-
-    def _set_plt_threshold(self, param, state=None):
-        if param == 0:
-            value = self.peaks_t2.value()
-            self.peaks_t2_label.blockSignals(True)
-            self.peaks_t2_label.setValue(value)
-            self.peaks_t2_label.blockSignals(False)
-        else:
-            value = self.peaks_t2_label.value()
-            self.peaks_t2.blockSignals(True)
-            self.peaks_t2.setValue(value)
-            self.peaks_t2.blockSignals(False)
-            self.peaks_t2_label.clearFocus()
-        if self.ops is not None:
-            self.ops.pixel_lower_threshold = value
-            self.ops.orig_tf_peak_slices = None
-            self.ops.tf_peak_slices = None
-            self.ops.peak_slices = None
-            self.ops._color_matrices = []
-            [self.ops._color_matrices.append(np.identity(3)) for i in range(self.ops.num_channels)]
 
     @utils.wait_cursor
     def _find_peaks(self, state=None):
@@ -789,7 +691,6 @@ class FMControls(BaseControls):
 
         for i in range(len(self.action_btns)):
             self.align_menu.removeAction(self.action_btns[i])
-            self.ref_btn.removeItem(0)
             self.point_ref_btn.removeItem(0)
         self.action_btns = []
         self.align_btn.setEnabled(False)
@@ -814,11 +715,7 @@ class FMControls(BaseControls):
         self.transpose.setChecked(False)
         self.rotate.setChecked(False)
 
-
-        self.peaks_t1.setEnabled(False)
-        self.peaks_t1_label.setEnabled(False)
-        self.peaks_t2.setEnabled(False)
-        self.peaks_t2_label.setEnabled(False)
+        self.set_params_btn.setEnabled(False)
 
         self.merge_btn.setEnabled(False)
 
