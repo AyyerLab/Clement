@@ -272,14 +272,14 @@ class FMControls(BaseControls):
             self.peak_btn.setChecked(False)
             self.peak_btn.setChecked(True)
         if self.ops._show_mapping:
-            vr = self.imview.getImageItem().getViewBox().targetRect()
             self.imview.setImage(hsv2rgb(self.ops.data))
+            vr = self.imview.getImageItem().getViewBox().targetRect()
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
         else:
             self._calc_color_channels()
-            vr = self.imview.getImageItem().getViewBox().targetRect()
             levels = self.imview.getHistogramWidget().item.getLevels()
             self.imview.setImage(self.color_data, levels=levels)
+            vr = self.imview.getImageItem().getViewBox().targetRect()
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
