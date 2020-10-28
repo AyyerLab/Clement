@@ -210,7 +210,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.sigma_btn = QtWidgets.QDoubleSpinBox(self)
         self.sigma_btn.setRange(0,20)
         self.sigma_btn.setDecimals(1)
-        self.sigma_btn.setValue(5)
+        self.sigma_btn.setValue(10)
         self.background_btn = QtWidgets.QCheckBox('Subtract background', self)
         self.background_btn.stateChanged.connect(self._subtract_background)
         line.addWidget(self.sigma_btn)
@@ -462,6 +462,7 @@ class Peak_Params(QtWidgets.QMainWindow):
 
     def _save(self):
         if self.fm.ops is not None:
+            self.fm.ops.adjusted_params = True
             self.fm.ops.background_correction = self.background_correction
             self.fm.ops.sigma = self.sigma_btn.value()
             self.fm.ops.threshold = self.t_noise_label.value()

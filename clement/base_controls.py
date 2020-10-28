@@ -515,6 +515,9 @@ class BaseControls(QtWidgets.QWidget):
         if self.ops is None or self.other.ops is None:
             print('Select both data first')
             return
+        if self.ops.adjusted_params == False:
+            print('You have to adjust and save the peak finding parameters first!')
+            return
 
         condition = False
         if hasattr(self, 'fib') and not self.fib:

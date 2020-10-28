@@ -207,9 +207,10 @@ class GUI(QtWidgets.QMainWindow):
                 if self.fmcontrols.ops.points is not None and self.emcontrols.ops.points is not None:
                     self.fmcontrols._calc_tr_matrices()
             self.fibcontrols.fib = True
-            show_grid = self.emcontrols.show_grid_btn.isChecked()
-            self.em_imview.setCurrentIndex(1)
-            self.fibcontrols.show_grid_btn.setChecked(show_grid)
+            if self.fibcontrols.ops is not None:
+                show_grid = self.emcontrols.show_grid_btn.isChecked()
+                self.em_imview.setCurrentIndex(1)
+                self.fibcontrols.show_grid_btn.setChecked(show_grid)
             if self.fibcontrols._refined:
                 self.fmcontrols.undo_refine_btn.setEnabled(True)
             else:

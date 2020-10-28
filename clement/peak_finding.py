@@ -22,6 +22,7 @@ class Peak_finding():
         self.roi_min_size = 10
         self.peaks_test = None
         self.background_correction = False
+        self.adjusted_params = False
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None, test=False):
         start = time.time()

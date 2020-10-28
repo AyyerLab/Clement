@@ -338,6 +338,7 @@ class FMControls(BaseControls):
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
 
+            self.point_ref_btn.setCurrentIndex(self.ops.num_channels-1)
             self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
             self.overlay_btn.stateChanged.connect(self._show_overlay)
             self.channel_line.addWidget(self.overlay_btn)
