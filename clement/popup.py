@@ -381,6 +381,8 @@ class Peak_Params(QtWidgets.QMainWindow):
     def _reset_roi(self):
         self.data_roi = self.data
         self.orig_data_roi = np.copy(self.data_roi)
+        if self.background_correction:
+            self._subtract_background(checked=True)
         self._update()
 
     def _set_noise_threshold(self, param, state=None):

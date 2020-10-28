@@ -334,6 +334,7 @@ class FMControls(BaseControls):
                 self.color_btns.append(color_btn)
                 self.channel_line.addWidget(color_btn)
                 self.channel_line.addWidget(channel_btn)
+                self.point_ref_btn.addItem('Channel ' + str(i))
                 self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
                 self.align_menu.addAction(self.action_btns[i-1])
 

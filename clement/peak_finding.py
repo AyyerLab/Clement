@@ -219,6 +219,7 @@ class Peak_finding():
         z_avg = z_shifted.mean(0)
         try:
             popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, z_profile.shape[1], 1])
+            print('Std z fit: ', np.sqrt(pcov[0,0]), np.sqrt(pcov[1,1]))
             gauss_stat = lambda x, a, mu: a * np.exp(-(x - mu) ** 2 / (2 * popt[2] ** 2))
             if local:
                 return popt[1] - shifts[-1]
