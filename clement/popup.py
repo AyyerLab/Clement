@@ -165,9 +165,15 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.peak_imview.scene.sigMouseClicked.connect(self._imview_clicked)
         layout.addWidget(self.peak_imview)
         # Options
+        hlayout = QtWidgets.QHBoxLayout()
+        layout.addLayout(hlayout)
         options = QtWidgets.QVBoxLayout()
         options.setContentsMargins(4, 0, 4, 4)
-        layout.addLayout(options)
+        hlayout.addLayout(options)
+        align_options = QtWidgets.QVBoxLayout()
+        align_options.setContentsMargins(4, 0, 4, 4)
+        hlayout.addLayout(align_options)
+
         line = QtWidgets.QHBoxLayout()
         options.addLayout(line)
         label = QtWidgets.QLabel('Set Peak finding parameters:', self)
@@ -178,15 +184,15 @@ class Peak_Params(QtWidgets.QMainWindow):
         options.addLayout(line)
         label = QtWidgets.QLabel('Select channel:', self)
         line.addWidget(label)
-        self.ref_btn = QtWidgets.QComboBox()
+        self.peak_channel_btn = QtWidgets.QComboBox()
         listview = QtWidgets.QListView(self)
-        self.ref_btn.setView(listview)
+        self.peak_channel_btn.setView(listview)
         for i in range(self.num_channels):
-            self.ref_btn.addItem('Channel ' + str(i+1))
-        self.ref_btn.setCurrentIndex(self.num_channels - 1)
-        self.ref_btn.currentIndexChanged.connect(self._change_ref)
-        self.ref_btn.setMinimumWidth(100)
-        line.addWidget(self.ref_btn)
+            self.peak_channel_btn.addItem('Channel ' + str(i+1))
+        self.peak_channel_btn.setCurrentIndex(self.num_channels - 1)
+        self.peak_channel_btn.currentIndexChanged.connect(self._change_ref)
+        self.peak_channel_btn.setMinimumWidth(100)
+        line.addWidget(self.peak_channel_btn)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -205,6 +211,8 @@ class Peak_Params(QtWidgets.QMainWindow):
         line = QtWidgets.QHBoxLayout()
         options.addLayout(line)
         label = QtWidgets.QLabel('Background correction:', self)
+        line.addWidget(label)
+        label = QtWidgets.QLabel('Sigma:', self)
         line.addWidget(label)
         self.sigma_btn = QtWidgets.QDoubleSpinBox(self)
         self.sigma_btn.setRange(0,20)
@@ -291,7 +299,48 @@ class Peak_Params(QtWidgets.QMainWindow):
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
-        options.addLayout(line)
+        align_options.addLayout(line)
+        label = QtWidgets.QLabel('Align color channels:')
+        line.addWidget(label)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        align_options.addLayout(line)
+        label = QtWidgets.QLabel('Select reference channel:', self)
+        line.addWidget(label)
+        self.ref_btn = QtWidgets.QComboBox()
+        listview = QtWidgets.QListView(self)
+        self.ref_btn.setView(listview)
+        for i in range(self.num_channels):
+            self.ref_btn.addItem('Channel ' + str(i+1))
+        self.ref_btn.setCurrentIndex(self.num_channels - 1)
+        self.ref_btn.currentIndexChanged.connect(self._change_ref)
+        self.ref_btn.setMinimumWidth(100)
+        line.addWidget(self.ref_btn)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        align_options.addLayout(line)
+        label = QtWidgets.QLabel('Select channel:', self)
+        line.addWidget(label)
+        self.align_btn = QtWidgets.QPushButton('---Align channels---')
+        self.align_menu = QtGui.QMenu()
+        self.align_btn.setMenu(self.align_menu)
+        self.align_btn.setMinimumWidth(150)
+        self.action_btns = []
+
+        for i in range(self.num_channels):
+            self.action_btns.append(QtGui.QAction('Channel ' + str(i+1), self.align_menu, checkable=True))
+            self.align_menu.addAction(self.action_btns[i])
+            self.action_btns[i].toggled.connect(lambda state, i=i: self.parent.fmcontrols._align_colors(i, state))
+
+        line.addWidget(self.align_btn)
+        line.addStretch(1)
+        align_options.setAlignment(QtCore.Qt.AlignTop)
+
+        line = QtWidgets.QHBoxLayout()
+        line.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(line)
         line.addStretch(1)
         self.save_btn = QtWidgets.QPushButton('Save and close', self)
         self.save_btn.clicked.connect(self._save)
@@ -304,7 +353,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _calc_color_channels(self):
-        idx = self.ref_btn.currentIndex()
+        idx = self.peak_channel_btn.currentIndex()
         if self.data_roi is None:
             self.color_data = np.zeros((1,) + self.data[:, :, 0].shape + (3,))
             my_channel = self.data[:, :, idx]
@@ -337,7 +386,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self._update()
 
     def _change_ref(self, state=None):
-        num = self.ref_btn.currentIndex()
+        num = self.peak_channel_btn.currentIndex()
         self.fm.ops._peak_reference = num
         self.fm.ops.orig_tf_peak_slices = None
         self.fm.ops.tf_peak_slices = None
@@ -446,8 +495,8 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.pixel_lower_threshold = self.plt.value()
         self.fm.ops.pixel_upper_threshold = self.put.value()
         self.fm.ops.flood_steps = self.flood_steps.value()
-        self.fm.ops._peak_reference = self.ref_btn.currentIndex()
-        self.fm.ops.peak_finding(self.data_roi[:,:,self.ref_btn.currentIndex()], transformed=False, curr_slice=0,
+        self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
+        self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False, curr_slice=0,
                                  test=True)
         peaks_2d = self.fm.ops.peaks_test
         if len(peaks_2d.shape) > 0:
@@ -468,16 +517,11 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.pixel_lower_threshold = self.plt.value()
             self.fm.ops.pixel_upper_threshold = self.put.value()
             self.fm.ops.flood_steps = self.flood_steps.value()
-            self.fm.ops._peak_reference = self.ref_btn.currentIndex()
-            self.parent.fmcontrols.point_ref_btn.setCurrentIndex(self.ref_btn.currentIndex())
+            self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
+            self.parent.fmcontrols.point_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
             self.fm.ops.orig_tf_peak_slices = None
             self.fm.ops.tf_peak_slices = None
             self.fm.ops.peak_slices = None
-            for i in range(self.num_channels):
-                self.parent.fmcontrols.action_btns[i].setChecked(False)
-            self.parent.fmcontrols.action_btns[self.ref_btn.currentIndex()].setChecked(True)
-            self.fm.ops._color_matrices = []
-            [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
         self.close()
 
 class Merge(QtGui.QMainWindow):

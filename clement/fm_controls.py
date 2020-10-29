@@ -107,16 +107,8 @@ class FMControls(BaseControls):
         self.peak_btn.toggled.connect(self._find_peaks)
         self.peak_btn.setEnabled(False)
 
-        self.align_btn = QtWidgets.QPushButton('---Align channels---')
-        self.align_menu = QtGui.QMenu()
-        self.align_btn.setMenu(self.align_menu)
-        self.align_btn.setMinimumWidth(150)
-        self.align_btn.setEnabled(False)
-        self.action_btns = []
-
         line.addWidget(self.set_params_btn)
         line.addWidget(self.peak_btn)
-        line.addWidget(self.align_btn)
         line.addStretch(1)
 
         # 3D mapping
@@ -335,8 +327,6 @@ class FMControls(BaseControls):
                 self.channel_line.addWidget(color_btn)
                 self.channel_line.addWidget(channel_btn)
                 self.point_ref_btn.addItem('Channel ' + str(i))
-                self.action_btns.append(QtGui.QAction('Channel ' + str(i), self.align_menu, checkable=True))
-                self.align_menu.addAction(self.action_btns[i-1])
 
             self.point_ref_btn.setCurrentIndex(self.ops.num_channels-1)
             self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
@@ -344,15 +334,11 @@ class FMControls(BaseControls):
             self.channel_line.addWidget(self.overlay_btn)
             self.channel_line.addStretch(1)
 
-            for i in range(1, self.ops.num_channels + 1):
-                self.action_btns[i-1].toggled.connect(lambda state, i=i: self._align_colors(i-1, state))
-
             self.imview.setImage(self.ops.data, levels=(self.ops.data.min(), self.ops.data.mean() * 2))
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.max_proj_btn.setChecked(True)
             self.slice_select_btn.setEnabled(True)
-            self.align_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
             self.set_params_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
@@ -610,7 +596,7 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor
     def _mapping(self, state=None):
-        self.align_btn.setEnabled(not self.map_btn.isChecked())
+        #self.align_btn.setEnabled(not self.map_btn.isChecked())
         self.ops.calc_mapping()
         self._update_imview()
         if self.remove_tilt_btn.isChecked():
@@ -686,16 +672,16 @@ class FMControls(BaseControls):
         self.clearLayout(self.channel_line)
         label = QtWidgets.QLabel('Show color channels:', self)
         self.channel_line.addWidget(label)
+
+        for i in range(len(self.channel_btns)):
+        #    self.align_menu.removeAction(self.action_btns[i])
+            self.point_ref_btn.removeItem(0)
+
         self.channel_btns = []
         self.color_btns = []
 
         self.max_proj_btn.setChecked(False)
 
-        for i in range(len(self.action_btns)):
-            self.align_menu.removeAction(self.action_btns[i])
-            self.point_ref_btn.removeItem(0)
-        self.action_btns = []
-        self.align_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
         self.rot_transform_btn.setEnabled(False)
