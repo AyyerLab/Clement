@@ -154,6 +154,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self._calc_max_proj()
 
     def _init_ui(self):
+        print('huhu')
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -190,7 +191,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         for i in range(self.num_channels):
             self.peak_channel_btn.addItem('Channel ' + str(i+1))
         self.peak_channel_btn.setCurrentIndex(self.num_channels - 1)
-        self.peak_channel_btn.currentIndexChanged.connect(self._change_ref)
+        self.peak_channel_btn.currentIndexChanged.connect(self._change_peak_ref)
         self.peak_channel_btn.setMinimumWidth(100)
         line.addWidget(self.peak_channel_btn)
         line.addStretch(1)
@@ -292,7 +293,7 @@ class Peak_Params(QtWidgets.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         options.addLayout(line)
-        self.peak_btn = QtWidgets.QPushButton('Show peaks', self)
+        self.peak_btn = QtWidgets.QPushButton('Find peaks', self)
         self.peak_btn.setCheckable(True)
         self.peak_btn.toggled.connect(self._show_peaks)
         line.addWidget(self.peak_btn)
@@ -332,7 +333,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         for i in range(self.num_channels):
             self.action_btns.append(QtGui.QAction('Channel ' + str(i+1), self.align_menu, checkable=True))
             self.align_menu.addAction(self.action_btns[i])
-            self.action_btns[i].toggled.connect(lambda state, i=i: self.parent.fmcontrols._align_colors(i, state))
+            self.action_btns[i].toggled.connect(lambda state, i=i: self.fm._align_colors(i, state))
 
         line.addWidget(self.align_btn)
         line.addStretch(1)
@@ -368,8 +369,8 @@ class Peak_Params(QtWidgets.QMainWindow):
         if self.fm.ops.max_proj_data is None:
             self.fm.ops.calc_max_proj_data()
         self.data = self.fm.ops.max_proj_data
-        self.data /= self.data.max()
-        self.data *= self.fm.ops.norm_factor
+        #self.data /= self.data.max()
+        #self.data *= self.fm.ops.norm_factor
         if self.data_roi is None:
             self.data_roi = self.data
             self.orig_data_roi = np.copy(self.data_roi)
@@ -385,15 +386,13 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.data_roi = self.orig_data_roi
         self._update()
 
+    def _change_peak_ref(self, state=None):
+        self._update()
+
     def _change_ref(self, state=None):
-        num = self.peak_channel_btn.currentIndex()
-        self.fm.ops._peak_reference = num
-        self.fm.ops.orig_tf_peak_slices = None
-        self.fm.ops.tf_peak_slices = None
-        self.fm.ops.peak_slices = None
+        [btn.setChecked(False) for btn in self.action_btns]
         self.fm.ops._color_matrices = []
         [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
-        self._update()
 
     def _imview_clicked(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -491,14 +490,18 @@ class Peak_Params(QtWidgets.QMainWindow):
             [self.peak_imview.removeItem(point) for point in self.peaks]
             self.peaks = []
             return
+
+        self._reset_peaks()
+
         self.fm.ops.threshold = self.t_noise_label.value()
         self.fm.ops.pixel_lower_threshold = self.plt.value()
         self.fm.ops.pixel_upper_threshold = self.put.value()
         self.fm.ops.flood_steps = self.flood_steps.value()
         self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
-        self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False, curr_slice=0,
-                                 test=True)
-        peaks_2d = self.fm.ops.peaks_test
+        self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
+                                 curr_slice=None)
+
+        peaks_2d = self.fm.ops.peak_slices[-1]
         if len(peaks_2d.shape) > 0:
             for i in range(len(peaks_2d)):
                 pos = QtCore.QPointF(peaks_2d[i][0] - self.fm.size / 2, peaks_2d[i][1] - self.fm.size / 2)
@@ -507,6 +510,11 @@ class Peak_Params(QtWidgets.QMainWindow):
                 point_obj.removeHandle(0)
                 self.peak_imview.addItem(point_obj)
                 self.peaks.append(point_obj)
+
+        self.fm.ops.adjusted_params = True
+
+    def _reset_peaks(self):
+        self.fm.ops.reset_peaks()
 
     def _save(self):
         if self.fm.ops is not None:
@@ -517,11 +525,13 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.pixel_lower_threshold = self.plt.value()
             self.fm.ops.pixel_upper_threshold = self.put.value()
             self.fm.ops.flood_steps = self.flood_steps.value()
-            self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
-            self.parent.fmcontrols.point_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
+            self.fm.point_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
             self.fm.ops.orig_tf_peak_slices = None
             self.fm.ops.tf_peak_slices = None
             self.fm.ops.peak_slices = None
+            self.fm.ops.tf_peaks_z = None
+            self.fm.ops.peaks_z_std = []
+            self.fm.ops.peaks_z = None
         self.close()
 
 class Merge(QtGui.QMainWindow):
@@ -740,8 +750,13 @@ class Merge(QtGui.QMainWindow):
             x = self._clicked_points_popup[-1].pos().x()
             y = self._clicked_points_popup[-1].pos().y()
             point = np.array([x+self.size/2, y+self.size/2])
-            #ind = self.ops.check_peak_index(point, self.size)
-            z = self.parent.fm.peaks_z_std[-1] * np.abs(self.parent.em.z_shift[1])
+            idx = self.parent.fmcontrols._z_indices[-1]
+            if idx is not None:
+                print('Index found!')
+            else:
+                print('Index not found!')
+                idx = -1
+            z = self.parent.fm.peaks_z_std[idx] * np.abs(self.parent.em.z_shift[1])
             err = pg.ErrorBarItem(x=np.array([point[0]]), y=np.array([point[1]]), height=2*z, beam=2)
             self.error_bars.append(err)
             self.imview_popup.addItem(err)
@@ -750,8 +765,14 @@ class Merge(QtGui.QMainWindow):
                 x = self._clicked_points_popup[i].pos().x()
                 y = self._clicked_points_popup[i].pos().y()
                 point = np.array([x + self.size / 2, y + self.size / 2])
-                z = self.parent.fm.peaks_z_std[i] * np.abs(self.parent.em.z_shift[1])
-                err = pg.ErrorBarItem(x=np.array([x]), y=np.array([y]), height=2*z, beam=2)
+                idx = self.parent.fmcontrols._z_indices[-len(self._clicked_points_popup)+i]
+                if idx is not None:
+                    print('Index found!')
+                else:
+                    print('Index not found!')
+                    idx = -1
+                z = self.parent.fm.peaks_z_std[idx] * np.abs(self.parent.em.z_shift[1])
+                err = pg.ErrorBarItem(x=np.array([point[0]]), y=np.array([point[1]]), height=2*z, beam=2)
                 self.error_bars.append(err)
                 self.imview_popup.addItem(err)
 

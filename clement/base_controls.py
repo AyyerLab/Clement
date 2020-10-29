@@ -61,6 +61,7 @@ class BaseControls(QtWidgets.QWidget):
         self._points_corr_z = []
         self._orig_points_corr = []
         self._points_corr_indices = []
+        self._z_indices = []
         self._refined = False
         self._err = [None, None]
         self._std = [[None, None], [None, None]]
@@ -222,7 +223,8 @@ class BaseControls(QtWidgets.QWidget):
                     return
                 elif ind is not None:
                     peaks = self.ops.tf_peak_slices[-1]
-                z = self.ops.calc_z(ind, point, self.ops._point_reference)
+                z = self.ops.calc_z(ind, point, self.point_ref_btn.currentIndex())
+                self._z_indices.append(ind)
                 if z is None:
                     print('z is None, something went wrong here... Try another bead!')
                     return
@@ -517,6 +519,7 @@ class BaseControls(QtWidgets.QWidget):
             return
         if self.ops.adjusted_params == False:
             print('You have to adjust and save the peak finding parameters first!')
+            self.select_btn.setChecked(False)
             return
 
         condition = False
@@ -553,19 +556,14 @@ class BaseControls(QtWidgets.QWidget):
             print('Select points of interest on %s image' % self.tag)
             for i in range(len(self._points_corr)):
                 self._remove_correlated_points(self._points_corr[0])
+            self._z_indices = []
             self.counter = 0
             if self.other.fib:
                 self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
                 self.other.tr_matrices = self.other.ops.get_fib_transform(
                     self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
 
-                self.ops.load_channel(ind=self.ops._point_reference)
-                if not self.other._refined:
-                    self.peak_btn.setChecked(True)
-                    if self.ops.tf_peaks_z is None:
-                        self.ops.fit_z(self.ops.channel, transformed=True, tf_matrix=self.ops.tf_matrix,
-                                       flips=self.flips, shape=self.ops.data.shape[:-1])
-                        self.ops.clear_channel()
+                self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             else:
                 src_sorted = np.array(
                     sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -750,7 +748,7 @@ class BaseControls(QtWidgets.QWidget):
                     self.other._orig_points_corr.append([pos[0], pos[1]])
 
                     if self.other.fib:
-                        z = self.ops.calc_z(ind, self._peaks[ind], self.ops._point_reference)
+                        z = self.ops.calc_z(ind, self._peaks[ind], self.point_ref_btn.currentIndex())
                         self._points_corr_z.append(z)
 
         if len(self._points_corr) < 4:
@@ -988,18 +986,12 @@ class BaseControls(QtWidgets.QWidget):
             self.show_peaks_btn.setChecked(False)
             return
 
-        if self.fib and self.other.ops.tf_peaks_z is None:
+        if self.fib and self.tr_matrices is None:
             # Check if Z-fitting has been done for FM peaks in case of FIB image
             # If not, do the Z-fitting
             print('Fitting Z-positions of FM peaks')
             self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
             self.tr_matrices = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
-
-            self.other.ops.load_channel(ind=self.other.ops._point_reference)
-
-            self.other.ops.fit_z(self.other.ops.channel, transformed=True, tf_matrix=self.other.ops.tf_matrix,
-                           flips=self.other.flips, shape=self.other.ops.data.shape[:-1])
-            self.other.ops.clear_channel()
 
         if len(self.peaks) != 0:
             self.peaks = []

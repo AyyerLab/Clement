@@ -266,7 +266,9 @@ class GUI(QtWidgets.QMainWindow):
             print('To use this feature, you have to use at least 10 points for the refinement!')
 
     def _show_peak_params(self):
+        self.fmcontrols.peak_btn.setChecked(False)
         self.peak_params = Peak_Params(self, self.fmcontrols)
+        self.fmcontrols.peak_controls = self.peak_params
         self.peak_params.show()
 
     @utils.wait_cursor

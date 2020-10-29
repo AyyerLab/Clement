@@ -20,23 +20,23 @@ class Peak_finding():
         self.threshold = threshold
         self.sigma = 5
         self.roi_min_size = 10
-        self.peaks_test = None
         self.background_correction = False
         self.adjusted_params = False
         self.peaks_z_std = []
         self.z_profiles = []
         self.mu = []
 
-    def peak_finding(self, im, transformed, roi=False, curr_slice=None, test=False):
+    def peak_finding(self, im, transformed, roi=False, curr_slice=None):
+        print('heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeere')
+        print(im.shape)
         start = time.time()
-        if not test:
-            if not roi:
-                if transformed:
-                    if self.tf_peak_slices is None:
-                        self.tf_peak_slices = [None] * (self.num_slices + 1)
-                else:
-                    if self.peak_slices is None:
-                        self.peak_slices = [None] * (self.num_slices + 1)
+        if not roi:
+            if transformed:
+                if self.tf_peak_slices is None:
+                    self.tf_peak_slices = [None] * (self.num_slices + 1)
+            else:
+                if self.peak_slices is None:
+                    self.peak_slices = [None] * (self.num_slices + 1)
         if self.background_correction:
             img = self.subtract_background(im)
         else:
@@ -111,21 +111,18 @@ class Peak_finding():
                 return None
         else:
             peaks_2d = np.round(coor)
-            if test:
-                self.peaks_test = np.copy(peaks_2d)
-            else:
-                if transformed:
-                    if curr_slice is None:
-                        self.tf_peak_slices[-1] = np.copy(peaks_2d)
-                    else:
-                        self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
-                    if self.orig_tf_peak_slices is None:
-                        self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+            if transformed:
+                if curr_slice is None:
+                    self.tf_peak_slices[-1] = np.copy(peaks_2d)
                 else:
-                    if curr_slice is None:
-                        self.peak_slices[-1] = np.copy(peaks_2d)
-                    else:
-                        self.peak_slices[curr_slice] = np.copy(peaks_2d)
+                    self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
+                if self.orig_tf_peak_slices is None:
+                    self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+            else:
+                if curr_slice is None:
+                    self.peak_slices[-1] = np.copy(peaks_2d)
+                else:
+                    self.peak_slices[curr_slice] = np.copy(peaks_2d)
         end = time.time()
         print('duration: ', end - start)
         print('Number of peaks found: ', peaks_2d.shape[0])
@@ -221,34 +218,10 @@ class Peak_finding():
                 if z_shifted[i, k] == 0:
                     z_shifted[i, k] = z_shifted[i, -k]
         z_avg = z_shifted.mean(0)
+        z_peak = x[z_avg > np.exp(-0.5) * z_avg.max()]
+        sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
         try:
-            z_peak = x[z_avg > np.exp(-0.5) * z_avg.max()]
-            sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
             popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, z_profile.shape[1], sigma_guess])
-            perr = np.sqrt(np.diag(pcov))[1]
-            print('Std z fit: ', perr)
-            if local:
-                self.peaks_z_std.append(perr)
-                #self.z_profiles.append(z_avg)
-                self.z_profiles.append(z_profile)
-                self.mu.append(popt[1])
-                return popt[1] - shifts[-1]
-            else:
-                gauss_stat = lambda x, a, mu: a * np.exp(-(x - mu) ** 2 / (2 * popt[2] ** 2))
-                for i in range(z_shifted.shape[0]):
-                    popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
-                    mean_values[i] = (popt_i[1] - shifts[i])
-                    perr = np.sqrt(np.diag(pcov))[1]
-                    print('Std z fit: ', perr)
-                    #self.peaks_z_std.append(perr)
-
-                if transformed:
-                    self.tf_peaks_z = np.copy(mean_values)
-                else:
-                    self.peaks_z = np.copy(mean_values)
-                no = time.time()
-                print('Duration:', no - go)
-
         except RuntimeError:
             if local:
                 print('Unable to fit z profile. Calculate argmax(z).')
@@ -257,6 +230,37 @@ class Peak_finding():
             else:
                 print('Unable to fit z profile. Contact developers!')
                 return
+
+        perr = np.sqrt(np.diag(pcov))[1]
+        print('Std z fit: ', perr)
+        if local:
+            self.peaks_z_std.append(perr)
+            self.z_profiles.append(z_profile)
+            self.mu.append(popt[1])
+            return popt[1] - shifts[-1]
+        else:
+            gauss_stat = lambda x, a, mu: a * np.exp(-(x - mu) ** 2 / (2 * popt[2] ** 2))
+            for i in range(z_shifted.shape[0]):
+                try:
+                    popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
+                    mean_values[i] = (popt_i[1] - shifts[i])
+                    perr = np.sqrt(np.diag(pcov))[1]
+                    print('Std z fit: ', perr)
+                    self.peaks_z_std.append(perr)
+                except RuntimeError:
+                    print('Unable to fit z profile. Calculate argmax(z).')
+                    print('WARNING! Calculation of the z-position might be inaccurate!')
+                    mean_values[i] = z_max[i]
+                    self.peaks_z_std.append(sigma_guess)
+
+            if transformed:
+                self.tf_peaks_z = np.copy(mean_values)
+            else:
+                self.peaks_z = np.copy(mean_values)
+            no = time.time()
+            print('Duration:', no - go)
+
+
 
     def calc_local_z(self, data, point, tf_matrix=None, flips=None, shape=None):
         point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
@@ -283,3 +287,12 @@ class Peak_finding():
         else:
             return ind_arr[0]
 
+    def reset_peaks(self):
+        self.peak_slices = None
+        self.tf_peak_slices = None
+        self.orig_tf_peak_slices = None
+        self.tf_peaks_z = None
+        self.peaks_z = None
+        self.peaks_z_std = []
+        self.z_profiles = []
+        self.mu = []

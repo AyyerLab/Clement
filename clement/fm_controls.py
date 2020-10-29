@@ -47,6 +47,7 @@ class FMControls(BaseControls):
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
         self.merge_layout = merge_layout
         self.num_slices = None
+        self.peak_controls = None
 
         self._colors = colors
         self._channels = []
@@ -199,7 +200,7 @@ class FMControls(BaseControls):
         self.point_ref_btn = QtWidgets.QComboBox()
         listview = QtWidgets.QListView(self)
         self.point_ref_btn.setView(listview)
-        self.point_ref_btn.currentIndexChanged.connect(self._change_point_ref)
+        #self.point_ref_btn.currentIndexChanged.connect(self._change_point_ref)
         self.point_ref_btn.setMinimumWidth(100)
         self.point_ref_btn.setEnabled(False)
 
@@ -478,17 +479,17 @@ class FMControls(BaseControls):
         self.slice_select_btn.clearFocus()
 
 
-    def _change_point_ref(self):
-        num = self.point_ref_btn.currentIndex()
-        if num != self.ops._point_reference:
-            self.ops._point_reference = num
-
-
     @utils.wait_cursor
     def _find_peaks(self, state=None):
         if self.ops is None:
             print('You have to select the data first!')
             return
+
+        if self.ops.adjusted_params == False:
+            print('You have to adjust and save the peak finding parameters first!')
+            self.peak_btn.setChecked(False)
+            return
+
 
         if not self.peak_btn.isChecked():
             [self.imview.removeItem(point) for point in self._peaks]
@@ -506,35 +507,38 @@ class FMControls(BaseControls):
             self.ops._update_data()
             flip = True
 
+        channel = self.peak_controls.peak_channel_btn.currentIndex()
+        print('Perform peak finding on channel: ', channel+1)
+
         if self.map_btn.isChecked():
             if self.ops._transformed:
                 if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                    self.ops.peak_finding(self.ops.tf_max_proj_data[:, :, self.ops._peak_reference],
+                    self.ops.peak_finding(self.ops.tf_max_proj_data[:, :, channel],
                                           transformed=True)
                 peaks_2d = self.ops.tf_peak_slices[-1]
             else:
                 if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                    self.ops.peak_finding(self.ops.max_proj_data[:, :, self.ops._peak_reference], transformed=False)
+                    self.ops.peak_finding(self.ops.max_proj_data[:, :, channel], transformed=False)
                 peaks_2d = self.ops.peak_slices[-1]
         else:
             if self.max_proj_btn.isChecked():
                 if self.ops._transformed:
                     if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True)
+                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=True)
                     peaks_2d = self.ops.tf_peak_slices[-1]
                 else:
                     if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False)
+                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=False)
                     peaks_2d = self.ops.peak_slices[-1]
             else:
                 if self.ops._transformed:
                     if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
-                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=True,
+                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=True,
                                               curr_slice=self._current_slice)
                     peaks_2d = self.ops.tf_peak_slices[self._current_slice]
                 else:
                     if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
-                        self.ops.peak_finding(self.ops.data[:, :, self.ops._peak_reference], transformed=False,
+                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=False,
                                               curr_slice=self._current_slice)
                     peaks_2d = self.ops.peak_slices[self._current_slice]
         if len(peaks_2d.shape) > 0:
@@ -554,11 +558,24 @@ class FMControls(BaseControls):
                 self._update_imview()
         print(self.ops.tf_peak_slices)
 
+        if not self.other._refined:
+            if self.ops.tf_peaks_z is None:
+                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
+                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
+                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=self.ops.tf_matrix,
+                               flips=self.flips, shape=self.ops.data.shape[:-1])
+
     @utils.wait_cursor
     def _align_colors(self, idx, state):
         if self.ops is None:
             print('You have to select the data first!')
             return
+
+        if self.ops.adjusted_params == False:
+            print('You have to adjust and save the peak finding parameters first!')
+            self.peak_controls.action_btns[idx].setChecked(False)
+            return
+
         if not state:
             self.ops._aligned_channels[idx] = False
             self.ops._update_data()
@@ -566,7 +583,8 @@ class FMControls(BaseControls):
             return
 
         print('Aligning color channels')
-        if idx != self.ops._peak_reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
+        reference = self.peak_controls.ref_btn.currentIndex()
+        if idx != reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
             show_transformed = False
             if not self.show_btn.isChecked():
                 self.show_btn.setChecked(True)

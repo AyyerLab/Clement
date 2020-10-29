@@ -24,8 +24,7 @@ class FM_ops(Peak_finding):
         self._show_no_tilt = False
         self._color_matrices = []
         self._aligned_channels = []
-        self._peak_reference = None
-        self._point_reference = None
+        self._channel_idx = None
 
         self.reader = None
         self.voxel_size = None
@@ -286,9 +285,9 @@ class FM_ops(Peak_finding):
         if self.hsv_map is None:
             if self.max_proj_data is None:
                 self.calc_max_proj_data()
-            argmax_map = np.argmax(self.reader.getFrame(channel=self._peak_reference, dtype='u2'), axis=0).astype('f4').transpose((1, 0))
+            argmax_map = np.argmax(self.reader.getFrame(channel=self._channel_idx, dtype='u2'), axis=0).astype('f4').transpose((1, 0))
             self.cmap = self.create_cmaps(rot=1. / 2)
-            self.hsv_map = self.colorize2d(self.max_proj_data[:, :, self._peak_reference], argmax_map, self.cmap)
+            self.hsv_map = self.colorize2d(self.max_proj_data[:, :, self._channel_idx], argmax_map, self.cmap)
 
         if self._transformed:
             if self.tf_hsv_map is None:
@@ -300,8 +299,8 @@ class FM_ops(Peak_finding):
         self._show_no_tilt = remove_tilt
         if self.hsv_map_no_tilt is None:
             if self.peak_slices is None or self.peak_slices[-1] is None:
-                self.peak_finding(self.max_proj_data[:, :, self._peak_reference], transformed=False)
-            ref = np.array(self.reader.getFrame(channel=self._peak_reference, dtype='u2').astype('f4')).transpose((2, 1, 0))
+                self.peak_finding(self.max_proj_data[:, :, self._channel_idx], transformed=False)
+            ref = np.array(self.reader.getFrame(channel=self._channel_idx, dtype='u2').astype('f4')).transpose((2, 1, 0))
             self.fit_z(ref, transformed=False)
             # fit plane to peaks with least squares to remove tilt
             peaks_2d = self.peak_slices[-1]
@@ -316,7 +315,7 @@ class FM_ops(Peak_finding):
             z_max_all = np.argmax(ref, axis=2)
 
             argmax_map_no_tilt = z_max_all - z_plane
-            self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:, :, self._peak_reference], argmax_map_no_tilt, self.cmap)
+            self.hsv_map_no_tilt = self.colorize2d(self.max_proj_data[:, :, self._channel_idx], argmax_map_no_tilt, self.cmap)
 
         if self._transformed:
             if self.tf_hsv_map_no_tilt is None:
@@ -327,7 +326,7 @@ class FM_ops(Peak_finding):
     def calc_z(self, ind, pos, channel=None):
         z = None
         if channel is None:
-            channel = self._peak_reference
+            channel = self._channel_idx
         if ind is not None:
             z = self.tf_peaks_z[ind]
         else:
@@ -349,9 +348,11 @@ class FM_ops(Peak_finding):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((2, 1, 0))
         self.channel /= self.channel.max()
         self.channel *= self.norm_factor
+        self._channel_idx = ind
         print('Load channel {}'.format(ind+1))
 
     def clear_channel(self):
+        self._channel_idx = None
         self.channel = None
 
     def estimate_alignment(self, peaks_2d, idx):
