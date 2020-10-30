@@ -4,7 +4,6 @@ from scipy.optimize import curve_fit
 import time
 from skimage import measure, morphology
 import read_lif
-import time
 
 class Peak_finding():
     def __init__(self, threshold=0, plt=10, put=200):
@@ -18,17 +17,15 @@ class Peak_finding():
         self.pixel_upper_threshold = put
         self.flood_steps = 10
         self.threshold = threshold
-        self.sigma = 5
+        self.sigma_background = 5
         self.roi_min_size = 10
         self.background_correction = False
         self.adjusted_params = False
         self.peaks_z_std = []
         self.z_profiles = []
-        self.mu = []
+        self.sigma_z = None
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None):
-        print('heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeere')
-        print(im.shape)
         start = time.time()
         if not roi:
             if transformed:
@@ -129,7 +126,7 @@ class Peak_finding():
 
     def subtract_background(self, img, sigma=None):
         if sigma is None:
-            sigma = self.sigma
+            sigma = self.sigma_background
         norm = img.max()
         img_blurred = ndi.gaussian_filter(img, sigma=sigma)
         diff = img-img_blurred
@@ -170,7 +167,6 @@ class Peak_finding():
         '''
         calculates the z profile along the beads and fits a gaussian
         '''
-
         if not local:
             if transformed:
                 if tf_matrix is None:
@@ -200,67 +196,67 @@ class Peak_finding():
                 print('Calculate 2d peaks first!')
             return
 
-        gauss = lambda x, a, mu, sigma: a * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2))
         z_profile = data[np.round(peaks_2d[:, 0]).astype(int), np.round(peaks_2d[:, 1]).astype(int)]
+        mean_int = np.median(np.max(z_profile, axis=1), axis=0)
+        max_int = np.max(z_profile)
         z_max = np.argmax(z_profile, axis=1)
-        z_shifted = np.zeros((z_profile.shape[0], z_profile.shape[1] * 2))
-        x = np.arange(z_shifted.shape[1])
-        mean_values = np.zeros(z_shifted.shape[0])
-        shifts = []
-        go = time.time()
-        for i in range(z_profile.shape[0]):
-            start = z_profile.shape[1] - z_max[i]
-            shifts.append(start)
-            stop = start + z_profile.shape[1]
-            z_shifted[i, start:stop] = (z_profile[i, :] - z_profile[i, :].min()) / (
-                    z_profile[i, :].max() - z_profile[i, :].min())
-            for k in range(z_shifted.shape[1]):
-                if z_shifted[i, k] == 0:
-                    z_shifted[i, k] = z_shifted[i, -k]
-        z_avg = z_shifted.mean(0)
-        z_peak = x[z_avg > np.exp(-0.5) * z_avg.max()]
-        sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
-        try:
-            popt, pcov = curve_fit(gauss, x, z_avg, p0=[1, z_profile.shape[1], sigma_guess])
-        except RuntimeError:
-            if local:
-                print('Unable to fit z profile. Calculate argmax(z).')
-                print('WARNING! Calculation of the z-position might be inaccurate!')
-                return np.argmax(z_profile[-1])
-            else:
-                print('Unable to fit z profile. Contact developers!')
-                return
+        x = np.arange(len(z_profile[0]))
 
-        perr = np.sqrt(np.diag(pcov))[1]
-        print('Std z fit: ', perr)
+        gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
+
+        sigma_list = []
+        for i in range(len(z_profile)):
+            try:
+                z_peak = x[z_profile[i] > np.exp(-0.5) * z_profile[i].max()]
+                sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
+                offset = z_profile[i].min()
+                mask = np.zeros_like(z_profile[i]).astype(int)
+                mask[z_profile[i] == max_int] = 1
+                x_masked = np.ma.masked_array(x, mask)
+                z_masked = np.ma.masked_array(z_profile[i], mask)
+                popt, pcov = curve_fit(gauss, x_masked, z_masked, p0=[np.argmax(z_profile[i]), sigma_guess, offset])
+                if popt[0] > 0 and popt[0] < z_profile.shape[1]:
+                    sigma_list.append(popt[1])
+            except RuntimeError:
+                pass
         if local:
+            perr = np.sqrt(np.diag(pcov))[0]
+            print('Std z fit: ', perr)
             self.peaks_z_std.append(perr)
-            self.z_profiles.append(z_profile)
-            self.mu.append(popt[1])
-            return popt[1] - shifts[-1]
+            self.z_profiles.append(z_profile[i])
+            return popt[0]
         else:
-            gauss_stat = lambda x, a, mu: a * np.exp(-(x - mu) ** 2 / (2 * popt[2] ** 2))
-            for i in range(z_shifted.shape[0]):
+            if len(sigma_list) == 0:
+                print('Z fitting of the beads failed. Contact developers!')
+                return
+            self.sigma_z = np.median(sigma_list)
+            gauss_static = lambda x, mu, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * self.sigma_z ** 2)) + offset
+            mean_values = []
+            for i in range(len(z_profile)):
                 try:
-                    popt_i, pcov_i = curve_fit(gauss_stat, x, z_shifted[i], p0=[popt[0], popt[1]])
-                    mean_values[i] = (popt_i[1] - shifts[i])
-                    perr = np.sqrt(np.diag(pcov))[1]
-                    print('Std z fit: ', perr)
-                    self.peaks_z_std.append(perr)
+                    mask = np.zeros_like(z_profile[i]).astype(int)
+                    mask[z_profile[i] == max_int] = 1
+                    x_masked = np.ma.masked_array(x, mask)
+                    z_masked = np.ma.masked_array(z_profile[i], mask)
+                    popt, pcov = curve_fit(gauss_static, x_masked, z_masked, p0=[np.argmax(z_profile[i]), offset])
+                    perr = np.sqrt(np.diag(pcov))
                 except RuntimeError:
+                    print('Runtime error for profile: ', i)
                     print('Unable to fit z profile. Calculate argmax(z).')
                     print('WARNING! Calculation of the z-position might be inaccurate!')
-                    mean_values[i] = z_max[i]
-                    self.peaks_z_std.append(sigma_guess)
+                    mean_values.append(np.argmax(z_profile[i]))
+                    self.peaks_z_std.append(10)
+
+                perr = np.sqrt(np.diag(pcov))[0]
+                print('Std z fit: ', perr)
+                self.peaks_z_std.append(perr)
+                self.z_profiles.append(z_profile[i])
+                mean_values.append(popt[0])
 
             if transformed:
                 self.tf_peaks_z = np.copy(mean_values)
             else:
                 self.peaks_z = np.copy(mean_values)
-            no = time.time()
-            print('Duration:', no - go)
-
-
 
     def calc_local_z(self, data, point, tf_matrix=None, flips=None, shape=None):
         point = self.calc_original_coordinates(point, tf_matrix, flips, shape)

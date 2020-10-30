@@ -583,7 +583,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.rotate.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
             #np.save('z_profiles', np.array(self.ops.z_profiles))
-            #np.save('mu', np.array(self.ops.mu))
 
     @utils.wait_cursor
     def _affine_transform(self, toggle_orig=True):

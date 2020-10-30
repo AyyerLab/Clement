@@ -509,7 +509,6 @@ class FMControls(BaseControls):
 
         channel = self.peak_controls.peak_channel_btn.currentIndex()
         print('Perform peak finding on channel: ', channel+1)
-
         if self.map_btn.isChecked():
             if self.ops._transformed:
                 if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:

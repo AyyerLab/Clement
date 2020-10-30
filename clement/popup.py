@@ -520,7 +520,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         if self.fm.ops is not None:
             self.fm.ops.adjusted_params = True
             self.fm.ops.background_correction = self.background_correction
-            self.fm.ops.sigma = self.sigma_btn.value()
+            self.fm.ops.sigma_background = self.sigma_btn.value()
             self.fm.ops.threshold = self.t_noise_label.value()
             self.fm.ops.pixel_lower_threshold = self.plt.value()
             self.fm.ops.pixel_upper_threshold = self.put.value()
