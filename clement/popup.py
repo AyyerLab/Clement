@@ -410,7 +410,7 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peak_imview.removeItem(self.roi)
             print('Draw ROI in the image!')
             pos = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
-            size = np.array([self.data.shape[0]//4, self.data.shape[1]//4])
+            size = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
             self.roi = pg.ROI(pos=pos,size=size, rotatable=False, removable=False)
             self.roi.addScaleHandle(pos=[1,1], center=[0.5,0.5])
             self.peak_imview.addItem(self.roi)
@@ -725,16 +725,15 @@ class Merge(QtGui.QMainWindow):
 
     def _calc_ellipses(self):
         cov_matrix = self.parent.fmcontrols.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
-        print('heeeeeeeeeere')
-        print('Covariance matrix: ', cov_matrix)
-        eigvals, eigvecs = np.linalg.eig(cov_matrix)
+        print('Cov matrix: \n', cov_matrix)
+        eigvals, eigvecs = np.linalg.eigh(cov_matrix)
         order = eigvals.argsort()[::-1]
         eigvals, eigvecs = eigvals[order], eigvecs[order]
-        vx, vy = eigvecs[0,0], eigvecs[1,0]
+        vx, vy = eigvecs[0,0], eigvecs[0,1]
         self.theta = -np.arctan2(vy, vx) * 180 / np.pi
-        self.lambda_1, self.lambda_2 = np.sqrt(eigvals)
-        self.size_x, self.size_y = np.array([self.lambda_1, self.lambda_2])[order]
-
+        #scale eigenvalues to 75% confidence interval and pixel size
+        self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size)
+        print(self.lambda_1, self.lambda_2)
 
     def _copy_poi(self):
         corr_points = self.other._points_corr
@@ -757,9 +756,11 @@ class Merge(QtGui.QMainWindow):
             init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
             transf = (np.linalg.inv(self.parent.fmcontrols.other.ops.tf_matrix) @ init) / self.downsampling
             pos = QtCore.QPointF(transf[0], transf[1])
-        self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
-        #if fib:
+        else:
+            pos = QtCore.QPointF(pos.x()+self.size/2, pos.y()+self.size/2)
         #    self._draw_err_bars(single=True)
+
+        self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
 
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -806,11 +807,15 @@ class Merge(QtGui.QMainWindow):
                 self.imview_popup.addItem(err)
 
     def _draw_correlated_points_popup(self, pos, item):
-        print('heeeeeeeeeeeeeeere')
-        #pos = [pos.x() - self.lambda_1/2, pos.y() - self.lambda_2/2]
-        pos = [pos.x() - self.size_x/4, pos.y() - self.size_y/4]
-        point = pg.EllipseROI(pos, size=[self.size_x/2,self.size_y/2], angle=self.theta, parent=item,
+        img_center = np.array(self.data_popup.shape)/2
+        point = pg.EllipseROI(img_center, size=[self.lambda_1,self.lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
+
+        pos_tmp = [pos.x(), pos.y()]
+        pos = [pos.x() - self.lambda_1/2, pos.y() - self.lambda_2/2]
+        point.setTransformOriginPoint(QtCore.QPointF(self.lambda_1/2, self.lambda_2/2))
+        point.setRotation(self.theta)
+        point.setPos(pos)
         point.setPen(0, 255, 0)
         point.removeHandle(0)
         point.removeHandle(0)
@@ -906,7 +911,7 @@ class Merge(QtGui.QMainWindow):
                 self.stage_positions_popup = None
                 self.coordinates = []
         else:
-            self.coordinates = np.array([self.downsampling * np.array([point.x() + self.size_x / 4, point.y() + self.size_y / 4]) for point in
+            self.coordinates = np.array([self.downsampling * np.array([point.x() + self.lambda_1 / 2, point.y() + self.lambda_2 / 2]) for point in
                            self._clicked_points_popup])
             self.coordinates[:,1] = self.data_popup.shape[1] - self.coordinates[:,1]
 
@@ -983,7 +988,7 @@ class Merge(QtGui.QMainWindow):
                 self.lines = []
                 if len(self._clicked_points_popup) > 0:
                     point = self._clicked_points_popup[-1].pos()
-                    pos = point.y()+self.size_y/4
+                    pos = point.y()+self.lambda_2/2
                 else:
                     pos = self.data_popup.shape[0]//2
 
