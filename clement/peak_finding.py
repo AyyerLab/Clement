@@ -13,6 +13,8 @@ class Peak_finding():
         self.orig_tf_peak_slices = None
         self.tf_peaks_z = None
         self.peaks_z = None
+        self.peaks_align_ref = None
+        self.tf_peaks_align_ref = None
         self.pixel_lower_threshold = plt
         self.pixel_upper_threshold = put
         self.flood_steps = 10
@@ -24,6 +26,8 @@ class Peak_finding():
         self.peaks_z_std = []
         self.z_profiles = []
         self.sigma_z = None
+        self.aligning = False
+
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None):
         start = time.time()
@@ -108,18 +112,24 @@ class Peak_finding():
                 return None
         else:
             peaks_2d = np.round(coor)
-            if transformed:
-                if curr_slice is None:
-                    self.tf_peak_slices[-1] = np.copy(peaks_2d)
+            if self.aligning:
+                if transformed:
+                    self.tf_peaks_align_ref = np.copy(peaks_2d)
                 else:
-                    self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
-                if self.orig_tf_peak_slices is None:
-                    self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+                    self.peaks_align_ref = np.copy(peaks_2d)
             else:
-                if curr_slice is None:
-                    self.peak_slices[-1] = np.copy(peaks_2d)
+                if transformed:
+                    if curr_slice is None:
+                        self.tf_peak_slices[-1] = np.copy(peaks_2d)
+                    else:
+                        self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
+                    if self.orig_tf_peak_slices is None:
+                        self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
                 else:
-                    self.peak_slices[curr_slice] = np.copy(peaks_2d)
+                    if curr_slice is None:
+                        self.peak_slices[-1] = np.copy(peaks_2d)
+                    else:
+                        self.peak_slices[curr_slice] = np.copy(peaks_2d)
         end = time.time()
         print('duration: ', end - start)
         print('Number of peaks found: ', peaks_2d.shape[0])

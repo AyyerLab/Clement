@@ -584,6 +584,7 @@ class FMControls(BaseControls):
         print('Aligning color channels')
         reference = self.peak_controls.ref_btn.currentIndex()
         if idx != reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
+            self.ops.aligning = True
             show_transformed = False
             if not self.show_btn.isChecked():
                 self.show_btn.setChecked(True)
@@ -592,22 +593,29 @@ class FMControls(BaseControls):
             if not self.max_proj_btn.isChecked():
                 self.max_proj_btn.setChecked(True)
                 undo_max_proj = True
-            if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                peaks_2d = None
+
+            peak_channel_idx = self.peak_controls.peak_channel_btn.currentIndex()
+            if reference == peak_channel_idx:
+                if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                    peaks_2d = None
+                else:
+                    peaks_2d = self.ops.peak_slices[-1]
             else:
-                peaks_2d = self.ops.peak_slices[-1]
+                self.peak_controls.peak_channel_btn.setCurrentIndex(reference)
+                peaks_2d = None
             if peaks_2d is None:
                 self.peak_btn.setChecked(True)
                 self.peak_btn.setChecked(False)
                 peaks_2d = self.ops.peak_slices[-1]
+                self.peak_controls.peak_channel_btn.setCurrentIndex(peak_channel_idx)
             self.ops.estimate_alignment(peaks_2d, idx)
             if undo_max_proj:
                 self.max_proj_btn.setChecked(False)
             if show_transformed:
                 self.show_btn.setChecked(False)
-        #if not self.ops._aligned_channels[idx]:
-        #    self.action_btns[idx].setChecked(False)
-        #self.ops._aligned_channels[idx] = True
+
+            self.ops.aligning = False
+
         self.ops._update_data()
         self._update_imview()
 
