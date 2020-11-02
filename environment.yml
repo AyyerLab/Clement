@@ -13,6 +13,7 @@ dependencies:
   - pip
   - git
   - pyyaml
+  - scikit-learn
   - pip:
     - mrcfile
     - read-lif==0.3.1
