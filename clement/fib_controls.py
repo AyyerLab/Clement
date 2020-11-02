@@ -161,6 +161,7 @@ class FIBControls(BaseControls):
                                                rotatable=False)
                 self.old_pos0 = self.grid_box.pos()
                 self.box_shift = np.zeros(2)
+                self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
             print('Box origin at:', self.old_pos0)
 
         if self.grid_box is not None:

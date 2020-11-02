@@ -98,6 +98,7 @@ class BaseControls(QtWidgets.QWidget):
         self.min_conv_points = 10
         self.show_merge = False
         self.progress = 0
+        self.cov_matrix = None
 
     def _init_ui(self):
         print('This message should not be seen. Please override _init_ui')
@@ -906,7 +907,7 @@ class BaseControls(QtWidgets.QWidget):
         print(diff.shape)
         #diff *= self.other.ops.pixel_size
         diff *= self.other.ops.pixel_size[0]
-        self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
+        self.other.cov_matrix, self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
 
         self.other._err[idx] = diff
         self.err_btn.setText(

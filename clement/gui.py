@@ -112,8 +112,8 @@ class GUI(QtWidgets.QMainWindow):
 
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
-        self.fmcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=0))
-        self.fmcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=0))
+        self.fmcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=self.tabs.currentIndex()))
+        self.fmcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=self.tabs.currentIndex()))
         self.fmcontrols.set_params_btn.clicked.connect(lambda: self._show_peak_params())
         self.emcontrols.other = self.fmcontrols
         self.fibcontrols.other = self.fmcontrols

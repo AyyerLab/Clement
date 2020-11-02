@@ -532,7 +532,9 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.tf_peaks_z = None
             self.fm.ops.peaks_z_std = []
             self.fm.ops.peaks_z = None
+            self.fm.peak_btn.setChecked(True)
         self.close()
+
 
 class Merge(QtGui.QMainWindow):
     def __init__(self, parent):
@@ -542,7 +544,7 @@ class Merge(QtGui.QMainWindow):
         self.fm_copy = None
         self.other = self.parent.fmcontrols.other
 
-        self.curr_mrc_folder_popup = self.parent.emcontrols.curr_folder
+        self.curr_mrc_folder_popup = self.parent.fmcontrols.other.curr_folder
         self.num_slices_popup = self.parent.fmcontrols.num_slices
         self.downsampling = 2  # per dimension
         self.color_data_popup = None
@@ -556,6 +558,11 @@ class Merge(QtGui.QMainWindow):
         self.max_help = False
         self.fib = False
         self.size = 10
+        self.lines = None
+        self.pixel_size = self.parent.fmcontrols.other.ops.pixel_size
+        self.lambda_1 = None
+        self.lambda_2 = None
+        self.theta = None
 
         self._channels_popup = []
         self._colors_popup = list(np.copy(self.parent.fmcontrols._colors))
@@ -584,6 +591,7 @@ class Merge(QtGui.QMainWindow):
         self.data_orig_popup = np.copy(self.data_popup)
 
         self._init_ui()
+        self._calc_ellipses()
         self._copy_poi()
 
     def _init_ui(self):
@@ -661,7 +669,7 @@ class Merge(QtGui.QMainWindow):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('EM Image:', self)
         line.addWidget(label)
-        self.em_fname_popup = self.parent.emcontrols.mrc_fname.text()
+        self.em_fname_popup = self.parent.fmcontrols.other.mrc_fname.text()
         label = QtWidgets.QLabel(self.em_fname_popup, self)
         line.addWidget(label, stretch=1)
 
@@ -696,16 +704,37 @@ class Merge(QtGui.QMainWindow):
         # Select and save coordinates
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Select and save coordinates', self)
+        label = QtWidgets.QLabel('Select POI', self)
         line.addWidget(label)
         self.select_btn_popup = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn_popup.setCheckable(True)
         self.select_btn_popup.toggled.connect(self._calc_stage_positions_popup)
+        self.draw_lines_btn = QtWidgets.QCheckBox('Draw FIB lines')
+        self.draw_lines_btn.setEnabled(self.fib)
+        self.draw_lines_btn.stateChanged.connect(self._draw_lines)
+        line.addWidget(self.select_btn_popup)
+        line.addWidget(self.draw_lines_btn)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        line.addStretch(1)
         self.save_btn_popup = QtWidgets.QPushButton('Save data')
         self.save_btn_popup.clicked.connect(self._save_data_popup)
-        line.addWidget(self.select_btn_popup)
         line.addWidget(self.save_btn_popup)
-        line.addStretch(1)
+
+    def _calc_ellipses(self):
+        cov_matrix = self.parent.fmcontrols.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
+        print('heeeeeeeeeere')
+        print('Covariance matrix: ', cov_matrix)
+        eigvals, eigvecs = np.linalg.eig(cov_matrix)
+        order = eigvals.argsort()[::-1]
+        eigvals, eigvecs = eigvals[order], eigvecs[order]
+        vx, vy = eigvecs[0,0], eigvecs[1,0]
+        self.theta = -np.arctan2(vy, vx) * 180 / np.pi
+        self.lambda_1, self.lambda_2 = np.sqrt(eigvals)
+        self.size_x, self.size_y = np.array([self.lambda_1, self.lambda_2])[order]
+
 
     def _copy_poi(self):
         corr_points = self.other._points_corr
@@ -714,23 +743,23 @@ class Merge(QtGui.QMainWindow):
         if not self.other.fib:
             for point in corr_points:
                 init = np.array([point.pos().x() + self.size/2, point.pos().y() + self.size/2, 1])
-                transf = (np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ init) / self.downsampling
-                pos = QtCore.QPointF(transf[0] - self.size/2, transf[1] - self.size/2)
+                transf = (np.linalg.inv(self.parent.fmcontrols.other.ops.tf_matrix) @ init) / self.downsampling
+                pos = QtCore.QPointF(transf[0], transf[1])
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
         else:
             for i in range(len(corr_points)):
-                pos = corr_points[i].pos()
+                pos = QtCore.QPointF(corr_points[i].pos().x() + self.size/2, corr_points[i].pos().y()+self.size/2)
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
-            self._draw_err_bars(single=False)
+            #self._draw_err_bars(single=False)
 
     def _update_poi(self, pos, fib):
         if not fib:
             init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
-            transf = (np.linalg.inv(self.parent.emcontrols.ops.tf_matrix) @ init) / self.downsampling
-            pos = QtCore.QPointF(transf[0] - self.size / 2, transf[1] - self.size / 2)
+            transf = (np.linalg.inv(self.parent.fmcontrols.other.ops.tf_matrix) @ init) / self.downsampling
+            pos = QtCore.QPointF(transf[0], transf[1])
         self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
-        if fib:
-            self._draw_err_bars(single=True)
+        #if fib:
+        #    self._draw_err_bars(single=True)
 
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -739,8 +768,8 @@ class Merge(QtGui.QMainWindow):
 
         item = self.imview_popup.getImageItem()
         pos = self.imview_popup.getImageItem().mapFromScene(event.pos())
-        pos.setX(pos.x() - self.size / 2)
-        pos.setY(pos.y() - self.size / 2)
+        pos.setX(pos.x())
+        pos.setY(pos.y())
 
         if self.select_btn_popup.isChecked():
             self._draw_correlated_points_popup(pos, item)
@@ -777,15 +806,20 @@ class Merge(QtGui.QMainWindow):
                 self.imview_popup.addItem(err)
 
     def _draw_correlated_points_popup(self, pos, item):
-        point = pg.CircleROI(pos, self.size, parent=item, movable=False, removable=True)
+        print('heeeeeeeeeeeeeeere')
+        #pos = [pos.x() - self.lambda_1/2, pos.y() - self.lambda_2/2]
+        pos = [pos.x() - self.size_x/4, pos.y() - self.size_y/4]
+        point = pg.EllipseROI(pos, size=[self.size_x/2,self.size_y/2], angle=self.theta, parent=item,
+                              movable=False, removable=True, resizable=False, rotatable=False)
         point.setPen(0, 255, 0)
+        point.removeHandle(0)
         point.removeHandle(0)
         self.imview_popup.addItem(point)
         self._clicked_points_popup.append(point)
 
         self.counter_popup += 1
         annotation = pg.TextItem(str(self.counter_popup), color=(0, 255, 0), anchor=(0, 0))
-        annotation.setPos(pos.x() + 5, pos.y() + 5)
+        annotation.setPos(pos[0] + 5, pos[1] + 5)
         self.annotations_popup.append(annotation)
         self.imview_popup.addItem(annotation)
         point.sigRemoveRequested.connect(lambda: self._remove_correlated_points_popup(point, annotation))
@@ -872,8 +906,9 @@ class Merge(QtGui.QMainWindow):
                 self.stage_positions_popup = None
                 self.coordinates = []
         else:
-            self.coordinates = [self.downsampling * np.array([point.x() + self.size / 2, point.y() + self.size / 2]) for point in
-                           self._clicked_points_popup]
+            self.coordinates = np.array([self.downsampling * np.array([point.x() + self.size_x / 4, point.y() + self.size_y / 4]) for point in
+                           self._clicked_points_popup])
+            self.coordinates[:,1] = self.data_popup.shape[1] - self.coordinates[:,1]
 
             #if self.fib:
             #    self.stage_positions_popup = np.copy(coordinates)
@@ -941,6 +976,26 @@ class Merge(QtGui.QMainWindow):
             self.fm_fname_popup = (fname + ' [%d/%d]' % (num, self.fm_copy.num_slices))
             self._current_slice_popup = num
             self.slice_select_btn_popup.clearFocus()
+
+    def _draw_lines(self, checked):
+        if checked:
+            if self.lines is None:
+                self.lines = []
+                if len(self._clicked_points_popup) > 0:
+                    point = self._clicked_points_popup[-1].pos()
+                    pos = point.y()+self.size_y/4
+                else:
+                    pos = self.data_popup.shape[0]//2
+
+                k = 150 / self.pixel_size[0]
+                line = pg.InfiniteLine(pos=pos+k, angle=0, pen='r', movable=True, bounds=[0,self.data_popup.shape[0]])
+                line2 = pg.InfiniteLine(pos=pos-k, angle=0, pen='r', movable=True, bounds=[0,self.data_popup.shape[0]])
+                self.lines.append(line)
+                self.lines.append(line2)
+            for i in range(len(self.lines)):
+                self.imview_popup.addItem(self.lines[i])
+        else:
+            [self.imview_popup.removeItem(line) for line in self.lines]
 
     def _set_theme_popup(self, name):
         if name == 'none':

@@ -572,7 +572,7 @@ class EM_ops():
         f = np.exp(-Z)
         f /= f.max()
         print('Covariance matrix: ', cov)
-        return np.sqrt(cov[0, 0]), np.sqrt(cov[1, 1]), f
+        return cov, np.sqrt(cov[0, 0]), np.sqrt(cov[1, 1]), f
 
     def calc_convergence(self, corr_points, em_points, min_points, refine_matrix):
         em_points = np.array(em_points)

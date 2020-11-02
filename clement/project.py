@@ -70,9 +70,7 @@ class Project(QtWidgets.QWidget):
                 self.fm._recalc_grid()
             self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
 
-            #self.fm.ref_btn.setCurrentIndex(fmdict['Peak reference'])
             self.fm.ops._aligned_channels = fmdict['Aligned channels']
-            self.fm.point_ref_btn.setCurrentIndex(fmdict['Point reference'])
             for i in range(self.fm.ops.num_channels):
                 if self.fm.ops._aligned_channels[i]:
                     self.fm.action_btns[i].setChecked(True)
@@ -436,7 +434,6 @@ class Project(QtWidgets.QWidget):
         fmdict['Slice'] = self.fm._current_slice
         if self.fm._series is not None:
             fmdict['Series'] = self.fm._series
-        fmdict['Peak reference'] = self.fm.ops._peak_reference
         fmdict['Aligned channels'] = self.fm.ops._aligned_channels
         fmdict['Show peaks'] = self.fm.peak_btn.isChecked()
         fmdict['Show z map'] = self.fm.map_btn.isChecked()
@@ -456,7 +453,6 @@ class Project(QtWidgets.QWidget):
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
         fmdict['FIB flips'] = self.fm._fib_flips
-        fmdict['Point reference'] = self.fm.ops._point_reference
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
         fmdict['Original correlated points'] = np.array(self.fm._orig_points_corr).tolist()
