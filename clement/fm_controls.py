@@ -581,7 +581,7 @@ class FMControls(BaseControls):
             self._update_imview()
             return
 
-        print('Aligning color channels')
+        print('Align channel ', idx+1)
         reference = self.peak_controls.ref_btn.currentIndex()
         if idx != reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
             self.ops.aligning = True
@@ -692,6 +692,7 @@ class FMControls(BaseControls):
         self._curr_folder = None
         self._series = None
 
+        self.peak_controls = None
 
         self._current_slice = 0
         self.clearLayout(self.channel_line)

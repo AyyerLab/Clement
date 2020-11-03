@@ -550,7 +550,6 @@ class Merge(QtGui.QMainWindow):
         self.color_data_popup = None
         self.color_overlay_popup = None
         self.annotations_popup = []
-        self.error_bars = []
         self.coordinates = []
         self.counter_popup = 0
         self.stage_positions_popup = None
@@ -569,6 +568,7 @@ class Merge(QtGui.QMainWindow):
         self._current_slice_popup = self.parent.fmcontrols._current_slice
         self._overlay_popup = True
         self._clicked_points_popup = []
+        self._clicked_points_popup_base_indices = []
 
         if self.parent.fibcontrols.fib:
             merged_data = self.parent.em.merged_3d
@@ -749,7 +749,7 @@ class Merge(QtGui.QMainWindow):
             for i in range(len(corr_points)):
                 pos = QtCore.QPointF(corr_points[i].pos().x() + self.size/2, corr_points[i].pos().y()+self.size/2)
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
-            #self._draw_err_bars(single=False)
+        [self._clicked_points_popup_base_indices.append(i) for i in range(len(corr_points))]
 
     def _update_poi(self, pos, fib):
         if not fib:
@@ -758,9 +758,9 @@ class Merge(QtGui.QMainWindow):
             pos = QtCore.QPointF(transf[0], transf[1])
         else:
             pos = QtCore.QPointF(pos.x()+self.size/2, pos.y()+self.size/2)
-        #    self._draw_err_bars(single=True)
 
         self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+        self._clicked_points_popup_base_indices.append(self.counter_popup-1)
 
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
@@ -774,37 +774,6 @@ class Merge(QtGui.QMainWindow):
 
         if self.select_btn_popup.isChecked():
             self._draw_correlated_points_popup(pos, item)
-
-    def _draw_err_bars(self, single=True):
-        if single:
-            x = self._clicked_points_popup[-1].pos().x()
-            y = self._clicked_points_popup[-1].pos().y()
-            point = np.array([x+self.size/2, y+self.size/2])
-            idx = self.parent.fmcontrols._z_indices[-1]
-            if idx is not None:
-                print('Index found!')
-            else:
-                print('Index not found!')
-                idx = -1
-            z = self.parent.fm.peaks_z_std[idx] * np.abs(self.parent.em.z_shift[1])
-            err = pg.ErrorBarItem(x=np.array([point[0]]), y=np.array([point[1]]), height=2*z, beam=2)
-            self.error_bars.append(err)
-            self.imview_popup.addItem(err)
-        else:
-            for i in range(len(self._clicked_points_popup)):
-                x = self._clicked_points_popup[i].pos().x()
-                y = self._clicked_points_popup[i].pos().y()
-                point = np.array([x + self.size / 2, y + self.size / 2])
-                idx = self.parent.fmcontrols._z_indices[-len(self._clicked_points_popup)+i]
-                if idx is not None:
-                    print('Index found!')
-                else:
-                    print('Index not found!')
-                    idx = -1
-                z = self.parent.fm.peaks_z_std[idx] * np.abs(self.parent.em.z_shift[1])
-                err = pg.ErrorBarItem(x=np.array([point[0]]), y=np.array([point[1]]), height=2*z, beam=2)
-                self.error_bars.append(err)
-                self.imview_popup.addItem(err)
 
     def _draw_correlated_points_popup(self, pos, item):
         img_center = np.array(self.data_popup.shape)/2
@@ -840,8 +809,8 @@ class Merge(QtGui.QMainWindow):
         self._clicked_points_popup.remove(pt)
         self.imview_popup.removeItem(anno)
         self.annotations_popup.remove(anno)
-        self.imview_popup.removeItem(self.error_bars[idx])
-        self.error_bars.remove(self.error_bars[idx])
+        if idx in self._clicked_points_popup_base_indices:
+            self._clicked_points_popup_base_indices.remove(idx)
 
     @utils.wait_cursor
     def _show_overlay_popup(self, checked):
@@ -901,11 +870,10 @@ class Merge(QtGui.QMainWindow):
             print('Select points of interest!')
             if len(self._clicked_points_popup) != 0:
                 [self.imview_popup.removeItem(point) for point in self._clicked_points_popup]
-                [self.imview_popup.removeItem(error) for error in self.error_bars]
                 [self.imview_popup.removeItem(annotation) for annotation in self.annotations_popup]
                 self._clicked_points_popup = []
+                self._clicked_points_popup_base_indices = []
                 self.annotations_popup = []
-                self.error_bars = []
 
                 self.counter_popup = 0
                 self.stage_positions_popup = None

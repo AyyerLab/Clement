@@ -155,8 +155,8 @@ class GUI(QtWidgets.QMainWindow):
         action = QtWidgets.QAction('Save project', self)
         action.triggered.connect(self._save_p)
         filemenu.addAction(action)
-        action = QtWidgets.QAction('&Save binned montage', self)
-        action.triggered.connect(self.emcontrols._save_mrc_montage)
+        #action = QtWidgets.QAction('&Save binned montage', self)
+        #action.triggered.connect(self.emcontrols._save_mrc_montage)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
@@ -297,12 +297,12 @@ class GUI(QtWidgets.QMainWindow):
                         if popup is not None:
                             popup.close()
                         popup = Merge(self)
+                        controls.popup = popup
                         self.project.merged = True
                         self.project.popup = popup
                         if self.project.load_merge:
                             self.project._load_merge(project)
                             self.project.load_merge = False
-                        controls.popup = popup
                         popup.show()
                 else:
                     print('You have to transform the FM and the TEM/SEM images first!')

@@ -62,6 +62,20 @@ class Project(QtWidgets.QWidget):
         else:
             undo_max_proj = True
 
+        if fmdict['Adjusted peak params']:
+            self.fm.set_params_btn.click()
+            self.fm.peak_controls.peak_channel_btn.setCurrentIndex(fmdict['Peak reference'])
+            self.fm.peak_controls.t_noise_label.setValue(fmdict['Noise threshold'])
+            self.fm.peak_controls.plt_label.setValue(fmdict['Min pixels threshold'])
+            self.fm.peak_controls.put_label.setValue(fmdict['Max pixels threshold'])
+            self.fm.peak_controls.flood_steps_label.setValue(fmdict['Flood fill steps'])
+            self.fm.peak_controls.peak_btn.setChecked(True)
+            self.fm.peak_controls.ref_btn.setCurrentIndex(fmdict['Align reference'])
+            self.fm.ops._aligned_channels = fmdict['Aligned channels']
+            for i in range(self.fm.ops.num_channels):
+                if self.fm.ops._aligned_channels[i]:
+                    self.fm.peak_controls.action_btns[i].setChecked(True)
+            self.fm.peak_controls.save_btn.click()
         try:
             if 'Original grid points' in fmdict:
                 self.fm.ops._orig_points = np.array(fmdict['Original grid points'])
@@ -70,10 +84,6 @@ class Project(QtWidgets.QWidget):
                 self.fm._recalc_grid()
             self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
 
-            self.fm.ops._aligned_channels = fmdict['Aligned channels']
-            for i in range(self.fm.ops.num_channels):
-                if self.fm.ops._aligned_channels[i]:
-                    self.fm.action_btns[i].setChecked(True)
             try:
                 self.fm.ops._tf_points = np.array(fmdict['Transformed grid points'])
                 self.fm._affine_transform(toggle_orig=False)
@@ -102,7 +112,8 @@ class Project(QtWidgets.QWidget):
             pass
 
         if 'Show peaks' in fmdict:
-            self.fm.peak_btn.setChecked(fmdict['Show peaks'])
+            if not fmdict['Show peaks']:
+                self.fm.peak_btn.setChecked(False)
         self.fm.show_btn.setChecked(fmdict['Show original'])
         self.fm.show_grid_btn.setChecked(fmdict['Show grid box'])
         self.fm.map_btn.setChecked(fmdict['Show z map'])
@@ -220,17 +231,20 @@ class Project(QtWidgets.QWidget):
             self.fib._transpose()  # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
-        #if 'Phi angle' not in fibdict:
-        #    fibdict['Phi angle'] = 0
-        #self.fib.phi_box.setCurrentIndex(fibdict['Phi angle'] // 90)
         self.fib.sem_ops = self.em.ops
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
 
         try:
             self.fib.ops._orig_points = np.array(fibdict['Original points'])
+            self.fib.show_grid_btn.setChecked(True)
+            if 'Box shift' in fibdict:
+                pos = self.fib.grid_box.pos()
+                shift = fibdict['Box shift']
+                new_pos = [pos.x() + shift[0], pos.y() + shift[1]]
+                self.fib.grid_box.setPos(QtCore.QPointF(new_pos[0], new_pos[1]))
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            self.fib._recalc_grid()
+            #self.fib._recalc_grid()
         except KeyError:
             pass
 
@@ -372,15 +386,18 @@ class Project(QtWidgets.QWidget):
             self.popup._slice_changed_popup()
 
         self.popup._update_imview_popup()
-
+        if 'Points base indices' in mdict:
+            self.popup._clicked_points_popup_base_indices = mdict['Points base indices']
         self.popup.select_btn_popup.setChecked(True)
         points = np.array(mdict['Selected points'])
+        print('heeeeeeeeeeeeeeeeeeere')
+        print(self.popup._clicked_points_popup_base_indices)
         if len(points) > 0:
-            qpoint_list = [QtCore.QPointF(p[0], p[1]) for p in points]
-            [self.popup._draw_correlated_points_popup(pt, 10, self.popup.imview_popup.getImageItem()) for pt in
-             qpoint_list]
+            for i in range(len(points)):
+                if i not in self.popup._clicked_points_popup_base_indices:
+                    qpoint = QtCore.QPointF(points[i][0], points[i][1])
+                    self.popup._draw_correlated_points_popup(qpoint, self.popup.imview_popup.getImageItem())
 
-        self.popup.select_btn_popup.setChecked(False)
         print('Data Popup:', self.popup.data_popup.shape)
 
     def _save_project(self):
@@ -434,6 +451,14 @@ class Project(QtWidgets.QWidget):
         fmdict['Slice'] = self.fm._current_slice
         if self.fm._series is not None:
             fmdict['Series'] = self.fm._series
+        fmdict['Adjusted peak params'] = self.fm.ops.adjusted_params
+        if self.fm.peak_controls is not None:
+            fmdict['Peak reference'] = self.fm.peak_controls.peak_channel_btn.currentIndex()
+            fmdict['Noise threshold'] = self.fm.peak_controls.t_noise_label.value()
+            fmdict['Min pixels threshold'] = self.fm.peak_controls.plt_label.value()
+            fmdict['Max pixels threshold'] = self.fm.peak_controls.put_label.value()
+            fmdict['Flood fill steps'] = self.fm.peak_controls.flood_steps_label.value()
+            fmdict['Align reference'] = self.fm.peak_controls.ref_btn.currentIndex()
         fmdict['Aligned channels'] = self.fm.ops._aligned_channels
         fmdict['Show peaks'] = self.fm.peak_btn.isChecked()
         fmdict['Show z map'] = self.fm.map_btn.isChecked()
@@ -487,6 +512,7 @@ class Project(QtWidgets.QWidget):
         if self.em.ops._tf_points_region is not None:
             emdict['Transformed points subregion'] = self.em.ops._tf_points_region.tolist()
         emdict['Show assembled'] = self.em.show_assembled_btn.isChecked()
+        emdict['Show FM peaks'] = self.em.show_peaks_btn.isChecked()
 
         points = [[p.pos().x(), p.pos().y()] for p in self.em._points_corr]
         emdict['Correlated points'] = points
@@ -512,9 +538,13 @@ class Project(QtWidgets.QWidget):
         fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
         if self.fib.ops._orig_points is not None:
             fibdict['Original points'] = self.fib.ops._orig_points.tolist()
+        if self.fib.box_shift is not None:
+            fibdict['Box shift'] = self.fib.box_shift.tolist()
         if self.fib.ops._total_shift is not None:
             fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [
                 0.0, 0.0]
+
+        fibdict['Show FM peaks'] = self.fib.show_peaks_btn.isChecked()
 
         points = [[p.pos().x(), p.pos().y()] for p in self.fib._points_corr]
         fibdict['Correlated points'] = points
@@ -536,3 +566,4 @@ class Project(QtWidgets.QWidget):
         mdict['Max projection'] = self.popup.max_proj_btn_popup.isChecked()
         points = [[p.pos().x(), p.pos().y()] for p in self.popup._clicked_points_popup]
         mdict['Selected points'] = points
+        mdict['Points base indices'] = self.popup._clicked_points_popup_base_indices
