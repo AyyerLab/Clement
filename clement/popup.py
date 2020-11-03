@@ -151,7 +151,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.resize(800, 800)
         self.parent._set_theme(self.theme)
         self.print = printer
-        self.logger = logger
+        self.log = logger
         self._init_ui()
         self._calc_max_proj()
 
