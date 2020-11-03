@@ -16,7 +16,7 @@ import random
 
 
 class EM_ops():
-    def __init__(self):
+    def __init__(self, printer, logger):
         self._orig_points = None
         self._grid_points_tmp = None
         self._transformed = False
@@ -27,6 +27,8 @@ class EM_ops():
         self._total_shift = None
         self._refine_history = [np.identity(3)]
 
+        self.print = printer
+        self.log = logger
         self.h = None
         self.eh = None
         self.orig_data = None
@@ -91,11 +93,11 @@ class EM_ops():
                 md = tifffile.TiffFile(fname).fei_metadata
                 self.pixel_size = np.array([md['Scan']['PixelWidth'], md['Scan']['PixelHeight']]) * 1e9
             except KeyError:
-                print('No pixel size found! This might cause the program to crash at some point...')
+                self.print('No pixel size found! This might cause the program to crash at some point...')
         else:
             f = mrc.open(fname, 'r', permissive=True)
             if f.data is None:
-                print('Data is empty! Check file!')
+                self.print('Data is empty! Check file!')
                 return
             if fname != self.old_fname:
                 self.h = f.header
@@ -108,7 +110,7 @@ class EM_ops():
                 self.data = np.copy(f.data)
 
         self.orig_data = np.copy(self.data)
-        print('Pixel size: ', self.pixel_size)
+        self.print('Pixel size: ', self.pixel_size)
 
     def parse_3d(self, step, fname):
         f = mrc.open(fname, 'r', permissive=True)
@@ -147,7 +149,7 @@ class EM_ops():
             self.count_map[self.mcounts > 1] = 0
 
         f.close()
-        print(self.data.shape)
+        self.print(self.data.shape)
         self.orig_data = np.copy(self.data)
 
     def save_merge(self, fname):
@@ -158,11 +160,11 @@ class EM_ops():
     def transpose(self):
         self.transposed = True
         self.data = self.data.T
-        print('TRANSPOSE')
-        print(self.points)
+        self.print('TRANSPOSE')
+        self.log(self.points)
         if self.points is not None:
             self.points = np.array([np.flip(point) for point in self.points])
-        print(self.points)
+        self.log(self.points)
 
     def toggle_original(self):
         if self.assembled:
@@ -205,11 +207,11 @@ class EM_ops():
 
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)
-        print('Input points:\n', my_points)
+        self.log('Input points:\n', my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
         self.side_length = np.mean(side_list)
-        print('ROI side length:', self.side_length, '\xb1', side_list.std())
+        self.log('ROI side length:', self.side_length, '\xb1', side_list.std())
 
         cen = my_points.mean(0) - np.ones(2) * self.side_length / 2.
         points_tmp = np.zeros_like(my_points)
@@ -225,9 +227,9 @@ class EM_ops():
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self.tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
-        print('Transform matrix:\n', self.tf_matrix)
-        print('Shift: ', -self.tf_corners.min(1)[:2])
-        print('Assembled? ', self.assembled)
+        self.print('Transform matrix:\n', self.tf_matrix)
+        self.print('Shift: ', -self.tf_corners.min(1)[:2])
+        self.log('Assembled? ', self.assembled)
         if not self._transformed:
             if self.assembled:
                 self._orig_points = np.copy(my_points)
@@ -258,7 +260,7 @@ class EM_ops():
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self.tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
-        print('Tf: ', self.tf_matrix)
+        self.print('Transform matrix: ', self.tf_matrix)
 
         if not self._transformed:
             if self.assembled:
@@ -268,7 +270,7 @@ class EM_ops():
                 self._orig_points_region = np.copy(my_points)
                 self.tf_matrix_orig_region = np.copy(self.tf_matrix)
         self.apply_transform(points_tmp)
-        print('New points: \n', self._tf_points)
+        self.log('New points: \n', self._tf_points)
 
     def calc_orientation(self, points):
         my_list = []
@@ -277,10 +279,10 @@ class EM_ops():
         my_list.append((points[0][0] - points[-1][0]) * (points[0][1] + points[-1][1]))
         my_sum = np.sum(my_list)
         if my_sum > 0:
-            print('counter-clockwise')
+            self.log('counter-clockwise')
             return points
         else:
-            print('clockwise --> transpose points')
+            self.log('clockwise --> transpose points')
             order = [0, 3, 2, 1]
             return points[order]
 
@@ -308,7 +310,7 @@ class EM_ops():
 
     def apply_transform(self, pts):
         if self.tf_matrix is None:
-            print('Calculate transform matrix first')
+            self.print('Calculate transform matrix first')
             return
         self._transformed = True
 
@@ -359,9 +361,9 @@ class EM_ops():
 
         # Scale according to pixel sizes
         scale = sem_pixel_size / self.pixel_size
-        print('SEM shape: ', sem_shape)
-        print('FIB shape: ', self.data.shape)
-        print('Scale: ', scale)
+        self.print('SEM shape: ', sem_shape)
+        self.print('FIB shape: ', self.data.shape)
+        self.log('Scale: ', scale)
         self.fib_matrix = np.array([[scale[0], 0, 0, 0],
                                     [0, scale[1], 0, 0],
                                     [0, 0, 1, 0],
@@ -381,10 +383,10 @@ class EM_ops():
         self.fib_shift = -fib_corners.min(1)[:3]
         self.fib_matrix[:3, 3] += self.fib_shift
         self.fib_matrix[:2, 3] -= shift
-        print('Shifted fib matrix: ', self.fib_matrix)
+        self.log('Shifted fib matrix: ', self.fib_matrix)
 
     def apply_fib_transform(self, points, num_slices, scaling=1):
-        print('Num slices: ', num_slices)
+        self.log('Num slices: ', num_slices)
         if num_slices is None:
             num_slices = 0
         else:
@@ -412,7 +414,7 @@ class EM_ops():
             if not self._transformed:
                 if (0 <= coordinate[0] < self.mcounts.shape[0]) and (0 <= coordinate[1] < self.mcounts.shape[1]):
                     if self.mcounts[coordinate[0], coordinate[1]] > 1:
-                        print('Selected region ambiguous. Try again!')
+                        self.print('Selected region ambiguous. Try again!')
                         return
                     else:
                         counter = 0
@@ -423,20 +425,20 @@ class EM_ops():
                             if coordinate[0] in x_range and coordinate[1] in y_range:
                                 my_bool = True
                             counter += 1
-                        print('Selected region: ', counter - 1)
+                        self.print('Selected region: ', counter - 1)
                         return counter - 1
             else:
                 if (0 <= coordinate[0] < self.tf_count_map.shape[0]) and (
                         0 <= coordinate[1] < self.tf_count_map.shape[1]):
                     if self.tf_count_map[coordinate[0], coordinate[1]] == 0:
-                        print('Selected region ambiguous. Try again!')
+                        self.print('Selected region ambiguous. Try again!')
                         return
                     else:
                         counter = int(self.tf_count_map[coordinate[0], coordinate[1]])
-                        print('Selected region: ', counter)
+                        self.print('Selected region: ', counter)
                         return counter
         except(IndexError):
-            print('Watch out, index error. Try again!')
+            self.print('Watch out, index error. Try again!')
 
     def select_region(self, coordinate, transformed):
         self.assembled = False
@@ -467,7 +469,7 @@ class EM_ops():
             coordinate_angstrom = (inverse_matrix @ point)[:2] * self.pixel_size[:2] * downsampling
             coordinate_microns = coordinate_angstrom * 10 ** -4
             stage_positions.append(coordinate_microns + self.stage_origin)  # stage position in microns
-        print(stage_positions)
+        self.log(stage_positions)
         return stage_positions
 
     def calc_grid_shift(self, shift_x, shift_y):
@@ -489,7 +491,7 @@ class EM_ops():
             self._refine_matrix = refine_matrix @ self._refine_matrix
 
         self._refine_history.append(refine_matrix)
-        print('Refine matrix: \n', self._refine_matrix)
+        self.print('Refine matrix: \n', self._refine_matrix)
 
     def apply_refinement(self, points=None):
         update_points = False
@@ -502,7 +504,7 @@ class EM_ops():
         else:
             points = np.copy(self._tf_points_region)
         update_points = True
-        print(points)
+        self.log(points)
         for i in range(points.shape[0]):
             point = np.array([points[i, 0], points[i, 1], 1])
             points[i] = (self._refine_matrix @ point)[:2]
@@ -517,7 +519,7 @@ class EM_ops():
                 self.points[i] = (np.linalg.inv(self._refine_history[-1]) @ point)[:2]
             del self._refine_history[-1]
         else:
-            print('Data not refined!')
+            self.print('Data not refined!')
 
     def fit_circles(self, points, bead_size):
         points_model = []
@@ -554,7 +556,7 @@ class EM_ops():
                     coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
                     points_model.append(coor)
             else:
-                print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                self.print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
 
@@ -571,7 +573,7 @@ class EM_ops():
         Z = Z.reshape(X.shape)
         f = np.exp(-Z)
         f /= f.max()
-        print('Covariance matrix: ', cov)
+        self.log('Covariance matrix: ', cov)
         return cov, np.sqrt(cov[0, 0]), np.sqrt(cov[1, 1]), f
 
     def calc_convergence(self, corr_points, em_points, min_points, refine_matrix):
@@ -632,7 +634,7 @@ class EM_ops():
         precision_refined = np.array(precision_refined) * self.pixel_size[0]
         precision_free = np.array(precision_free) * self.pixel_size[0]
         precision_all = np.array(precision_all) * self.pixel_size[0]
-        print('RMS error: ', precision_all[-1])
+        self.print('RMS error: ', precision_all[-1])
         return [precision_refined, precision_free, precision_all]
 
     def apply_merge_2d(self, fm_data, fm_points, channel, show_region, num_channels):
@@ -651,7 +653,7 @@ class EM_ops():
         orig_orientation = ndi.affine_transform(tf_data, self.tf_matrix, order=1, output_shape=self.merged_2d.shape[:2])
 
         self.merged_2d[:, :, channel] = orig_orientation
-        print('Merged.shape: ', self.merged_2d.shape)
+        self.print('Merged.shape: ', self.merged_2d.shape)
 
     #def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,
     #                   corr_points_fib, channel):
@@ -673,7 +675,7 @@ class EM_ops():
         p0 = np.array([0, 0, 0, 1])
         p1 = np.array([0, 0, voxel_size[2] / voxel_size[0], 1])
         self.z_shift = (self.fib_matrix @ p1)[:2] - (self.fib_matrix @ p0)[:2]
-        print('z_shift: ', self.z_shift)
+        self.log('z_shift: ', self.z_shift)
 
         fib_2d = np.zeros((3, 3))
         fib_2d[:2, :2] = self.fib_matrix[:2, :2]
@@ -711,7 +713,7 @@ class EM_ops():
 
             diff = np.array(tf_points) - np.array(corr_points_fib_red)
             self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib_red, axis=0)
-            print('IMG shift: ', self.merge_shift)
+            self.log('IMG shift: ', self.merge_shift)
 
         z_data = []
         for z in range(num_slices):
@@ -752,7 +754,7 @@ class EM_ops():
     @classmethod
     def get_transform(self, source, dest):
         if len(source) != len(dest):
-            print('Point length do not match')
+            self.print('Point length do not match')
             return
         return tf.estimate_transform('affine', source, dest).params
 

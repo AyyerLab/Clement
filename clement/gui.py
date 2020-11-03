@@ -82,7 +82,20 @@ class GUI(QtWidgets.QMainWindow):
         merge_options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(merge_options)
 
-        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options)
+        print_layout = QtWidgets.QHBoxLayout()
+        print_layout.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(print_layout)
+        self.print_label = QtWidgets.QLabel('')
+        print_layout.addWidget(self.print_label)
+        print_layout.addStretch(1)
+        self.worker = utils.PrintGUI(self.print_label)
+        self.workerThread = QtCore.QThread()
+        self.workerThread.started.connect(self.worker.run)
+        self.worker.moveToThread(self.workerThread)
+        self.print = self.worker.print
+        self.log = self.worker.log
+        self.workerThread.start()
+        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
         self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fmcontrols)
@@ -102,11 +115,11 @@ class GUI(QtWidgets.QMainWindow):
         self.tab_2d.setLayout(vbox_2d)
         self.tab_3d.setLayout(vbox_3d)
 
-        self.emcontrols = EMControls(self.tem_imview, vbox_2d, merge_options)
+        self.emcontrols = EMControls(self.tem_imview, vbox_2d, merge_options, self.print, self.log)
         self.tem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.emcontrols._couple_views)
         self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_2d.addWidget(self.emcontrols)
-        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops, merge_options)
+        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops, merge_options, self.print, self.log)
         self.fibcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
         vbox_3d.addWidget(self.fibcontrols)
 
@@ -268,11 +281,11 @@ class GUI(QtWidgets.QMainWindow):
     def _show_peak_params(self):
         self.fmcontrols.peak_btn.setChecked(False)
         if self.peak_params is None:
-            self.peak_params = Peak_Params(self, self.fmcontrols)
+            self.peak_params = Peak_Params(self, self.fmcontrols, self.print, self.log)
             self.fmcontrols.peak_controls = self.peak_params
         self.peak_params.show()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def merge(self, project=None):
         self.fm = self.fmcontrols.ops
         if self.fibcontrols.fib:
@@ -296,7 +309,7 @@ class GUI(QtWidgets.QMainWindow):
                     if condition:
                         if popup is not None:
                             popup.close()
-                        popup = Merge(self)
+                        popup = Merge(self, self.print, self.log)
                         controls.popup = popup
                         self.project.merged = True
                         self.project.popup = popup

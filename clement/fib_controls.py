@@ -9,7 +9,7 @@ from .em_operations import EM_ops
 from . import utils
 
 class FIBControls(BaseControls):
-    def __init__(self, imview, vbox, sem_ops, merge_layout):
+    def __init__(self, imview, vbox, sem_ops, merge_layout, printer, logger):
         super(FIBControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
@@ -32,6 +32,10 @@ class FIBControls(BaseControls):
         self._file_name = None
         self._sigma_angle = None
         self._refined = False
+
+        self.print = printer
+        self.log = logger
+
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
@@ -70,7 +74,7 @@ class FIBControls(BaseControls):
 
         self.show()
 
-    #@utils.wait_cursor
+    #@utils.wait_cursor('print')
     def _load_mrc(self, jump=False):
         if not jump:
             if self._curr_folder is None:
@@ -86,7 +90,7 @@ class FIBControls(BaseControls):
                 self.reset_init()
             self.mrc_fname.setText(os.path.basename(self._file_name))
 
-            self.ops = EM_ops()
+            self.ops = EM_ops(self.print, self.log)
             self.ops.parse_2d(self._file_name)
             self.imview.setImage(self.ops.data)
             self.grid_box = None
@@ -96,7 +100,7 @@ class FIBControls(BaseControls):
                 self.show_grid_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
         else:
-            print('You have to choose a file first!')
+            self.print('You have to choose a file first!')
 
     def _update_imview(self):
         if self.ops is not None and self.ops.data is not None:
@@ -118,7 +122,7 @@ class FIBControls(BaseControls):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_grid(self, state=2):
         if state > 0:
             self.show_grid_box = True
@@ -128,7 +132,7 @@ class FIBControls(BaseControls):
             if self.grid_box is not None:
                 self.imview.removeItem(self.grid_box)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):
         if self.sem_ops is not None and recalc_matrix:
             if self.box_shift is None:
@@ -162,7 +166,7 @@ class FIBControls(BaseControls):
                 self.old_pos0 = self.grid_box.pos()
                 self.box_shift = np.zeros(2)
                 self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
-            print('Box origin at:', self.old_pos0)
+            self.print('Box origin at:', self.old_pos0)
 
         if self.grid_box is not None:
             if self.show_grid_box:
@@ -180,10 +184,10 @@ class FIBControls(BaseControls):
         self.old_pos0 = new_pos
         self._recalc_grid()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _save_mrc_montage(self):
         if self.ops is None:
-            print('No montage to save!')
+            self.print('No montage to save!')
         else:
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()

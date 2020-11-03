@@ -39,7 +39,7 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 class FMControls(BaseControls):
-    def __init__(self, imview, colors, merge_layout):
+    def __init__(self, imview, colors, merge_layout, printer, logger):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
@@ -58,6 +58,9 @@ class FMControls(BaseControls):
         self._current_slice = 0
         self._peaks = []
         self._bead_size = None
+
+        self.print = printer
+        self.log = logger
 
         self._init_ui()
 
@@ -260,7 +263,7 @@ class FMControls(BaseControls):
     def _update_imview(self):
         if self.ops is None:
             return
-        print(self.ops.data.shape)
+        self.print(self.ops.data.shape)
         if self.peak_btn.isChecked():
             self.peak_btn.setChecked(False)
             self.peak_btn.setChecked(True)
@@ -289,9 +292,10 @@ class FMControls(BaseControls):
             self._current_slice = self.slice_select_btn.value()
             self._parse_fm_images(self._file_name)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _parse_fm_images(self, file_name, series=None):
-        self.ops = FM_ops()
+        self.log(file_name)
+        self.ops = FM_ops(self.print, self.log)
         retval = self.ops.parse(file_name, z=0, series=series)
         if retval is not None:
             picker = SeriesPicker(self, retval)
@@ -303,7 +307,7 @@ class FMControls(BaseControls):
                 self.ops = None
                 return
             self.ops.parse(file_name, z=0, series=self._series)
-            print(self.ops.data.shape)
+            self.print(self.ops.data.shape)
 
         self.num_slices = self.ops.num_slices
         if file_name != '':
@@ -352,7 +356,7 @@ class FMControls(BaseControls):
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_max_projection(self, state=None):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
         if self.max_proj_btn.isChecked():
@@ -365,9 +369,9 @@ class FMControls(BaseControls):
 
     def _calc_color_channels(self):
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
-        print(len(self._channels))
+        self.print('Num channels: ', len(self._channels))
         for i in range(len(self._channels)):
-            print(self._channels[i])
+            self.log(self._channels[i])
             if self._channels[i]:
                 my_channel = self.ops.data[:, :, i]
                 my_channel_rgb = np.repeat(my_channel[:, :, np.newaxis], 3, axis=2)
@@ -379,13 +383,13 @@ class FMControls(BaseControls):
         if self.overlay_btn.isChecked():
             self.color_data = np.sum(self.color_data, axis=0)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_overlay(self, state=None):
         if self.ops is not None:
             self._overlay = not self._overlay
             self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_channels(self, checked, my_channel):
         if self.ops is not None and self.ops.data is not None:
             self._channels[my_channel] = not self._channels[my_channel]
@@ -400,9 +404,9 @@ class FMControls(BaseControls):
             button.setStyleSheet('background-color: {}'.format(cname))
             self._update_imview()
         else:
-            print('Invalid color')
+            self.print('Invalid color')
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _fliph(self, state):
         if self.ops is None:
             return
@@ -417,7 +421,7 @@ class FMControls(BaseControls):
         self._recalc_grid()
         self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _flipv(self, state):
         if self.ops is None:
             return
@@ -432,7 +436,7 @@ class FMControls(BaseControls):
         self._recalc_grid()
         self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _trans(self, state):
         if self.ops is None:
             return
@@ -447,7 +451,7 @@ class FMControls(BaseControls):
         self._recalc_grid()
         self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _rot(self, state):
         if self.ops is None:
             return
@@ -462,10 +466,10 @@ class FMControls(BaseControls):
         self._recalc_grid()
         self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _slice_changed(self):
         if self.ops is None:
-            print('Pick FM image first')
+            self.print('Pick FM image first')
             return
 
         num = self.slice_select_btn.value()
@@ -479,14 +483,14 @@ class FMControls(BaseControls):
         self.slice_select_btn.clearFocus()
 
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _find_peaks(self, state=None):
         if self.ops is None:
-            print('You have to select the data first!')
+            self.print('You have to select the data first!')
             return
 
         if self.ops.adjusted_params == False:
-            print('You have to adjust and save the peak finding parameters first!')
+            self.print('You have to adjust and save the peak finding parameters first!')
             self.peak_btn.setChecked(False)
             return
 
@@ -508,7 +512,7 @@ class FMControls(BaseControls):
             flip = True
 
         channel = self.peak_controls.peak_channel_btn.currentIndex()
-        print('Perform peak finding on channel: ', channel+1)
+        self.print('Perform peak finding on channel: ', channel+1)
         if self.map_btn.isChecked():
             if self.ops._transformed:
                 if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
@@ -555,7 +559,6 @@ class FMControls(BaseControls):
                 self.ops.transp = transp
                 self.ops._update_data()
                 self._update_imview()
-        print(self.ops.tf_peak_slices)
 
         if not self.other._refined:
             if self.ops.tf_peaks_z is None:
@@ -564,14 +567,14 @@ class FMControls(BaseControls):
                 self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=self.ops.tf_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _align_colors(self, idx, state):
         if self.ops is None:
-            print('You have to select the data first!')
+            self.print('You have to select the data first!')
             return
 
         if self.ops.adjusted_params == False:
-            print('You have to adjust and save the peak finding parameters first!')
+            self.print('You have to adjust and save the peak finding parameters first!')
             self.peak_controls.action_btns[idx].setChecked(False)
             return
 
@@ -581,7 +584,7 @@ class FMControls(BaseControls):
             self._update_imview()
             return
 
-        print('Align channel ', idx+1)
+        self.print('Align channel ', idx+1)
         reference = self.peak_controls.ref_btn.currentIndex()
         if idx != reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
             self.ops.aligning = True
@@ -619,7 +622,7 @@ class FMControls(BaseControls):
         self.ops._update_data()
         self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _mapping(self, state=None):
         #self.align_btn.setEnabled(not self.map_btn.isChecked())
         self.ops.calc_mapping()
@@ -627,7 +630,7 @@ class FMControls(BaseControls):
         if self.remove_tilt_btn.isChecked():
             self._remove_tilt()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _remove_tilt(self, state=None):
         if self.map_btn.isChecked():
             self.ops.remove_tilt(self.remove_tilt_btn.isChecked())

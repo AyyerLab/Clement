@@ -14,7 +14,7 @@ from .peak_finding import Peak_finding
 
 
 class FM_ops(Peak_finding):
-    def __init__(self):
+    def __init__(self, printer, logger):
         super(FM_ops, self).__init__()
         self._show_max_proj = False
         self._orig_points = None
@@ -25,6 +25,9 @@ class FM_ops(Peak_finding):
         self._color_matrices = []
         self._aligned_channels = []
         self._channel_idx = None
+
+        self.print = printer
+        self.log = logger
 
         self.reader = None
         self.voxel_size = None
@@ -80,7 +83,7 @@ class FM_ops(Peak_finding):
             for i in range(self.num_channels):
                 self.orig_data[:,:,:,i] /= self.orig_data[:,:,:,i].max()
                 self.orig_data[:,:,:,i] *= self.norm_factor
-                print(self.orig_data.shape)
+                self.log(self.orig_data.shape)
             self.data = np.copy(self.orig_data)
             self.old_fname = fname
             self.selected_slice = z
@@ -98,7 +101,7 @@ class FM_ops(Peak_finding):
                 self.num_channels = len(self.reader.getChannels())
                 md = self.reader.getMetadata()
                 self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
-                print(self.voxel_size)
+                self.print('Voxel size: ', self.voxel_size)
                 self.old_fname = fname
 
             # TODO: Look into modifying read_lif to get
@@ -173,7 +176,6 @@ class FM_ops(Peak_finding):
                     self.points = self.update_points(self.points)
 
     def update_points(self, points):
-        print('Updating points \n', points)
         peaks = None
         if self._transformed:
             if self.tf_peak_slices is not None:
@@ -330,13 +332,13 @@ class FM_ops(Peak_finding):
         if ind is not None:
             z = self.tf_peaks_z[ind]
         else:
-            print('Index not found. Calculate local z position!')
+            self.print('Index not found. Calculate local z position!')
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
             point = np.array((pos[0], pos[1]))
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
             z = self.calc_local_z(self.channel, point, tf_aligned, flip_list, self.data.shape[:-1])
         if z is None:
-            print('Oops, something went wrong. Try somewhere else!')
+            self.print('Oops, something went wrong. Try somewhere else!')
             return None
         # flip z axis and scale by voxel size ratio
         z = self.num_slices - 1 - z
@@ -349,7 +351,7 @@ class FM_ops(Peak_finding):
         self.channel /= self.channel.max()
         self.channel *= self.norm_factor
         self._channel_idx = ind
-        print('Load channel {}'.format(ind+1))
+        self.print('Load channel {}'.format(ind+1))
 
     def clear_channel(self):
         self._channel_idx = None
@@ -384,9 +386,9 @@ class FM_ops(Peak_finding):
                 self._color_matrices[idx] = np.copy(color_matrix)
                 self._aligned_channels[idx] = True
             else:
-                print('Unable to align color channels. Try to adjust peak finding parameters!')
+                self.print('Unable to align color channels. Try to adjust peak finding parameters!')
         else:
-            print('Unable to align channels. Be sure you select a fluorescence channel!')
+            self.print('Unable to align channels. Be sure you select a fluorescence channel!')
 
     def apply_alignment(self):
         for i in range(self.num_channels):
@@ -395,18 +397,18 @@ class FM_ops(Peak_finding):
                     color_matrix = self.tf_matrix @ self._color_matrices[i] @ np.linalg.inv(self.tf_matrix)
                 else:
                     color_matrix = self._color_matrices[i]
-                print(color_matrix)
+                self.log(color_matrix)
                 self.data[:,:,i] = np.copy(ndi.affine_transform(self.data[:, :, i], np.linalg.inv(color_matrix), order=1))
 
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)
-        print('Input points:\n', my_points)
+        self.log('Input points:\n', my_points)
 
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
 
         self.side_length = np.mean(side_list)
-        print('ROI side length:', self.side_length, '\xb1', side_list.std())
+        self.log('ROI side length:', self.side_length, '\xb1', side_list.std())
 
         cen = my_points.mean(0) - np.ones(2) * self.side_length / 2.
         self._tf_points = np.zeros_like(my_points)
@@ -423,12 +425,12 @@ class FM_ops(Peak_finding):
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
-        print('Transform matrix:\n', self.tf_matrix)
-        print('Tf shape: ', self._tf_shape)
+        self.print('Transform matrix:\n', self.tf_matrix)
+        self.print('Tf shape: ', self._tf_shape)
 
         self.apply_transform()
         self.points = np.copy(self._tf_points)
-        print('New points: \n', self._tf_points)
+        self.log('New points: \n', self._tf_points)
 
     def calc_rot_transform(self, my_points):
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
@@ -449,7 +451,7 @@ class FM_ops(Peak_finding):
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
-        print('Tf: ', self.tf_matrix)
+        self.print('Transform matrix: ', self.tf_matrix)
         if not self._transformed:
             self._orig_points = np.copy(my_points)
         self.apply_transform()
@@ -484,14 +486,13 @@ class FM_ops(Peak_finding):
         my_list.append((points[0][0] - points[-1][0]) * (points[0][1] + points[-1][1]))
         my_sum = np.sum(my_list)
         if my_sum > 0:
-            print('counter-clockwise')
+            self.log('counter-clockwise')
             self.counter_clockwise = True
             return points
         else:
-            print('clockwise --> transpose points')
+            self.log('clockwise --> transpose points')
             order = [0, 3, 2, 1]
             return points[order]
-            return tf_matrix
 
     def apply_transform(self, shift_points=True):
         if not self._transformed:
@@ -501,7 +502,7 @@ class FM_ops(Peak_finding):
             self.flipv = False
 
         if self.tf_matrix is None:
-            print('Calculate transform matrix first')
+            self.print('Calculate transform matrix first')
             return
 
         # Calculate transform_shift for point transforms
@@ -516,7 +517,7 @@ class FM_ops(Peak_finding):
                                                                             output_shape=self._tf_shape)
                     sys.stderr.write('\r%d' % i)
                 self._update_data(update_points=False)
-                print(self.tf_hsv_map_no_tilt.shape)
+                self.log(self.tf_hsv_map_no_tilt.shape)
 
             else:
                 self.tf_hsv_map = np.empty(self._tf_shape + (self.hsv_map.shape[-1],))
@@ -536,7 +537,7 @@ class FM_ops(Peak_finding):
                     self.tf_data[:, :, i] = ndi.affine_transform(self.orig_data[:, :, i], np.linalg.inv(self.tf_matrix),
                                                                  order=1, output_shape=self._tf_shape)
                     sys.stderr.write('\r%d' % i)
-                print('\n', self.tf_data.shape)
+                self.log('\n', self.tf_data.shape)
                 if shift_points:
                     self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
             elif self._show_max_proj and self._transformed:
@@ -558,8 +559,8 @@ class FM_ops(Peak_finding):
                                                                           np.linalg.inv(self.tf_matrix), order=1,
                                                                           output_shape=self._tf_shape)
                     sys.stderr.write('\r%d' % i)
-                print('\n', self.tf_data.shape)
-                print(self.max_proj_data.shape)
+                self.log('\n', self.tf_data.shape)
+                self.log(self.max_proj_data.shape)
                 if shift_points:
                     self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
 
@@ -601,7 +602,6 @@ class FM_ops(Peak_finding):
 
         for i in range(len(em_roi_list)):
             fm_coor = self.peak_finding(fm_roi_list[i], None, roi=True)
-            print(fm_coor)
             fm_coor_list.append(list(fm_coor + np.array(fm_points[i] - size)))
 
             em_coor = self.peak_finding(em_roi_list[i], None, roi=True)
@@ -637,7 +637,7 @@ class FM_ops(Peak_finding):
                     except np.linalg.LinAlgError:
                         counter += 1
                         if counter % 1 == 0:
-                            print('\rLinAlgError: ', counter)
+                            self.log('\rLinAlgError: ', counter)
                         if counter == 100:
                             break
             if successfull:
@@ -646,10 +646,10 @@ class FM_ops(Peak_finding):
                     coor = np.array([cx, cy]) + np.array([x, y]).T - np.array([roi_size, roi_size])
                     points_model.append(coor)
                 # else:
-                #    print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                #    self.print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 #    points_model.append(np.array([x, y]))
             else:
-                print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
+                self.print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
 
@@ -681,7 +681,7 @@ class FM_ops(Peak_finding):
 
     def get_transform(self, source, dest):
         if len(source) != len(dest):
-            print('Point length do not match')
+            self.print('Point length do not match')
             return
         self.corr_matrix = tf.estimate_transform('affine', source, dest).params
         return self.corr_matrix

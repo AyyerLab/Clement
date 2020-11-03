@@ -9,7 +9,7 @@ from .em_operations import EM_ops
 from . import utils
 
 class EMControls(BaseControls):
-    def __init__(self, imview, vbox, merge_layout):
+    def __init__(self, imview, vbox, merge_layout, printer, logger):
         super(EMControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
@@ -28,6 +28,8 @@ class EMControls(BaseControls):
         self._downsampling = None
         self._select_region_original = True
 
+        self.print = printer
+        self.log = logger
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
@@ -73,7 +75,7 @@ class EMControls(BaseControls):
             self.assemble_btn.setEnabled(True)
             self.step_box.setEnabled(True)
 
-            self.ops = EM_ops()
+            self.ops = EM_ops(self.print, self.log)
             self.ops.parse_2d(self._file_name)
             if len(self.ops.dimensions) == 2:
                 self.step_box.setText('1')
@@ -97,7 +99,7 @@ class EMControls(BaseControls):
             else:
                 self.show_boxes = False
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _assemble_mrc(self, state=None):
         if self.step_box.text() == '':
             self._downsampling = 10
@@ -129,7 +131,7 @@ class EMControls(BaseControls):
             self.boxes = []
             self.show_grid_btn.setChecked(False)
         else:
-            print('You have to choose a file first!')
+            self.print('You have to choose a file first!')
 
     def _transpose(self):
         self.ops.transpose()
@@ -175,13 +177,13 @@ class EMControls(BaseControls):
                 [self.imview.removeItem(box) for box in self.tr_boxes]
         self.show_boxes = False
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _select_box(self, state=None):
         if self.select_region_btn.isChecked():
             self._show_boxes()
             self.ops.orig_region = None
             self.show_assembled_btn.setEnabled(False)
-            print('Select box!')
+            self.print('Select box!')
             if self.show_btn.isChecked():
                 self._select_region_original = True
             else:
@@ -196,7 +198,7 @@ class EMControls(BaseControls):
                 self.ops.select_region(np.array(points_obj),transformed)
                 self._hide_boxes()
                 if self.ops.orig_region is None:
-                    print('Ooops, something went wrong. Try again!')
+                    self.print('Ooops, something went wrong. Try again!')
                     return
                 self.show_assembled_btn.setEnabled(True)
                 self.show_assembled_btn.setChecked(False)
@@ -249,10 +251,10 @@ class EMControls(BaseControls):
         self._recalc_grid(self.imview)
         self._update_imview()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _save_mrc_montage(self):
         if self.ops is None:
-            print('No montage to save!')
+            self.print('No montage to save!')
         else:
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()

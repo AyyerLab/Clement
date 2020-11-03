@@ -135,7 +135,7 @@ class Convergence(QtWidgets.QMainWindow):
         layout.addWidget(sc)
 
 class Peak_Params(QtWidgets.QMainWindow):
-    def __init__(self, parent, fm):
+    def __init__(self, parent, fm, printer, logger):
         super(Peak_Params, self).__init__(parent)
         self.parent = parent
         self.fm = fm
@@ -150,11 +150,12 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.theme = self.parent.theme
         self.resize(800, 800)
         self.parent._set_theme(self.theme)
+        self.print = printer
+        self.logger = logger
         self._init_ui()
         self._calc_max_proj()
 
     def _init_ui(self):
-        print('huhu')
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()
@@ -163,7 +164,6 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.peak_imview = pg.ImageView()
         self.peak_imview.ui.roiBtn.hide()
         self.peak_imview.ui.menuBtn.hide()
-        self.peak_imview.scene.sigMouseClicked.connect(self._imview_clicked)
         layout.addWidget(self.peak_imview)
         # Options
         hlayout = QtWidgets.QHBoxLayout()
@@ -376,7 +376,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.orig_data_roi = np.copy(self.data_roi)
         self._update()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _subtract_background(self, checked):
         if checked:
             self.background_correction = True
@@ -394,21 +394,12 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops._color_matrices = []
         [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
 
-    def _imview_clicked(self, event):
-        if event.button() == QtCore.Qt.RightButton:
-            event.ignore()
-            return
-        else:
-            print('clicked')
-            if self.draw_btn.isChecked():
-                print('Drawing')
-
     def _draw_roi(self, checked):
         if checked:
             self.reset_btn.setEnabled(False)
             if self.roi is not None:
                 self.peak_imview.removeItem(self.roi)
-            print('Draw ROI in the image!')
+            self.print('Draw ROI in the image!')
             pos = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
             size = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
             self.roi = pg.ROI(pos=pos,size=size, rotatable=False, removable=False)
@@ -420,8 +411,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.roi.resizable = False
             self.data_roi = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem())
             self.orig_data_roi = np.copy(self.data_roi)
-            print(self.data_roi.shape)
-            print('Done drawing ROI!')
+            self.log(self.data_roi.shape)
+            self.print('Done drawing ROI!')
             self.peak_imview.removeItem(self.roi)
             self._update()
 
@@ -484,7 +475,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.flood_steps.blockSignals(False)
             self.flood_steps_label.clearFocus()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_peaks(self, state=None):
         if not self.peak_btn.isChecked():
             [self.peak_imview.removeItem(point) for point in self.peaks]
@@ -537,12 +528,14 @@ class Peak_Params(QtWidgets.QMainWindow):
 
 
 class Merge(QtGui.QMainWindow):
-    def __init__(self, parent):
+    def __init__(self, parent, printer, logger):
         super(Merge, self).__init__(parent)
         self.parent = parent
         self.theme = self.parent.theme
         self.fm_copy = None
         self.other = self.parent.fmcontrols.other
+        self.print = printer
+        self.log = logger
 
         self.curr_mrc_folder_popup = self.parent.fmcontrols.other.curr_folder
         self.num_slices_popup = self.parent.fmcontrols.num_slices
@@ -578,7 +571,7 @@ class Merge(QtGui.QMainWindow):
             merged_data = self.parent.em.merged_2d
             self.fib = False
         if merged_data is not None:
-            print(self._colors_popup)
+            self.log(self._colors_popup)
             self.data_popup = np.copy(merged_data)
             for i in range(merged_data.shape[2]):
                 self._channels_popup.append(True)
@@ -725,7 +718,7 @@ class Merge(QtGui.QMainWindow):
 
     def _calc_ellipses(self):
         cov_matrix = self.parent.fmcontrols.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
-        print('Cov matrix: \n', cov_matrix)
+        self.log('Cov matrix: \n', cov_matrix)
         eigvals, eigvecs = np.linalg.eigh(cov_matrix)
         order = eigvals.argsort()[::-1]
         eigvals, eigvecs = eigvals[order], eigvecs[order]
@@ -733,7 +726,7 @@ class Merge(QtGui.QMainWindow):
         self.theta = -np.arctan2(vy, vx) * 180 / np.pi
         #scale eigenvalues to 75% confidence interval and pixel size
         self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size)
-        print(self.lambda_1, self.lambda_2)
+        self.log(self.lambda_1, self.lambda_2)
 
     def _copy_poi(self):
         corr_points = self.other._points_corr
@@ -812,12 +805,12 @@ class Merge(QtGui.QMainWindow):
         if idx in self._clicked_points_popup_base_indices:
             self._clicked_points_popup_base_indices.remove(idx)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_overlay_popup(self, checked):
         self._overlay_popup = not self._overlay_popup
         self._update_imview_popup()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_channels_popup(self, checked, my_channel):
         self._channels_popup[my_channel] = not self._channels_popup[my_channel]
         self._update_imview_popup()
@@ -831,7 +824,7 @@ class Merge(QtGui.QMainWindow):
             button.setStyleSheet('background-color: {}'.format(cname))
             self._update_imview_popup()
         else:
-            print('Invalid color')
+            self.print('Invalid color')
 
     def _calc_color_channels_popup(self):
         self.color_data_popup = np.zeros(
@@ -867,7 +860,7 @@ class Merge(QtGui.QMainWindow):
 
     def _calc_stage_positions_popup(self, checked):
         if checked:
-            print('Select points of interest!')
+            self.print('Select points of interest!')
             if len(self._clicked_points_popup) != 0:
                 [self.imview_popup.removeItem(point) for point in self._clicked_points_popup]
                 [self.imview_popup.removeItem(annotation) for annotation in self.annotations_popup]
@@ -888,9 +881,9 @@ class Merge(QtGui.QMainWindow):
             #else:
             #    self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates,
             #                                                                                 self.downsampling)
-            print('Done selecting points of interest!')
+            self.print('Done selecting points of interest!')
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _save_data_popup(self, state=None):
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
@@ -903,7 +896,7 @@ class Merge(QtGui.QMainWindow):
                 self._save_merge_popup(file_name)
                 self._save_coordinates_popup(file_name)
             except PermissionError:
-                print('Permission error! Choose a different directory!')
+                self.print('Permission error! Choose a different directory!')
 
     def _save_merge_popup(self, fname):
         with mrc.new(fname + '.mrc', overwrite=True) as f:
@@ -920,7 +913,7 @@ class Merge(QtGui.QMainWindow):
         with open(fname + '.txt', 'w', newline='') as f:
             csv.writer(f, delimiter=' ').writerows(enumerated)
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _show_max_projection_popup(self, state=None):
         if self.max_help:
             self.max_help = False
@@ -935,7 +928,7 @@ class Merge(QtGui.QMainWindow):
             self.data_popup = np.copy(self.fm_copy.merged)
             self._update_imview_popup()
 
-    @utils.wait_cursor
+    @utils.wait_cursor('print')
     def _slice_changed_popup(self):
         if self.fm_copy is None:
             self.fm_copy = copy.copy(self.parent.fm)

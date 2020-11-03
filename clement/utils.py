@@ -1,15 +1,29 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
+import numpy as np
+from collections.abc import Iterable
+import time
+import copy
+from datetime import datetime
+import os
 
-def wait_cursor(func):
-    def wrapper(*args, **kwargs):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        try:
-            func(*args, **kwargs)
-        except:
+def wait_cursor(printer=None):
+    def wait(func):
+        def wrapper(self, *args, **kwargs):
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            if getattr(self, 'print') is not None:
+                printer = getattr(self, 'print')
+                printer('Run ', func.__name__)
+            try:
+                func(self, *args, **kwargs)
+            except:
+                QtWidgets.QApplication.restoreOverrideCursor()
+                raise
             QtWidgets.QApplication.restoreOverrideCursor()
-            raise
-        QtWidgets.QApplication.restoreOverrideCursor()
-    return wrapper
+            if getattr(self, 'print') is not None:
+                printer = getattr(self, 'print')
+                printer('Done')
+        return wrapper
+    return wait
 
 def add_montage_line(parent, vbox, type_str, downsampling=False):
     line = QtWidgets.QHBoxLayout()
@@ -122,3 +136,59 @@ def add_transform_grid_line(parent, vbox, show_original=True):
         line.addStretch(1)
     return line
 
+class PrintGUI(QtCore.QObject):
+    def __init__(self, label):
+        super(PrintGUI, self).__init__()
+        self.label = label
+        self.string = ''
+        self.log_string = None
+        self.log_file = None
+
+    def print(self, *args):
+        self.parse(*args)
+        self.parse_log(*args)
+
+    def log(self, *args):
+        self.parse_log(*args)
+
+    def parse(self, *args):
+        QtCore.QCoreApplication.processEvents()
+        full_string = ' '
+        s_list = []
+        for s in args:
+            string = self.convert(s)
+            s_list.append(string)
+        self.label.setText(full_string.join(s_list))
+
+    def parse_log(self,*args):
+        full_string = ' '
+        s_list = []
+        for s in args:
+            string = self.convert(s)
+            s_list.append(string)
+        self.log_file.write(full_string.join(s_list) + '\n')
+
+    def convert(self, s):
+        string = None
+        if isinstance(s, str):
+            string = s
+        elif isinstance(s, Iterable):
+            conv = np.array(s).tolist()
+            string = ''
+            string.join([str(elem) for elem in conv])
+        else:
+            string = str(s)
+        return string
+
+    def run(self):
+        print("Let's go!")
+        dir_name = 'log'
+        tot_path = os.path.join(os.getcwd(), dir_name)
+        if not os.path.isdir(tot_path):
+            os.mkdir(tot_path)
+
+        dtime = datetime.now()
+        fname = dtime.strftime('%Y%m%d_%H%M%S.txt')
+        self.log_file = open(os.path.join(tot_path,fname), 'a')
+
+        print(tot_path)

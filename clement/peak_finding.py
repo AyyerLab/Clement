@@ -42,12 +42,12 @@ class Peak_finding():
             img = self.subtract_background(im)
         else:
             img = np.copy(im)
-        print(self.threshold)
-        print(self.pixel_upper_threshold)
-        print(self.pixel_lower_threshold)
-        print(self.flood_steps)
-        print(img.shape)
-        print(img.max())
+        self.log(self.threshold)
+        self.log(self.pixel_upper_threshold)
+        self.log(self.pixel_lower_threshold)
+        self.log(self.flood_steps)
+        self.log(img.shape)
+        self.log(img.max())
         img[img < self.threshold] = 0
 
         labels, num_objects = ndi.label(img)
@@ -89,7 +89,6 @@ class Peak_finding():
                                 break
                             else:
                                 multiple = True
-                                # print('multiple hits!')
                                 coordinates_roi = np.array(ndi.center_of_mass(roi_i, labels_roi, range(1, n_i + 1)))
                                 [coor_sp.append(coordinates_roi[j] + np.array((slice_x.start, slice_y.start))) for j
                                  in
@@ -97,12 +96,6 @@ class Peak_finding():
                                 break
                 if not multiple:
                     coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
-        #except (IndexError, ValueError):
-        #    if roi:
-        #        return None
-        #    else:
-        #        print('Something weird happened...')
-        #        pass
 
         coor = np.array(coor_sp)
         if roi:
@@ -131,8 +124,8 @@ class Peak_finding():
                     else:
                         self.peak_slices[curr_slice] = np.copy(peaks_2d)
         end = time.time()
-        print('duration: ', end - start)
-        print('Number of peaks found: ', peaks_2d.shape[0])
+        self.log('duration: ', end - start)
+        self.print('Number of peaks found: ', peaks_2d.shape[0])
 
     def subtract_background(self, img, sigma=None):
         if sigma is None:
@@ -146,7 +139,6 @@ class Peak_finding():
     def wshed_peaks(self, img):
         if self.threshold == 0:
             self.threshold = 0.1 * np.sort(img.ravel())[-100:].mean()
-        print(self.threshold)
         labels = morphology.label(img >= self.threshold, connectivity=1)
         morphology.remove_small_objects(labels, self.pixel_lower_threshold, connectivity=1, in_place=True)
         wshed = morphology.watershed(-img * (labels > 0), labels)
@@ -180,7 +172,7 @@ class Peak_finding():
         if not local:
             if transformed:
                 if tf_matrix is None:
-                    print('You have to parse the tf_matrix!')
+                    self.print('You have to parse the tf_matrix!')
                     return
                 if curr_slice is None:
                     tf_peaks = self.tf_peak_slices[-1]
@@ -201,9 +193,9 @@ class Peak_finding():
 
         if peaks_2d is None:
             if local:
-                print('You have to parse a point!')
+                self.print('You have to parse a point!')
             else:
-                print('Calculate 2d peaks first!')
+                self.print('Calculate 2d peaks first!')
             return
 
         z_profile = data[np.round(peaks_2d[:, 0]).astype(int), np.round(peaks_2d[:, 1]).astype(int)]
@@ -231,13 +223,13 @@ class Peak_finding():
                 pass
         if local:
             perr = np.sqrt(np.diag(pcov))[0]
-            print('Std z fit: ', perr)
+            self.print('Std z fit: ', perr)
             self.peaks_z_std.append(perr)
             self.z_profiles.append(z_profile[i])
             return popt[0]
         else:
             if len(sigma_list) == 0:
-                print('Z fitting of the beads failed. Contact developers!')
+                self.print('Z fitting of the beads failed. Contact developers!')
                 return
             self.sigma_z = np.median(sigma_list)
             gauss_static = lambda x, mu, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * self.sigma_z ** 2)) + offset
@@ -251,14 +243,14 @@ class Peak_finding():
                     popt, pcov = curve_fit(gauss_static, x_masked, z_masked, p0=[np.argmax(z_profile[i]), offset])
                     perr = np.sqrt(np.diag(pcov))
                 except RuntimeError:
-                    print('Runtime error for profile: ', i)
-                    print('Unable to fit z profile. Calculate argmax(z).')
-                    print('WARNING! Calculation of the z-position might be inaccurate!')
+                    self.print('Runtime error for profile: ', i)
+                    self.print('Unable to fit z profile. Calculate argmax(z).')
+                    self.print('WARNING! Calculation of the z-position might be inaccurate!')
                     mean_values.append(np.argmax(z_profile[i]))
                     self.peaks_z_std.append(10)
 
                 perr = np.sqrt(np.diag(pcov))[0]
-                print('Std z fit: ', perr)
+                self.log('Std z fit: ', perr)
                 self.peaks_z_std.append(perr)
                 self.z_profiles.append(z_profile[i])
                 mean_values.append(popt[0])
@@ -277,7 +269,7 @@ class Peak_finding():
             point = np.expand_dims(point, axis=0)
             z = self.fit_z(data, transformed=True, local=True, point=point)
         except IndexError:
-            print('You should select a point within the bounds of the image!')
+            self.print('You should select a point within the bounds of the image!')
         #finally:
         return z
 
@@ -289,7 +281,7 @@ class Peak_finding():
         if len(ind_arr) == 0:
             return None
         elif len(ind_arr) > 1:
-            print('Selection ambiguous. Try again!')
+            self.print('Selection ambiguous. Try again!')
         else:
             return ind_arr[0]
 

@@ -390,7 +390,6 @@ class Project(QtWidgets.QWidget):
             self.popup._clicked_points_popup_base_indices = mdict['Points base indices']
         self.popup.select_btn_popup.setChecked(True)
         points = np.array(mdict['Selected points'])
-        print('heeeeeeeeeeeeeeeeeeere')
         print(self.popup._clicked_points_popup_base_indices)
         if len(points) > 0:
             for i in range(len(points)):
