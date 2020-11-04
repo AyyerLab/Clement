@@ -37,11 +37,13 @@ class MplCanvas(FigureCanvas):
 
 
 class Scatter_Plot(MplCanvas):
-    def __init__(self, base):
+    def __init__(self, base, printer):
         MplCanvas.__init__(self)
         self.base = base
+        self.print = printer
         self._scatter_plot()
 
+    @utils.wait_cursor('print')
     def _scatter_plot(self):
         if self.base.fib:
             idx = 1
@@ -71,13 +73,15 @@ class Scatter_Plot(MplCanvas):
 
 
 class Convergence_Plot(MplCanvas):
-    def __init__(self, base):
+    def __init__(self, base, printer):
         MplCanvas.__init__(self)
         self.base = base
         self.min_points = self.base.min_conv_points
+        self.print = printer
         self._convergence_plot()
 
-    def _convergence_plot(self):
+    @utils.wait_cursor('print')
+    def _convergence_plot(self, state=None):
         if self.base.fib:
             idx = 1
         else:
@@ -104,7 +108,7 @@ class Convergence_Plot(MplCanvas):
 
 
 class Scatter(QtWidgets.QMainWindow):
-    def __init__(self, parent, base):
+    def __init__(self, parent, base, printer):
         super(Scatter, self).__init__(parent)
         self.parent = parent
         self.theme = self.parent.theme
@@ -115,12 +119,12 @@ class Scatter(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
-        sc = Scatter_Plot(base)
+        sc = Scatter_Plot(base, printer)
         layout.addWidget(sc)
 
 
 class Convergence(QtWidgets.QMainWindow):
-    def __init__(self, parent, base):
+    def __init__(self, parent, base, printer):
         super(Convergence, self).__init__(parent)
         self.parent = parent
         self.theme = self.parent.theme
@@ -131,7 +135,7 @@ class Convergence(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
-        sc = Convergence_Plot(base)
+        sc = Convergence_Plot(base, printer)
         layout.addWidget(sc)
 
 class Peak_Params(QtWidgets.QMainWindow):
@@ -347,13 +351,15 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.save_btn.clicked.connect(self._save)
         line.addWidget(self.save_btn)
 
-    def _update(self):
+    @utils.wait_cursor('print')
+    def _update(self, state=None):
         self._calc_color_channels()
         self.peak_imview.setImage(self.color_data)
         vr = self.peak_imview.getImageItem().getViewBox().targetRect()
         self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-    def _calc_color_channels(self):
+    @utils.wait_cursor('print')
+    def _calc_color_channels(self, state=None):
         idx = self.peak_channel_btn.currentIndex()
         if self.data_roi is None:
             self.color_data = np.zeros((1,) + self.data[:, :, 0].shape + (3,))
@@ -365,7 +371,8 @@ class Peak_Params(QtWidgets.QMainWindow):
         rgb = tuple([int(self.fm._colors[idx][1 + 2 * c:3 + 2 * c], 16) / 255. for c in range(3)])
         self.color_data[0, :, :, :] = my_channel_rgb * rgb
 
-    def _calc_max_proj(self):
+    @utils.wait_cursor('print')
+    def _calc_max_proj(self, state=None):
         if self.fm.ops.max_proj_data is None:
             self.fm.ops.calc_max_proj_data()
         self.data = self.fm.ops.max_proj_data
@@ -386,14 +393,17 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.data_roi = self.orig_data_roi
         self._update()
 
+    @utils.wait_cursor('print')
     def _change_peak_ref(self, state=None):
         self._update()
 
+    @utils.wait_cursor('print')
     def _change_ref(self, state=None):
         [btn.setChecked(False) for btn in self.action_btns]
         self.fm.ops._color_matrices = []
         [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
 
+    @utils.wait_cursor('print')
     def _draw_roi(self, checked):
         if checked:
             self.reset_btn.setEnabled(False)
@@ -416,13 +426,15 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.peak_imview.removeItem(self.roi)
             self._update()
 
-    def _reset_roi(self):
+    @utils.wait_cursor('print')
+    def _reset_roi(self, state=None):
         self.data_roi = self.data
         self.orig_data_roi = np.copy(self.data_roi)
         if self.background_correction:
             self._subtract_background(checked=True)
         self._update()
 
+    @utils.wait_cursor('print')
     def _set_noise_threshold(self, param, state=None):
         if param == 0:
             float_value = float(self.t_noise.value()) / 10
@@ -436,6 +448,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.t_noise.blockSignals(False)
             self.t_noise_label.clearFocus()
 
+    @utils.wait_cursor('print')
     def _set_plt_threshold(self, param, state=None):
         if param == 0:
             value = self.plt.value()
@@ -449,6 +462,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.plt.blockSignals(False)
             self.plt_label.clearFocus()
 
+    @utils.wait_cursor('print')
     def _set_put_threshold(self, param, state=None):
         if param == 0:
             value = self.put.value()
@@ -462,6 +476,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.put.blockSignals(False)
             self.put_label.clearFocus()
 
+    @utils.wait_cursor('print')
     def _set_flood_steps(self, param, state=None):
         if param == 0:
             value = self.flood_steps.value()
@@ -504,10 +519,12 @@ class Peak_Params(QtWidgets.QMainWindow):
 
         self.fm.ops.adjusted_params = True
 
-    def _reset_peaks(self):
+    @utils.wait_cursor('print')
+    def _reset_peaks(self, state=None):
         self.fm.ops.reset_peaks()
 
-    def _save(self):
+    @utils.wait_cursor('print')
+    def _save(self, state=None):
         if self.fm.ops is not None:
             self.fm.ops.adjusted_params = True
             self.fm.ops.background_correction = self.background_correction
@@ -716,7 +733,8 @@ class Merge(QtGui.QMainWindow):
         self.save_btn_popup.clicked.connect(self._save_data_popup)
         line.addWidget(self.save_btn_popup)
 
-    def _calc_ellipses(self):
+    @utils.wait_cursor('print')
+    def _calc_ellipses(self, state=None):
         cov_matrix = self.parent.fmcontrols.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
         self.log('Cov matrix: \n', cov_matrix)
         eigvals, eigvecs = np.linalg.eigh(cov_matrix)
@@ -728,7 +746,8 @@ class Merge(QtGui.QMainWindow):
         self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size)
         self.log(self.lambda_1, self.lambda_2)
 
-    def _copy_poi(self):
+    @utils.wait_cursor('print')
+    def _copy_poi(self, state=None):
         corr_points = self.other._points_corr
         if len(corr_points) != 0:
             self.select_btn_popup.setChecked(True)
@@ -744,6 +763,7 @@ class Merge(QtGui.QMainWindow):
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
         [self._clicked_points_popup_base_indices.append(i) for i in range(len(corr_points))]
 
+    @utils.wait_cursor('print')
     def _update_poi(self, pos, fib):
         if not fib:
             init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
@@ -755,6 +775,7 @@ class Merge(QtGui.QMainWindow):
         self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
         self._clicked_points_popup_base_indices.append(self.counter_popup-1)
 
+    @utils.wait_cursor('print')
     def _imview_clicked_popup(self, event):
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
@@ -768,6 +789,7 @@ class Merge(QtGui.QMainWindow):
         if self.select_btn_popup.isChecked():
             self._draw_correlated_points_popup(pos, item)
 
+    @utils.wait_cursor('print')
     def _draw_correlated_points_popup(self, pos, item):
         img_center = np.array(self.data_popup.shape)/2
         point = pg.EllipseROI(img_center, size=[self.lambda_1,self.lambda_2], angle=0, parent=item,
@@ -791,6 +813,7 @@ class Merge(QtGui.QMainWindow):
         self.imview_popup.addItem(annotation)
         point.sigRemoveRequested.connect(lambda: self._remove_correlated_points_popup(point, annotation))
 
+    @utils.wait_cursor('print')
     def _remove_correlated_points_popup(self, pt, anno):
         idx = self._clicked_points_popup.index(pt)
 
@@ -826,7 +849,8 @@ class Merge(QtGui.QMainWindow):
         else:
             self.print('Invalid color')
 
-    def _calc_color_channels_popup(self):
+    @utils.wait_cursor('print')
+    def _calc_color_channels_popup(self, state=None):
         self.color_data_popup = np.zeros(
             (len(self._channels_popup), int(np.ceil(self.data_popup.shape[0] / self.downsampling)),
              int(np.ceil(self.data_popup.shape[1] / self.downsampling)), 3))
@@ -851,13 +875,15 @@ class Merge(QtGui.QMainWindow):
             self.color_overlay_popup = np.sum(self.color_data_popup, axis=0)
             self.color_data_popup = np.sum(self.color_data_popup, axis=0)
 
-    def _update_imview_popup(self):
+    @utils.wait_cursor('print')
+    def _update_imview_popup(self, state=None):
         self._calc_color_channels_popup()
         vr = self.imview_popup.getImageItem().getViewBox().targetRect()
         levels = self.imview_popup.getHistogramWidget().item.getLevels()
         self.imview_popup.setImage(self.color_data_popup, levels=levels)
         self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
 
+    @utils.wait_cursor('print')
     def _calc_stage_positions_popup(self, checked):
         if checked:
             self.print('Select points of interest!')
@@ -898,11 +924,13 @@ class Merge(QtGui.QMainWindow):
             except PermissionError:
                 self.print('Permission error! Choose a different directory!')
 
+    @utils.wait_cursor('print')
     def _save_merge_popup(self, fname):
         with mrc.new(fname + '.mrc', overwrite=True) as f:
             f.set_data(self.data_popup.astype(np.float32))
             f.update_header_stats()
 
+    @utils.wait_cursor('print')
     def _save_coordinates_popup(self, fname):
         #if self.stage_positions_popup is not None:
             #for i in range(len(self.stage_positions_popup)):
@@ -929,7 +957,7 @@ class Merge(QtGui.QMainWindow):
             self._update_imview_popup()
 
     @utils.wait_cursor('print')
-    def _slice_changed_popup(self):
+    def _slice_changed_popup(self, state=None):
         if self.fm_copy is None:
             self.fm_copy = copy.copy(self.parent.fm)
         num = self.slice_select_btn_popup.value()
@@ -943,6 +971,7 @@ class Merge(QtGui.QMainWindow):
             self._current_slice_popup = num
             self.slice_select_btn_popup.clearFocus()
 
+    @utils.wait_cursor('print')
     def _draw_lines(self, checked):
         if checked:
             if self.lines is None:
@@ -963,6 +992,7 @@ class Merge(QtGui.QMainWindow):
         else:
             [self.imview_popup.removeItem(line) for line in self.lines]
 
+    @utils.wait_cursor('print')
     def _set_theme_popup(self, name):
         if name == 'none':
             self.setStyleSheet('')
@@ -971,7 +1001,8 @@ class Merge(QtGui.QMainWindow):
                 self.setStyleSheet(f.read())
         self.settings.setValue('theme', name)
 
-    def _reset_init(self):
+    @utils.wait_cursor('print')
+    def _reset_init(self, state=None):
         self.parent = None
         self.theme = None
         self.fm_copy = None

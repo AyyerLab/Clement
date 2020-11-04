@@ -260,7 +260,8 @@ class FMControls(BaseControls):
 
         self.show()
 
-    def _update_imview(self):
+    @utils.wait_cursor('print')
+    def _update_imview(self, state=None):
         if self.ops is None:
             return
         self.print(self.ops.data.shape)
@@ -367,7 +368,8 @@ class FMControls(BaseControls):
             self.ops.calc_max_projection()
             self._update_imview()
 
-    def _calc_color_channels(self):
+    @utils.wait_cursor('print')
+    def _calc_color_channels(self, state=None):
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
         self.print('Num channels: ', len(self._channels))
         for i in range(len(self._channels)):
@@ -467,7 +469,7 @@ class FMControls(BaseControls):
         self._update_imview()
 
     @utils.wait_cursor('print')
-    def _slice_changed(self):
+    def _slice_changed(self, state=None):
         if self.ops is None:
             self.print('Pick FM image first')
             return
@@ -646,7 +648,8 @@ class FMControls(BaseControls):
                 else:
                     self.clearLayout(item.layout())
 
-    def reset_init(self):
+    @utils.wait_cursor('print')
+    def reset_init(self, state=None):
         # self.ops = None
         # self.other = None # The other controls object
         if self.show_grid_btn.isChecked():

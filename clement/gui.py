@@ -200,6 +200,7 @@ class GUI(QtWidgets.QMainWindow):
     def _load_p(self):
         self.project._load_project()
 
+    @utils.wait_cursor('print')
     def select_tab(self, idx):
         self.fmcontrols.select_btn.setChecked(False)
         for i in range(len(self.fmcontrols._points_corr)):
@@ -261,24 +262,27 @@ class GUI(QtWidgets.QMainWindow):
                 self.fmcontrols.other.auto_opt_btn.setEnabled(True)
 
 
+    @utils.wait_cursor('print')
     def _show_scatter(self, idx):
         if idx == 0:
-            self.scatter = Scatter(self, self.emcontrols)
+            self.scatter = Scatter(self, self.emcontrols, self.print)
         else:
-            self.scatter = Scatter(self, self.fibcontrols)
+            self.scatter = Scatter(self, self.fibcontrols, self.print)
         self.scatter.show()
 
+    @utils.wait_cursor('print')
     def _show_convergence(self, idx):
         if len(self.fmcontrols.other._conv[idx]) == 3:
             if idx == 0:
-                self.convergence = Convergence(self, self.emcontrols)
+                self.convergence = Convergence(self, self.emcontrols, self.print)
             else:
-                self.convergence = Convergence(self, self.fibcontrols)
+                self.convergence = Convergence(self, self.fibcontrols, self.print)
             self.convergence.show()
         else:
-            print('To use this feature, you have to use at least 10 points for the refinement!')
+            self.print('To use this feature, you have to use at least 10 points for the refinement!')
 
-    def _show_peak_params(self):
+    @utils.wait_cursor('print')
+    def _show_peak_params(self, state=None):
         self.fmcontrols.peak_btn.setChecked(False)
         if self.peak_params is None:
             self.peak_params = Peak_Params(self, self.fmcontrols, self.print, self.log)
@@ -301,7 +305,7 @@ class GUI(QtWidgets.QMainWindow):
 
         if self.fm is not None and self.em is not None:
             if self.fibcontrols.fib and self.fibcontrols.sem_ops.data is None:
-                print('You have to calculate the FM to TEM/SEM correlation first!')
+                self.print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
                 if self.fm._tf_points is not None and (em._tf_points is not None or em._tf_points_region is not None):
                     #condition = self.fmcontrols.merge()
@@ -318,10 +322,11 @@ class GUI(QtWidgets.QMainWindow):
                             self.project.load_merge = False
                         popup.show()
                 else:
-                    print('You have to transform the FM and the TEM/SEM images first!')
+                    self.print('You have to transform the FM and the TEM/SEM images first!')
         else:
-            print('Select FM and EM data first!')
+            self.print('Select FM and EM data first!')
 
+    @utils.wait_cursor('print')
     def _set_theme(self, name):
         self.setStyleSheet('')
         with open(resource_path('styles/%s.qss' % name), 'r') as f:
@@ -368,7 +373,7 @@ class GUI(QtWidgets.QMainWindow):
 
 def main():
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='Clement: GUI for Correlative Light and Electron Microscopy')
     parser.add_argument('-p', '--project_fname', help='Path to project .yml file')
     parser.add_argument('--no-restore', help='Do not restore QSettings from last time Clement closed', action='store_true')

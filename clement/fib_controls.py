@@ -102,7 +102,8 @@ class FIBControls(BaseControls):
         else:
             self.print('You have to choose a file first!')
 
-    def _update_imview(self):
+    @utils.wait_cursor('print')
+    def _update_imview(self, state=None):
         if self.ops is not None and self.ops.data is not None:
             old_shape = self.imview.image.shape
             new_shape = self.ops.data.shape
@@ -113,7 +114,8 @@ class FIBControls(BaseControls):
             if old_shape == new_shape:
                 self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
-    def _transpose(self):
+    @utils.wait_cursor('print')
+    def _transpose(self, state=None):
         self.ops.transpose()
         self._recalc_grid(recalc_matrix=False)
         self._update_imview()
@@ -177,6 +179,7 @@ class FIBControls(BaseControls):
                 self.show_peaks_btn.setChecked(True)
 
 
+    @utils.wait_cursor('print')
     def _update_shifts(self, state):
         new_pos = state.pos() + self.old_pos0
         self.box_shift = np.array(new_pos)
@@ -185,7 +188,7 @@ class FIBControls(BaseControls):
         self._recalc_grid()
 
     @utils.wait_cursor('print')
-    def _save_mrc_montage(self):
+    def _save_mrc_montage(self, state=None):
         if self.ops is None:
             self.print('No montage to save!')
         else:
@@ -197,7 +200,8 @@ class FIBControls(BaseControls):
             if file_name != '':
                 self.ops.save_merge(file_name)
 
-    def reset_init(self):
+    @utils.wait_cursor('print')
+    def reset_init(self, state=None):
         if self.show_grid_btn.isChecked() and self.grid_box is not None:
             self.imview.removeItem(self.grid_box)
         self.show_peaks_btn.setChecked(False)

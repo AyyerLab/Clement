@@ -82,7 +82,8 @@ class EMControls(BaseControls):
                 self._assemble_mrc()
                 self.assemble_btn.setEnabled(False)
 
-    def _update_imview(self):
+    @utils.wait_cursor('print')
+    def _update_imview(self, state=None):
         if self.ops is not None and self.ops.data is not None:
             old_shape = self.imview.image.shape
             new_shape = self.ops.data.shape
@@ -133,12 +134,14 @@ class EMControls(BaseControls):
         else:
             self.print('You have to choose a file first!')
 
-    def _transpose(self):
+    @utils.wait_cursor('print')
+    def _transpose(self, state=None):
         self.ops.transpose()
         self._recalc_grid()
         self._update_imview()
 
-    def _show_boxes(self):
+    @utils.wait_cursor('print')
+    def _show_boxes(self, state=None):
         if self.ops is None:
             return
         handle_pen = pg.mkPen('#00000000')
@@ -168,7 +171,8 @@ class EMControls(BaseControls):
                 [self.imview.addItem(box) for box in self.tr_boxes]
         self.show_boxes = True
 
-    def _hide_boxes(self):
+    @utils.wait_cursor('print')
+    def _hide_boxes(self, state=None):
         if self.show_btn.isChecked():
             if self.show_boxes:
                 [self.imview.removeItem(box) for box in self.boxes]
@@ -213,7 +217,8 @@ class EMControls(BaseControls):
             else:
                 self._hide_boxes()
 
-    def _show_assembled(self):
+    @utils.wait_cursor('print')
+    def _show_assembled(self, state=None):
         if self.ops is None:
             return
         if self.grid_box is not None:
@@ -252,7 +257,7 @@ class EMControls(BaseControls):
         self._update_imview()
 
     @utils.wait_cursor('print')
-    def _save_mrc_montage(self):
+    def _save_mrc_montage(self, state=None):
         if self.ops is None:
             self.print('No montage to save!')
         else:
@@ -262,8 +267,9 @@ class EMControls(BaseControls):
             self._curr_folder = os.path.dirname(file_name)
             if file_name != '':
                 self.ops.save_merge(file_name)
-    
-    def reset_init(self):
+
+    @utils.wait_cursor('print')
+    def reset_init(self, state=None):
         #self.ops = None
         #self.other = None # The other controls object
         if self.show_grid_btn.isChecked():

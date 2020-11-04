@@ -5,23 +5,30 @@ import time
 import copy
 from datetime import datetime
 import os
+import traceback
+import time
 
 def wait_cursor(printer=None):
     def wait(func):
         def wrapper(self, *args, **kwargs):
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            printer = None
             if getattr(self, 'print') is not None:
                 printer = getattr(self, 'print')
                 printer('Run ', func.__name__)
+            print_done = False
             try:
+                start = time.time()
                 func(self, *args, **kwargs)
-            except:
+                end = time.time()
+                if (end-start) > 1 and printer is not None:
+                    printer('Done')
+            except Exception as e:
                 QtWidgets.QApplication.restoreOverrideCursor()
+                if printer is not None:
+                    printer(traceback.format_exc())
                 raise
             QtWidgets.QApplication.restoreOverrideCursor()
-            if getattr(self, 'print') is not None:
-                printer = getattr(self, 'print')
-                printer('Done')
         return wrapper
     return wait
 
