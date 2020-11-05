@@ -12,6 +12,7 @@ data
 old
 images
 log
+.DS_Store
 
 #projects
 test
