@@ -29,7 +29,7 @@ class Peak_finding():
         self.aligning = False
 
 
-    def peak_finding(self, im, transformed, roi=False, curr_slice=None):
+    def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos = None):
         start = time.time()
         if not roi:
             if transformed:
@@ -105,6 +105,8 @@ class Peak_finding():
                 return None
         else:
             peaks_2d = np.round(coor)
+            if roi_pos is not None:
+                peaks_2d += roi_pos
             if self.aligning:
                 if transformed:
                     self.tf_peaks_align_ref = np.copy(peaks_2d)

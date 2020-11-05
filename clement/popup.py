@@ -146,6 +146,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.data = None
         self.roi = None
         self.data_roi = None
+        self.roi_pos = None
         self.orig_data_roi = None
         self.background_correction = False
         self.color_data = None
@@ -421,14 +422,16 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.roi.resizable = False
             self.data_roi = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem())
             self.orig_data_roi = np.copy(self.data_roi)
+            self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
             self.log(self.data_roi.shape)
-            self.print('Done drawing ROI!')
+            self.print('Done drawing ROI at position ', self.roi_pos)
             self.peak_imview.removeItem(self.roi)
             self._update()
 
     @utils.wait_cursor('print')
     def _reset_roi(self, state=None):
         self.data_roi = self.data
+        self.roi_pos = None
         self.orig_data_roi = np.copy(self.data_roi)
         if self.background_correction:
             self._subtract_background(checked=True)

@@ -181,8 +181,8 @@ class PrintGUI(QtCore.QObject):
             string = s
         elif isinstance(s, Iterable):
             conv = np.array(s).tolist()
-            string = ''
-            string.join([str(elem) for elem in conv])
+            string = ' '
+            string = string.join([str(elem) for elem in conv])
         else:
             string = str(s)
         return string
