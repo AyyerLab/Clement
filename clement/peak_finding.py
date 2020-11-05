@@ -211,6 +211,8 @@ class Peak_finding():
             try:
                 z_peak = x[z_profile[i] > np.exp(-0.5) * z_profile[i].max()]
                 sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
+                if sigma_guess == 0:
+                    sigma_guess = 2
                 offset = z_profile[i].min()
                 mask = np.zeros_like(z_profile[i]).astype(int)
                 mask[z_profile[i] == max_int] = 1

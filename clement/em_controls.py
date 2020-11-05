@@ -352,4 +352,4 @@ class EMControls(BaseControls):
         self.size_box.setEnabled(False)
         self.auto_opt_btn.setEnabled(False)
 
-        self.ops.__init__()
+        self.ops.__init__(self.print, self.log)

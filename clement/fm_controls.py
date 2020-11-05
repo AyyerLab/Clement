@@ -748,5 +748,5 @@ class FMControls(BaseControls):
         self.err_plt_btn.setEnabled(False)
         self.convergence_btn.setEnabled(False)
 
-        self.ops.__init__()
+        self.ops.__init__(self.print, self.log)
 
