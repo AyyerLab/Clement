@@ -650,8 +650,8 @@ class BaseControls(QtWidgets.QWidget):
         self.ops._transformed = not self.ops._transformed
         align = False
         if hasattr(self.ops, 'flipv') and not self.ops._transformed:
-            if self.align_btn.isChecked() and self.ops.color_matrix is None:
-                self.align_btn.setChecked(False)
+            if self.peak_controls.align_btn.isChecked() and self.ops.color_matrix is None:
+                self.peak_controls.align_btn.setChecked(False)
                 align = True
             self.flipv.setEnabled(False)
             self.fliph.setEnabled(False)
@@ -710,7 +710,7 @@ class BaseControls(QtWidgets.QWidget):
         if show_peaks:
             self.peak_btn.setChecked(True)
         if align:
-            self.align_btn.setChecked(True)
+            self.peak_controls.align_btn.setChecked(True)
 
         if self.ops._transformed:
             [self.imview.addItem(point) for point in self._points_corr]
@@ -987,6 +987,7 @@ class BaseControls(QtWidgets.QWidget):
             self.show_peaks_btn.setChecked(False)
             return
 
+        print('passed')
         if self.fib and self.tr_matrices is None:
             # Check if Z-fitting has been done for FM peaks in case of FIB image
             # If not, do the Z-fitting
