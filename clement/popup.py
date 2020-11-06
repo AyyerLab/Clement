@@ -407,13 +407,16 @@ class Peak_Params(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _draw_roi(self, checked):
         if checked:
+            self.peak_btn.setChecked(False)
             self.reset_btn.setEnabled(False)
             if self.roi is not None:
                 self.peak_imview.removeItem(self.roi)
             self.print('Draw ROI in the image!')
             pos = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
             size = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
-            self.roi = pg.ROI(pos=pos,size=size, rotatable=False, removable=False)
+            #qrect = QtCore.QRect(0, 0, self.data.shape[0], self.data.shape[1])
+            qrect = None
+            self.roi = pg.ROI(pos=pos,size=size, maxBounds=qrect, resizable=True, rotatable=False, removable=False)
             self.roi.addScaleHandle(pos=[1,1], center=[0.5,0.5])
             self.peak_imview.addItem(self.roi)
         else:
@@ -430,6 +433,7 @@ class Peak_Params(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def _reset_roi(self, state=None):
+        self.peak_btn.setChecked(False)
         self.data_roi = self.data
         self.roi_pos = None
         self.orig_data_roi = np.copy(self.data_roi)
@@ -495,22 +499,28 @@ class Peak_Params(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def _show_peaks(self, state=None):
+        if self.draw_btn.isChecked():
+            self.print('You have to confirm the ROI!')
+            self.peak_btn.setChecked(False)
+            return
         if not self.peak_btn.isChecked():
             [self.peak_imview.removeItem(point) for point in self.peaks]
             self.peaks = []
             return
 
         self._reset_peaks()
-
         self.fm.ops.threshold = self.t_noise_label.value()
         self.fm.ops.pixel_lower_threshold = self.plt.value()
         self.fm.ops.pixel_upper_threshold = self.put.value()
         self.fm.ops.flood_steps = self.flood_steps.value()
         self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
-                                 curr_slice=None)
+                                 #curr_slice=None)
+                                 curr_slice=None, roi_pos= self.roi_pos)
 
-        peaks_2d = self.fm.ops.peak_slices[-1]
+        peaks_2d = np.copy(self.fm.ops.peak_slices[-1])
+        if self.roi_pos is not None:
+            peaks_2d -= self.roi_pos #correct for roi_pos bug out of range, qrect for roi not resizable
         if len(peaks_2d.shape) > 0:
             for i in range(len(peaks_2d)):
                 pos = QtCore.QPointF(peaks_2d[i][0] - self.fm.size / 2, peaks_2d[i][1] - self.fm.size / 2)
@@ -537,12 +547,6 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.pixel_upper_threshold = self.put.value()
             self.fm.ops.flood_steps = self.flood_steps.value()
             self.fm.point_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
-            self.fm.ops.orig_tf_peak_slices = None
-            self.fm.ops.tf_peak_slices = None
-            self.fm.ops.peak_slices = None
-            self.fm.ops.tf_peaks_z = None
-            self.fm.ops.peaks_z_std = []
-            self.fm.ops.peaks_z = None
             self.fm.peak_btn.setChecked(True)
         self.close()
 

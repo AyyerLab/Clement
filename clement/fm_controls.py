@@ -515,49 +515,39 @@ class FMControls(BaseControls):
 
         channel = self.peak_controls.peak_channel_btn.currentIndex()
         self.print('Perform peak finding on channel: ', channel+1)
-        if self.map_btn.isChecked():
-            if self.ops._transformed:
+        peaks_2d = None
+        if self.ops._transformed:
+            if self.map_btn.isChecked() or self.max_proj_btn.isChecked():
+                peaks_2d = self.ops.peak_slices[-1]
                 if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                    #self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel],
-                    self.ops.peak_finding(self.ops.tf_max_proj_data[:, :, channel],
-                                          #transformed=True, roi_pos=self.peak_controls.roi_pos)
-                                          transformed=True)
+                    self.ops.calc_transformed_coordinates(peaks_2d, self.ops.tf_matrix, self.peak_controls.data_roi.shape,
+                                                          self.peak_controls.roi_pos)
                 peaks_2d = self.ops.tf_peak_slices[-1]
             else:
-                if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                    #self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
-                    self.ops.peak_finding(self.ops.max_proj_data[:, :, channel], transformed=False)
-                                          #roi_pos = self.peak_controls.roi_pos)
-                peaks_2d = self.ops.peak_slices[-1]
+                peaks_2d = self.ops.peak_slices[self._current_slice]
+                if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
+                    self.ops.calc_transformed_coordinates(peaks_2d, self.ops.tf_matrix, self.peak_controls.data_roi.shape,
+                                                          self.peak_controls.roi_pos, slice=self._current_slice)
+                peaks_2d = self.ops.tf_peak_slices[self._current_slice]
         else:
-            if self.max_proj_btn.isChecked():
-                if self.ops._transformed:
-                    if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                        #self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=True,
-                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=True)
-                                              #roi_pos=self.peak_controls.roi_pos)
-                    peaks_2d = self.ops.tf_peak_slices[-1]
-                else:
-                    if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                        #self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
-                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=False)
-                        #                      roi_pos=self.peak_controls.roi_pos)
-                    peaks_2d = self.ops.peak_slices[-1]
+            print('originale')
+            if self.map_btn.isChecked():
+                #if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
+                #                          roi_pos=self.peak_controls.roi_pos)
+                peaks_2d = self.ops.peak_slices[-1]
+            elif self.max_proj_btn.isChecked():
+                #if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
+                #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
+                #                          roi_pos=self.peak_controls.roi_pos)
+                peaks_2d = self.ops.peak_slices[-1]
             else:
-                if self.ops._transformed:
-                    if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
-                        #self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=True,
-                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=True,
-                                              curr_slice=self._current_slice)
-                                              #curr_slice = self._current_slice, roi_pos = self.peak_controls.roi_pos)
-                    peaks_2d = self.ops.tf_peak_slices[self._current_slice]
-                else:
-                    if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
-                        #self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
-                        self.ops.peak_finding(self.ops.data[:, :, channel], transformed=False,
-                                              curr_slice=self._current_slice)
-                                              #curr_slice = self._current_slice, roi_pos = self.peak_controls.roi_pos)
-                    peaks_2d = self.ops.peak_slices[self._current_slice]
+                #if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
+                #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
+                #                          curr_slice = self._current_slice, roi_pos=self.peak_controls.roi_pos)
+                peaks_2d = self.ops.peak_slices[self._current_slice]
+
+            print(peaks_2d)
         if len(peaks_2d.shape) > 0:
             for i in range(len(peaks_2d)):
                 pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)

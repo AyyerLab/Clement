@@ -29,7 +29,7 @@ class Peak_finding():
         self.aligning = False
 
 
-    def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos = None):
+    def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos=None):
         start = time.time()
         if not roi:
             if transformed:
@@ -146,6 +146,40 @@ class Peak_finding():
         wshed = morphology.watershed(-img * (labels > 0), labels)
         self.peaks_2d = np.round(
             np.array([r.weighted_centroid for r in measure.regionprops((labels > 0) * wshed, img)]))
+
+    def calc_transformed_coordinates(self, points, tf_matrix, roi_shape, roi_pos=None, slice=None):
+        tf_matrix = np.copy(tf_matrix)
+        if roi_pos is not None:
+            nx, ny = roi_shape[:-1]
+            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+            roi_tf_corners = np.dot(tf_matrix, corners)
+            _roi_tf_shape = tuple([int(i) for i in (roi_tf_corners.max(1) - roi_tf_corners.min(1))[:2]])
+
+            pos = np.array([roi_pos[0], roi_pos[1], 1])
+            origin = np.array([0, 0, 1])
+            tf_pos = tf_matrix @ pos
+            tf_pos_roi = tf_matrix @ origin
+            shift = (tf_pos - tf_pos_roi)[:2]
+            tf_matrix[:2,2] +=  shift
+
+        print(roi_pos)
+        if roi_pos is None:
+            roi_pos = np.zeros(2)
+        tf_points = []
+        for i in range(len(points)):
+            init = np.array([points[i,0], points[i,1], 1])
+            init[:2] -= roi_pos[:2]
+            tf_pt = tf_matrix @ init
+            tf_points.append(tf_pt[:2])
+
+        if self.tf_peak_slices is None:
+            self.tf_peak_slices = [None] * len(self.peak_slices)
+        if slice is None:
+            self.tf_peak_slices[-1] = np.copy(tf_points)
+        else:
+            self.tf_peak_slices[slice] = np.copy(tf_points)
+        if self.orig_tf_peak_slices is None:
+            self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
 
     def calc_original_coordinates(self, point, tf_mat, flip, tf_shape):
         if len(point) == 2:
