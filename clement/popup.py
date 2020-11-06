@@ -152,6 +152,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.color_data = None
         self.peaks = []
         self.num_channels = self.fm.ops.num_channels
+        self.recover_transformed = False
         self.theme = self.parent.theme
         self.resize(800, 800)
         self.parent._set_theme(self.theme)
@@ -338,7 +339,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         for i in range(self.num_channels):
             self.action_btns.append(QtGui.QAction('Channel ' + str(i+1), self.align_menu, checkable=True))
             self.align_menu.addAction(self.action_btns[i])
-            self.action_btns[i].toggled.connect(lambda state, i=i: self.fm._align_colors(i, state))
+            self.action_btns[i].toggled.connect(lambda state, i=i: self._align_channel(i, state))
 
         line.addWidget(self.align_btn)
         line.addStretch(1)
@@ -355,9 +356,27 @@ class Peak_Params(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _update(self, state=None):
         self._calc_color_channels()
-        self.peak_imview.setImage(self.color_data)
         vr = self.peak_imview.getImageItem().getViewBox().targetRect()
+        self.peak_imview.setImage(self.color_data)
         self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+
+    @utils.wait_cursor('print')
+    def _update_data(self, state=None):
+        if self.fm.ops._transformed:
+            self.fm.show_btn.setChecked(True)
+            self.recover_transformed = True
+        self.data = self.fm.ops.data
+        if self.data_roi is None:
+            self.data_roi = self.data
+            self.orig_data_roi = np.copy(self.data_roi)
+        else:
+            if self.roi is not None:
+                self.data_roi = self.data[np.round(self.roi_pos[0]).astype(int):np.round(self.roi_pos[0]).astype(int) \
+                                +self.data_roi.shape[0], np.round(self.roi_pos[1]).astype(int): \
+                                np.round(self.roi_pos[1]).astype(int)+self.data_roi.shape[1],:]
+            else:
+                self.data_roi = self.data
+            self.orig_data_roi = np.copy(self.data_roi)
 
     @utils.wait_cursor('print')
     def _calc_color_channels(self, state=None):
@@ -376,12 +395,11 @@ class Peak_Params(QtWidgets.QMainWindow):
     def _calc_max_proj(self, state=None):
         if self.fm.ops.max_proj_data is None:
             self.fm.ops.calc_max_proj_data()
-        self.data = self.fm.ops.max_proj_data
+        self.data = self.fm.ops.data
+        #self.data = self.fm.ops.max_proj_data
         #self.data /= self.data.max()
         #self.data *= self.fm.ops.norm_factor
-        if self.data_roi is None:
-            self.data_roi = self.data
-            self.orig_data_roi = np.copy(self.data_roi)
+        self._update_data()
         self._update()
 
     @utils.wait_cursor('print')
@@ -396,6 +414,7 @@ class Peak_Params(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def _change_peak_ref(self, state=None):
+        self.peak_btn.setChecked(False)
         self._update()
 
     @utils.wait_cursor('print')
@@ -403,6 +422,11 @@ class Peak_Params(QtWidgets.QMainWindow):
         [btn.setChecked(False) for btn in self.action_btns]
         self.fm.ops._color_matrices = []
         [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
+
+    def _align_channel(self, idx, state):
+        self.fm._align_colors(idx, state)
+        self._update_data()
+        self._update()
 
     @utils.wait_cursor('print')
     def _draw_roi(self, checked):
@@ -420,6 +444,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.roi.addScaleHandle(pos=[1,1], center=[0.5,0.5])
             self.peak_imview.addItem(self.roi)
         else:
+            [self.peak_imview.removeItem(point) for point in self.peaks]
             self.reset_btn.setEnabled(True)
             self.roi.movable = False
             self.roi.resizable = False
@@ -515,7 +540,6 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.flood_steps = self.flood_steps.value()
         self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
-                                 #curr_slice=None)
                                  curr_slice=None, roi_pos= self.roi_pos)
 
         peaks_2d = np.copy(self.fm.ops.peak_slices[-1])
@@ -548,6 +572,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.flood_steps = self.flood_steps.value()
             self.fm.point_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
             self.fm.peak_btn.setChecked(True)
+            if self.recover_transformed:
+                self.fm.show_btn.setChecked(False)
         self.close()
 
 

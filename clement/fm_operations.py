@@ -399,7 +399,6 @@ class FM_ops(Peak_finding):
                     color_matrix = self._color_matrices[i]
                 self.log(color_matrix)
                 self.data[:,:,i] = np.copy(ndi.affine_transform(self.data[:, :, i], np.linalg.inv(color_matrix), order=1))
-
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)
         self.log('Input points:\n', my_points)

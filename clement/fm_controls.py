@@ -153,7 +153,7 @@ class FMControls(BaseControls):
         self.fliph.setEnabled(False)
         line.addWidget(self.fliph)
 
-        # self.flipv = QtWidgets.QPushButton('\u2356', self)
+        # self.flipv = QtWidgets.QPushButton('\u2356', selfroi_pos)
         self.flipv = QtWidgets.QPushButton('', self)
         self.flipv.setObjectName('flipv')
         self.flipv.setCheckable(True)
@@ -275,8 +275,8 @@ class FMControls(BaseControls):
         else:
             self._calc_color_channels()
             levels = self.imview.getHistogramWidget().item.getLevels()
-            self.imview.setImage(self.color_data, levels=levels)
             vr = self.imview.getImageItem().getViewBox().targetRect()
+            self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
@@ -568,7 +568,8 @@ class FMControls(BaseControls):
             if self.ops.tf_peaks_z is None:
                 if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
                     self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=self.ops.tf_matrix,
+                color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
+                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
 
     @utils.wait_cursor('print')
@@ -613,7 +614,7 @@ class FMControls(BaseControls):
             if peaks_2d is None:
                 self.peak_btn.setChecked(True)
                 self.peak_btn.setChecked(False)
-                peaks_2d = self.ops.peak_slices[-1]
+                peaks_2d = self.ops.peaks_align_ref
                 self.peak_controls.peak_channel_btn.setCurrentIndex(peak_channel_idx)
             self.ops.estimate_alignment(peaks_2d, idx)
             if undo_max_proj:
@@ -623,6 +624,7 @@ class FMControls(BaseControls):
 
             self.ops.aligning = False
 
+        self.ops._aligned_channels[idx] = True
         self.ops._update_data()
         self._update_imview()
 

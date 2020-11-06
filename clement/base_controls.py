@@ -650,7 +650,7 @@ class BaseControls(QtWidgets.QWidget):
         self.ops._transformed = not self.ops._transformed
         align = False
         if hasattr(self.ops, 'flipv') and not self.ops._transformed:
-            if self.peak_controls.align_btn.isChecked() and self.ops.color_matrix is None:
+            if self.peak_controls is not None and self.peak_controls.align_btn.isChecked() and self.ops.color_matrix is None:
                 self.peak_controls.align_btn.setChecked(False)
                 align = True
             self.flipv.setEnabled(False)
