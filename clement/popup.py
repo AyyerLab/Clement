@@ -605,6 +605,8 @@ class Merge(QtGui.QMainWindow):
         self.lambda_1 = None
         self.lambda_2 = None
         self.theta = None
+        self.lamella_pos = None
+        self.lamella_size = None
 
         self._channels_popup = []
         self._colors_popup = list(np.copy(self.parent.fmcontrols._colors))
@@ -752,10 +754,22 @@ class Merge(QtGui.QMainWindow):
         self.select_btn_popup = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn_popup.setCheckable(True)
         self.select_btn_popup.toggled.connect(self._calc_stage_positions_popup)
-        self.draw_lines_btn = QtWidgets.QCheckBox('Draw FIB lines')
+        line.addWidget(self.select_btn_popup)
+        line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Lamella thickness [nm]: ')
+        self.lamella_btn = QtWidgets.QLineEdit('')
+        self.lamella_btn.setMaximumWidth(40)
+        self.lamella_btn.setEnabled(self.fib)
+        self.lamella_btn.textChanged.connect(self._set_lamella_size)
+        self.draw_lines_btn = QtWidgets.QCheckBox('Draw lamella')
         self.draw_lines_btn.setEnabled(self.fib)
         self.draw_lines_btn.stateChanged.connect(self._draw_lines)
-        line.addWidget(self.select_btn_popup)
+        self.lamella_btn.setText('300')
+        line.addWidget(label)
+        line.addWidget(self.lamella_btn)
         line.addWidget(self.draw_lines_btn)
         line.addStretch(1)
 
@@ -942,8 +956,10 @@ class Merge(QtGui.QMainWindow):
             #                                                                                 self.downsampling)
             self.print('Done selecting points of interest!')
 
-    @utils.wait_cursor('print')
     def _save_data_popup(self, state=None):
+        if self.select_btn_popup.isChecked():
+            self.print('You have to confirm selected points first!')
+            return
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image and Coordinates', self.curr_mrc_folder_popup)
@@ -971,8 +987,16 @@ class Merge(QtGui.QMainWindow):
         for i in range(len(self.coordinates)):
             #enumerated.append((i + 1, self.stage_positions_popup[i][0], self.stage_positions_popup[i][1]))
             enumerated.append((i + 1, self.coordinates[i][0], self.coordinates[i][1]))
+
+        lamella_pos = []
+        lamella_strings = ['Lamella upper boundary:', 'Lamella lower boundary:' ]
+        if self.lines is not None:
+            for i in range(len(self.lines)):
+                lamella_pos.append([lamella_strings[i], self.lines[i].pos().y()])
+
         with open(fname + '.txt', 'w', newline='') as f:
             csv.writer(f, delimiter=' ').writerows(enumerated)
+            csv.writer(f, delimiter=' ').writerows(lamella_pos)
 
     @utils.wait_cursor('print')
     def _show_max_projection_popup(self, state=None):
@@ -1004,22 +1028,46 @@ class Merge(QtGui.QMainWindow):
             self._current_slice_popup = num
             self.slice_select_btn_popup.clearFocus()
 
+
+    @utils.wait_cursor('print')
+    def _set_lamella_size(self, state=None):
+        if self.lamella_btn.text() is not '':
+            self.lamella_size = int(self.lamella_btn.text())
+            if self.draw_lines_btn.isChecked():
+                self.draw_lines_btn.setChecked(False)
+                self.draw_lines_btn.setChecked(True)
+
+    def _update_lines(self, idx):
+        pos = self.lines[idx].pos().y()
+        k = self.lamella_size / self.pixel_size[1]
+        if idx == 0:
+            self.lines[1].setPos(pos-k)
+            self.lamella_pos = pos - k / 2
+        else:
+            self.lines[0].setPos(pos+k)
+            self.lamella_pos = pos + k / 2
+
     @utils.wait_cursor('print')
     def _draw_lines(self, checked):
         if checked:
-            if self.lines is None:
-                self.lines = []
+            self.lines = []
+            if self.lamella_pos is None:
                 if len(self._clicked_points_popup) > 0:
                     point = self._clicked_points_popup[-1].pos()
-                    pos = point.y()+self.lambda_2/2
+                    self.lamella_pos = point.y() + self.lambda_2 / 2
                 else:
-                    pos = self.data_popup.shape[0]//2
+                    self.lamella_pos = self.data_popup.shape[0] // 2
 
-                k = 150 / self.pixel_size[0]
-                line = pg.InfiniteLine(pos=pos+k, angle=0, pen='r', movable=True, bounds=[0,self.data_popup.shape[0]])
-                line2 = pg.InfiniteLine(pos=pos-k, angle=0, pen='r', movable=True, bounds=[0,self.data_popup.shape[0]])
-                self.lines.append(line)
-                self.lines.append(line2)
+            k = self.lamella_size / self.pixel_size[1] / 2
+            line = pg.InfiniteLine(pos=self.lamella_pos + k, angle=0, pen='r', hoverPen='c', movable=True,
+                                   bounds=[0, self.data_popup.shape[0]])
+            line2 = pg.InfiniteLine(pos=self.lamella_pos - k, angle=0, pen='r', hoverPen='c', movable=True,
+                                    bounds=[0, self.data_popup.shape[0]])
+            line.sigPositionChanged.connect(lambda : self._update_lines(idx=0))
+            line2.sigPositionChanged.connect(lambda : self._update_lines(idx=1))
+
+            self.lines.append(line)
+            self.lines.append(line2)
             for i in range(len(self.lines)):
                 self.imview_popup.addItem(self.lines[i])
         else:

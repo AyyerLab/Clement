@@ -987,7 +987,6 @@ class BaseControls(QtWidgets.QWidget):
             self.show_peaks_btn.setChecked(False)
             return
 
-        print('passed')
         if self.fib and self.tr_matrices is None:
             # Check if Z-fitting has been done for FM peaks in case of FIB image
             # If not, do the Z-fitting
