@@ -38,6 +38,8 @@ class Peak_finding():
             else:
                 if self.peak_slices is None:
                     self.peak_slices = [None] * (self.num_slices + 1)
+
+
         if self.background_correction:
             img = self.subtract_background(im)
         else:

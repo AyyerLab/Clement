@@ -1070,6 +1070,7 @@ class BaseControls(QtWidgets.QWidget):
         if active:
             self.show_grid_btn.setChecked(False)
             self.translate_peaks_btn.setChecked(False)
+            self.other.select_btn.setEnabled(False)
             for p in self.peaks:
                 p.translatable = True
                 p.sigRegionChangeFinished.connect(p.peakMoved)
@@ -1077,6 +1078,7 @@ class BaseControls(QtWidgets.QWidget):
             for p in self.peaks:
                 p.sigRegionChangeFinished.disconnect()
                 p.translatable = False
+            self.other.select_btn.setEnaled(True)
 
     def correct_grid_z(self):
         self.ops.fib_matrix = None

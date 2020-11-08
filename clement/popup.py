@@ -236,12 +236,12 @@ class Peak_Params(QtWidgets.QMainWindow):
         label = QtWidgets.QLabel('Noise threshold:')
         line.addWidget(label)
         self.t_noise = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.t_noise.setRange(0,200) # 10 times the actual value to allow floats
+        self.t_noise.setRange(0,1000) # 10 times the actual value to allow floats
         self.t_noise.setFocusPolicy(QtCore.Qt.NoFocus)
         self.t_noise.setValue(100)
         self.t_noise.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
         self.t_noise_label = QtWidgets.QDoubleSpinBox(self)
-        self.t_noise_label.setRange(0,20)
+        self.t_noise_label.setRange(0,100)
         self.t_noise_label.setDecimals(1)
         self.t_noise_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
         self.t_noise_label.setValue(10)
@@ -356,8 +356,8 @@ class Peak_Params(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _update(self, state=None):
         self._calc_color_channels()
-        vr = self.peak_imview.getImageItem().getViewBox().targetRect()
         self.peak_imview.setImage(self.color_data)
+        vr = self.peak_imview.getImageItem().getViewBox().targetRect()
         self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     @utils.wait_cursor('print')
@@ -911,9 +911,9 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _update_imview_popup(self, state=None):
         self._calc_color_channels_popup()
+        #levels = self.imview_popup.getHistogramWidget().item.getLevels()
+        self.imview_popup.setImage(self.color_data_popup)
         vr = self.imview_popup.getImageItem().getViewBox().targetRect()
-        levels = self.imview_popup.getHistogramWidget().item.getLevels()
-        self.imview_popup.setImage(self.color_data_popup, levels=levels)
         self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
 
     @utils.wait_cursor('print')

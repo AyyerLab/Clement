@@ -255,11 +255,14 @@ class FM_ops(Peak_finding):
     def calc_max_proj_data(self):
         if self.reader is None:
             self.max_proj_data = self.tif_data.max(0)
-            self.max_proj_data /= self.max_proj_data.mean((0, 1))
+            #self.max_proj_data /= self.max_proj_data.mean((0, 1))
         else:
             self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
                                            for i in range(self.num_channels)]).transpose(2, 1, 0).astype('f4')
-            self.max_proj_data /= self.max_proj_data.mean((0, 1))
+            #self.max_proj_data /= self.max_proj_data.mean((0, 1))
+            for i in range(self.num_channels):
+                self.max_proj_data[:,:,i] /= self.max_proj_data[:,:,i].max()
+                self.max_proj_data[:,:,i] *= self.norm_factor
 
     def colorize2d(self, brightness, zvals, cmap_funcs):
         hfunc, sfunc, vfunc = cmap_funcs

@@ -274,9 +274,8 @@ class FMControls(BaseControls):
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
         else:
             self._calc_color_channels()
-            levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.setImage(self.color_data)
             vr = self.imview.getImageItem().getViewBox().targetRect()
-            self.imview.setImage(self.color_data, levels=levels)
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
@@ -350,9 +349,6 @@ class FMControls(BaseControls):
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
-
-            #self.ops.threshold = self.peaks_t1_label.value()
-            #self.ops.pixel_lower_threshold = self.peaks_t2_label.value()
 
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
@@ -530,7 +526,6 @@ class FMControls(BaseControls):
                                                           self.peak_controls.roi_pos, slice=self._current_slice)
                 peaks_2d = self.ops.tf_peak_slices[self._current_slice]
         else:
-            print('originale')
             if self.map_btn.isChecked():
                 #if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
                 #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
@@ -547,7 +542,6 @@ class FMControls(BaseControls):
                 #                          curr_slice = self._current_slice, roi_pos=self.peak_controls.roi_pos)
                 peaks_2d = self.ops.peak_slices[self._current_slice]
 
-            print(peaks_2d)
         if len(peaks_2d.shape) > 0:
             for i in range(len(peaks_2d)):
                 pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)
@@ -612,8 +606,8 @@ class FMControls(BaseControls):
                 self.peak_controls.peak_channel_btn.setCurrentIndex(reference)
                 peaks_2d = None
             if peaks_2d is None:
-                self.peak_btn.setChecked(True)
-                self.peak_btn.setChecked(False)
+                self.peak_controls.peak_btn.setChecked(True)
+                self.peak_controls.peak_btn.setChecked(False)
                 peaks_2d = self.ops.peaks_align_ref
                 self.peak_controls.peak_channel_btn.setCurrentIndex(peak_channel_idx)
             self.ops.estimate_alignment(peaks_2d, idx)
