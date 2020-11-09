@@ -9,7 +9,7 @@ import copy
 
 
 class Project(QtWidgets.QWidget):
-    def __init__(self, fm, em, fib, parent):
+    def __init__(self, fm, em, fib, parent, printer, logger):
         super(Project, self).__init__()
         self._project_folder = os.getcwd()
         self.fm = fm
@@ -20,6 +20,8 @@ class Project(QtWidgets.QWidget):
         self.popup = None
         self.parent = parent
         self.load_merge = False
+        self.print = printer
+        self.logger = logger
 
     def _load_project(self, file_name=None):
         if file_name is None:
@@ -28,7 +30,7 @@ class Project(QtWidgets.QWidget):
                                                                  self._project_folder,
                                                                  '*.yml')
         if file_name is not '':
-            print('Load ', file_name)
+            self.print('Load ', file_name)
             self.fm.reset_base()
             self.fm.reset_init()
             self.em.reset_init()
@@ -258,78 +260,77 @@ class Project(QtWidgets.QWidget):
                 self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
 
     def _load_base(self, project):
-        try:
-            if self.show_fib:
-                if 0 in self.fm._fib_flips:
-                    self.fm.transpose.setChecked(not self.fm.transpose.isChecked())
-                if 1 in self.fm._fib_flips:
-                    print(self.fm.rotate.isChecked())
-                    self.fm.rotate.setChecked(not self.fm.rotate.isChecked())
-                if 2 in self.fm._fib_flips:
-                    print(self.fm.fliph.isChecked())
-                    self.fm.fliph.setChecked(not self.fm.fliph.isChecked())
-                if 3 in self.fm._fib_flips:
-                    print(self.fm.flipv.isChecked())
-                    self.fm.flipv.setChecked(not self.fm.flipv.isChecked())
-            fmdict = project['FM']
-            self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
-            fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
-            fib_counter = 0
-            sem_counter = 0
-            for i in range(len(copy.copy(fmdict['FIB vs SEM history']))):
-                print(i)
-                if fib_vs_sem_history[i]:
-                    emdict = project['FIB']
-                    em = self.fib
-                    counter = fib_counter
-                    fib_counter += 1
-                    em.fib = True
-                else:
-                    emdict = project['EM']
-                    em = self.em
-                    counter = sem_counter
-                    sem_counter += 1
-                    em.fib = False
-                self.fm.other = em
+        if self.show_fib:
+            if 0 in self.fm._fib_flips:
+                self.fm.transpose.setChecked(not self.fm.transpose.isChecked())
+            if 1 in self.fm._fib_flips:
+                print(self.fm.rotate.isChecked())
+                self.fm.rotate.setChecked(not self.fm.rotate.isChecked())
+            if 2 in self.fm._fib_flips:
+                print(self.fm.fliph.isChecked())
+                self.fm.fliph.setChecked(not self.fm.fliph.isChecked())
+            if 3 in self.fm._fib_flips:
+                print(self.fm.flipv.isChecked())
+                self.fm.flipv.setChecked(not self.fm.flipv.isChecked())
+        fmdict = project['FM']
+        self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
+        fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
+        fib_counter = 0
+        sem_counter = 0
+        for i in range(len(copy.copy(fmdict['FIB vs SEM history']))):
+            print(i)
+            if fib_vs_sem_history[i]:
+                emdict = project['FIB']
+                em = self.fib
+                counter = fib_counter
+                fib_counter += 1
+                em.fib = True
+                idx = 1
+            else:
+                emdict = project['EM']
+                em = self.em
+                counter = sem_counter
+                sem_counter += 1
+                em.fib = False
+                idx = 0
+            self.parent.tabs.setCurrentIndex(idx)
+            self.fm.other = em
 
-                self.fm.select_btn.setChecked(True)
-                em.size = emdict['Size history'][i]
+            self.fm.select_btn.setChecked(True)
+            em.size = emdict['Size history'][0]
 
-                fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
-                fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
-                                           movable=True, removable=True) for i in range(len(fm_qpoints))]
-                [circle.setPen(0, 255, 0) for circle in fm_circles]
-                [circle.removeHandle(0) for circle in fm_circles]
-                self.fm._points_corr = copy.copy(fm_circles)
-                self.fm._points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
-                self.fm._orig_points_corr = copy.copy(fmdict['Original correlated points history'][i])
+            fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
+            fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
+                                       movable=True, removable=True) for i in range(len(fm_qpoints))]
+            [circle.setPen(0, 255, 0) for circle in fm_circles]
+            [circle.removeHandle(0) for circle in fm_circles]
+            self.fm._points_corr = copy.copy(fm_circles)
+            self.fm._points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
+            self.fm._orig_points_corr = copy.copy(fmdict['Original correlated points history'][i])
 
-                em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter]]
-                em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
-                                           movable=True, removable=True) for i in range(len(em_qpoints))]
-                [circle.setPen(0, 255, 255) for circle in em_circles]
-                [circle.removeHandle(0) for circle in em_circles]
+            em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter]]
+            em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
+                                       movable=True, removable=True) for i in range(len(em_qpoints))]
+            [circle.setPen(0, 255, 255) for circle in em_circles]
+            [circle.removeHandle(0) for circle in em_circles]
 
-                em._points_corr = copy.copy(em_circles)
-                em._points_corr_z = copy.copy(emdict['Correlated points z history'][counter])
-                em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter])
-                em.ops._refine_matrix = np.array(emdict['Refinement history'][counter])
+            em._points_corr = copy.copy(em_circles)
+            em._points_corr_z = copy.copy(emdict['Correlated points z history'][counter])
+            em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter])
+            em.ops._refine_matrix = np.array(emdict['Refinement history'][counter])
 
-                # This is just to avoid index error when removing points during refinement
-                [self.fm.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
-                 range(len(fm_qpoints))]
-                [em.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
-                 range(len(fm_qpoints))]
-                [self.fm._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
-                [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
+            # This is just to avoid index error when removing points during refinement
+            [self.fm.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
+             range(len(fm_qpoints))]
+            [em.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
+             range(len(fm_qpoints))]
+            [self.fm._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
+            [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
 
-                self.fm.select_btn.setChecked(False)
-                self.fm._refine()
+            self.fm.select_btn.setChecked(False)
+            self.fm._refine()
 
-                em.show_peaks_btn.setChecked(emdict['Show peaks'])
-        except KeyError:
-            pass
-
+            em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
         try:
             if self.fib.fib:
                 emdict = project['FIB']
@@ -534,7 +535,6 @@ class Project(QtWidgets.QWidget):
         fibdict['Sigma angle'] = self.fib.sigma_btn.text()
         fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
-        fibdict['Show peaks'] = self.fib.show_peaks_btn.isChecked()
         if self.fib.ops._orig_points is not None:
             fibdict['Original points'] = self.fib.ops._orig_points.tolist()
         if self.fib.box_shift is not None:

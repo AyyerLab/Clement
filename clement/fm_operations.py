@@ -29,6 +29,7 @@ class FM_ops(Peak_finding):
         self.print = printer
         self.log = logger
 
+        self.base_reader = None
         self.reader = None
         self.voxel_size = None
         self.tif_data = None
@@ -89,13 +90,13 @@ class FM_ops(Peak_finding):
             self.selected_slice = z
         else:
             if reopen:
-                base_reader = read_lif.Reader(fname)
-                if len(base_reader.getSeries()) == 1:
-                    self.reader = base_reader.getSeries()[0]
+                self.base_reader = read_lif.Reader(fname)
+                if len(self.base_reader.getSeries()) == 1:
+                    self.reader = self.base_reader.getSeries()[0]
                 elif series is not None:
-                    self.reader = base_reader.getSeries()[series]
+                    self.reader = self.base_reader.getSeries()[series]
                 else:
-                    return [s.getName() for s in base_reader.getSeries()]
+                    return [s.getName() for s in self.base_reader.getSeries()]
 
                 self.num_slices = self.reader.getFrameShape()[0]
                 self.num_channels = len(self.reader.getChannels())

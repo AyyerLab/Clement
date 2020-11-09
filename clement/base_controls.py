@@ -905,6 +905,7 @@ class BaseControls(QtWidgets.QWidget):
                 refined_points.append(transf[:2])
         else:
             orig_fm_points_z = np.copy(self._points_corr_z)
+            print(self.other.tr_matrices)
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 z = orig_fm_points_z[i]

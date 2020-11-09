@@ -314,6 +314,9 @@ class FMControls(BaseControls):
         if file_name != '':
             if self.picker is not None:
                 self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Series: ' + retval[self.picker.current_series]  + '; Slice ' + '[0/%d]' % self.num_slices)
+            elif self.picker is None and series is not None:
+                series_name = self.ops.base_reader.getSeries()[series].getName()
+                self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Series: ' + series_name + '; Slice ' + '[0/%d]' % self.num_slices)
             else:
                 self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Slice ' + '[0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
