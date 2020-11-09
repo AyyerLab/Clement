@@ -48,6 +48,7 @@ class FMControls(BaseControls):
         self.merge_layout = merge_layout
         self.num_slices = None
         self.peak_controls = None
+        self.picker = None
 
         self._colors = colors
         self._channels = []
@@ -298,11 +299,11 @@ class FMControls(BaseControls):
         self.ops = FM_ops(self.print, self.log)
         retval = self.ops.parse(file_name, z=0, series=series)
         if retval is not None:
-            picker = SeriesPicker(self, retval)
+            self.picker = SeriesPicker(self, retval)
             QtWidgets.QApplication.restoreOverrideCursor()
-            picker.exec_()
+            self.picker.exec_()
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-            self._series = picker.current_series
+            self._series = self.picker.current_series
             if self._series < 0:
                 self.ops = None
                 return
@@ -311,7 +312,7 @@ class FMControls(BaseControls):
 
         self.num_slices = self.ops.num_slices
         if file_name != '':
-            self.fm_fname.setText(os.path.basename(file_name) + ' [0/%d]' % self.num_slices)
+            self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Series: ' + retval[self.picker.current_series]  + '; Slice ' + '[0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
             for i in range(1, self.ops.num_channels + 1):
