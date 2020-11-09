@@ -562,13 +562,12 @@ class FMControls(BaseControls):
                 self.ops._update_data()
                 self._update_imview()
 
-        if not self.other._refined:
-            if self.ops.tf_peaks_z is None:
-                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
-                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
-                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
-                               flips=self.flips, shape=self.ops.data.shape[:-1])
+        if self.ops.tf_peaks_z is None:
+            if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
+                self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
+            color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
+            self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
+                           flips=self.flips, shape=self.ops.data.shape[:-1])
 
     @utils.wait_cursor('print')
     def _align_colors(self, idx, state):

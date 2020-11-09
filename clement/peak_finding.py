@@ -107,7 +107,7 @@ class Peak_finding():
                 return None
         else:
             peaks_2d = np.round(coor)
-            if roi_pos is not None:
+            if roi_pos is not None and peaks_2d is not None:
                 peaks_2d += roi_pos
             if self.aligning:
                 if transformed:

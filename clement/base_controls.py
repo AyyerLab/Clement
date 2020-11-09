@@ -218,7 +218,15 @@ class BaseControls(QtWidgets.QWidget):
         peaks = None
         z = None
         if self.other.fib:
-            if self.ops.tf_peaks_z is not None:
+            if self.ops.tf_peaks_z is None:
+                print('calc tf peaks z')
+                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
+                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
+                    color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
+                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
+                               flips=self.flips, shape=self.ops.data.shape[:-1])
+
+            else:
                 ind = self.ops.check_peak_index(point, self.size)
                 if ind is None and not self.other._refined:
                     self.print('You have to select a bead for the first refinement!')
@@ -231,9 +239,9 @@ class BaseControls(QtWidgets.QWidget):
                     self.print('z is None, something went wrong here... Try another bead!')
                     return
                 self._points_corr_z.append(z)
-            else:
-                self.print('This message should not be visible!!!')
-                return
+            #else:
+            #    self.print('This message should not be visible!!!')
+            #    return
 
         elif not self.other.fib:
             if self.ops.tf_peak_slices is not None and self.ops.tf_peak_slices[-1] is not None:
