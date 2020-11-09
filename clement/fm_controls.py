@@ -312,7 +312,10 @@ class FMControls(BaseControls):
 
         self.num_slices = self.ops.num_slices
         if file_name != '':
-            self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Series: ' + retval[self.picker.current_series]  + '; Slice ' + '[0/%d]' % self.num_slices)
+            if self.picker is not None:
+                self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Series: ' + retval[self.picker.current_series]  + '; Slice ' + '[0/%d]' % self.num_slices)
+            else:
+                self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Slice ' + '[0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
             for i in range(1, self.ops.num_channels + 1):
