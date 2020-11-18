@@ -292,8 +292,6 @@ class Project(QtWidgets.QWidget):
 
             self.fm.select_btn.setChecked(True)
             em.size = emdict['Size history'][counter[idx]]
-            print('heeeeeeeeeeeere')
-            print(counter)
             fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
             fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
                                        movable=True, removable=True) for i in range(len(fm_qpoints))]

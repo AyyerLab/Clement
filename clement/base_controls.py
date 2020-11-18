@@ -62,7 +62,6 @@ class BaseControls(QtWidgets.QWidget):
         self._points_corr_z = []
         self._orig_points_corr = []
         self._points_corr_indices = []
-        self._z_indices = []
         self._refined = False
         self._err = [None, None]
         self._std = [[None, None], [None, None]]
@@ -234,14 +233,10 @@ class BaseControls(QtWidgets.QWidget):
                 elif ind is not None:
                     peaks = self.ops.tf_peak_slices[-1]
                 z = self.ops.calc_z(ind, point, self.point_ref_btn.currentIndex())
-                self._z_indices.append(ind)
                 if z is None:
                     self.print('z is None, something went wrong here... Try another bead!')
                     return
                 self._points_corr_z.append(z)
-            #else:
-            #    self.print('This message should not be visible!!!')
-            #    return
 
         elif not self.other.fib:
             if self.ops.tf_peak_slices is not None and self.ops.tf_peak_slices[-1] is not None:
@@ -562,41 +557,27 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         if checked:
+            self.counter = len(self._points_corr)
             self.fliph.setEnabled(False)
             self.flipv.setEnabled(False)
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
             self.print('Select points of interest on %s image' % self.tag)
-            for i in range(len(self._points_corr)):
-                self._remove_correlated_points(self._points_corr[0])
-            self._z_indices = []
-            self.counter = 0
             if self.other.fib:
                 self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
-                self.other.tr_matrices = self.other.ops.get_fib_transform(
-                    self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
-
                 self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
-            else:
-                src_sorted = np.array(
-                    sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                dst_sorted = np.array(
-                    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-                self.other.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+            self._update_tr_matrices()
         else:
             if hasattr(self.other, 'fib') and self.ops.channel is not None:
                 self.ops.clear_channel()
             self.print('Done selecting points of interest on %s image' % self.tag)
-            #if self.auto_opt_btn.isChecked():
-            #    self.fit_circles()
             if not self.other._refined:
                 self.fliph.setEnabled(True)
                 self.flipv.setEnabled(True)
                 self.transpose.setEnabled(True)
                 self.rotate.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
-            #np.save('z_profiles', np.array(self.ops.z_profiles))
 
     @utils.wait_cursor('print')
     def _affine_transform(self, toggle_orig=True):
@@ -644,6 +625,7 @@ class BaseControls(QtWidgets.QWidget):
         if hasattr(self, 'select_btn'):
             self.point_ref_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
+            self.clear_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
 
@@ -671,11 +653,13 @@ class BaseControls(QtWidgets.QWidget):
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
             self.select_btn.setEnabled(False)
+            self.clear_btn.setEnabled(False)
             self.merge_btn.setEnabled(False)
             self.refine_btn.setEnabled(False)
         elif hasattr(self.ops, 'flipv') and self.ops._transformed:
             self.point_ref_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
+            self.clear_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
             if not self.fixed_orientation:
@@ -1005,10 +989,12 @@ class BaseControls(QtWidgets.QWidget):
             # If not, do the Z-fitting
             self.print('Fitting Z-positions of FM peaks')
             self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
-            self.tr_matrices = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
+        #    self.tr_matrices = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
 
         if len(self.peaks) != 0:
             self.peaks = []
+
+        self.other._update_tr_matrices()
         if self.fib:
             for i in range(len(self.other.ops.tf_peak_slices[-1])):
                 z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
@@ -1168,6 +1154,126 @@ class BaseControls(QtWidgets.QWidget):
                 self.print('Merged shape: ', self.ops.merged_3d.shape)
             self.show_merge = True
             return True
+
+    def _clear_pois(self):
+        self.counter = 0
+        # Remove circle from imviews
+        [self.imview.removeItem(point) for point in self._points_corr]
+        [self.fibcontrols.imview.removeItem(point) for point in self.fibcontrols._points_corr]
+        [self.emcontrols.imview.removeItem(point) for point in self.emcontrols._points_corr]
+
+        # Remove ROI
+        self._points_corr = []
+        self.fibcontrols._points_corr = []
+        self.emcontrols._points_corr = []
+        # Remove original position
+        self._orig_points_corr = []
+        self.fibcontrols._orig_points_corr = []
+        self.emcontrols._orig_points_corr = []
+
+        # Remove annotation
+        if len(self.anno_list) > 0:
+            [self.imview.removeItem(anno) for anno in self.anno_list]
+            [self.fibcontrols.imview.removeItem(anno) for anno in self.fibcontrols.anno_list]
+            [self.emcontrols.imview.removeItem(anno) for anno in self.emcontrols.anno_list]
+            self.anno_list = []
+            self.fibcontrols.anno_list = []
+            self.emcontrols.anno_list = []
+
+        # Remove correlation index
+        self._points_corr_indices = []
+        self.fibcontrols._points_corr_indices = []
+        self.emcontrols._points_corr_indices = []
+
+        # Remove FIB z-position
+        self._points_corr_z = []
+        self.fibcontrols._points_corr_z = []
+        self.emcontrols._points_corr_z = []
+
+    def select_tab(self, idx, fibcontrols, emcontrols):
+        if idx == 0:
+            fibcontrols.show_grid_btn.setChecked(False)
+            emcontrols._update_imview()
+            self.other = emcontrols
+            if emcontrols._refined:
+                self.undo_refine_btn.setEnabled(True)
+            else:
+                self.undo_refine_btn.setEnabled(False)
+            fibcontrols.fib = False
+        else:
+            if emcontrols.ops is not None and self.ops is not None:
+                if self.ops.points is not None and emcontrols.ops.points is not None:
+                    self._calc_tr_matrices()
+            fibcontrols.fib = True
+            if fibcontrols.ops is not None:
+                show_grid = emcontrols.show_grid_btn.isChecked()
+                fibcontrols.show_grid_btn.setChecked(show_grid)
+            if fibcontrols._refined:
+                self.undo_refine_btn.setEnabled(True)
+            else:
+                self.undo_refine_btn.setEnabled(False)
+            fibcontrols._update_imview()
+            fibcontrols.sem_ops = emcontrols.ops
+            self.other = fibcontrols
+            if emcontrols.ops is not None:
+                if emcontrols.ops._orig_points is not None:
+                    fibcontrols.enable_buttons(enable=True)
+                else:
+                    fibcontrols.enable_buttons(enable=False)
+                if fibcontrols.ops is not None and emcontrols.ops._tf_points is not None:
+                    fibcontrols.ops._transformed = True
+
+        if self.other.show_merge:
+            self.progress_bar.setValue(100)
+        else:
+            self.progress_bar.setValue(0)
+        if self.other._refined:
+            self.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0],
+                                                                           self.other._std[idx][1]))
+        else:
+            self.err_btn.setText('0')
+
+            #if self.fibcontrols.num_slices is None:
+            #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
+            #    if self.fibcontrols.ops is not None:
+            #        if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
+            #            self.fibcontrols.correct_grid_z()
+
+        #if self.fmcontrols is not None and self.fmcontrols.ops is not None:
+        if self.ops is not None:
+            if self.ops._transformed:
+                self.other.size_box.setEnabled(True)
+                self.other.auto_opt_btn.setEnabled(True)
+
+        points_corr = np.copy(self._points_corr)
+        if len(self._points_corr) != len(self.other._points_corr):
+            if self.counter != 0:
+                self.counter -= len(self._points_corr)
+            for i in range(len(self._points_corr)):
+                [self.imview.removeItem(point) for point in self._points_corr]
+                self._points_corr = []
+                self._orig_points_corr = []
+                [self.imview.removeItem(anno) for anno in self.anno_list]
+                self.anno_list = []
+                self._points_corr_indices = []
+                self._points_corr_z = []
+
+            self._update_tr_matrices()
+
+            item = self.imview.getImageItem()
+            for i in range(len(points_corr)):
+                pos = points_corr[i].pos()
+                self._draw_correlated_points(pos, item)
+
+    def _update_tr_matrices(self):
+        if self.other.fib:
+            self.other.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
+        else:
+            src_sorted = np.array(
+                sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            dst_sorted = np.array(
+                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            self.other.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
 
     def reset_base(self):
         [self.imview.removeItem(point) for point in self._points_corr]
