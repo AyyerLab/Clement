@@ -790,7 +790,7 @@ class Merge(QtGui.QMainWindow):
         vx, vy = eigvecs[0,0], eigvecs[0,1]
         self.theta = -np.arctan2(vy, vx) * 180 / np.pi
         #scale eigenvalues to 75% confidence interval and pixel size
-        self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size)
+        self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size[:2])
         self.log(self.lambda_1, self.lambda_2)
 
     @utils.wait_cursor('print')
