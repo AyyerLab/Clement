@@ -1025,13 +1025,9 @@ class BaseControls(QtWidgets.QWidget):
                 idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
                 if not np.array_equal(idx[0], np.array([])):
                     if len(idx) == 2:
-                        print(idx)
                         idx = idx[0][0]
-                    print(idx)
                     color = colors[idx]
-                    print(color)
                     color = matplotlib.colors.to_hex(color)
-                    print(color)
                 else:
                     color = None
                 point = PeakROI(pos, self.size, self.imview.getImageItem(), color=color)
@@ -1065,9 +1061,7 @@ class BaseControls(QtWidgets.QWidget):
                 idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
                 if not np.array_equal(idx[0], np.array([])):
                     if len(idx) == 2:
-                        print(idx)
                         idx = idx[0][0]
-                    print(idx)
                     color = colors[idx]
                     color = matplotlib.colors.to_hex(color)
                 else:
