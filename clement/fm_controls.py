@@ -278,9 +278,14 @@ class FMControls(BaseControls):
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
         else:
             self._calc_color_channels()
-            self.imview.setImage(self.color_data)
-            vr = self.imview.getImageItem().getViewBox().targetRect()
-            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+            old_shape = self.imview.image.shape
+            new_shape = self.color_data.shape
+            if old_shape == new_shape:
+                vr = self.imview.getImageItem().getViewBox().targetRect()
+            levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.setImage(self.color_data, levels=levels)
+            if old_shape == new_shape:
+                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
         if self._curr_folder is None:

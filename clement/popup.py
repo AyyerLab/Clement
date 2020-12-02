@@ -356,9 +356,16 @@ class Peak_Params(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _update(self, state=None):
         self._calc_color_channels()
+        if self.peak_imview.image is not None:
+            old_shape = self.peak_imview.image.shape
+        else:
+            old_shape = None
+        new_shape = self.color_data.shape
+        if old_shape == new_shape:
+            vr = self.peak_imview.getImageItem().getViewBox().targetRect()
         self.peak_imview.setImage(self.color_data)
-        vr = self.peak_imview.getImageItem().getViewBox().targetRect()
-        self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if old_shape == new_shape:
+            self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     @utils.wait_cursor('print')
     def _update_data(self, state=None):
@@ -925,10 +932,14 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _update_imview_popup(self, state=None):
         self._calc_color_channels_popup()
-        #levels = self.imview_popup.getHistogramWidget().item.getLevels()
-        self.imview_popup.setImage(self.color_data_popup)
-        vr = self.imview_popup.getImageItem().getViewBox().targetRect()
-        self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
+        old_shape = self.imview.image.shape
+        new_shape = self.color_data_popup.shape
+        if old_shape == new_shape:
+            vr = self.imview.getImageItem().getViewBox().targetRect()
+        levels = self.imview.getHistogramWidget().item.getLevels()
+        self.imview_popup.setImage(self.color_data_popup, levels=levels)
+        if old_shape == new_shape:
+            self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
 
     @utils.wait_cursor('print')
     def _calc_stage_positions_popup(self, checked):
