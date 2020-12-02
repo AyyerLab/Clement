@@ -7,11 +7,12 @@ import pyqtgraph as pg
 import scipy.ndimage as ndi
 import copy
 from skimage import io, measure, feature, color, draw
+import matplotlib
 
 from . import utils
 
 class PeakROI(pg.CircleROI):
-    def __init__(self, pos, size, parent, movable=False, removable=False, resizable=False):
+    def __init__(self, pos, size, parent, movable=False, removable=False, resizable=False, color=None):
         super(PeakROI, self).__init__(pos, size, parent=parent,
                                       movable=movable, removable=removable, resizable=resizable)
         self.original_color = (255, 0, 0)
@@ -19,7 +20,10 @@ class PeakROI(pg.CircleROI):
         self.original_pos = copy.copy(np.array([pos.x(), pos.y()])+np.array([size/2, size/2]))
         self.has_moved = False
 
-        self.setPen(self.original_color)
+        if color is None:
+            self.setPen(self.original_color)
+        else:
+            self.setPen(color)
         self.removeHandle(0)
 
     def contextMenuEnabled(self):
@@ -887,7 +891,7 @@ class BaseControls(QtWidgets.QWidget):
                       self.other._points_corr_history[-1]]
         orig_fm_points = np.copy(self._points_corr_history[-1])
 
-        refined_points = []
+        self.refined_points = []
         corr_points = []
         if idx == 0:
             for i in range(len(orig_fm_points)):
@@ -895,7 +899,7 @@ class BaseControls(QtWidgets.QWidget):
                 init = np.array([orig_point[0] + self.size // 2, orig_point[1] + self.size // 2, 1])
                 corr_points.append(np.copy((self.other.tr_matrices @ init)[:2]))
                 transf = self.other.ops._refine_matrix @ self.other.tr_matrices @ init
-                refined_points.append(transf[:2])
+                self.refined_points.append(transf[:2])
         else:
             orig_fm_points_z = np.copy(self._points_corr_z)
             print(self.other.tr_matrices)
@@ -907,16 +911,16 @@ class BaseControls(QtWidgets.QWidget):
                 transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                 corr_points.append(np.copy(transf[:2]))
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
-                refined_points.append(transf[:2])
+                self.refined_points.append(transf[:2])
 
 
-        diff = np.array(sel_points) - np.array(refined_points)
-        self.log(diff.shape)
+        self.diff = np.array(sel_points) - np.array(self.refined_points)
+        self.log(self.diff.shape)
         #diff *= self.other.ops.pixel_size
-        diff *= self.other.ops.pixel_size[0]
-        self.other.cov_matrix, self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(diff)
+        self.diff *= self.other.ops.pixel_size[0]
+        self.other.cov_matrix, self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(self.diff)
 
-        self.other._err[idx] = diff
+        self.other._err[idx] = self.diff
         self.err_btn.setText(
             'x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0], self.other._std[idx][1]))
 
@@ -1004,6 +1008,10 @@ class BaseControls(QtWidgets.QWidget):
             self.peaks = []
 
         self.other._update_tr_matrices()
+        cmap = matplotlib.cm.get_cmap('autumn')
+        diff_normed = self.other.diff / self.other.diff.max()
+        diff_abs = np.sqrt(diff_normed[:,0]**2 + diff_normed[:,1]**2)
+        colors = cmap(diff_abs)
         if self.fib:
             for i in range(len(self.other.ops.tf_peak_slices[-1])):
                 z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
@@ -1014,7 +1022,19 @@ class BaseControls(QtWidgets.QWidget):
                 if self._refined:
                     transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
-                point = PeakROI(pos, self.orig_size, self.imview.getImageItem())
+                idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
+                if not np.array_equal(idx[0], np.array([])):
+                    if len(idx) == 2:
+                        print(idx)
+                        idx = idx[0][0]
+                    print(idx)
+                    color = colors[idx]
+                    print(color)
+                    color = matplotlib.colors.to_hex(color)
+                    print(color)
+                else:
+                    color = None
+                point = PeakROI(pos, self.size, self.imview.getImageItem(), color=color)
                 self.peaks.append(point)
                 self.imview.addItem(point)
         else:
@@ -1042,7 +1062,17 @@ class BaseControls(QtWidgets.QWidget):
                     else:
                         transf = tr_matrices @ init
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
-                point = PeakROI(pos, self.orig_size, self.imview.getImageItem())
+                idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
+                if not np.array_equal(idx[0], np.array([])):
+                    if len(idx) == 2:
+                        print(idx)
+                        idx = idx[0][0]
+                    print(idx)
+                    color = colors[idx]
+                    color = matplotlib.colors.to_hex(color)
+                else:
+                    color = None
+                point = PeakROI(pos, self.orig_size, self.imview.getImageItem(), color=color)
                 self.peaks.append(point)
                 self.imview.addItem(point)
 
