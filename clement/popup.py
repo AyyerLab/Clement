@@ -150,6 +150,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.orig_data_roi = None
         self.background_correction = False
         self.color_data = None
+        self.coor = None
         self.peaks = []
         self.num_channels = self.fm.ops.num_channels
         self.recover_transformed = False
@@ -562,9 +563,9 @@ class Peak_Params(QtWidgets.QMainWindow):
                 point_obj.removeHandle(0)
                 self.peak_imview.addItem(point_obj)
                 self.peaks.append(point_obj)
-
-            for i in range(len(self.fm.ops.peak_slices[-1])):
-                self.fm.ops.peak_slices[-1][i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
+            if self.coor is not None:
+                for i in range(len(self.fm.ops.peak_slices[-1])):
+                    self.fm.ops.peak_slices[-1][i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
 
         self.fm.ops.adjusted_params = True
 
