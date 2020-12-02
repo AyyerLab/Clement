@@ -447,15 +447,17 @@ class Peak_Params(QtWidgets.QMainWindow):
             size = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
             #qrect = QtCore.QRect(0, 0, self.data.shape[0], self.data.shape[1])
             qrect = None
-            self.roi = pg.ROI(pos=pos,size=size, maxBounds=qrect, resizable=True, rotatable=False, removable=False)
+            self.roi = pg.ROI(pos=pos,size=size, maxBounds=qrect, resizable=True, rotatable=True, removable=False)
             self.roi.addScaleHandle(pos=[1,1], center=[0.5,0.5])
+            self.roi.addRotateHandle(pos=[0.5,0], center=[0.5,0.5])
             self.peak_imview.addItem(self.roi)
         else:
             [self.peak_imview.removeItem(point) for point in self.peaks]
             self.reset_btn.setEnabled(True)
             self.roi.movable = False
             self.roi.resizable = False
-            self.data_roi = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem())
+            self.data_roi, self.coor = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem(), returnMappedCoords=True)
+
             self.orig_data_roi = np.copy(self.data_roi)
             self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
             self.log(self.data_roi.shape)
@@ -560,6 +562,9 @@ class Peak_Params(QtWidgets.QMainWindow):
                 point_obj.removeHandle(0)
                 self.peak_imview.addItem(point_obj)
                 self.peaks.append(point_obj)
+
+            for i in range(len(self.fm.ops.peak_slices[-1])):
+                self.fm.ops.peak_slices[-1][i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
 
         self.fm.ops.adjusted_params = True
 
