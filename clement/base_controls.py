@@ -813,14 +813,15 @@ class BaseControls(QtWidgets.QWidget):
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
 
-        del self._points_corr_history[-1]
-        del self._points_corr_z_history[-1]
-        del self._orig_points_corr_history[-1]
-
-        del self.other._points_corr_history[-1]
-        del self.other._points_corr_z_history[-1]
-        del self.other._orig_points_corr_history[-1]
-
+        self.select_btn.setChecked(True)
+        self.other.size = self.other._size_history[-1]
+        for i in range(len(self._points_corr_history[-1])):
+            point = self._points_corr_history[-1][i]
+            self._draw_correlated_points(point.pos(), self.imview.getImageItem())
+            point_other = self.other._points_corr_history[-1][i]
+            print(point_other)
+            self.other._points_corr[i].setPos(point_other.pos())
+            self.other.anno_list[i].setPos(point_other.pos().x()+5, point_other.pos().y()+5)
 
         if len(self.other.ops._refine_history) == 1:
             self.fliph.setEnabled(True)
@@ -837,21 +838,21 @@ class BaseControls(QtWidgets.QWidget):
             self.other.grid_box.movable = True
         else:
             self.other._recalc_grid()
-            self._points_corr = copy.copy(self._points_corr_history[-1])
-            self._points_corr_z = copy.copy(self._points_corr_z_history[-1])
-            self._orig_points_corr = copy.copy(self._orig_points_corr_history[-1])
-            for i in range(len(self._points_corr)):
-                annotation_obj = pg.TextItem(str(i), color=(0, 255, 0), anchor=(0, 0))
-                self.anno_list.append(annotation_obj)
-            self._points_corr_indices = np.arange(len(self._points_corr)).tolist()
+            #self._points_corr = copy.copy(self._points_corr_history[-1])
+            #self._points_corr_z = copy.copy(self._points_corr_z_history[-1])
+            #self._orig_points_corr = copy.copy(self._orig_points_corr_history[-1])
+            #for i in range(len(self._points_corr)):
+            #    annotation_obj = pg.TextItem(str(i), color=(0, 255, 0), anchor=(0, 0))
+            #    self.anno_list.append(annotation_obj)
+            #self._points_corr_indices = np.arange(len(self._points_corr)).tolist()
 
-            self.other._points_corr = copy.copy(self.other._points_corr_history[-1])
-            self.other._points_corr_z = copy.copy(self.other._points_corr_z_history[-1])
-            self.other._orig_points_corr = copy.copy(self.other._orig_points_corr_history[-1])
-            for i in range(len(self.other._points_corr)):
-                annotation_obj = pg.TextItem(str(i), color=(0, 255, 0), anchor=(0, 0))
-                self.other.anno_list.append(annotation_obj)
-            self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
+            #self.other._points_corr = copy.copy(self.other._points_corr_history[-1])
+            #self.other._points_corr_z = copy.copy(self.other._points_corr_z_history[-1])
+            #self.other._orig_points_corr = copy.copy(self.other._orig_points_corr_history[-1])
+            #for i in range(len(self.other._points_corr)):
+            #    annotation_obj = pg.TextItem(str(i), color=(0, 255, 0), anchor=(0, 0))
+            #    self.other.anno_list.append(annotation_obj)
+            #self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
             idx = 1 if self.other.fib else 0
             del self.other._size_history[-1]
@@ -871,6 +872,14 @@ class BaseControls(QtWidgets.QWidget):
             id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(False) - 1
 
         del self._fib_vs_sem_history[id]
+        del self._points_corr_history[-1]
+        del self._points_corr_z_history[-1]
+        del self._orig_points_corr_history[-1]
+
+        del self.other._points_corr_history[-1]
+        del self.other._points_corr_z_history[-1]
+        del self.other._orig_points_corr_history[-1]
+        del self.other._size_history[-1]
 
     @utils.wait_cursor('print')
     def _estimate_precision(self, idx, refine_matrix_old):
