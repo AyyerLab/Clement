@@ -932,11 +932,11 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _update_imview_popup(self, state=None):
         self._calc_color_channels_popup()
-        old_shape = self.imview.image.shape
+        old_shape = self.imview_popup.image.shape
         new_shape = self.color_data_popup.shape
         if old_shape == new_shape:
-            vr = self.imview.getImageItem().getViewBox().targetRect()
-        levels = self.imview.getHistogramWidget().item.getLevels()
+            vr = self.imview_popup.getImageItem().getViewBox().targetRect()
+        levels = self.imview_popup.getHistogramWidget().item.getLevels()
         self.imview_popup.setImage(self.color_data_popup, levels=levels)
         if old_shape == new_shape:
             self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
