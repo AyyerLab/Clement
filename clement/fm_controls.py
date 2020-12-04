@@ -39,7 +39,7 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 class FMControls(BaseControls):
-    def __init__(self, imview, colors, merge_layout, printer, logger):
+    def __init__(self, imview, colors, merge_layout, emcontrols, fibcontrols, printer, logger):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
@@ -49,6 +49,8 @@ class FMControls(BaseControls):
         self.num_slices = None
         self.peak_controls = None
         self.picker = None
+        self.emcontrols = emcontrols
+        self.fibcontrols = fibcontrols
 
         self._colors = colors
         self._channels = []
@@ -207,15 +209,16 @@ class FMControls(BaseControls):
         #self.point_ref_btn.currentIndexChanged.connect(self._change_point_ref)
         self.point_ref_btn.setMinimumWidth(100)
         self.point_ref_btn.setEnabled(False)
-
         self.select_btn = QtWidgets.QPushButton('Select points of interest', self)
         self.select_btn.setCheckable(True)
         self.select_btn.toggled.connect(self._define_corr_toggled)
         self.select_btn.setEnabled(False)
-
-
+        self.clear_btn = QtWidgets.QPushButton('Remove POIs')
+        self.clear_btn.clicked.connect(self._clear_pois)
+        self.clear_btn.setEnabled(False)
         line.addWidget(self.point_ref_btn)
         line.addWidget(self.select_btn)
+        line.addWidget(self.clear_btn)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -275,9 +278,14 @@ class FMControls(BaseControls):
             self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
         else:
             self._calc_color_channels()
-            self.imview.setImage(self.color_data)
-            vr = self.imview.getImageItem().getViewBox().targetRect()
-            self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+            old_shape = self.imview.image.shape
+            new_shape = self.color_data.shape
+            if old_shape == new_shape:
+                vr = self.imview.getImageItem().getViewBox().targetRect()
+            levels = self.imview.getHistogramWidget().item.getLevels()
+            self.imview.setImage(self.color_data, levels=levels)
+            if old_shape == new_shape:
+                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     def _load_fm_images(self):
         if self._curr_folder is None:
@@ -728,6 +736,7 @@ class FMControls(BaseControls):
 
         self.point_ref_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
+        self.clear_btn.setEnabled(False)
         self.refine_btn.setEnabled(False)
 
         self.fliph.setEnabled(False)

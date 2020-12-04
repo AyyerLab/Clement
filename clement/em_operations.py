@@ -119,11 +119,11 @@ class EM_ops():
             self.stacked_data = True
             self.dimensions[1] = int(np.ceil(self.dimensions[1] / step))
             self.dimensions[2] = int(np.ceil(self.dimensions[2] / step))
-            self.pos_x = self.eh[1:10 * self.dimensions[0]:10] // step
-            self.pos_y = self.eh[2:10 * self.dimensions[0]:10] // step
+            self.pos_x = self.eh[1:7 * self.dimensions[0]:7] // step
+            self.pos_y = self.eh[2:7 * self.dimensions[0]:7] // step
             self.pos_x -= self.pos_x.min()
             self.pos_y -= self.pos_y.min()
-            self.pos_z = self.eh[3:10 * self.dimensions[0]:10]
+            self.pos_z = self.eh[3:7 * self.dimensions[0]:7]
             self.grid_points = []
             for i in range(len(self.pos_x)):
                 point = np.array((self.pos_x[i], self.pos_y[i], 1))
@@ -452,8 +452,8 @@ class EM_ops():
 
     def calc_stage_positions(self, clicked_points, downsampling):
         if self.eh is not None:
-            stage_x = self.eh[4:10 * self.dimensions[0]:10]
-            stage_y = self.eh[5:10 * self.dimensions[0]:10]
+            stage_x = self.eh[4:7 * self.dimensions[0]:7]
+            stage_y = self.eh[5:7 * self.dimensions[0]:7]
             if self.assembled or self.selected_region is None:
                 curr_region = 0
             else:

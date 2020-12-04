@@ -150,6 +150,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.orig_data_roi = None
         self.background_correction = False
         self.color_data = None
+        self.coor = None
         self.peaks = []
         self.num_channels = self.fm.ops.num_channels
         self.recover_transformed = False
@@ -356,9 +357,16 @@ class Peak_Params(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _update(self, state=None):
         self._calc_color_channels()
+        if self.peak_imview.image is not None:
+            old_shape = self.peak_imview.image.shape
+        else:
+            old_shape = None
+        new_shape = self.color_data.shape
+        if old_shape == new_shape:
+            vr = self.peak_imview.getImageItem().getViewBox().targetRect()
         self.peak_imview.setImage(self.color_data)
-        vr = self.peak_imview.getImageItem().getViewBox().targetRect()
-        self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if old_shape == new_shape:
+            self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
     @utils.wait_cursor('print')
     def _update_data(self, state=None):
@@ -440,15 +448,17 @@ class Peak_Params(QtWidgets.QMainWindow):
             size = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
             #qrect = QtCore.QRect(0, 0, self.data.shape[0], self.data.shape[1])
             qrect = None
-            self.roi = pg.ROI(pos=pos,size=size, maxBounds=qrect, resizable=True, rotatable=False, removable=False)
+            self.roi = pg.ROI(pos=pos,size=size, maxBounds=qrect, resizable=True, rotatable=True, removable=False)
             self.roi.addScaleHandle(pos=[1,1], center=[0.5,0.5])
+            self.roi.addRotateHandle(pos=[0.5,0], center=[0.5,0.5])
             self.peak_imview.addItem(self.roi)
         else:
             [self.peak_imview.removeItem(point) for point in self.peaks]
             self.reset_btn.setEnabled(True)
             self.roi.movable = False
             self.roi.resizable = False
-            self.data_roi = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem())
+            self.data_roi, self.coor = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem(), returnMappedCoords=True)
+
             self.orig_data_roi = np.copy(self.data_roi)
             self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
             self.log(self.data_roi.shape)
@@ -553,6 +563,9 @@ class Peak_Params(QtWidgets.QMainWindow):
                 point_obj.removeHandle(0)
                 self.peak_imview.addItem(point_obj)
                 self.peaks.append(point_obj)
+            if self.coor is not None:
+                for i in range(len(self.fm.ops.peak_slices[-1])):
+                    self.fm.ops.peak_slices[-1][i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
 
         self.fm.ops.adjusted_params = True
 
@@ -790,7 +803,7 @@ class Merge(QtGui.QMainWindow):
         vx, vy = eigvecs[0,0], eigvecs[0,1]
         self.theta = -np.arctan2(vy, vx) * 180 / np.pi
         #scale eigenvalues to 75% confidence interval and pixel size
-        self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size)
+        self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size[:2])
         self.log(self.lambda_1, self.lambda_2)
 
     @utils.wait_cursor('print')
@@ -925,10 +938,14 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _update_imview_popup(self, state=None):
         self._calc_color_channels_popup()
-        #levels = self.imview_popup.getHistogramWidget().item.getLevels()
-        self.imview_popup.setImage(self.color_data_popup)
-        vr = self.imview_popup.getImageItem().getViewBox().targetRect()
-        self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
+        old_shape = self.imview_popup.image.shape
+        new_shape = self.color_data_popup.shape
+        if old_shape == new_shape:
+            vr = self.imview_popup.getImageItem().getViewBox().targetRect()
+        levels = self.imview_popup.getHistogramWidget().item.getLevels()
+        self.imview_popup.setImage(self.color_data_popup, levels=levels)
+        if old_shape == new_shape:
+            self.imview_popup.getImageItem().getViewBox().setRange(vr, padding=0)
 
     @utils.wait_cursor('print')
     def _calc_stage_positions_popup(self, checked):

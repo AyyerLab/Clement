@@ -101,13 +101,13 @@ class GUI(QtWidgets.QMainWindow):
         self.print = self.worker.print
         self.log = self.worker.log
         self.workerThread.start()
+        
         self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
         self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fm_controls)
 
         vbox = QtWidgets.QVBoxLayout()
-        options.addLayout(vbox)
         self.tabs = QtWidgets.QTabWidget()
         tab_sem = QtWidgets.QWidget()
         tab_fib = QtWidgets.QWidget()
@@ -137,6 +137,12 @@ class GUI(QtWidgets.QMainWindow):
         self.tem_controls.curr_folder = self.settings.value('tem_folder', defaultValue=os.getcwd())
         self.vbox_tem.addWidget(self.tem_controls)
 
+
+        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options, self.emcontrols, self.fibcontrols, self.print, self.log)
+        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
+        self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
+        options.addWidget(self.fmcontrols)
+        options.addLayout(vbox)
 
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
@@ -284,7 +290,6 @@ class GUI(QtWidgets.QMainWindow):
             if self.fm_controls.ops._transformed:
                 self.fm_controls.other.size_box.setEnabled(True)
                 self.fm_controls.other.auto_opt_btn.setEnabled(True)
-
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):
