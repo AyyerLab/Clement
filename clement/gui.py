@@ -133,7 +133,8 @@ class GUI(QtWidgets.QMainWindow):
         self.vbox_tem.addWidget(self.tem_controls)
 
 
-        self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
+        self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.sem_controls, self.fib_controls,
+                                      self.tem_controls, self.print, self.log)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
         self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fm_controls)
@@ -235,71 +236,8 @@ class GUI(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def select_tab(self, idx):
-        self.fm_controls.select_btn.setChecked(False)
-        for i in range(len(self.fm_controls._points_corr)):
-            self.fm_controls._remove_correlated_points(self.fm_controls._points_corr[0])
         self.em_imview.setCurrentIndex(idx)
-        self.sem_controls.tab_index = idx
-        self.fib_controls.tab_index = idx
-        self.tem_controls.tab_index = idx
-        if idx == 0:
-            self.fib_controls.show_grid_btn.setChecked(False)
-            self.sem_controls._update_imview()
-            self.fm_controls.other = self.sem_controls
-            if self.sem_controls._refined:
-                self.fm_controls.undo_refine_btn.setEnabled(True)
-            else:
-                self.fm_controls.undo_refine_btn.setEnabled(False)
-        elif idx == 1:
-            if self.sem_controls.ops is not None and self.fm_controls.ops is not None:
-                if self.fm_controls.ops.points is not None and self.sem_controls.ops.points is not None:
-                    self.fm_controls._calc_tr_matrices()
-            if self.fib_controls.ops is not None:
-                show_grid = self.sem_controls.show_grid_btn.isChecked()
-                self.fib_controls.show_grid_btn.setChecked(show_grid)
-            if self.fib_controls._refined:
-                self.fm_controls.undo_refine_btn.setEnabled(True)
-            else:
-                self.fm_controls.undo_refine_btn.setEnabled(False)
-            self.fib_controls._update_imview()
-            self.fib_controls.sem_ops = self.sem_controls.ops
-            self.fm_controls.other = self.fib_controls
-            if self.sem_controls.ops is not None:
-                if self.sem_controls.ops._orig_points is not None:
-                    self.fib_controls.enable_buttons(enable=True)
-                else:
-                    self.fib_controls.enable_buttons(enable=False)
-                if self.fib_controls.ops is not None and self.sem_controls.ops._tf_points is not None:
-                    self.fib_controls.ops._transformed = True
-        else:
-            self.fib_controls.show_grid_btn.setChecked(False)
-            self.tem_controls._update_imview()
-            self.fm_controls.other = self.tem_controls
-            if self.tem_controls._refined:
-                self.fm_controls.undo_refine_btn.setEnabled(True)
-            else:
-                self.fm_controls.undo_refine_btn.setEnabled(False)
-
-        if self.fm_controls.other.show_merge:
-            self.fm_controls.progress_bar.setValue(100)
-        else:
-            self.fm_controls.progress_bar.setValue(0)
-        if self.fm_controls.other._refined:
-            self.fm_controls.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.fm_controls.other._std[idx][0],
-                                                                           self.fm_controls.other._std[idx][1]))
-        else:
-            self.fm_controls.err_btn.setText('0')
-
-            #if self.fib_controls.num_slices is None:
-            #    self.fib_controls.num_slices = self.fm_controls.num_slices
-            #    if self.fib_controls.ops is not None:
-            #        if self.fib_controls.ops.fib_matrix is not None and self.fm_controls.num_slices is not None:
-            #            self.fib_controls.correct_grid_z()
-
-        if self.fm_controls is not None and self.fm_controls.ops is not None:
-            if self.fm_controls.ops._transformed:
-                self.fm_controls.other.size_box.setEnabled(True)
-                self.fm_controls.other.auto_opt_btn.setEnabled(True)
+        self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.tem_controls)
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):

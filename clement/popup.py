@@ -811,7 +811,7 @@ class Merge(QtGui.QMainWindow):
         corr_points = self.other._points_corr
         if len(corr_points) != 0:
             self.select_btn_popup.setChecked(True)
-        if not self.other.fib:
+        if not self.other.tab_index == 1:
             for point in corr_points:
                 init = np.array([point.pos().x() + self.size/2, point.pos().y() + self.size/2, 1])
                 transf = (np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ init) / self.downsampling

@@ -244,6 +244,7 @@ class Project(QtWidgets.QWidget):
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
         self.fib.sem_ops = self.sem.ops
+
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
 
@@ -262,7 +263,6 @@ class Project(QtWidgets.QWidget):
 
         self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
         if fibdict['Tab index'] == 1:
-            self.fib.fib = True
             self.show_fib = True
 
         if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
@@ -285,7 +285,7 @@ class Project(QtWidgets.QWidget):
         fmdict = project['FM']
         self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
         fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
-        counter = [0, 0]
+        counter = [0, 0, 0]
         for i in range(len(copy.copy(fmdict['FIB vs SEM history']))):
             if fib_vs_sem_history[i] == 0:
                 emdict = project['SEM']
@@ -341,7 +341,7 @@ class Project(QtWidgets.QWidget):
             em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
             counter[idx] += 1
         try:
-            if self.fib.fib:
+            if self.fib.tab_index == 1:
                 emdict = project['FIB']
                 em = self.fib
             else:

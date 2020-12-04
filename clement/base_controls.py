@@ -637,7 +637,7 @@ class BaseControls(QtWidgets.QWidget):
             if hasattr(self, 'select_btn') and self.other.tab_index != 1:
                 if self.ops._transformed and self.other.ops._transformed:
                     self.other.show_peaks_btn.setEnabled(True)
-            if hasattr(self, 'fib') and not self.tab_index != 1:
+            if self.tab_index != 1:
                 if self.ops._transformed and self.other.ops._transformed:
                     self.show_peaks_btn.setEnabled(True)
 
@@ -884,7 +884,7 @@ class BaseControls(QtWidgets.QWidget):
 
         self.refined_points = []
         corr_points = []
-        if idx == 0:
+        if idx != 1:
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size // 2, orig_point[1] + self.size // 2, 1])
@@ -1188,68 +1188,86 @@ class BaseControls(QtWidgets.QWidget):
         # Remove circle from imviews
         [self.imview.removeItem(point) for point in self._points_corr]
         [self.fibcontrols.imview.removeItem(point) for point in self.fibcontrols._points_corr]
-        [self.emcontrols.imview.removeItem(point) for point in self.emcontrols._points_corr]
+        [self.semcontrols.imview.removeItem(point) for point in self.semcontrols._points_corr]
+        [self.temcontrols.imview.removeItem(point) for point in self.temcontrols._points_corr]
 
         # Remove ROI
         self._points_corr = []
         self.fibcontrols._points_corr = []
-        self.emcontrols._points_corr = []
+        self.semcontrols._points_corr = []
+        self.temcontrols._points_corr = []
         # Remove original position
         self._orig_points_corr = []
         self.fibcontrols._orig_points_corr = []
-        self.emcontrols._orig_points_corr = []
+        self.semcontrols._orig_points_corr = []
+        self.temcontrols._orig_points_corr = []
 
         # Remove annotation
         if len(self.anno_list) > 0:
             [self.imview.removeItem(anno) for anno in self.anno_list]
             [self.fibcontrols.imview.removeItem(anno) for anno in self.fibcontrols.anno_list]
-            [self.emcontrols.imview.removeItem(anno) for anno in self.emcontrols.anno_list]
+            [self.semcontrols.imview.removeItem(anno) for anno in self.semcontrols.anno_list]
+            [self.temcontrols.imview.removeItem(anno) for anno in self.temcontrols.anno_list]
             self.anno_list = []
             self.fibcontrols.anno_list = []
-            self.emcontrols.anno_list = []
+            self.semcontrols.anno_list = []
+            self.temcontrols.anno_list = []
 
         # Remove correlation index
         self._points_corr_indices = []
         self.fibcontrols._points_corr_indices = []
-        self.emcontrols._points_corr_indices = []
+        self.semcontrols._points_corr_indices = []
+        self.temcontrols._points_corr_indices = []
 
         # Remove FIB z-position
         self._points_corr_z = []
         self.fibcontrols._points_corr_z = []
-        self.emcontrols._points_corr_z = []
+        self.semcontrols._points_corr_z = []
+        self.temcontrols._points_corr_z = []
 
-    def select_tab(self, idx, fibcontrols, emcontrols):
+    def select_tab(self, idx, semcontrols, fibcontrols, temcontrols):
         if idx == 0:
             fibcontrols.show_grid_btn.setChecked(False)
-            emcontrols._update_imview()
-            self.other = emcontrols
-            if emcontrols._refined:
+            semcontrols._update_imview()
+            self.other = semcontrols
+            if semcontrols._refined:
                 self.undo_refine_btn.setEnabled(True)
             else:
                 self.undo_refine_btn.setEnabled(False)
-            fibcontrols.fib = False
-        else:
-            if emcontrols.ops is not None and self.ops is not None:
-                if self.ops.points is not None and emcontrols.ops.points is not None:
-                    self._calc_tr_matrices()
-            fibcontrols.fib = True
+        elif idx == 1:
+            if self.orig_fm_sem_corr is None and fibcontrols.tab_index == 0:
+            #if semcontrols.ops is not None and self.ops is not None:
+            #    if self.ops.points is not None and semcontrols.ops.points is not None:
+                self._calc_tr_matrices()
             if fibcontrols.ops is not None:
-                show_grid = emcontrols.show_grid_btn.isChecked()
+                show_grid = semcontrols.show_grid_btn.isChecked()
                 fibcontrols.show_grid_btn.setChecked(show_grid)
             if fibcontrols._refined:
                 self.undo_refine_btn.setEnabled(True)
             else:
                 self.undo_refine_btn.setEnabled(False)
             fibcontrols._update_imview()
-            fibcontrols.sem_ops = emcontrols.ops
+            fibcontrols.sem_ops = semcontrols.ops
             self.other = fibcontrols
-            if emcontrols.ops is not None:
-                if emcontrols.ops._orig_points is not None:
+            if semcontrols.ops is not None:
+                if semcontrols.ops._orig_points is not None:
                     fibcontrols.enable_buttons(enable=True)
                 else:
                     fibcontrols.enable_buttons(enable=False)
-                if fibcontrols.ops is not None and emcontrols.ops._tf_points is not None:
+                if fibcontrols.ops is not None and semcontrols.ops._tf_points is not None:
                     fibcontrols.ops._transformed = True
+        else:
+            fibcontrols.show_grid_btn.setChecked(False)
+            temcontrols._update_imview()
+            self.other = temcontrols
+            if temcontrols._refined:
+                self.undo_refine_btn.setEnabled(True)
+            else:
+                self.undo_refine_btn.setEnabled(False)
+
+        semcontrols.tab_index = idx
+        fibcontrols.tab_index = idx
+        temcontrols.tab_index = idx
 
         if self.other.show_merge:
             self.progress_bar.setValue(100)
@@ -1261,13 +1279,9 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self.err_btn.setText('0')
 
-            #if self.fibcontrols.num_slices is None:
-            #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
-            #    if self.fibcontrols.ops is not None:
-            #        if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
-            #            self.fibcontrols.correct_grid_z()
+        if self.other.ops is None or not self.other.ops._transformed:
+            return
 
-        #if self.fmcontrols is not None and self.fmcontrols.ops is not None:
         if self.ops is not None:
             if self.ops._transformed:
                 self.other.size_box.setEnabled(True)
