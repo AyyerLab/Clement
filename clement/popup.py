@@ -628,13 +628,13 @@ class Merge(QtGui.QMainWindow):
         self._clicked_points_popup = []
         self._clicked_points_popup_base_indices = []
 
-        if self.parent.fib_controls.fib:
-            merged_data = self.parent.em.merged_3d
+        merged_data = self.parent.em.merged[self.parent.fib_controls.tab_index]
+        if self.parent.fib_controls.tab_index == 1:
             self.fib = True
             self.downsampling = 1
         else:
-            merged_data = self.parent.em.merged_2d
             self.fib = False
+            self.downsampling = 2
         if merged_data is not None:
             self.log(self._colors_popup)
             self.data_popup = np.copy(merged_data)

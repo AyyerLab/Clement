@@ -239,6 +239,9 @@ class GUI(QtWidgets.QMainWindow):
         for i in range(len(self.fm_controls._points_corr)):
             self.fm_controls._remove_correlated_points(self.fm_controls._points_corr[0])
         self.em_imview.setCurrentIndex(idx)
+        self.sem_controls.tab_index = idx
+        self.fib_controls.tab_index = idx
+        self.tem_controls.tab_index = idx
         if idx == 0:
             self.fib_controls.show_grid_btn.setChecked(False)
             self.sem_controls._update_imview()
@@ -247,12 +250,10 @@ class GUI(QtWidgets.QMainWindow):
                 self.fm_controls.undo_refine_btn.setEnabled(True)
             else:
                 self.fm_controls.undo_refine_btn.setEnabled(False)
-            self.fib_controls.fib = False
         elif idx == 1:
             if self.sem_controls.ops is not None and self.fm_controls.ops is not None:
                 if self.fm_controls.ops.points is not None and self.sem_controls.ops.points is not None:
                     self.fm_controls._calc_tr_matrices()
-            self.fib_controls.fib = True
             if self.fib_controls.ops is not None:
                 show_grid = self.sem_controls.show_grid_btn.isChecked()
                 self.fib_controls.show_grid_btn.setChecked(show_grid)
@@ -278,7 +279,6 @@ class GUI(QtWidgets.QMainWindow):
                 self.fm_controls.undo_refine_btn.setEnabled(True)
             else:
                 self.fm_controls.undo_refine_btn.setEnabled(False)
-            self.fib_controls.fib = False
 
         if self.fm_controls.other.show_merge:
             self.fm_controls.progress_bar.setValue(100)
@@ -347,7 +347,7 @@ class GUI(QtWidgets.QMainWindow):
             controls = self.tem_controls
 
         if self.fm is not None and self.em is not None:
-            if self.fib_controls.fib and self.fib_controls.sem_ops.data is None:
+            if self.fib_controls.tab_index == 1 and self.fib_controls.sem_ops.data is None:
                 self.print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
                 if self.fm._tf_points is not None and (ops._tf_points is not None or ops._tf_points_region is not None):

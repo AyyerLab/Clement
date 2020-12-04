@@ -421,7 +421,7 @@ class FMControls(BaseControls):
     def _fliph(self, state):
         if self.ops is None:
             return
-        if self.other.fib and self.other.ops is not None:
+        if self.other.tab_index == 1 and self.other.ops is not None:
             self._store_fib_flips(idx=2)
         if self.fliph.isChecked():
             self.flips[2] = True
@@ -436,7 +436,7 @@ class FMControls(BaseControls):
     def _flipv(self, state):
         if self.ops is None:
             return
-        if self.other.fib and self.other.ops is not None:
+        if self.other.tab_index == 1 and self.other.ops is not None:
             self._store_fib_flips(idx=3)
         if self.flipv.isChecked():
             self.flips[3] = True
@@ -451,7 +451,7 @@ class FMControls(BaseControls):
     def _trans(self, state):
         if self.ops is None:
             return
-        if self.other.fib and self.other.ops is not None:
+        if self.other.tab_index == 1 and self.other.ops is not None:
             self._store_fib_flips(idx=0)
         if self.transpose.isChecked():
             self.flips[0] = True
@@ -466,7 +466,7 @@ class FMControls(BaseControls):
     def _rot(self, state):
         if self.ops is None:
             return
-        if self.other.fib and self.other.ops is not None:
+        if self.other.tab_index == 1 and self.other.ops is not None:
             self._store_fib_flips(idx=1)
         if self.rotate.isChecked():
             self.flips[1] = True

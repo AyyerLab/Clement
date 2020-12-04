@@ -15,7 +15,7 @@ class FIBControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.sem_ops = sem_ops
-        self.fib = False
+        self.tab_index = None
         self.num_slices = None
         self.popup = None
         self.merge_layout = merge_layout

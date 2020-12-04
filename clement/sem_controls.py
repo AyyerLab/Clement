@@ -14,7 +14,7 @@ class SEMControls(BaseControls):
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
-        self.fib = False
+        self.tab_index = None
         self.popup = None
         self.merge_layout = merge_layout
         self.show_merge = False

@@ -76,8 +76,7 @@ class EM_ops():
         self.box_shift = None
         self.transposed = False
 
-        self.merged_2d = None
-        self.merged_3d = None
+        self.merged = [None, None, None]
         self.merge_shift = None
         self.merge_matrix = None
         self.z_shift = None
@@ -637,7 +636,7 @@ class EM_ops():
         self.print('RMS error: ', precision_all[-1])
         return [precision_refined, precision_free, precision_all]
 
-    def apply_merge_2d(self, fm_data, fm_points, channel, show_region, num_channels):
+    def apply_merge_2d(self, fm_data, fm_points, channel, show_region, num_channels, idx):
         if channel == 0:
             src = np.array(sorted(fm_points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
             dst = np.array(sorted(self.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
@@ -646,20 +645,20 @@ class EM_ops():
                 em_data = self.orig_region
             else:
                 em_data = self.orig_data
-            self.merged_2d = np.zeros(em_data.shape + (num_channels + 1,))
-            self.merged_2d[:, :, -1] = em_data / em_data.max() * 100
+            self.merged[idx] = np.zeros(em_data.shape + (num_channels + 1,))
+            self.merged[idx][:, :, -1] = em_data / em_data.max() * 100
 
         tf_data = ndi.affine_transform(fm_data, np.linalg.inv(self.merge_matrix), order=1, output_shape=self.tf_shape)
-        orig_orientation = ndi.affine_transform(tf_data, self.tf_matrix, order=1, output_shape=self.merged_2d.shape[:2])
+        orig_orientation = ndi.affine_transform(tf_data, self.tf_matrix, order=1, output_shape=self.merged[idx].shape[:2])
 
-        self.merged_2d[:, :, channel] = orig_orientation
-        self.print('Merged.shape: ', self.merged_2d.shape)
+        self.merged[idx][:, :, channel] = orig_orientation
+        self.print('Merged.shape: ', self.merged[idx].shape)
 
     #def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,
     #                   corr_points_fib, channel):
     def apply_merge_3d(self, fm_data_orig, corr_matrix, tf_matrix_fm, tf_corners_fm, color_matrices, flip_list,
                        corr_points_fm, orig_points, fm_z_values, corr_points_fib, channel, voxel_size,
-                       num_slices, num_channels, norm_factor):
+                       num_slices, num_channels, norm_factor, idx):
         rot_matrix = np.identity(3)
         if flip_list[0]: #transp
             rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -728,28 +727,27 @@ class EM_ops():
                                            output_shape=self.data.shape))
             z_data.append(refined)
 
-        if self.merged_3d is None:
-            self.merged_3d = np.array(np.max(z_data, axis=0))
-            #self.merged_3d = np.array(np.sum(z_data, axis=0))
+        if self.merged[idx] is None:
+            self.merged[idx] = np.array(np.max(z_data, axis=0))
+            #self.merged[idx] = np.array(np.sum(z_data, axis=0))
         else:
-            if self.merged_3d.ndim == 2:
-                self.merged_3d = np.concatenate(
-                    (np.expand_dims(self.merged_3d, axis=2), np.expand_dims(np.max(z_data, axis=0), axis=2)), axis=2)
-                    #(np.expand_dims(self.merged_3d, axis=2), np.expand_dims(np.sum(z_data, axis=0), axis=2)), axis=2)
+            if self.merged[idx].ndim == 2:
+                self.merged[idx] = np.concatenate(
+                    (np.expand_dims(self.merged[idx], axis=2), np.expand_dims(np.max(z_data, axis=0), axis=2)), axis=2)
+                    #(np.expand_dims(self.merged[idx], axis=2), np.expand_dims(np.sum(z_data, axis=0), axis=2)), axis=2)
             else:
                 if channel == 2:
-                    self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.sum(z_data, axis=0), axis=2)),
+                    self.merged[idx] = np.concatenate((self.merged[idx], np.expand_dims(np.sum(z_data, axis=0), axis=2)),
                                                     axis=2)
                 else:
-                    self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(np.sum(z_data, axis=0), axis=2)),
+                    self.merged[idx] = np.concatenate((self.merged[idx], np.expand_dims(np.sum(z_data, axis=0), axis=2)),
                                                     axis=2)
         if channel == num_channels - 1:
             fib_img = np.zeros_like(refined)
             fib_img[:self.data.shape[0], :self.data.shape[1]] = self.data
             fib_img /= fib_img.max()
             fib_img *= norm_factor
-            self.merged_3d = np.concatenate((self.merged_3d, np.expand_dims(fib_img, axis=2)), axis=2)
-
+            self.merged[idx] = np.concatenate((self.merged[idx], np.expand_dims(fib_img, axis=2)), axis=2)
 
     @classmethod
     def get_transform(self, source, dest):
