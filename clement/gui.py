@@ -101,11 +101,6 @@ class GUI(QtWidgets.QMainWindow):
         self.print = self.worker.print
         self.log = self.worker.log
         self.workerThread.start()
-        
-        self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
-        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
-        self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
-        options.addWidget(self.fm_controls)
 
         vbox = QtWidgets.QVBoxLayout()
         self.tabs = QtWidgets.QTabWidget()
@@ -138,10 +133,10 @@ class GUI(QtWidgets.QMainWindow):
         self.vbox_tem.addWidget(self.tem_controls)
 
 
-        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options, self.emcontrols, self.fibcontrols, self.print, self.log)
-        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
-        self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
-        options.addWidget(self.fmcontrols)
+        self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
+        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
+        self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
+        options.addWidget(self.fm_controls)
         options.addLayout(vbox)
 
         self.tabs.currentChanged.connect(self.select_tab)
@@ -182,8 +177,14 @@ class GUI(QtWidgets.QMainWindow):
         action = QtWidgets.QAction('Load &FM image(s)', self)
         action.triggered.connect(self.fm_controls._load_fm_images)
         filemenu.addAction(action)
-        action = QtWidgets.QAction('Load TEM/SEM', self)
-        action.triggered.connect(self.sem_controls._load_mrc)
+        action = QtWidgets.QAction('Load SEM', self)
+        action.triggered.connect(lambda idx: self.load_and_select_tab(idx=0))
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('Load FIB', self)
+        action.triggered.connect(lambda idx: self.load_and_select_tab(idx=1))
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('Load TEM', self)
+        action.triggered.connect(lambda idx: self.load_and_select_tab(idx=2))
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load project', self)
         action.triggered.connect(self._load_p)
@@ -222,6 +223,15 @@ class GUI(QtWidgets.QMainWindow):
 
     def _load_p(self):
         self.project._load_project()
+
+    def load_and_select_tab(self, idx):
+        if idx == 0:
+            self.sem_controls._load_mrc()
+        elif idx == 1:
+            self.fib_controls._load_mrc()
+        else:
+            self.tem_controls._load_mrc()
+        self.tabs.setCurrentIndex(idx)
 
     @utils.wait_cursor('print')
     def select_tab(self, idx):
@@ -321,22 +331,26 @@ class GUI(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def merge(self, project=None):
         self.fm = self.fm_controls.ops
-        if self.fib_controls.fib:
-            self.em = self.fib_controls.ops
-            em = self.fib_controls.sem_ops
+        self.em = self.fm_controls.other.ops
+        if self.tabs.currentIndex() == 0:
+            self.em = self.sem_controls.ops
+            ops = self.em
+            popup = self.sem_popup
+            controls = self.sem_controls
+        elif self.tabs.currentIndex() == 1:
+            ops = self.fib_controls.sem_ops
             popup = self.fib_popup
             controls = self.fib_controls
         else:
-            self.em = self.sem_controls.ops
-            em = self.em
-            popup = self.sem_popup
-            controls = self.sem_controls
+            ops = self.tem_controls.ops
+            popup = self.tem_popup
+            controls = self.tem_controls
 
         if self.fm is not None and self.em is not None:
             if self.fib_controls.fib and self.fib_controls.sem_ops.data is None:
                 self.print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
-                if self.fm._tf_points is not None and (em._tf_points is not None or em._tf_points_region is not None):
+                if self.fm._tf_points is not None and (ops._tf_points is not None or ops._tf_points_region is not None):
                     #condition = self.fm_controls.merge()
                     condition = controls.merge()
                     if condition:

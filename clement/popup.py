@@ -596,12 +596,12 @@ class Merge(QtGui.QMainWindow):
         self.parent = parent
         self.theme = self.parent.theme
         self.fm_copy = None
-        self.other = self.parent.fmcontrols.other
+        self.other = self.parent.fm_controls.other
         self.print = printer
         self.log = logger
 
-        self.curr_mrc_folder_popup = self.parent.fmcontrols.other.curr_folder
-        self.num_slices_popup = self.parent.fmcontrols.num_slices
+        self.curr_mrc_folder_popup = self.parent.fm_controls.other.curr_folder
+        self.num_slices_popup = self.parent.fm_controls.num_slices
         self.downsampling = 2  # per dimension
         self.color_data_popup = None
         self.color_overlay_popup = None
@@ -614,7 +614,7 @@ class Merge(QtGui.QMainWindow):
         self.fib = False
         self.size = 10
         self.lines = None
-        self.pixel_size = self.parent.fmcontrols.other.ops.pixel_size
+        self.pixel_size = self.parent.fm_controls.other.ops.pixel_size
         self.lambda_1 = None
         self.lambda_2 = None
         self.theta = None
@@ -622,13 +622,13 @@ class Merge(QtGui.QMainWindow):
         self.lamella_size = None
 
         self._channels_popup = []
-        self._colors_popup = list(np.copy(self.parent.fmcontrols._colors))
-        self._current_slice_popup = self.parent.fmcontrols._current_slice
+        self._colors_popup = list(np.copy(self.parent.fm_controls._colors))
+        self._current_slice_popup = self.parent.fm_controls._current_slice
         self._overlay_popup = True
         self._clicked_points_popup = []
         self._clicked_points_popup_base_indices = []
 
-        if self.parent.fibcontrols.fib:
+        if self.parent.fib_controls.fib:
             merged_data = self.parent.em.merged_3d
             self.fib = True
             self.downsampling = 1
@@ -700,7 +700,7 @@ class Merge(QtGui.QMainWindow):
 
         label = QtWidgets.QLabel('FM image:', self)
         line.addWidget(label)
-        self.fm_fname_popup = self.parent.fmcontrols.fm_fname.text()
+        self.fm_fname_popup = self.parent.fm_controls.fm_fname.text()
         label = QtWidgets.QLabel(self.fm_fname_popup, self)
         line.addWidget(label, stretch=1)
         self.max_proj_btn_popup = QtWidgets.QCheckBox('Max projection')
@@ -710,7 +710,7 @@ class Merge(QtGui.QMainWindow):
         self.slice_select_btn_popup = QtWidgets.QSpinBox(self)
         self.slice_select_btn_popup.editingFinished.connect(self._slice_changed_popup)
         self.slice_select_btn_popup.setRange(0, self.parent.fm.num_slices)
-        self.slice_select_btn_popup.setValue(self.parent.fmcontrols.slice_select_btn.value())
+        self.slice_select_btn_popup.setValue(self.parent.fm_controls.slice_select_btn.value())
         line.addWidget(self.slice_select_btn_popup)
         if self.fib:
             self.max_proj_btn_popup.setEnabled(False)
@@ -719,7 +719,7 @@ class Merge(QtGui.QMainWindow):
             self.max_proj_btn_popup.blockSignals(False)
             self.slice_select_btn_popup.setEnabled(False)
 
-        if self.parent.fmcontrols.max_proj_btn.isChecked():
+        if self.parent.fm_controls.max_proj_btn.isChecked():
             self.max_help = True
             self.max_proj_btn_popup.setChecked(True)
 
@@ -727,7 +727,7 @@ class Merge(QtGui.QMainWindow):
         vbox.addLayout(line)
         label = QtWidgets.QLabel('EM Image:', self)
         line.addWidget(label)
-        self.em_fname_popup = self.parent.fmcontrols.other.mrc_fname.text()
+        self.em_fname_popup = self.parent.fm_controls.other.mrc_fname.text()
         label = QtWidgets.QLabel(self.em_fname_popup, self)
         line.addWidget(label, stretch=1)
 
@@ -795,7 +795,7 @@ class Merge(QtGui.QMainWindow):
 
     @utils.wait_cursor('print')
     def _calc_ellipses(self, state=None):
-        cov_matrix = self.parent.fmcontrols.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
+        cov_matrix = self.parent.fm_controls.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
         self.log('Cov matrix: \n', cov_matrix)
         eigvals, eigvecs = np.linalg.eigh(cov_matrix)
         order = eigvals.argsort()[::-1]
@@ -814,7 +814,7 @@ class Merge(QtGui.QMainWindow):
         if not self.other.fib:
             for point in corr_points:
                 init = np.array([point.pos().x() + self.size/2, point.pos().y() + self.size/2, 1])
-                transf = (np.linalg.inv(self.parent.fmcontrols.other.ops.tf_matrix) @ init) / self.downsampling
+                transf = (np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ init) / self.downsampling
                 pos = QtCore.QPointF(transf[0], transf[1])
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
         else:
@@ -827,7 +827,7 @@ class Merge(QtGui.QMainWindow):
     def _update_poi(self, pos, fib):
         if not fib:
             init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
-            transf = (np.linalg.inv(self.parent.fmcontrols.other.ops.tf_matrix) @ init) / self.downsampling
+            transf = (np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ init) / self.downsampling
             pos = QtCore.QPointF(transf[0], transf[1])
         else:
             pos = QtCore.QPointF(pos.x()+self.size/2, pos.y()+self.size/2)
@@ -969,7 +969,7 @@ class Merge(QtGui.QMainWindow):
             #if self.fib:
             #    self.stage_positions_popup = np.copy(coordinates)
             #else:
-            #    self.stage_positions_popup = self.parent.emcontrols.ops.calc_stage_positions(coordinates,
+            #    self.stage_positions_popup = self.parent.sem_controls.ops.calc_stage_positions(coordinates,
             #                                                                                 self.downsampling)
             self.print('Done selecting points of interest!')
 
@@ -1130,8 +1130,8 @@ class Merge(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         if self.parent is not None:
-            if self.parent.fmcontrols.other == self.other:
-                self.parent.fmcontrols.progress_bar.setValue(0)
+            if self.parent.fm_controls.other == self.other:
+                self.parent.fm_controls.progress_bar.setValue(0)
             self.other.progress = 0
             self.parent.project.merged = False
             self.other.show_merge = False

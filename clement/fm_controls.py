@@ -39,7 +39,7 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 class FMControls(BaseControls):
-    def __init__(self, imview, colors, merge_layout, emcontrols, fibcontrols, printer, logger):
+    def __init__(self, imview, colors, merge_layout, printer, logger):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
@@ -49,8 +49,6 @@ class FMControls(BaseControls):
         self.num_slices = None
         self.peak_controls = None
         self.picker = None
-        self.emcontrols = emcontrols
-        self.fibcontrols = fibcontrols
 
         self._colors = colors
         self._channels = []

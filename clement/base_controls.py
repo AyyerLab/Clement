@@ -1008,7 +1008,7 @@ class BaseControls(QtWidgets.QWidget):
             self.peaks = []
 
         self.other._update_tr_matrices()
-        cmap = matplotlib.cm.get_cmap('autumn')
+        cmap = matplotlib.cm.get_cmap('cool')
         diff_normed = self.other.diff / self.other.diff.max()
         diff_abs = np.sqrt(diff_normed[:,0]**2 + diff_normed[:,1]**2)
         colors = cmap(diff_abs)
@@ -1039,8 +1039,12 @@ class BaseControls(QtWidgets.QWidget):
                 sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
 
             self.log(self.ops.points)
+            if self.ops._tf_points is None:
+                tf_points = self.ops._tf_points_region
+            else:
+                tf_points = self.ops._tf_points
             dst_sorted = np.array(
-                sorted(self.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+                sorted(tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
             tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
             if self.tr_matrices is None:
                 self.tr_matrices = np.copy(tr_matrices)
