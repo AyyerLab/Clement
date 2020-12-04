@@ -8,9 +8,9 @@ from .base_controls import BaseControls
 from .em_operations import EM_ops
 from . import utils
 
-class EMControls(BaseControls):
+class TEMControls(BaseControls):
     def __init__(self, imview, vbox, merge_layout, printer, logger):
-        super(EMControls, self).__init__()
+        super(TEMControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
@@ -33,7 +33,7 @@ class EMControls(BaseControls):
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
-        utils.add_montage_line(self, vbox, 'TEM/SEM', downsampling=True)
+        utils.add_montage_line(self, vbox, 'TEM', downsampling=True)
 
         # ---- Assembly grid options
         line = QtWidgets.QHBoxLayout()

@@ -6,7 +6,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 
 from . import res_styles
-from .em_controls import EMControls
+from .sem_controls import SEMControls
+from .tem_controls import TEMControls
 from .fm_controls import FMControls
 from .fib_controls import FIBControls
 from .project import Project
@@ -59,18 +60,23 @@ class GUI(QtWidgets.QMainWindow):
         self.fm_imview.ui.roiBtn.hide()
         self.fm_imview.ui.menuBtn.hide()
         self.fm_stacked_imview.addWidget(self.fm_imview)
+        self.fm_stacked_imview.addWidget(self.fm_imview)
         splitter_images.addWidget(self.fm_stacked_imview)
 
         # -- EM Image view
         self.em_imview = QtWidgets.QStackedWidget()
-        self.tem_imview = pg.ImageView()
-        self.tem_imview.ui.roiBtn.hide()
-        self.tem_imview.ui.menuBtn.hide()
+        self.sem_imview = pg.ImageView()
+        self.sem_imview.ui.roiBtn.hide()
+        self.sem_imview.ui.menuBtn.hide()
         self.fib_imview = pg.ImageView()
         self.fib_imview.ui.roiBtn.hide()
         self.fib_imview.ui.menuBtn.hide()
-        self.em_imview.addWidget(self.tem_imview)
+        self.tem_imview = pg.ImageView()
+        self.tem_imview.ui.roiBtn.hide()
+        self.tem_imview.ui.menuBtn.hide()
+        self.em_imview.addWidget(self.sem_imview)
         self.em_imview.addWidget(self.fib_imview)
+        self.em_imview.addWidget(self.tem_imview)
         splitter_images.addWidget(self.em_imview)
 
         # Options
@@ -95,50 +101,61 @@ class GUI(QtWidgets.QMainWindow):
         self.print = self.worker.print
         self.log = self.worker.log
         self.workerThread.start()
-        self.fmcontrols = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
-        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fmcontrols._couple_views)
-        self.fmcontrols.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
-        options.addWidget(self.fmcontrols)
+        self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.print, self.log)
+        self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
+        self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
+        options.addWidget(self.fm_controls)
 
         vbox = QtWidgets.QVBoxLayout()
         options.addLayout(vbox)
         self.tabs = QtWidgets.QTabWidget()
-        self.tab_2d = QtWidgets.QWidget()
-        self.tab_3d = QtWidgets.QWidget()
+        tab_sem = QtWidgets.QWidget()
+        tab_fib = QtWidgets.QWidget()
+        tab_tem = QtWidgets.QWidget()
         self.tabs.resize(300, 200)
-        self.tabs.addTab(self.tab_2d, 'TEM/SEM')
-        self.tabs.addTab(self.tab_3d, 'FIB')
+        self.tabs.addTab(tab_sem, 'SEM')
+        self.tabs.addTab(tab_fib, 'FIB')
+        self.tabs.addTab(tab_tem, 'TEM')
         vbox.addWidget(self.tabs)
 
-        vbox_2d = QtWidgets.QVBoxLayout()
-        vbox_3d = QtWidgets.QVBoxLayout()
-        self.tab_2d.setLayout(vbox_2d)
-        self.tab_3d.setLayout(vbox_3d)
+        self.vbox_sem = QtWidgets.QVBoxLayout()
+        self.vbox_fib = QtWidgets.QVBoxLayout()
+        self.vbox_tem = QtWidgets.QVBoxLayout()
+        tab_sem.setLayout(self.vbox_sem)
+        tab_fib.setLayout(self.vbox_fib)
+        tab_tem.setLayout(self.vbox_tem)
 
-        self.emcontrols = EMControls(self.tem_imview, vbox_2d, merge_options, self.print, self.log)
-        self.tem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.emcontrols._couple_views)
-        self.emcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
-        vbox_2d.addWidget(self.emcontrols)
-        self.fibcontrols = FIBControls(self.fib_imview, vbox_3d, self.emcontrols.ops, merge_options, self.print, self.log)
-        self.fibcontrols.curr_folder = self.settings.value('em_folder', defaultValue=os.getcwd())
-        vbox_3d.addWidget(self.fibcontrols)
+        self.sem_controls = SEMControls(self.sem_imview, self.vbox_sem, merge_options, self.print, self.log)
+        self.sem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.sem_controls._couple_views)
+        self.sem_controls.curr_folder = self.settings.value('sem_folder', defaultValue=os.getcwd())
+        self.vbox_sem.addWidget(self.sem_controls)
+        self.fib_controls = FIBControls(self.fib_imview, self.vbox_fib, self.sem_controls.ops, merge_options, self.print, self.log)
+        self.fib_controls.curr_folder = self.settings.value('fib_folder', defaultValue=os.getcwd())
+        self.vbox_fib.addWidget(self.fib_controls)
+        self.tem_controls = TEMControls(self.tem_imview, self.vbox_tem, merge_options, self.print, self.log)
+        self.tem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.tem_controls._couple_views)
+        self.tem_controls.curr_folder = self.settings.value('tem_folder', defaultValue=os.getcwd())
+        self.vbox_tem.addWidget(self.tem_controls)
+
 
         self.tabs.currentChanged.connect(self.select_tab)
         # Connect controllers
-        self.fmcontrols.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=self.tabs.currentIndex()))
-        self.fmcontrols.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=self.tabs.currentIndex()))
-        self.fmcontrols.set_params_btn.clicked.connect(lambda: self._show_peak_params())
-        self.emcontrols.other = self.fmcontrols
-        self.fibcontrols.other = self.fmcontrols
-        self.fmcontrols.other = self.emcontrols
-        self.fmcontrols.merge_btn.clicked.connect(self.merge)
+        self.fm_controls.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=self.tabs.currentIndex()))
+        self.fm_controls.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=self.tabs.currentIndex()))
+        self.fm_controls.set_params_btn.clicked.connect(lambda: self._show_peak_params())
+        self.sem_controls.other = self.fm_controls
+        self.fib_controls.other = self.fm_controls
+        self.tem_controls.other = self.fm_controls
+        self.fm_controls.other = self.sem_controls
+        self.fm_controls.merge_btn.clicked.connect(self.merge)
 
         self.sem_popup = None
         self.fib_popup = None
+        self.tem_popup = None
         self.scatter = None
         self.convergence = None
         self.peak_params = None
-        self.project = Project(self.fmcontrols, self.emcontrols, self.fibcontrols, self, self.print, self.log)
+        self.project = Project(self.fm_controls, self.sem_controls, self.fib_controls, self.tem_controls, self, self.print, self.log)
         self.project._project_folder = self.settings.value('project_folder', defaultValue=os.getcwd())
         # Menu Bar
         self._init_menubar()
@@ -157,10 +174,10 @@ class GUI(QtWidgets.QMainWindow):
         # -- File menu
         filemenu = menubar.addMenu('&File')
         action = QtWidgets.QAction('Load &FM image(s)', self)
-        action.triggered.connect(self.fmcontrols._load_fm_images)
+        action.triggered.connect(self.fm_controls._load_fm_images)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load TEM/SEM', self)
-        action.triggered.connect(self.emcontrols._load_mrc)
+        action.triggered.connect(self.sem_controls._load_mrc)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load project', self)
         action.triggered.connect(self._load_p)
@@ -169,7 +186,7 @@ class GUI(QtWidgets.QMainWindow):
         action.triggered.connect(self._save_p)
         filemenu.addAction(action)
         #action = QtWidgets.QAction('&Save binned montage', self)
-        #action.triggered.connect(self.emcontrols._save_mrc_montage)
+        #action.triggered.connect(self.sem_controls._save_mrc_montage)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
@@ -202,113 +219,120 @@ class GUI(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def select_tab(self, idx):
-        self.fmcontrols.select_btn.setChecked(False)
-        for i in range(len(self.fmcontrols._points_corr)):
-            self.fmcontrols._remove_correlated_points(self.fmcontrols._points_corr[0])
-
+        self.fm_controls.select_btn.setChecked(False)
+        for i in range(len(self.fm_controls._points_corr)):
+            self.fm_controls._remove_correlated_points(self.fm_controls._points_corr[0])
+        self.em_imview.setCurrentIndex(idx)
         if idx == 0:
-            self.fibcontrols.show_grid_btn.setChecked(False)
-            self.em_imview.setCurrentIndex(0)
-            self.emcontrols._update_imview()
-            self.fmcontrols.other = self.emcontrols
-            if self.emcontrols._refined:
-                self.fmcontrols.undo_refine_btn.setEnabled(True)
+            self.fib_controls.show_grid_btn.setChecked(False)
+            self.sem_controls._update_imview()
+            self.fm_controls.other = self.sem_controls
+            if self.sem_controls._refined:
+                self.fm_controls.undo_refine_btn.setEnabled(True)
             else:
-                self.fmcontrols.undo_refine_btn.setEnabled(False)
-            self.fibcontrols.fib = False
-        else:
-            if self.emcontrols.ops is not None and self.fmcontrols.ops is not None:
-                if self.fmcontrols.ops.points is not None and self.emcontrols.ops.points is not None:
-                    self.fmcontrols._calc_tr_matrices()
-            self.fibcontrols.fib = True
-            self.em_imview.setCurrentIndex(1)
-            if self.fibcontrols.ops is not None:
-                show_grid = self.emcontrols.show_grid_btn.isChecked()
-                self.fibcontrols.show_grid_btn.setChecked(show_grid)
-            if self.fibcontrols._refined:
-                self.fmcontrols.undo_refine_btn.setEnabled(True)
+                self.fm_controls.undo_refine_btn.setEnabled(False)
+            self.fib_controls.fib = False
+        elif idx == 1:
+            if self.sem_controls.ops is not None and self.fm_controls.ops is not None:
+                if self.fm_controls.ops.points is not None and self.sem_controls.ops.points is not None:
+                    self.fm_controls._calc_tr_matrices()
+            self.fib_controls.fib = True
+            if self.fib_controls.ops is not None:
+                show_grid = self.sem_controls.show_grid_btn.isChecked()
+                self.fib_controls.show_grid_btn.setChecked(show_grid)
+            if self.fib_controls._refined:
+                self.fm_controls.undo_refine_btn.setEnabled(True)
             else:
-                self.fmcontrols.undo_refine_btn.setEnabled(False)
-            self.fibcontrols._update_imview()
-            self.fibcontrols.sem_ops = self.emcontrols.ops
-            self.fmcontrols.other = self.fibcontrols
-            if self.emcontrols.ops is not None:
-                if self.emcontrols.ops._orig_points is not None:
-                    self.fibcontrols.enable_buttons(enable=True)
+                self.fm_controls.undo_refine_btn.setEnabled(False)
+            self.fib_controls._update_imview()
+            self.fib_controls.sem_ops = self.sem_controls.ops
+            self.fm_controls.other = self.fib_controls
+            if self.sem_controls.ops is not None:
+                if self.sem_controls.ops._orig_points is not None:
+                    self.fib_controls.enable_buttons(enable=True)
                 else:
-                    self.fibcontrols.enable_buttons(enable=False)
-                if self.fibcontrols.ops is not None and self.emcontrols.ops._tf_points is not None:
-                    self.fibcontrols.ops._transformed = True
-
-        if self.fmcontrols.other.show_merge:
-            self.fmcontrols.progress_bar.setValue(100)
+                    self.fib_controls.enable_buttons(enable=False)
+                if self.fib_controls.ops is not None and self.sem_controls.ops._tf_points is not None:
+                    self.fib_controls.ops._transformed = True
         else:
-            self.fmcontrols.progress_bar.setValue(0)
-        if self.fmcontrols.other._refined:
-            self.fmcontrols.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.fmcontrols.other._std[idx][0],
-                                                                           self.fmcontrols.other._std[idx][1]))
+            self.fib_controls.show_grid_btn.setChecked(False)
+            self.tem_controls._update_imview()
+            self.fm_controls.other = self.tem_controls
+            if self.tem_controls._refined:
+                self.fm_controls.undo_refine_btn.setEnabled(True)
+            else:
+                self.fm_controls.undo_refine_btn.setEnabled(False)
+            self.fib_controls.fib = False
+
+        if self.fm_controls.other.show_merge:
+            self.fm_controls.progress_bar.setValue(100)
         else:
-            self.fmcontrols.err_btn.setText('0')
+            self.fm_controls.progress_bar.setValue(0)
+        if self.fm_controls.other._refined:
+            self.fm_controls.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.fm_controls.other._std[idx][0],
+                                                                           self.fm_controls.other._std[idx][1]))
+        else:
+            self.fm_controls.err_btn.setText('0')
 
-            #if self.fibcontrols.num_slices is None:
-            #    self.fibcontrols.num_slices = self.fmcontrols.num_slices
-            #    if self.fibcontrols.ops is not None:
-            #        if self.fibcontrols.ops.fib_matrix is not None and self.fmcontrols.num_slices is not None:
-            #            self.fibcontrols.correct_grid_z()
+            #if self.fib_controls.num_slices is None:
+            #    self.fib_controls.num_slices = self.fm_controls.num_slices
+            #    if self.fib_controls.ops is not None:
+            #        if self.fib_controls.ops.fib_matrix is not None and self.fm_controls.num_slices is not None:
+            #            self.fib_controls.correct_grid_z()
 
-        if self.fmcontrols is not None and self.fmcontrols.ops is not None:
-            if self.fmcontrols.ops._transformed:
-                self.fmcontrols.other.size_box.setEnabled(True)
-                self.fmcontrols.other.auto_opt_btn.setEnabled(True)
+        if self.fm_controls is not None and self.fm_controls.ops is not None:
+            if self.fm_controls.ops._transformed:
+                self.fm_controls.other.size_box.setEnabled(True)
+                self.fm_controls.other.auto_opt_btn.setEnabled(True)
 
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):
         if idx == 0:
-            self.scatter = Scatter(self, self.emcontrols, self.print)
+            self.scatter = Scatter(self, self.sem_controls, self.print)
         else:
-            self.scatter = Scatter(self, self.fibcontrols, self.print)
+            self.scatter = Scatter(self, self.fib_controls, self.print)
         self.scatter.show()
 
     @utils.wait_cursor('print')
     def _show_convergence(self, idx):
-        if len(self.fmcontrols.other._conv[idx]) == 3:
+        if len(self.fm_controls.other._conv[idx]) == 3:
             if idx == 0:
-                self.convergence = Convergence(self, self.emcontrols, self.print)
+                self.convergence = Convergence(self, self.sem_controls, self.print)
             else:
-                self.convergence = Convergence(self, self.fibcontrols, self.print)
+                self.convergence = Convergence(self, self.fib_controls, self.print)
             self.convergence.show()
         else:
             self.print('To use this feature, you have to use at least 10 points for the refinement!')
 
     @utils.wait_cursor('print')
     def _show_peak_params(self, state=None):
-        self.fmcontrols.peak_btn.setChecked(False)
+        self.fm_controls.peak_btn.setChecked(False)
         if self.peak_params is None:
-            self.peak_params = Peak_Params(self, self.fmcontrols, self.print, self.log)
-            self.fmcontrols.peak_controls = self.peak_params
+            self.peak_params = Peak_Params(self, self.fm_controls, self.print, self.log)
+            self.fm_controls.peak_controls = self.peak_params
         self.peak_params.show()
 
     @utils.wait_cursor('print')
     def merge(self, project=None):
-        self.fm = self.fmcontrols.ops
-        if self.fibcontrols.fib:
-            self.em = self.fibcontrols.ops
-            em = self.fibcontrols.sem_ops
+        self.fm = self.fm_controls.ops
+        if self.fib_controls.fib:
+            self.em = self.fib_controls.ops
+            em = self.fib_controls.sem_ops
             popup = self.fib_popup
-            controls = self.fibcontrols
+            controls = self.fib_controls
         else:
-            self.em = self.emcontrols.ops
+            self.em = self.sem_controls.ops
             em = self.em
             popup = self.sem_popup
-            controls = self.emcontrols
+            controls = self.sem_controls
 
         if self.fm is not None and self.em is not None:
-            if self.fibcontrols.fib and self.fibcontrols.sem_ops.data is None:
+            if self.fib_controls.fib and self.fib_controls.sem_ops.data is None:
                 self.print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
                 if self.fm._tf_points is not None and (em._tf_points is not None or em._tf_points_region is not None):
-                    #condition = self.fmcontrols.merge()
+                    #condition = self.fm_controls.merge()
                     condition = controls.merge()
                     if condition:
                         if popup is not None:
@@ -340,7 +364,7 @@ class GUI(QtWidgets.QMainWindow):
                 c = (0, 0, 255, 80)
                 bc = (0, 0, 0)
 
-            for imview in [self.fib_imview, self.tem_imview, self.fm_imview]:
+            for imview in [self.fib_imview, self.sem_imview, self.fm_imview]:
                 imview.view.setBackgroundColor(bc)
                 hwidget = imview.getHistogramWidget()
                 hwidget.setBackground(bc)
@@ -364,9 +388,10 @@ class GUI(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self.settings.setValue('channel_colors', self.colors)
         self.settings.setValue('geometry', self.geometry())
-        self.settings.setValue('fm_folder', self.fmcontrols._curr_folder)
-        self.settings.setValue('em_folder', self.emcontrols._curr_folder)
-        self.settings.setValue('fib_folder', self.fibcontrols._curr_folder)
+        self.settings.setValue('fm_folder', self.fm_controls._curr_folder)
+        self.settings.setValue('sem_folder', self.sem_controls._curr_folder)
+        self.settings.setValue('tem_folder', self.tem_controls._curr_folder)
+        self.settings.setValue('fib_folder', self.fib_controls._curr_folder)
         self.settings.setValue('project_folder', self.project._project_folder)
         event.accept()
 

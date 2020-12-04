@@ -9,12 +9,13 @@ import copy
 
 
 class Project(QtWidgets.QWidget):
-    def __init__(self, fm, em, fib, parent, printer, logger):
+    def __init__(self, fm, sem, fib, tem, parent, printer, logger):
         super(Project, self).__init__()
         self._project_folder = os.getcwd()
         self.fm = fm
-        self.em = em
+        self.sem = sem
         self.fib = fib
+        self.tem = tem
         self.show_fib = False
         self.merged = False
         self.popup = None
@@ -33,7 +34,7 @@ class Project(QtWidgets.QWidget):
             self.print('Load ', file_name)
             self.fm.reset_base()
             self.fm.reset_init()
-            self.em.reset_init()
+            self.sem.reset_init()
             self.fib.reset_init()
             self.parent.tabs.setCurrentIndex(0)
             self._project_folder = os.path.dirname(file_name)
@@ -131,93 +132,93 @@ class Project(QtWidgets.QWidget):
         if 'EM' not in project:
             return
         emdict = project['EM']
-        self.em._curr_folder = emdict['Directory']
-        self.em._file_name = emdict['File']
-        self.em.mrc_fname.setText(self.em._file_name)
-        self.em.assemble_btn.setEnabled(True)
-        self.em.step_box.setEnabled(True)
-        self.em.step_box.setText(emdict['Downsampling'])
-        self.em._load_mrc(jump=True)
-        self.em._assemble_mrc()
+        self.sem._curr_folder = emdict['Directory']
+        self.sem._file_name = emdict['File']
+        self.sem.mrc_fname.setText(self.sem._file_name)
+        self.sem.assemble_btn.setEnabled(True)
+        self.sem.step_box.setEnabled(True)
+        self.sem.step_box.setText(emdict['Downsampling'])
+        self.sem._load_mrc(jump=True)
+        self.sem._assemble_mrc()
         if emdict['Transpose']:
-            self.em.transp_btn.setEnabled(True)
-            self.em.transp_btn.setChecked(True)
-            self.em._transpose()
+            self.sem.transp_btn.setEnabled(True)
+            self.sem.transp_btn.setChecked(True)
+            self.sem._transpose()
 
         try:
-            self.em._select_region_original = emdict['Select subregion original']
+            self.sem._select_region_original = emdict['Select subregion original']
             try:
-                self.em.ops._orig_points = np.array(emdict['Original grid points'])
-                self.em.ops.points = np.copy(self.em.ops._orig_points)
-                self.em.show_grid_btn.setEnabled(True)
-                self.em._recalc_grid()
-                self.em.show_grid_btn.setChecked(emdict['Show grid box'])
-                self.em.transform_btn.setEnabled(True)
-                self.em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                self.sem.ops._orig_points = np.array(emdict['Original grid points'])
+                self.sem.ops.points = np.copy(self.sem.ops._orig_points)
+                self.sem.show_grid_btn.setEnabled(True)
+                self.sem._recalc_grid()
+                self.sem.show_grid_btn.setChecked(emdict['Show grid box'])
+                self.sem.transform_btn.setEnabled(True)
+                self.sem.rot_transform_btn.setChecked(emdict['Rotation only'])
             except KeyError:
                 pass
             try:
-                self.em.select_region_btn.setChecked(True)
-                self.em._box_coordinate = np.array(emdict['Subregion coordinate'])
-                self.em.select_region_btn.setChecked(False)
-                self.em.ops._orig_points_region = np.array(emdict['Orginal points subregion'])
-                self.em.ops.points = np.copy(self.em.ops._orig_points_region)
-                self.em._recalc_grid()
-                self.em.show_grid_btn.setEnabled(True)
-                self.em.show_grid_btn.setChecked(emdict['Show grid box'])
-                self.em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                self.sem.select_region_btn.setChecked(True)
+                self.sem._box_coordinate = np.array(emdict['Subregion coordinate'])
+                self.sem.select_region_btn.setChecked(False)
+                self.sem.ops._orig_points_region = np.array(emdict['Orginal points subregion'])
+                self.sem.ops.points = np.copy(self.sem.ops._orig_points_region)
+                self.sem._recalc_grid()
+                self.sem.show_grid_btn.setEnabled(True)
+                self.sem.show_grid_btn.setChecked(emdict['Show grid box'])
+                self.sem.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
-                    self.em.show_grid_btn.setChecked(False)
-                    self.em.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
-                    self.em._affine_transform()
+                    self.sem.show_grid_btn.setChecked(False)
+                    self.sem.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
+                    self.sem._affine_transform()
                 except KeyError:
                     pass
 
-                self.em.show_assembled_btn.setChecked(emdict['Show assembled'])
-                if self.em.show_assembled_btn.isChecked():
+                self.sem.show_assembled_btn.setChecked(emdict['Show assembled'])
+                if self.sem.show_assembled_btn.isChecked():
                     try:
-                        self.em.ops._tf_points = np.array(emdict['Transformed grid points'])
-                        self.em._affine_transform()
+                        self.sem.ops._tf_points = np.array(emdict['Transformed grid points'])
+                        self.sem._affine_transform()
                     except KeyError:
                         pass
             except KeyError:
                 pass
         except KeyError:
             try:
-                self.em.ops._orig_points = np.array(emdict['Original grid points'])
-                self.em.ops.points = np.copy(self.em.ops._orig_points)
-                self.em.show_grid_btn.setEnabled(True)
-                self.em._recalc_grid()
-                self.em.show_grid_btn.setChecked(emdict['Show grid box'])
-                self.em.transform_btn.setEnabled(True)
-                self.em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                self.sem.ops._orig_points = np.array(emdict['Original grid points'])
+                self.sem.ops.points = np.copy(self.sem.ops._orig_points)
+                self.sem.show_grid_btn.setEnabled(True)
+                self.sem._recalc_grid()
+                self.sem.show_grid_btn.setChecked(emdict['Show grid box'])
+                self.sem.transform_btn.setEnabled(True)
+                self.sem.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
-                    self.em.ops._tf_points = np.array(emdict['Transformed grid points'])
-                    self.em._affine_transform()
+                    self.sem.ops._tf_points = np.array(emdict['Transformed grid points'])
+                    self.sem._affine_transform()
                 except KeyError:
                     pass
             except KeyError:
                 pass
             try:
-                self.em._box_coordinate = emdict['Subregion coordinate']
-                self.em.select_region_btn.setChecked(True)
-                self.em.select_region_btn.setChecked(False)
-                self.em.ops._orig_points_region = np.array(emdict['Orginal points subregion'])
-                self.em.ops.points = np.copy(self.em.ops._orig_points_region)
-                self.em._recalc_grid()
-                self.em.show_grid_btn.setChecked(emdict['Show grid box'])
-                self.em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                self.sem._box_coordinate = emdict['Subregion coordinate']
+                self.sem.select_region_btn.setChecked(True)
+                self.sem.select_region_btn.setChecked(False)
+                self.sem.ops._orig_points_region = np.array(emdict['Orginal points subregion'])
+                self.sem.ops.points = np.copy(self.sem.ops._orig_points_region)
+                self.sem._recalc_grid()
+                self.sem.show_grid_btn.setChecked(emdict['Show grid box'])
+                self.sem.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
-                    self.em.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
-                    self.em._affine_transform()
+                    self.sem.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
+                    self.sem._affine_transform()
                 except KeyError:
                     pass
             except KeyError:
-                if self.em.select_region_btn.isChecked():
-                    self.em.select_region_btn.setChecked(False)
+                if self.sem.select_region_btn.isChecked():
+                    self.sem.select_region_btn.setChecked(False)
 
-        self.em.show_assembled_btn.setChecked(emdict['Show assembled'])
-        self.em.show_btn.setChecked(emdict['Show original'])
+        self.sem.show_assembled_btn.setChecked(emdict['Show assembled'])
+        self.sem.show_btn.setChecked(emdict['Show original'])
 
     def _load_fib(self, project):
         if 'FIB' not in project:
@@ -233,7 +234,7 @@ class Project(QtWidgets.QWidget):
             self.fib._transpose()  # Why has this function to be called expilicitely???
 
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
-        self.fib.sem_ops = self.em.ops
+        self.fib.sem_ops = self.sem.ops
         if self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
 
@@ -284,7 +285,7 @@ class Project(QtWidgets.QWidget):
                 idx = 1
             else:
                 emdict = project['EM']
-                em = self.em
+                em = self.sem
                 em.fib = False
                 idx = 0
             self.parent.tabs.setCurrentIndex(idx)
@@ -333,7 +334,7 @@ class Project(QtWidgets.QWidget):
                 em = self.fib
             else:
                 emdict = project['EM']
-                em = self.em
+                em = self.sem
 
             self.fm.other = em
             points_corr_fm = project['FM']['Correlated points']
@@ -397,7 +398,7 @@ class Project(QtWidgets.QWidget):
         print('Data Popup:', self.popup.data_popup.shape)
 
     def _save_project(self):
-        if self.fm.ops is not None or self.em.ops is not None:
+        if self.fm.ops is not None or self.sem.ops is not None:
             if self.fm.select_btn.isChecked():
                 buttonReply = QtWidgets.QMessageBox.question(self, 'Warning',
                                                              'Selected points have not been confirmed and will be lost during saving! \r Continue?',
@@ -422,11 +423,11 @@ class Project(QtWidgets.QWidget):
             project = {}
             if self.fm.ops is not None:
                 self._save_fm(project)
-            if self.em.ops is not None:
+            if self.sem.ops is not None:
                 self._save_em(project)
             if self.fib.ops is not None:
                 self._save_fib(project)
-            if self.fm.ops is not None or self.em.ops is not None:
+            if self.fm.ops is not None or self.sem.ops is not None:
                 project['MERGE'] = {}
                 project['MERGE']['Merged'] = self.merged
                 if self.merged:
@@ -488,39 +489,39 @@ class Project(QtWidgets.QWidget):
         emdict = {}
         project['EM'] = emdict
 
-        emdict['Directory'] = self.em._curr_folder
-        emdict['File'] = self.em._file_name
-        emdict['Transpose'] = self.em.transp_btn.isChecked()
-        emdict['Downsampling'] = self.em._downsampling
-        emdict['Show grid box'] = self.em.show_grid_btn.isChecked()
-        emdict['Rotation only'] = self.em.rot_transform_btn.isChecked()
-        if self.em.ops._orig_points is not None:
-            emdict['Original grid points'] = self.em.ops._orig_points.tolist()
-        if self.em.ops._tf_points is not None:
-            emdict['Transformed grid points'] = self.em.ops._tf_points.tolist()
-        emdict['Show original'] = self.em.show_btn.isChecked()
-        if self.em._box_coordinate is not None:
-            emdict['Subregion coordinate'] = self.em._box_coordinate.tolist()
-            emdict['Select subregion original'] = self.em._select_region_original
+        emdict['Directory'] = self.sem._curr_folder
+        emdict['File'] = self.sem._file_name
+        emdict['Transpose'] = self.sem.transp_btn.isChecked()
+        emdict['Downsampling'] = self.sem._downsampling
+        emdict['Show grid box'] = self.sem.show_grid_btn.isChecked()
+        emdict['Rotation only'] = self.sem.rot_transform_btn.isChecked()
+        if self.sem.ops._orig_points is not None:
+            emdict['Original grid points'] = self.sem.ops._orig_points.tolist()
+        if self.sem.ops._tf_points is not None:
+            emdict['Transformed grid points'] = self.sem.ops._tf_points.tolist()
+        emdict['Show original'] = self.sem.show_btn.isChecked()
+        if self.sem._box_coordinate is not None:
+            emdict['Subregion coordinate'] = self.sem._box_coordinate.tolist()
+            emdict['Select subregion original'] = self.sem._select_region_original
 
-        if self.em.ops._orig_points_region is not None:
-            emdict['Orginal points subregion'] = self.em.ops._orig_points_region.tolist()
-        if self.em.ops._tf_points_region is not None:
-            emdict['Transformed points subregion'] = self.em.ops._tf_points_region.tolist()
-        emdict['Show assembled'] = self.em.show_assembled_btn.isChecked()
-        emdict['Show FM peaks'] = self.em.show_peaks_btn.isChecked()
+        if self.sem.ops._orig_points_region is not None:
+            emdict['Orginal points subregion'] = self.sem.ops._orig_points_region.tolist()
+        if self.sem.ops._tf_points_region is not None:
+            emdict['Transformed points subregion'] = self.sem.ops._tf_points_region.tolist()
+        emdict['Show assembled'] = self.sem.show_assembled_btn.isChecked()
+        emdict['Show FM peaks'] = self.sem.show_peaks_btn.isChecked()
 
-        points = [[p.pos().x(), p.pos().y()] for p in self.em._points_corr]
+        points = [[p.pos().x(), p.pos().y()] for p in self.sem._points_corr]
         emdict['Correlated points'] = points
-        emdict['Original correlated points'] = np.array(self.em._orig_points_corr).tolist()
-        emdict['Correlated points indices'] = self.em._points_corr_indices
+        emdict['Original correlated points'] = np.array(self.sem._orig_points_corr).tolist()
+        emdict['Correlated points indices'] = self.sem._points_corr_indices
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
-                                               self.em._points_corr_history]
-        emdict['Correlated points z history'] = np.array(self.em._points_corr_z_history).tolist()
-        emdict['Original correlated points history'] = np.array(self.em._orig_points_corr_history).tolist()
-        emdict['Size history'] = np.array(self.em._size_history).tolist()
-        emdict['Refined'] = self.em._refined
-        emdict['Refinement history'] = np.array(self.em.ops._refine_history).tolist()
+                                               self.sem._points_corr_history]
+        emdict['Correlated points z history'] = np.array(self.sem._points_corr_z_history).tolist()
+        emdict['Original correlated points history'] = np.array(self.sem._orig_points_corr_history).tolist()
+        emdict['Size history'] = np.array(self.sem._size_history).tolist()
+        emdict['Refined'] = self.sem._refined
+        emdict['Refinement history'] = np.array(self.sem.ops._refine_history).tolist()
 
     def _save_fib(self, project):
         fibdict = {}
