@@ -1236,9 +1236,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.undo_refine_btn.setEnabled(False)
         elif idx == 1:
             if self.orig_fm_sem_corr is None and fibcontrols.tab_index == 0:
-            #if semcontrols.ops is not None and self.ops is not None:
-            #    if self.ops.points is not None and semcontrols.ops.points is not None:
-                self._calc_tr_matrices()
+                if semcontrols.ops is not None and self.ops is not None:
+                    if self.ops.points is not None and semcontrols.ops.points is not None:
+                        self._calc_tr_matrices()
             if fibcontrols.ops is not None:
                 show_grid = semcontrols.show_grid_btn.isChecked()
                 fibcontrols.show_grid_btn.setChecked(show_grid)
