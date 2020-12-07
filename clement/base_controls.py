@@ -67,6 +67,7 @@ class BaseControls(QtWidgets.QWidget):
         self._orig_points_corr = []
         self._points_corr_indices = []
         self._refined = False
+        self.diff = None
         self._err = [None, None, None]
         self._std = [[None, None], [None, None], [None, None]]
         self._conv = [None, None, None]
@@ -637,7 +638,7 @@ class BaseControls(QtWidgets.QWidget):
             if hasattr(self, 'select_btn') and self.other.tab_index != 1:
                 if self.ops._transformed and self.other.ops._transformed:
                     self.other.show_peaks_btn.setEnabled(True)
-            if self.tab_index != 1:
+            if self.other.tab_index != 1:
                 if self.ops._transformed and self.other.ops._transformed:
                     self.show_peaks_btn.setEnabled(True)
 
@@ -904,7 +905,8 @@ class BaseControls(QtWidgets.QWidget):
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                 self.refined_points.append(transf[:2])
 
-
+        print(self.diff)
+        print(self.other.diff)
         self.diff = np.array(sel_points) - np.array(self.refined_points)
         self.log(self.diff.shape)
         #diff *= self.other.ops.pixel_size

@@ -379,9 +379,12 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.orig_data_roi = np.copy(self.data_roi)
         else:
             if self.roi is not None:
-                self.data_roi = self.data[np.round(self.roi_pos[0]).astype(int):np.round(self.roi_pos[0]).astype(int) \
-                                +self.data_roi.shape[0], np.round(self.roi_pos[1]).astype(int): \
-                                np.round(self.roi_pos[1]).astype(int)+self.data_roi.shape[1],:]
+                self.data_roi = None
+                self._update()
+                self.peak_imview.addItem(self.roi)
+                self.data_roi, self.coor = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem(), returnMappedCoords=True)
+                self.peak_imview.removeItem(self.roi)
+                self._update()
             else:
                 self.data_roi = self.data
             self.orig_data_roi = np.copy(self.data_roi)
@@ -458,6 +461,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.roi.movable = False
             self.roi.resizable = False
             self.data_roi, self.coor = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem(), returnMappedCoords=True)
+            self.transf = self.roi.getGlobalTransform()
+            print(self.transf)
 
             self.orig_data_roi = np.copy(self.data_roi)
             self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
