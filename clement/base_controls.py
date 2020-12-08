@@ -1000,10 +1000,11 @@ class BaseControls(QtWidgets.QWidget):
             self.peaks = []
 
         self.other._update_tr_matrices()
-        cmap = matplotlib.cm.get_cmap('cool')
-        diff_normed = self.other.diff / self.other.diff.max()
-        diff_abs = np.sqrt(diff_normed[:,0]**2 + diff_normed[:,1]**2)
-        colors = cmap(diff_abs)
+        if self.other.diff is not None:
+            cmap = matplotlib.cm.get_cmap('cool')
+            diff_normed = self.other.diff / self.other.diff.max()
+            diff_abs = np.sqrt(diff_normed[:,0]**2 + diff_normed[:,1]**2)
+            colors = cmap(diff_abs)
         if self.tab_index == 1:
             for i in range(len(self.other.ops.tf_peak_slices[-1])):
                 z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i])
@@ -1014,14 +1015,14 @@ class BaseControls(QtWidgets.QWidget):
                 if self._refined:
                     transf = self.ops._refine_matrix @ np.array([transf[0], transf[1], 1])
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
-                idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
-                if not np.array_equal(idx[0], np.array([])):
-                    if len(idx) == 2:
-                        idx = idx[0][0]
-                    color = colors[idx]
-                    color = matplotlib.colors.to_hex(color)
-                else:
-                    color = None
+                color = None
+                if self.other.diff is not None:
+                    idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
+                    if not np.array_equal(idx[0], np.array([])):
+                        if len(idx) == 2:
+                            idx = idx[0][0]
+                        color = colors[idx]
+                        color = matplotlib.colors.to_hex(color)
                 point = PeakROI(pos, self.size, self.imview.getImageItem(), color=color)
                 self.peaks.append(point)
                 self.imview.addItem(point)
@@ -1054,14 +1055,14 @@ class BaseControls(QtWidgets.QWidget):
                     else:
                         transf = tr_matrices @ init
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
-                idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
-                if not np.array_equal(idx[0], np.array([])):
-                    if len(idx) == 2:
-                        idx = idx[0][0]
-                    color = colors[idx]
-                    color = matplotlib.colors.to_hex(color)
-                else:
-                    color = None
+                color = None
+                if self.other.diff is not None:
+                    idx = np.where(np.isclose(np.array(self.other.refined_points), np.array([transf[0], transf[1]])))
+                    if not np.array_equal(idx[0], np.array([])):
+                        if len(idx) == 2:
+                            idx = idx[0][0]
+                        color = colors[idx]
+                        color = matplotlib.colors.to_hex(color)
                 point = PeakROI(pos, self.orig_size, self.imview.getImageItem(), color=color)
                 self.peaks.append(point)
                 self.imview.addItem(point)

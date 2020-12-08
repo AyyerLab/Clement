@@ -15,7 +15,7 @@ class FIBControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.sem_ops = sem_ops
-        self.tab_index = None
+        self.tab_index = 0
         self.num_slices = None
         self.popup = None
         self.merge_layout = merge_layout
@@ -246,6 +246,7 @@ class FIBControls(BaseControls):
         self.peaks = []
         self.num_slices = None
         self.min_conv_points = 10
+        self.tab_index = 0
 
         self.show_grid_box = False
         self.grid_box = None
