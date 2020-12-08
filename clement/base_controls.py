@@ -635,11 +635,10 @@ class BaseControls(QtWidgets.QWidget):
             self.refine_btn.setEnabled(True)
 
         if self.ops is not None and self.other.ops is not None:
-            if hasattr(self, 'select_btn') and self.other.tab_index != 1:
-                if self.ops._transformed and self.other.ops._transformed:
-                    self.other.show_peaks_btn.setEnabled(True)
-            if self.other.tab_index != 1:
-                if self.ops._transformed and self.other.ops._transformed:
+            if self.ops._transformed and self.other.ops._transformed:
+                if hasattr(self, 'tab_index') and self.tab_index != 1:
+                    self.show_peaks_btn.setEnabled(True)
+                elif not hasattr(self, 'tab_index') and self.other.tab_index != 1:
                     self.show_peaks_btn.setEnabled(True)
 
     def _show_original(self):
