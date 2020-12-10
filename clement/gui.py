@@ -193,8 +193,6 @@ class GUI(QtWidgets.QMainWindow):
         action = QtWidgets.QAction('Save project', self)
         action.triggered.connect(self._save_p)
         filemenu.addAction(action)
-        #action = QtWidgets.QAction('&Save binned montage', self)
-        #action.triggered.connect(self.sem_controls._save_mrc_montage)
         filemenu.addAction(action)
         action = QtWidgets.QAction('&Quit', self)
         action.triggered.connect(self.close)
