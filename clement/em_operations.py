@@ -359,7 +359,7 @@ class EM_ops():
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
         # Scale according to pixel sizes
-        scale = sem_pixel_size / self.pixel_size
+        scale = sem_pixel_size[:2] / self.pixel_size[:2]
         self.print('SEM shape: ', sem_shape)
         self.print('FIB shape: ', self.data.shape)
         self.log('Scale: ', scale)
@@ -407,7 +407,7 @@ class EM_ops():
         # if self._orig_points is None:
         self._orig_points = np.copy(self.points)
 
-    def get_selected_region(self, coordinate, transformed):
+    def get_selected_region(self, coordinate):
         coordinate = coordinate.astype(int)
         try:
             if not self._transformed:
