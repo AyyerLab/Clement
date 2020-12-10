@@ -313,8 +313,14 @@ class Peak_finding():
         #finally:
         return z
 
-    def check_peak_index(self, point, size):
-        peaks_2d = self.tf_peak_slices[-1]
+    def check_peak_index(self, point, size, transformed):
+        if transformed:
+            if self.tf_peak_slices is not None and self.tf_peak_slices[-1] is not None:
+                peaks_2d = self.tf_peak_slices[-1]
+        else:
+            if self.peak_slices is not None and self.peak_slices[-1] is not None:
+                peaks_2d = self.peak_slices[-1]
+
         diff = peaks_2d - point
         diff_err = np.sqrt(diff[:, 0] ** 2 + diff[:, 1] ** 2)
         ind_arr = np.where(diff_err < size / 2)[0]

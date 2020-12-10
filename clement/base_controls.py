@@ -188,36 +188,27 @@ class BaseControls(QtWidgets.QWidget):
         self.other.imview.getImageItem().getViewBox().setRange(xRange=(xmin, xmax), yRange=(ymin, ymax))
         self.other.imview.getImageItem().getViewBox().blockSignals(False)
 
-    def _draw_correlated_points(self, pos, item, update_base=True):
+    def _draw_correlated_points(self, pos, item):
         ind = None
         point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
         peaks = None
         z = None
-        if self.other.tab_index != 1:
-            if self.ops.tf_peak_slices is not None and self.ops.tf_peak_slices[-1] is not None:
-                ind = self.ops.check_peak_index(point, self.size)
-            if ind is not None:
+        ind = self.ops.check_peak_index(point, self.size, transformed=self.ops._transformed)
+        if ind is None and self.other.tab_index == 1 and not self.other._refined:
+            self.print('If the FIB tab is selected, you have to select a bead for the first refinement!')
+            return
+        if ind is not None:
+            if self.ops._transformed:
                 peaks = self.ops.tf_peak_slices[-1]
-        else:
-            if self.ops.tf_peaks_z is None:
-                print('calc tf peaks z')
-                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
-                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                    color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
-                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
-                               flips=self.flips, shape=self.ops.data.shape[:-1])
             else:
-                ind = self.ops.check_peak_index(point, self.size)
-                if ind is None and not self.other._refined:
-                    self.print('You have to select a bead for the first refinement!')
-                    return
-                elif ind is not None:
-                    peaks = self.ops.tf_peak_slices[-1]
-                z = self.ops.calc_z(ind, point, self.point_ref_btn.currentIndex())
-                if z is None:
-                    self.print('z is None, something went wrong here... Try another bead!')
-                    return
-                self._points_corr_z.append(z)
+                peaks = self.ops.peak_slices[-1]
+        print('heeeeeeeeeeere')
+        print(ind)
+        z = self.ops.calc_z(ind, point, self.point_ref_btn.currentIndex())
+        if z is None:
+            self.print('z is None, something went wrong here... Try another bead!')
+            return
+        self._points_corr_z.append(z)
 
         if ind is not None:
             pos.setX(peaks[ind, 0] - self.size / 2)
@@ -226,7 +217,7 @@ class BaseControls(QtWidgets.QWidget):
         else:
             init = np.array([point[0], point[1], 1])
 
-        if self.ops._transformed and update_base:
+        if self.ops._transformed:
             self._calc_base_points(init[:2])
         self._calc_raw_pois(init[:2])
         if not self.ops._transformed and self.ops.tf_matrix is not None:
@@ -285,7 +276,7 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list.append(annotation_obj)
 
         self._points_corr_indices.append(self.counter - 1)
-        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
+        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj, remove_raw=True))
 
     def _draw_em_pois(self, transf):
         pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
@@ -303,7 +294,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other.imview.addItem(annotation_other)
         self.other.anno_list.append(annotation_other)
 
-        point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
+        point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other, remove_raw=True))
         point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
 
         self.other._points_corr_indices.append(self.counter - 1)
@@ -321,7 +312,7 @@ class BaseControls(QtWidgets.QWidget):
         anno.setPos(point.x() + 5, point.y() + 5)
         self.other.imview.addItem(anno)
 
-    def _remove_correlated_points(self, point, remove_base=True):
+    def _remove_correlated_points(self, point, remove_base=True, remove_raw=False):
         idx = None
         num_beads = len(self._points_corr)
         for i in range(len(self._points_corr)):
@@ -334,8 +325,8 @@ class BaseControls(QtWidgets.QWidget):
                     idx = i
                     break
 
-        #if not self.ops._transformed:
-        #    self._points_raw.remove(self._points_raw[idx])
+        if remove_raw:
+            self._points_raw.remove(self._points_raw[idx])
 
         #Remove FM beads information
         self.imview.removeItem(self._points_corr[idx])
@@ -387,7 +378,8 @@ class BaseControls(QtWidgets.QWidget):
             self._points_raw = []
             for i in range(len(points_tf)):
                 pos = QtCore.QPointF(points_tf[i][0] - self.size / 2, points_tf[i][1] - self.size / 2)
-                self._draw_correlated_points(pos, self.imview.getImageItem(), update_base=True)
+                #self._draw_correlated_points(pos, self.imview.getImageItem())
+                self._draw_fm_pois(pos, self.imview.getImageItem())
         else:
             point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
             pos = QtCore.QPointF(point_tf[0] - self.size / 2, point_tf[1] - self.size / 2)
@@ -606,13 +598,20 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
-            self.print('Select points of interest on %s image' % self.tag)
+            if self.ops.tf_peaks_z is None:
+                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
+                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
+                    color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[
+                        self.peak_controls.peak_channel_btn.currentIndex()]
+                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
+                               flips=self.flips, shape=self.ops.data.shape[:-1])
             if self.other.ops is not None and self.other.tab_index == 1:
                 self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             if self.other.ops is not None:
                 if self.ops.points is not None and self.other.ops.points is not None:
                     self._update_tr_matrices()
+            self.print('Select points of interest on %s image' % self.tag)
         else:
             if self.ops.channel is not None:
                 self.ops.clear_channel()
@@ -687,8 +686,13 @@ class BaseControls(QtWidgets.QWidget):
         if self.ops is None:
             return
 
-        for i in range(len(self._points_corr)):
-            self._remove_correlated_points(self._points_corr[0], remove_base=False)
+        [self.imview.removeItem(point) for point in self._points_corr]
+        [self.imview.removeItem(anno) for anno in self.anno_list]
+        self._points_corr = []
+        self.anno_list = []
+        self.counter = 0
+        #for i in range(len(self._points_corr)):
+        #    self._remove_correlated_points(self._points_corr[0], remove_base=False)
 
         self.ops._transformed = not self.ops._transformed
         align = False
