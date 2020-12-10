@@ -1,12 +1,7 @@
-from typing import Any
-
 import numpy as np
-import sys
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
-import scipy.ndimage as ndi
 import copy
-from skimage import io, measure, feature, color, draw
 import matplotlib
 
 from . import utils
@@ -62,6 +57,8 @@ class BaseControls(QtWidgets.QWidget):
         self.print = None
 
         self._box_coordinate = None
+        self._points_raw = []
+        self._points_base = []
         self._points_corr = []
         self._points_corr_z = []
         self._orig_points_corr = []
@@ -119,15 +116,17 @@ class BaseControls(QtWidgets.QWidget):
         pos = self.imview.getImageItem().mapFromScene(event.pos())
         item = self.imview.getImageItem()
 
-        pos.setX(pos.x() - self.size // 2)
-        pos.setY(pos.y() - self.size // 2)
         if hasattr(self, 'define_btn') and self.define_btn.isChecked():
+            pos.setX(pos.x() - self.size // 2)
+            pos.setY(pos.y() - self.size // 2)
             roi = pg.CircleROI(pos, self.size, parent=item, movable=False)
             roi.setPen(255, 0, 0)
             roi.removeHandle(0)
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
         elif hasattr(self, 'select_btn') and self.select_btn.isChecked():
+            pos.setX(pos.x() - self.size // 2)
+            pos.setY(pos.y() - self.size // 2)
             self._draw_correlated_points(pos, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked():
             '''EM only: Select individual image from montage'''
@@ -137,7 +136,7 @@ class BaseControls(QtWidgets.QWidget):
             # If clicked point is inside image
             if points_obj[0] < self.ops.data.shape[0] and points_obj[1] < self.ops.data.shape[1]:
                 # Get index of selected region
-                ind = self.ops.get_selected_region(np.array(points_obj), not self.show_btn.isChecked())
+                ind = self.ops.get_selected_region(np.array(points_obj))
                 # If index is non-ambiguous
                 if ind is not None:
                     if self.show_btn.isChecked():
@@ -164,7 +163,6 @@ class BaseControls(QtWidgets.QWidget):
         p3 = np.array([vrange.topRight().x(), vrange.topRight().y()])
         p4 = np.array([vrange.topLeft().x(), vrange.topLeft().y()])
         points = [p1, p2, p3, p4]
-        tf_points = []
         if hasattr(self, 'select_btn') and self.other.tab_index != 1:
             src_sorted = np.array(
                 sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -190,33 +188,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other.imview.getImageItem().getViewBox().setRange(xRange=(xmin, xmax), yRange=(ymin, ymax))
         self.other.imview.getImageItem().getViewBox().blockSignals(False)
 
-    def _draw_correlated_points(self, pos, item):
-        if self.other.ops is None:
-            self.print('Select both data first')
-            return
-
-        condition = False
-        if hasattr(self, 'fib') and self.tab_index != 1:
-            if self.ops._tf_points is not None or self.ops._tf_points_region is not None:
-                if self.other.ops._tf_points is not None:
-                    condition = True
-        else:
-            if self.ops._tf_points is not None:
-                if self.other.tab_index == 1:
-                    if self.other.sem_ops is not None:
-                        if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
-                            condition = True
-                else:
-                    if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
-                        condition = True
-
-        if not condition:
-            self.print('Transform both images before point selection')
-            return
-
-        if self.other.tr_matrices is None:
-            return
-
+    def _draw_correlated_points(self, pos, item, update_base=True):
         ind = None
         point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
         peaks = None
@@ -249,6 +221,7 @@ class BaseControls(QtWidgets.QWidget):
             if ind is not None:
                 peaks = self.ops.tf_peak_slices[-1]
 
+        print(ind)
         if ind is not None:
             pos.setX(peaks[ind, 0] - self.size / 2)
             pos.setY(peaks[ind, 1] - self.size / 2)
@@ -260,6 +233,11 @@ class BaseControls(QtWidgets.QWidget):
         point_obj.setPen(0, 255, 0)
         point_obj.removeHandle(0)
         self.imview.addItem(point_obj)
+        if not self.ops._transformed:
+            self._points_raw.append(point_obj)
+        elif self.ops._transformed and update_base:
+            print('heeere')
+            self._calc_base_points(init[:2])
         self._points_corr.append(point_obj)
         self._orig_points_corr.append([pos.x() + self.size // 2, pos.y() + self.size // 2])
         self.counter += 1
@@ -269,12 +247,34 @@ class BaseControls(QtWidgets.QWidget):
         self.anno_list.append(annotation_obj)
 
         self._points_corr_indices.append(self.counter - 1)
+        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
+
+        if self.other.ops is None:
+            return
+
+        condition = False
+        if self.ops._tf_points is not None:
+            if self.other.tab_index == 1:
+                if self.other.sem_ops is not None:
+                    if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
+                        condition = True
+            else:
+                if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
+                    condition = True
+
+        if not condition:
+            self.print('Transform both images before point selection')
+            return
+
+        if self.other.tr_matrices is None:
+            return
+
         self.other._points_corr_indices.append(self.counter - 1)
 
         self.log('2d init: ', init)
         self.log('Other class:', self.other, self.other.ops)
         self.log('tr_matrices:\n', self.other.tr_matrices)
-        if hasattr(self.other, 'fib') and self.other.tab_index == 1:
+        if self.other.tab_index == 1:
             self.print('Clicked point: ', np.array([init[0], init[1], z]))
             transf = np.dot(self.other.tr_matrices, init)
             transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
@@ -289,7 +289,6 @@ class BaseControls(QtWidgets.QWidget):
         point_other = pg.CircleROI(pos, self.other.size, parent=self.other.imview.getImageItem(),
                                    movable=True, removable=True)
         point_other.setPen(0, 255, 255)
-        # point_other.setPen(255,0,0)
         point_other.removeHandle(0)
         self.other.imview.addItem(point_other)
         self.other._points_corr.append(point_other)
@@ -301,7 +300,6 @@ class BaseControls(QtWidgets.QWidget):
         self.other.imview.addItem(annotation_other)
         self.other.anno_list.append(annotation_other)
 
-        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
         point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
         point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
 
@@ -321,58 +319,104 @@ class BaseControls(QtWidgets.QWidget):
         anno.setPos(point.x() + 5, point.y() + 5)
         self.other.imview.addItem(anno)
 
-    def _remove_correlated_points(self, point):
+    def _remove_correlated_points(self, point, remove_base=True):
         idx = None
+        num_beads = len(self._points_corr)
         for i in range(len(self._points_corr)):
-            if self._points_corr[i] == point or self.other._points_corr[i] == point:
+            if self._points_corr[i] == point:
                 idx = i
                 break
+        if idx is None and len(self.other._points_corr) == num_beads:
+            for i in range(len(self._points_corr)):
+                if self.other._points_corr[i] == point:
+                    idx = i
+                    break
 
-        # Remove circle from imviews
+        if not self.ops._transformed:
+            self._points_raw.remove(self._points_raw[idx])
+
+        #Remove FM beads information
         self.imview.removeItem(self._points_corr[idx])
-        self.other.imview.removeItem(self.other._points_corr[idx])
-
-        # Remove ROI
         self._points_corr.remove(self._points_corr[idx])
-        self.other._points_corr.remove(self.other._points_corr[idx])
-
-        # Remove original position
+        if remove_base:
+            self._points_base.remove(self._points_base[idx])
         self._orig_points_corr.remove(self._orig_points_corr[idx])
-        self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
-
-        # Remove annotation
         if len(self.anno_list) > 0:
             self.imview.removeItem(self.anno_list[idx])
-            self.other.imview.removeItem(self.other.anno_list[idx])
             self.anno_list.remove(self.anno_list[idx])
-            self.other.anno_list.remove(self.other.anno_list[idx])
-
-        # Remove correlation index
         if len(self._points_corr_indices) > 0:
             self._points_corr_indices.remove(self._points_corr_indices[idx])
-            self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
-
-        # Remove FIB z-position
-        if (hasattr(self, 'fib') and self.tab_index == 1) or (hasattr(self.other, 'fib') and self.other.tab_index == 1):
+        if self.other.tab_index == 1:
             self._points_corr_z.remove(self._points_corr_z[idx])
-            if len(self.other._points_corr_z) > 0:
-                self.other._points_corr_z.remove(self.other._points_corr_z[idx])
-
         for i in range(idx, len(self._points_corr)):
             self.anno_list[i].setText(str(i+1))
-            self.other.anno_list[i].setText(str(i+1))
             self._points_corr_indices[i] -= 1
-            self.other._points_corr_indices[i] -= 1
+
+        # Remove EM beads information
+        if len(self.other._points_corr) == num_beads:
+            self.other.imview.removeItem(self.other._points_corr[idx])
+            self.other._points_corr.remove(self.other._points_corr[idx])
+            self.other._orig_points_corr.remove(self.other._orig_points_corr[idx])
+            if len(self.other.anno_list) > 0:
+                self.other.imview.removeItem(self.other.anno_list[idx])
+                self.other.anno_list.remove(self.other.anno_list[idx])
+            if len(self.other._points_corr_indices) > 0:
+                self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
+            if self.other.tab_index == 1:
+                self._points_corr_z.remove(self._points_corr_z[idx])
+                if len(self.other._points_corr_z) > 0:
+                    self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+            for i in range(idx, len(self._points_corr)):
+                self.other.anno_list[i].setText(str(i+1))
+                self.other._points_corr_indices[i] -= 1
+            self.log(self.other._points_corr_indices)
+
         self.counter -= 1
 
-        self.log(self.other._points_corr_indices)
+    def _transform_pois(self):
+        points_tf = []
+        for i in range(len(self._points_raw)):
+            pos = self._points_raw[i].pos()
+            point = np.array([pos.x() + self.size/2, pos.y() + self.size/2])
+            point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
+            points_tf.append(point_tf[:2])
 
+        for i in range(len(points_tf)):
+            pos = QtCore.QPointF(points_tf[i][0] - self.size / 2, points_tf[i][1] - self.size / 2)
+            self._draw_correlated_points(pos, self.imview.getImageItem())
+
+    def _calc_base_points(self, point):
+        tf_shape = self.ops.data.shape[:-1]
+        transp, rot, fliph, flipv = self.flips
+        if flipv:
+            point[1] = tf_shape[1] - point[1]
+        if fliph:
+            point[0] = tf_shape[0] - point[0]
+        if rot:
+            temp = tf_shape[0] - 1 - point[0]
+            point[0] = point[1]
+            point[1] = temp
+        if transp:
+            point = np.array([point[1], point[0], 1])
+
+        pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
+        self._points_base.append(pos)
+
+    def _update_pois(self):
+        points_base = []
+        for i in range(len(self._points_base)):
+            pos = self._points_base[i]
+            points_base.append(np.array([pos.x() + self.size/2, pos.y() + self.size/2]))
+        points_updated = self.ops.update_points(np.array(points_base))
+        for i in range(len(points_updated)):
+            pos = QtCore.QPointF(points_updated[i][0] - self.size / 2, points_updated[i][1] - self.size / 2)
+            self._draw_correlated_points(pos, self.imview.getImageItem(), update_base=False)
+        self.fixed_orientation = False
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
-            self._remove_correlated_points(self._points_corr[0])
+            self._remove_correlated_points(self._points_corr[0], remove_base=False)
         self.fixed_orientation = False
-        self.select_btn.setChecked(False)
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:
@@ -524,41 +568,19 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor('print')
     def _define_corr_toggled(self, checked):
-        if self.ops is None or self.other.ops is None:
-            self.print('Select both data first')
-            return
         if self.ops.adjusted_params == False:
             self.print('You have to adjust and save the peak finding parameters first!')
             self.select_btn.setChecked(False)
             return
+
         if self.other.translate_peaks_btn.isChecked() or self.other.refine_peaks_btn.isChecked():
             self.print('You have to uncheck translation buttons on SEM/FIB side first!')
             self.select_btn.setChecked(False)
             return
 
-        condition = False
-        if hasattr(self, 'fib') and self.tab_index != 1:
-            if self.ops._tf_points is not None or self.ops._tf_points_region is not None:
-                if self.other.ops._tf_points is not None:
-                    condition = True
-        else:
-            if self.ops._tf_points is not None:
-                if self.other.tab_index == 1:
-                    if self.other.sem_ops is not None:
-                        if self.other.sem_ops._tf_points is not None or self.other.sem_ops._tf_points_region is not None:
-                            condition = True
-                else:
-                    if self.other.ops._tf_points is not None or self.other.ops._tf_points_region is not None:
-                        condition = True
-
-        if self.other.tab_index == 1 and self.other.ops.fib_matrix is None:
+        if self.other.ops is not None and self.other.tab_index == 1 and self.other.ops.fib_matrix is None:
             self.print('You have to calculate the grid box for the FIB view first!')
             self.select_btn.setChecked(False)
-            return
-
-        if not condition:
-            if checked:
-                self.print('Select and transform both data first')
             return
 
         if checked:
@@ -569,12 +591,14 @@ class BaseControls(QtWidgets.QWidget):
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
             self.print('Select points of interest on %s image' % self.tag)
-            if self.other.tab_index == 1:
+            if self.other.ops is not None and self.other.tab_index == 1:
                 self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
-                self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
-            self._update_tr_matrices()
+            self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
+            if self.other.ops is not None:
+                if self.ops.points is not None and self.other.ops.points is not None:
+                    self._update_tr_matrices()
         else:
-            if hasattr(self.other, 'fib') and self.ops.channel is not None:
+            if self.ops.channel is not None:
                 self.ops.clear_channel()
             self.print('Done selecting points of interest on %s image' % self.tag)
             if not self.other._refined:
@@ -627,19 +651,21 @@ class BaseControls(QtWidgets.QWidget):
         self.rot_transform_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
 
+        for i in range(len(self._points_corr)):
+            self._remove_correlated_points(self._points_corr[0])
+
         if hasattr(self, 'select_btn'):
             self.point_ref_btn.setEnabled(True)
-            self.select_btn.setEnabled(True)
-            self.clear_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
+            self._transform_pois()
 
         if self.ops is not None and self.other.ops is not None:
             if self.ops._transformed and self.other.ops._transformed:
                 if hasattr(self, 'tab_index') and self.tab_index != 1:
                     self.show_peaks_btn.setEnabled(True)
                 elif not hasattr(self, 'tab_index') and self.other.tab_index != 1:
-                    self.show_peaks_btn.setEnabled(True)
+                    self.other.show_peaks_btn.setEnabled(True)
 
     def _show_original(self):
         if self.ops is None:
@@ -656,13 +682,11 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
-            self.select_btn.setEnabled(False)
             self.clear_btn.setEnabled(False)
             self.merge_btn.setEnabled(False)
             self.refine_btn.setEnabled(False)
         elif hasattr(self.ops, 'flipv') and self.ops._transformed:
             self.point_ref_btn.setEnabled(True)
-            self.select_btn.setEnabled(True)
             self.clear_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
@@ -687,7 +711,7 @@ class BaseControls(QtWidgets.QWidget):
                     if self.ops._transformed and self.other.ops._transformed:
                         self.other.show_peaks_btn.setEnabled(True)
 
-        if hasattr(self, 'fib') and not self.tab_index != 1:
+        if hasattr(self, 'tab_index') and not self.tab_index != 1:
             if self.other.ops is not None:
                 if self.show_peaks_btn.isChecked():
                 #if self.ops._transformed and self.other.ops._transformed:
@@ -1204,6 +1228,15 @@ class BaseControls(QtWidgets.QWidget):
         self.semcontrols._orig_points_corr = []
         self.temcontrols._orig_points_corr = []
 
+        #Remove base point
+        self._points_base = []
+        self.fibcontrols._points_base = []
+        self.semcontrols._points_base = []
+        self.temcontrols._points_base = []
+
+        #Remove raw_points
+        self._points_raw = []
+
         # Remove annotation
         if len(self.anno_list) > 0:
             [self.imview.removeItem(anno) for anno in self.anno_list]
@@ -1237,9 +1270,13 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 self.undo_refine_btn.setEnabled(False)
         elif idx == 1:
+            print(0)
             if self.orig_fm_sem_corr is None and fibcontrols.tab_index == 0:
+                print(1)
                 if semcontrols.ops is not None and self.ops is not None:
+                    print(2)
                     if self.ops.points is not None and semcontrols.ops.points is not None:
+                        print(3)
                         self._calc_tr_matrices()
             if fibcontrols.ops is not None:
                 show_grid = semcontrols.show_grid_btn.isChecked()

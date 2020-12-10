@@ -1,9 +1,7 @@
-import sys
 import os
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
-import scipy.ndimage.interpolation as interpol
 
 from skimage.color import hsv2rgb
 
@@ -365,6 +363,8 @@ class FMControls(BaseControls):
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
+            self.select_btn.setEnabled(True)
+            self.clear_btn.setEnabled(True)
 
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
@@ -434,6 +434,7 @@ class FMControls(BaseControls):
         self.ops.flip_horizontal(state)
         self._recalc_grid()
         self._update_imview()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _flipv(self, state):
@@ -449,6 +450,7 @@ class FMControls(BaseControls):
         self.ops.flip_vertical(state)
         self._recalc_grid()
         self._update_imview()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _trans(self, state):
@@ -464,6 +466,7 @@ class FMControls(BaseControls):
         self.ops.transpose(state)
         self._recalc_grid()
         self._update_imview()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _rot(self, state):
@@ -479,6 +482,7 @@ class FMControls(BaseControls):
         self.ops.rotate_clockwise(state)
         self._recalc_grid()
         self._update_imview()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _slice_changed(self, state=None):
