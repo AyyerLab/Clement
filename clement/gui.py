@@ -242,18 +242,24 @@ class GUI(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):
         if idx == 0:
-            self.scatter = Scatter(self, self.sem_controls, self.print)
+            controls = self.sem_controls
+        elif idx == 1:
+            controls = self.fib_controls
         else:
-            self.scatter = Scatter(self, self.fib_controls, self.print)
+            controls = self.tem_controls
+        self.scatter = Scatter(self, controls, self.print)
         self.scatter.show()
 
     @utils.wait_cursor('print')
     def _show_convergence(self, idx):
         if len(self.fm_controls.other._conv[idx]) == 3:
             if idx == 0:
-                self.convergence = Convergence(self, self.sem_controls, self.print)
+                controls = self.sem_controls
+            elif idx == 1:
+                controls = self.fib_controls
             else:
-                self.convergence = Convergence(self, self.fib_controls, self.print)
+                controls = self.tem_controls
+            self.convergence = Convergence(self, controls, self.print)
             self.convergence.show()
         else:
             self.print('To use this feature, you have to use at least 10 points for the refinement!')

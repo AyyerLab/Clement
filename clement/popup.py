@@ -45,10 +45,7 @@ class Scatter_Plot(MplCanvas):
 
     @utils.wait_cursor('print')
     def _scatter_plot(self):
-        if self.base.fib:
-            idx = 1
-        else:
-            idx = 0
+        idx = self.base.tab_index
         diff = self.base._err[idx]
         max = np.max(np.abs(diff))
         x = np.linspace(-max, max)
@@ -57,7 +54,7 @@ class Scatter_Plot(MplCanvas):
         levels = np.array([0.5, 0.75, 0.95])
         cset = self.axes.contour(X, Y, 1 - self.base._dist, colors='k', levels=levels)
         self.axes.clabel(cset, fmt='%1.2f', inline=1, fontsize=10)
-        if self.base.fib:
+        if self.base.tab_index == 1:
             scatter = self.axes.scatter(diff[:, 0], diff[:, 1], c=self.base.other._points_corr_z_history[-1])
             cbar = self.fig.colorbar(scatter)
             cbar.set_label('z position of beads in FM')
@@ -82,10 +79,7 @@ class Convergence_Plot(MplCanvas):
 
     @utils.wait_cursor('print')
     def _convergence_plot(self, state=None):
-        if self.base.fib:
-            idx = 1
-        else:
-            idx = 0
+        idx = self.base.tab_index
         refined, free, all = self.base._conv[idx]
         final = all[-1]
         x = np.arange(self.min_points - 4, self.min_points - 4 + len(refined))
