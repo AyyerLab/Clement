@@ -1,4 +1,3 @@
-import sys
 import os
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -80,7 +79,7 @@ class FIBControls(BaseControls):
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()
             self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                                       'Select .mrc file',
+                                                                       'Select FIB data',
                                                                        self._curr_folder,
                                                                        '*.tif;;*tiff;;*.mrc')
             self._curr_folder = os.path.dirname(self._file_name)

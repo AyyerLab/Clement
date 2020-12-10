@@ -1,4 +1,3 @@
-import sys
 import os
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -63,7 +62,7 @@ class TEMControls(BaseControls):
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()
             self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                                 'Select SEM/TEM file',
+                                                                 'Select TEM data',
                                                                  self._curr_folder,
                                                                  'All (*.tif *.tiff *.mrc);;*.mrc;;*.tif;;*tiff')
             self._curr_folder = os.path.dirname(self._file_name)
