@@ -798,7 +798,7 @@ class Merge(QtGui.QMainWindow):
         transf_points = []
         if self.other.tab_index == 1:
             for i in range(len(points)):
-                pos = points[i].pos()
+                pos = points[i]
                 point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
                 init, pos, z = self.parent.fm_controls._calc_optimized_position(point)
                 transf = np.dot(self.other.tr_matrices, init)
@@ -807,7 +807,7 @@ class Merge(QtGui.QMainWindow):
                 transf_points.append(transf[:2])
         else:
             for i in range(len(points)):
-                pos = points[i].pos()
+                pos = points[i]
                 point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
                 init, pos, z = self.parent.fm_controls._calc_optimized_position(point)
                 transf = np.dot(self.other.tr_matrices, init)
@@ -817,7 +817,7 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _copy_pois(self, state=None):
         corr_points = self.parent.fm_controls._pois
-        tf_points = self._convert_pois(corr_points)
+        tf_points = self._convert_pois([pt.pos() for pt in corr_points])
         if not self.other.tab_index == 1:
             for point in tf_points:
                 init = np.array([point[0], point[1], 1])
@@ -832,12 +832,12 @@ class Merge(QtGui.QMainWindow):
 
     @utils.wait_cursor('print')
     def _update_poi(self, pos, fib):
+        init = self._convert_pois([pos])[0]
         if not fib:
-            init = np.array([pos.x() + self.size/2, pos.y() + self.size/2, 1])
-            transf = (np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ init) / self.downsampling
+            transf = np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ np.array([init[0], init[1], 1]) / self.downsampling
             pos = QtCore.QPointF(transf[0], transf[1])
         else:
-            pos = QtCore.QPointF(pos.x()+self.size/2, pos.y()+self.size/2)
+            pos = QtCore.QPointF(init[0], init[1])
 
         self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
         self._clicked_points_popup_base_indices.append(self.counter_popup-1)
