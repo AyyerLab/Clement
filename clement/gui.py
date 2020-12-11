@@ -175,7 +175,7 @@ class GUI(QtWidgets.QMainWindow):
 
         # -- File menu
         filemenu = menubar.addMenu('&File')
-        action = QtWidgets.QAction('Load &FM image(s)', self)
+        action = QtWidgets.QAction('Load FM', self)
         action.triggered.connect(self.fm_controls._load_fm_images)
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load SEM', self)

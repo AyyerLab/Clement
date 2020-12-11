@@ -659,7 +659,7 @@ class FM_ops(Peak_finding):
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
 
-    def update_tr_matrix(self, tr_matrix, flips):
+    def update_fm_sem_matrix(self, tr_matrix, flips):
         points = np.copy(self._tf_points)
         transp, rot, fliph, flipv = self.transp, self.rot, self.fliph, self.flipv
         if 0 in flips:

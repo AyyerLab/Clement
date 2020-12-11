@@ -228,7 +228,6 @@ class Peak_finding():
                     peaks_2d = self.peak_slices[curr_slice]
         else:
             peaks_2d = point
-
         if peaks_2d is None:
             if local:
                 self.print('You have to parse a point!')

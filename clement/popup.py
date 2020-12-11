@@ -611,7 +611,7 @@ class Merge(QtGui.QMainWindow):
         self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         self.max_help = False
         self.fib = False
-        self.size = 10
+        self.size = self.parent.fm_controls.size
         self.lines = None
         self.pixel_size = self.parent.fm_controls.other.ops.pixel_size
         self.lambda_1 = None
@@ -649,7 +649,7 @@ class Merge(QtGui.QMainWindow):
 
         self._init_ui()
         self._calc_ellipses()
-        self._copy_poi()
+        self._copy_pois()
 
     def _init_ui(self):
         self.resize(800, 800)
@@ -758,17 +758,6 @@ class Merge(QtGui.QMainWindow):
         self.channel_line.addWidget(self.overlay_btn_popup)
         self.channel_line.addStretch(1)
 
-        # Select and save coordinates
-        #line = QtWidgets.QHBoxLayout()
-        #vbox.addLayout(line)
-        #label = QtWidgets.QLabel('Select POI', self)
-        #line.addWidget(label)
-        #self.select_btn_popup = QtWidgets.QPushButton('Select points of interest', self)
-        #self.select_btn_popup.setCheckable(True)
-        #self.select_btn_popup.toggled.connect(self._calc_stage_positions_popup)
-        #line.addWidget(self.select_btn_popup)
-        #line.addStretch(1)
-
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
         label = QtWidgets.QLabel('Lamella thickness [nm]: ')
@@ -805,22 +794,41 @@ class Merge(QtGui.QMainWindow):
         self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size[:2])
         self.log(self.lambda_1, self.lambda_2)
 
+    def _convert_pois(self, points):
+        transf_points = []
+        if self.other.tab_index == 1:
+            for i in range(len(points)):
+                pos = points[i].pos()
+                point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
+                init, pos, z = self.parent.fm_controls._calc_optimized_position(point)
+                transf = np.dot(self.other.tr_matrices, init)
+                transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
+                transf = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))
+                transf_points.append(transf[:2])
+        else:
+            for i in range(len(points)):
+                pos = points[i].pos()
+                point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
+                init, pos, z = self.parent.fm_controls._calc_optimized_position(point)
+                transf = np.dot(self.other.tr_matrices, init)
+                transf_points.append(transf[:2])
+        return transf_points
+
     @utils.wait_cursor('print')
-    def _copy_poi(self, state=None):
-        corr_points = self.other._points_corr
-        if len(corr_points) != 0:
-            self.select_btn_popup.setChecked(True)
+    def _copy_pois(self, state=None):
+        corr_points = self.parent.fm_controls._pois
+        tf_points = self._convert_pois(corr_points)
         if not self.other.tab_index == 1:
-            for point in corr_points:
-                init = np.array([point.pos().x() + self.size/2, point.pos().y() + self.size/2, 1])
+            for point in tf_points:
+                init = np.array([point[0], point[1], 1])
                 transf = (np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ init) / self.downsampling
                 pos = QtCore.QPointF(transf[0], transf[1])
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
         else:
-            for i in range(len(corr_points)):
-                pos = QtCore.QPointF(corr_points[i].pos().x() + self.size/2, corr_points[i].pos().y()+self.size/2)
+            for i in range(len(tf_points)):
+                pos = QtCore.QPointF(tf_points[i][0], tf_points[i][1])
                 self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
-        [self._clicked_points_popup_base_indices.append(i) for i in range(len(corr_points))]
+        [self._clicked_points_popup_base_indices.append(i) for i in range(len(tf_points))]
 
     @utils.wait_cursor('print')
     def _update_poi(self, pos, fib):
@@ -840,21 +848,12 @@ class Merge(QtGui.QMainWindow):
             event.ignore()
             return
 
-        item = self.imview_popup.getImageItem()
-        pos = self.imview_popup.getImageItem().mapFromScene(event.pos())
-        pos.setX(pos.x())
-        pos.setY(pos.y())
-
-        if self.select_btn_popup.isChecked():
-            self._draw_correlated_points_popup(pos, item)
-
     @utils.wait_cursor('print')
     def _draw_correlated_points_popup(self, pos, item):
         img_center = np.array(self.data_popup.shape)/2
         point = pg.EllipseROI(img_center, size=[self.lambda_1,self.lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
-        pos_tmp = [pos.x(), pos.y()]
         pos = [pos.x() - self.lambda_1/2, pos.y() - self.lambda_2/2]
         point.setTransformOriginPoint(QtCore.QPointF(self.lambda_1/2, self.lambda_2/2))
         point.setRotation(self.theta)
@@ -973,9 +972,9 @@ class Merge(QtGui.QMainWindow):
             self.print('Done selecting points of interest!')
 
     def _save_data_popup(self, state=None):
-        if self.select_btn_popup.isChecked():
-            self.print('You have to confirm selected points first!')
-            return
+        #if self.select_btn_popup.isChecked():
+        #    self.print('You have to confirm selected points first!')
+        #    return
         if self.curr_mrc_folder_popup is None:
             self.curr_mrc_folder_popup = os.getcwd()
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Merged Image and Coordinates', self.curr_mrc_folder_popup)

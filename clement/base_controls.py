@@ -202,7 +202,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _draw_pois(self, pos, item):
         point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
-        init, pos = self._calc_optimized_position(point, pos)
+        init, pos, z = self._calc_optimized_position(point, pos)
         if init is None:
             return
         if self.ops._transformed:
@@ -233,7 +233,7 @@ class BaseControls(QtWidgets.QWidget):
 
     def _draw_correlated_points(self, pos, item):
         point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
-        init, pos = self._calc_optimized_position(point, pos)
+        init, pos, z = self._calc_optimized_position(point, pos)
         if init is None:
             return
         if self.ops._transformed:
@@ -243,14 +243,14 @@ class BaseControls(QtWidgets.QWidget):
             self._transform_pois(init[:2])
 
         self._draw_fm_points(pos, item)
-        self._draw_em_points(init)
+        self._draw_em_points(init, z)
 
     def _calc_optimized_position(self, point, pos=None):
         peaks = None
         ind = self.ops.check_peak_index(point, self.size, transformed=self.ops._transformed)
         if ind is None and self.other.tab_index == 1 and not self.other._refined:
             self.print('If the FIB tab is selected, you have to select a bead for the first refinement!')
-            return None, None
+            return None, None, None
         if ind is not None:
             if self.ops._transformed:
                 peaks = self.ops.tf_peak_slices[-1]
@@ -259,10 +259,9 @@ class BaseControls(QtWidgets.QWidget):
         z = self.ops.calc_z(ind, point, self.ops._transformed, self.point_ref_btn.currentIndex())
         if z is None:
             self.print('z is None, something went wrong here... Try another bead!')
-            return None, None
+            return None, None, None
         self._points_corr_z.append(z)
 
-        print(ind)
         if ind is not None:
             if pos is not None:
                 pos.setX(peaks[ind, 0] - self.size / 2)
@@ -271,7 +270,7 @@ class BaseControls(QtWidgets.QWidget):
 
         else:
             init = np.array([point[0], point[1], 1])
-        return init, pos
+        return init, pos, z
 
     def _draw_fm_points(self, pos, item):
         point_obj = pg.CircleROI(pos, self.size, parent=item, movable=True, removable=True)
@@ -290,7 +289,7 @@ class BaseControls(QtWidgets.QWidget):
         self._points_corr_indices.append(self.counter - 1)
         point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj, remove_raw=True))
 
-    def _draw_em_points(self, init):
+    def _draw_em_points(self, init, z):
         if self.other.ops is None:
             return
         condition = False
@@ -668,11 +667,16 @@ class BaseControls(QtWidgets.QWidget):
                         self.imview.removeItem(self.tr_grid_box)
                     self.show_tr_grid_box = False
 
-    def _calc_tr_matrices(self):
-        src_sorted = np.copy(np.array(
-            sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]])))
-        dst_sorted = np.array(
-            sorted(self.other.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+    def _calc_tr_matrices(self, fm_points=None, em_points=None):
+        if fm_points is None:
+            src_sorted = np.copy(np.array(
+                sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]])))
+        else:
+            src_sorted = np.array(sorted(fm_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+        if em_points is None:
+            dst_sorted = np.array(sorted(self.other.ops._tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+        else:
+            dst_sorted = np.array(sorted(em_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
         self.orig_fm_sem_corr = self.other.ops.get_transform(src_sorted, dst_sorted)
 
     def _store_fib_flips(self, idx):
@@ -704,6 +708,8 @@ class BaseControls(QtWidgets.QWidget):
                     self.peak_controls.peak_channel_btn.currentIndex()]
                 self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
+
+            self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             self.print('Select points of interest on %s image' % self.tag)
         else:
             if self.ops.channel is not None:
@@ -750,7 +756,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
             if self.other.ops is not None and self.other.tab_index == 1:
-                self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
+                #self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
+                self.fm_sem_corr = self.ops.update_fm_sem_matrix(self.orig_fm_sem_corr, self._fib_flips)
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             if self.other.ops is not None:
                 if self.ops.points is not None and self.other.ops.points is not None:
@@ -818,14 +825,6 @@ class BaseControls(QtWidgets.QWidget):
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
             self._transform_pois()
-        #else:
-        #    if self.other.ops is not None:
-        #        if self.ops.points is not None and self.other.ops.points is not None:
-        #            self.other._update_tr_matrices()
-        #    for i in range(len(self.other._points_corr)):
-        #        pos = self.other._points_corr[i].pos()
-        #        init = np.array([pos.x() + self.other.size/2, pos.y() + self.other.size/2, 1])
-        #        self.other._draw_em_points(init)
 
         if self.ops is not None and self.other.ops is not None:
             if self.ops._transformed and self.other.ops._transformed:
@@ -888,12 +887,8 @@ class BaseControls(QtWidgets.QWidget):
         if hasattr(self, 'tab_index') and not self.tab_index != 1:
             if self.other.ops is not None:
                 if self.show_peaks_btn.isChecked():
-                #if self.ops._transformed and self.other.ops._transformed:
-                    #self.show_peaks_btn.setEnabled(True)
-                #else:
                     self.show_peaks_btn.setChecked(False)
                     self.show_peaks_btn.setChecked(True)
-                    #self.show_peaks_btn.setEnabled(False)
 
         self._update_imview()
         if self.ops._transformed:
@@ -913,13 +908,6 @@ class BaseControls(QtWidgets.QWidget):
         if hasattr(self, 'select_btn'):
             if self.ops._transformed:
                 self._update_pois()
-                #if self.other.ops is not None:
-                #    if self.ops.points is not None and self.other.ops.points is not None:
-                #        self._update_tr_matrices()
-                #for i in range(len(self.other._points_corr)):
-                #    pos = self.other._points_corr[i].pos()
-                #    init = np.array([pos.x() + self.other.size/2, pos.y() + self.other.size/2, 1])
-                #    self.other._draw_em_points(init)
             else:
                 for i in range(len(self._points_raw)):
                     self._draw_fm_points(self._points_raw[i], self.imview.getImageItem())
@@ -938,7 +926,6 @@ class BaseControls(QtWidgets.QWidget):
             self.print('Select at least 4 points for refinement!')
             return
 
-        print(len(self._points_corr))
         self.print('Processing shown FM peaks: %d peaks refined' % len(self._points_corr))
         self.print('Refining...')
         dst = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2] for point in
@@ -1077,7 +1064,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.refined_points.append(transf[:2])
         else:
             orig_fm_points_z = np.copy(self._points_corr_z)
-            print(self.other.tr_matrices)
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 z = orig_fm_points_z[i]
@@ -1088,11 +1074,8 @@ class BaseControls(QtWidgets.QWidget):
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                 self.refined_points.append(transf[:2])
 
-        print(self.diff)
-        print(self.other.diff)
         self.diff = np.array(sel_points) - np.array(self.refined_points)
         self.log(self.diff.shape)
-        #diff *= self.other.ops.pixel_size
         self.diff *= self.other.ops.pixel_size[0]
         self.other.cov_matrix, self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(self.diff)
 
@@ -1177,7 +1160,8 @@ class BaseControls(QtWidgets.QWidget):
             # Check if Z-fitting has been done for FM peaks in case of FIB image
             # If not, do the Z-fitting
             self.print('Fitting Z-positions of FM peaks')
-            self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
+            #self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
+            self.other.fm_sem_corr = self.other.ops.update_fm_sem_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
         #    self.tr_matrices = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
 
         if len(self.peaks) != 0:
@@ -1433,6 +1417,9 @@ class BaseControls(QtWidgets.QWidget):
         self.temcontrols._points_corr_z = []
 
     def select_tab(self, idx, semcontrols, fibcontrols, temcontrols):
+        semcontrols.tab_index = idx
+        fibcontrols.tab_index = idx
+        temcontrols.tab_index = idx
         if idx == 0:
             fibcontrols.show_grid_btn.setChecked(False)
             semcontrols._update_imview()
@@ -1442,14 +1429,12 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 self.undo_refine_btn.setEnabled(False)
         elif idx == 1:
-            print(0)
-            if self.orig_fm_sem_corr is None and fibcontrols.tab_index == 0:
-                print(1)
+            #if self.orig_fm_sem_corr is None and fibcontrols.tab_index == 0:
+            if self.orig_fm_sem_corr is None:
                 if semcontrols.ops is not None and self.ops is not None:
-                    print(2)
                     if self.ops.points is not None and semcontrols.ops.points is not None:
-                        print(3)
-                        self._calc_tr_matrices()
+                        self._calc_tr_matrices(em_points=semcontrols.ops.points)
+            self.other = fibcontrols
             if fibcontrols.ops is not None:
                 show_grid = semcontrols.show_grid_btn.isChecked()
                 fibcontrols.show_grid_btn.setChecked(show_grid)
@@ -1459,7 +1444,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.undo_refine_btn.setEnabled(False)
             fibcontrols._update_imview()
             fibcontrols.sem_ops = semcontrols.ops
-            self.other = fibcontrols
             if semcontrols.ops is not None:
                 if semcontrols.ops._orig_points is not None:
                     fibcontrols.enable_buttons(enable=True)
@@ -1476,9 +1460,6 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 self.undo_refine_btn.setEnabled(False)
 
-        semcontrols.tab_index = idx
-        fibcontrols.tab_index = idx
-        temcontrols.tab_index = idx
 
         if self.other.show_merge:
             self.progress_bar.setValue(100)
