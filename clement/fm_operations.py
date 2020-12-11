@@ -325,18 +325,25 @@ class FM_ops(Peak_finding):
 
         self._update_data()
 
-    def calc_z(self, ind, pos, channel=None):
+    def calc_z(self, ind, pos, transformed, channel=None):
         z = None
         if channel is None:
             channel = self._channel_idx
-        if ind is not None:
-            z = self.tf_peaks_z[ind]
+
+        if transformed:
+            if ind is not None:
+                z = self.tf_peaks_z[ind]
+            else:
+                self.print('Index not found. Calculate local z position!')
+                flip_list = [self.transp, self.rot, self.fliph, self.flipv]
+                point = np.array((pos[0], pos[1]))
+                tf_aligned = self.tf_matrix @ self._color_matrices[channel]
+                z = self.calc_local_z(self.channel, point, transformed, tf_aligned, flip_list, self.data.shape[:-1])
         else:
-            self.print('Index not found. Calculate local z position!')
-            flip_list = [self.transp, self.rot, self.fliph, self.flipv]
-            point = np.array((pos[0], pos[1]))
-            tf_aligned = self.tf_matrix @ self._color_matrices[channel]
-            z = self.calc_local_z(self.channel, point, tf_aligned, flip_list, self.data.shape[:-1])
+            if ind is not None:
+                z = self.peaks_z[ind]
+            else:
+                z = self.calc_local_z(self.channel, pos, transformed)
         if z is None:
             self.print('Oops, something went wrong. Try somewhere else!')
             return None

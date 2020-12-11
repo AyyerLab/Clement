@@ -12,7 +12,6 @@ class PeakROI(pg.CircleROI):
                                       movable=movable, removable=removable, resizable=resizable)
         self.original_color = (255, 0, 0)
         self.moved_color = (0, 255, 255)
-        #self.original_pos = copy.copy(np.array([pos.x(), pos.y()])+np.array([size/2, size/2]))
         self.original_pos = copy.copy(np.array([pos.x(), pos.y()]))
         self.has_moved = False
 
@@ -38,11 +37,10 @@ class PeakROI(pg.CircleROI):
 
     def resetPos(self):
         if self.has_moved:
-            print('heeeeeeeeeeeeere')
-            self.has_moved = False
             self.blockSignals(True)
             self.setPos(self.original_pos)
             self.setPen(self.original_color)
+            self.has_moved = False
             self.blockSignals(False)
 
     def peakMoved(self, item):
@@ -215,16 +213,16 @@ class BaseControls(QtWidgets.QWidget):
         ind = self.ops.check_peak_index(point, self.size, transformed=self.ops._transformed)
         if ind is None and self.other.tab_index == 1 and not self.other._refined:
             self.print('If the FIB tab is selected, you have to select a bead for the first refinement!')
-            return
+            return None, None
         if ind is not None:
             if self.ops._transformed:
                 peaks = self.ops.tf_peak_slices[-1]
             else:
                 peaks = self.ops.peak_slices[-1]
-        z = self.ops.calc_z(ind, point, self.point_ref_btn.currentIndex())
+        z = self.ops.calc_z(ind, point, self.ops._transformed, self.point_ref_btn.currentIndex())
         if z is None:
             self.print('z is None, something went wrong here... Try another bead!')
-            return
+            return None, None
         self._points_corr_z.append(z)
 
         print(ind)
@@ -236,10 +234,7 @@ class BaseControls(QtWidgets.QWidget):
 
         else:
             init = np.array([point[0], point[1], 1])
-        if pos is None:
-            return init
-        else:
-            return init, pos
+        return init, pos
 
     def _draw_fm_pois(self, pos, item):
         point_obj = pg.CircleROI(pos, self.size, parent=item, movable=True, removable=True)
@@ -621,7 +616,7 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops.tf_peaks_z is None:
                 if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
                     self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                    color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[
+                color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[
                         self.peak_controls.peak_channel_btn.currentIndex()]
                 self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
@@ -1156,6 +1151,10 @@ class BaseControls(QtWidgets.QWidget):
 
     def _refine_peaks(self, active):
         if active:
+            if not (self.ops._transformed and self.other.ops._transformed):
+                self.print('You have to show the transformed data on both sides!')
+                self.refine_peaks_btn.setChecked(False)
+                return
             self.show_grid_btn.setChecked(False)
             self.translate_peaks_btn.setChecked(False)
             for p in self.peaks:
@@ -1163,13 +1162,12 @@ class BaseControls(QtWidgets.QWidget):
                 p.sigRegionChangeFinished.connect(lambda pt=p: self._peak_to_poi(pt))
         else:
             for p in self.peaks:
-                p.sigRegionChangeFinished.disconnect()
+                #p.sigRegionChangeFinished.disconnect()
                 p.translatable = False
 
     def _peak_to_poi(self, peak):
         peak.peakMoved(None)
         ref_ind = [i for i in range(len(self.peaks)) if self.peaks[i] == peak]
-        print(ref_ind)
         pos = self.other.ops.tf_peak_slices[-1][ref_ind[0]]
         point = QtCore.QPointF(pos[0] - self.other.size / 2, pos[1] - self.other.size / 2)
         self.other._draw_correlated_points(point, self.imview.getImageItem())

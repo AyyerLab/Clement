@@ -300,14 +300,15 @@ class Peak_finding():
             else:
                 self.peaks_z = np.copy(mean_values)
 
-    def calc_local_z(self, data, point, tf_matrix=None, flips=None, shape=None):
-        point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
+    def calc_local_z(self, data, point, transformed, tf_matrix=None, flips=None, shape=None):
+        if transformed:
+            point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
         z = None
         try:
             if point[0] < 0 or point[1] < 0:
                 raise IndexError
             point = np.expand_dims(point, axis=0)
-            z = self.fit_z(data, transformed=True, local=True, point=point)
+            z = self.fit_z(data, transformed=transformed, local=True, point=point)
         except IndexError:
             self.print('You should select a point within the bounds of the image!')
         #finally:
