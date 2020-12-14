@@ -241,7 +241,6 @@ class BaseControls(QtWidgets.QWidget):
         self._calc_raw_points(init[:2])
         if not self.ops._transformed and self.ops.tf_matrix is not None:
             self._transform_pois(init[:2])
-
         self._draw_fm_points(pos, item)
         self._draw_em_points(init, z)
 
@@ -320,7 +319,6 @@ class BaseControls(QtWidgets.QWidget):
             transf = np.dot(self.other.tr_matrices, init)
 
         self.print('Transformed point: ', transf)
-
         pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
         point_other = pg.CircleROI(pos, self.other.size, parent=self.other.imview.getImageItem(),
                                    movable=True, removable=True)
@@ -328,7 +326,7 @@ class BaseControls(QtWidgets.QWidget):
         point_other.removeHandle(0)
         self.other.imview.addItem(point_other)
         self.other._points_corr.append(point_other)
-        self.other._orig_points_corr.append([pos.x() + self.other.size / 2, pos.y() + self.other.size / 2])
+        self.other._orig_points_corr.append([transf[0], transf[1]])
 
         self.other.counter += 1
         annotation_other = pg.TextItem(str(self.other.counter), color=(0, 255, 255), anchor=(0, 0))
@@ -472,6 +470,7 @@ class BaseControls(QtWidgets.QWidget):
                 self._points_base.append(pos)
 
     def _calc_base_points(self, point, poi=False):
+        point = np.copy(point)
         tf_shape = self.ops.data.shape[:-1]
         transp, rot, fliph, flipv = self.flips
         if flipv:
@@ -492,6 +491,7 @@ class BaseControls(QtWidgets.QWidget):
             self._points_base.append(pos)
 
     def _calc_raw_points(self, point, poi=False):
+        point = np.copy(point)
         if self.ops._transformed:
             pos_raw = np.linalg.inv(self.ops.tf_matrix) @ np.array([point[0], point[1], 1])
             pos = QtCore.QPointF(pos_raw[0] - self.size / 2, pos_raw[1] - self.size / 2)
@@ -748,6 +748,7 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
+
             if (self.ops._transformed and self.ops.tf_peaks_z is None) or (not self.ops._transformed and self.ops.peaks_z is None):
                 if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
                     self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
@@ -1263,6 +1264,9 @@ class BaseControls(QtWidgets.QWidget):
                 self.peaks[i].setPos(self._old_peak_pos[i], finish=False)
 
     def _refine_peaks(self, active):
+        if self.other.ops is not None:
+            if self.ops.points is not None and self.other.ops.points is not None:
+                self.other._update_tr_matrices()
         if active:
             if not (self.ops._transformed and self.other.ops._transformed):
                 self.print('You have to show the transformed data on both sides!')
