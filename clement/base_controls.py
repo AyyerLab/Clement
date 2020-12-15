@@ -468,6 +468,7 @@ class BaseControls(QtWidgets.QWidget):
         self.log('2d init: ', init)
         self.log('Other class:', self.other, self.other.ops)
         self.log('tr_matrices:\n', self.other.tr_matrices)
+        print(self.other._refined)
         if self.other.tab_index == 1:
             transf = np.dot(self.other.tr_matrices, init)
             transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
@@ -564,37 +565,35 @@ class BaseControls(QtWidgets.QWidget):
                 point = PeakROI(pos, self.size, self.imview.getImageItem(), color=color)
                 self.peaks.append(point)
                 for i in range(len(self._orig_points_corr)):
-                    if not np.allclose(transf[:2], self._orig_points_corr[i]):
-                        self.imview.addItem(point)
-                    else:
+                    if np.allclose(transf[:2], self._orig_points_corr[i]):
                         self.imview.removeItem(point)
         else:
             self.print('Calculating tr_matrices')
-            src_sorted = np.array(
-                sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            #src_sorted = np.array(
+            #    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
 
-            self.log(self.ops.points)
-            if self.ops._tf_points is None:
-                tf_points = self.ops._tf_points_region
-            else:
-                tf_points = self.ops._tf_points
-            dst_sorted = np.array(
-                sorted(tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-            tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
-            if self.tr_matrices is None:
-                self.tr_matrices = np.copy(tr_matrices)
+            #self.log(self.ops.points)
+            #if self.ops._tf_points is None:
+            #    tf_points = self.ops._tf_points_region
+            #else:
+            #    tf_points = self.ops._tf_points
+            #dst_sorted = np.array(
+            #    sorted(tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            #tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
+            #if self.tr_matrices is None:
+            #    self.tr_matrices = np.copy(tr_matrices)
             for peak in self.other.ops.tf_peak_slices[-1]:
                 init = np.array([peak[0], peak[1], 1])
                 if self.show_btn.isChecked():
-                    if self._refined:
-                        transf = np.linalg.inv(self.ops.tf_matrix) @ self.ops._refine_matrix @ tr_matrices @ init
-                    else:
-                        transf = np.linalg.inv(self.ops.tf_matrix) @ tr_matrices @ init
+                    #if self._refined:
+                    #    transf = np.linalg.inv(self.ops.tf_matrix) @ self.ops._refine_matrix @ tr_matrices @ init
+                    #else:
+                    transf = np.linalg.inv(self.ops.tf_matrix) @ self.tr_matrices @ init
                 else:
-                    if self._refined:
-                        transf = self.ops._refine_matrix @ tr_matrices @ init
-                    else:
-                        transf = tr_matrices @ init
+                    #if self._refined:
+                    #    transf = self.ops._refine_matrix @ tr_matrices @ init
+                    #else:
+                    transf = self.tr_matrices @ init
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
                 color = None
                 if self.other.diff is not None:
@@ -643,8 +642,12 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops.points is not None and self.other.ops.points is not None:
                 self.other._update_tr_matrices()
         if active:
-            if not (self.ops._transformed and self.other.ops._transformed):
+            if not (self.tab_index != 1 and self.ops._transformed and self.other.ops._transformed):
                 self.print('You have to show the transformed data on both sides!')
+                self.refine_peaks_btn.setChecked(False)
+                return
+            elif not (self.tab_index == 1 and self.other.ops._transformed):
+                self.print('You have to show the transformed FM data!')
                 self.refine_peaks_btn.setChecked(False)
                 return
             self.show_grid_btn.setChecked(False)
@@ -1313,14 +1316,6 @@ class BaseControls(QtWidgets.QWidget):
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
 
-        self.select_btn.setChecked(True)
-        self.other.size = self.other._size_history[-1]
-        for i in range(len(self._points_corr_history[-1])):
-            point = self._points_corr_history[-1][i]
-            self._draw_correlated_points(point.pos(), self.imview.getImageItem())
-            point_other = self.other._points_corr_history[-1][i]
-            self.other._points_corr[i].setPos(point_other.pos())
-            self.other.anno_list[i].setPos(point_other.pos().x()+5, point_other.pos().y()+5)
 
         if len(self.other.ops._refine_history) == 1:
             self.fliph.setEnabled(True)
@@ -1340,10 +1335,18 @@ class BaseControls(QtWidgets.QWidget):
             self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
             idx = self.other.tab_index
-            del self.other._size_history[-1]
-            self.other.size = copy.copy(self.other._size_history[-1])
             self._estimate_precision(idx, self.other.ops._refine_matrix)
             self.other.size = copy.copy(self.size)
+
+        self._update_tr_matrices()
+        #self.select_btn.setChecked(True)
+        self.other.size = copy.copy(self.other._size_history[-1])
+        for i in range(len(self._points_corr_history[-1])):
+            point = self._points_corr_history[-1][i]
+            self._draw_correlated_points(point.pos(), self.imview.getImageItem())
+            point_other = self.other._points_corr_history[-1][i]
+            self.other._points_corr[i].setPos(point_other.pos())
+            self.other.anno_list[i].setPos(point_other.pos().x()+5, point_other.pos().y()+5)
 
         if self.other.show_peaks_btn.isChecked():
             self.other.show_peaks_btn.setChecked(False)

@@ -336,6 +336,8 @@ class Project(QtWidgets.QWidget):
             [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
 
             self.fm.select_btn.setChecked(False)
+            self.fm.counter = len(self.fm._points_corr)
+            self.fm.other.counter = len(self.fm.other._points_corr)
             self.fm._refine()
 
             em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
