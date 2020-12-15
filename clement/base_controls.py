@@ -642,11 +642,12 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops.points is not None and self.other.ops.points is not None:
                 self.other._update_tr_matrices()
         if active:
-            if not (self.tab_index != 1 and self.ops._transformed and self.other.ops._transformed):
+            print(self.tab_index)
+            if self.tab_index != 1 and not (self.ops._transformed and self.other.ops._transformed):
                 self.print('You have to show the transformed data on both sides!')
                 self.refine_peaks_btn.setChecked(False)
                 return
-            elif not (self.tab_index == 1 and self.other.ops._transformed):
+            elif self.tab_index == 1 and not self.other.ops._transformed:
                 self.print('You have to show the transformed FM data!')
                 self.refine_peaks_btn.setChecked(False)
                 return
