@@ -78,7 +78,8 @@ class FM_ops(Peak_finding):
             self.orig_data = self.tif_data[z, :, :, :]
             self.num_channels = self.orig_data.shape[-1]
             for i in range(self.num_channels):
-                self.orig_data[:,:,:,i] /= self.orig_data[:,:,:,i].max()
+                self.orig_data[:,:,:,i] = (self.orig_data[:,:,:,i] - self.orig_data[:,:,:,i].min()) / \
+                                          (self.orig_data[:,:,:,i].max() - self.orig_data[:,:,:,i].min())
                 self.orig_data[:,:,:,i] *= self.norm_factor
                 self.log(self.orig_data.shape)
             self.data = np.copy(self.orig_data)
@@ -108,9 +109,9 @@ class FM_ops(Peak_finding):
             self.orig_data = self.orig_data.transpose(2, 1, 0)
             #normalize to 100
             for i in range(self.orig_data.shape[-1]):
-                self.orig_data[:,:,i] /= self.orig_data[:,:,i].max()
+                self.orig_data[:, :, i] = (self.orig_data[:, :, i] - self.orig_data[:, :, i].min()) / \
+                                             (self.orig_data[:, :, i].max() - self.orig_data[:, :, i].min())
                 self.orig_data[:,:,i] *= self.norm_factor
-            #self.orig_data /= self.orig_data.mean((0, 1))
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
             [self._aligned_channels.append(False) for i in range(self.num_channels)]
@@ -258,7 +259,8 @@ class FM_ops(Peak_finding):
                                            for i in range(self.num_channels)]).transpose(2, 1, 0).astype('f4')
             #self.max_proj_data /= self.max_proj_data.mean((0, 1))
             for i in range(self.num_channels):
-                self.max_proj_data[:,:,i] /= self.max_proj_data[:,:,i].max()
+                self.max_proj_data[:,:,i] = (self.max_proj_data[:,:,i] - self.max_proj_data[:,:,i].min()) / \
+                                            (self.max_proj_data[:,:,i].max() - self.max_proj_data[:,:,i].min())
                 self.max_proj_data[:,:,i] *= self.norm_factor
 
     def colorize2d(self, brightness, zvals, cmap_funcs):
@@ -355,7 +357,7 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((2, 1, 0))
-        self.channel /= self.channel.max()
+        self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
         self.channel *= self.norm_factor
         self._channel_idx = ind
         self.print('Load channel {}'.format(ind+1))

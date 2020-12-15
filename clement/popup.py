@@ -137,12 +137,12 @@ class Peak_Params(QtWidgets.QMainWindow):
         super(Peak_Params, self).__init__(parent)
         self.parent = parent
         self.fm = fm
-        self.data = None
         self.roi = None
         self.data_roi = None
         self.roi_pos = None
         self.orig_data_roi = None
         self.background_correction = False
+        self.invert = False
         self.color_data = None
         self.coor = None
         self.peaks = []
@@ -206,6 +206,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.draw_btn.toggled.connect(self._draw_roi)
         self.reset_btn = QtWidgets.QPushButton('Reset ROI', self)
         self.reset_btn.clicked.connect(self._reset_roi)
+        self.reset_btn.setEnabled(False)
         line.addWidget(self.draw_btn)
         line.addWidget(self.reset_btn)
         line.addStretch(1)
@@ -222,8 +223,11 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.sigma_btn.setValue(10)
         self.background_btn = QtWidgets.QCheckBox('Subtract background', self)
         self.background_btn.stateChanged.connect(self._subtract_background)
+        self.invert_btn = QtWidgets.QCheckBox('Invert', self)
+        self.invert_btn.stateChanged.connect(self._invert_channel)
         line.addWidget(self.sigma_btn)
         line.addWidget(self.background_btn)
+        line.addWidget(self.invert_btn)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -349,7 +353,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         line.addWidget(self.save_btn)
 
     @utils.wait_cursor('print')
-    def _update(self, state=None):
+    def _update_imview(self, state=None):
         self._calc_color_channels()
         if self.peak_imview.image is not None:
             old_shape = self.peak_imview.image.shape
@@ -367,31 +371,33 @@ class Peak_Params(QtWidgets.QMainWindow):
         if self.fm.ops._transformed:
             self.fm.show_btn.setChecked(True)
             self.recover_transformed = True
-        self.data = self.fm.ops.data
-        if self.data_roi is None:
-            self.data_roi = self.data
+        self.data_roi = np.copy(self.fm.ops.data)
+        if self.orig_data_roi is None:
             self.orig_data_roi = np.copy(self.data_roi)
         else:
             if self.roi is not None:
-                self.data_roi = None
-                self._update()
+                self._update_imview()
                 self.peak_imview.addItem(self.roi)
-                self.data_roi, self.coor = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem(), returnMappedCoords=True)
+                self.data_roi, self.coor = self.roi.getArrayRegion(self.data_roi, self.peak_imview.getImageItem(), returnMappedCoords=True)
                 self.peak_imview.removeItem(self.roi)
-                self._update()
-            else:
-                self.data_roi = self.data
-            self.orig_data_roi = np.copy(self.data_roi)
+                self._update_imview()
+
+        if self.background_correction:
+            self.data_roi = self.fm.ops.subtract_background(self.data_roi, sigma=self.sigma_btn.value())
+        if self.invert:
+            self.data_roi = self.data_roi.max() - self.data_roi
+
+        self.data_roi = (self.data_roi - self.data_roi.min()) / (self.data_roi.max() - self.data_roi.min()) \
+                        * self.fm.ops.norm_factor
+
+        #self.data_roi[self.data_roi < self.t_noise_label.value()] = 0
+        self._update_imview()
 
     @utils.wait_cursor('print')
     def _calc_color_channels(self, state=None):
         idx = self.peak_channel_btn.currentIndex()
-        if self.data_roi is None:
-            self.color_data = np.zeros((1,) + self.data[:, :, 0].shape + (3,))
-            my_channel = self.data[:, :, idx]
-        else:
-            self.color_data = np.zeros((1,) + self.data_roi[:, :, 0].shape + (3,))
-            my_channel = self.data_roi[:, :, idx]
+        self.color_data = np.zeros((1,) + self.data_roi[:, :, 0].shape + (3,))
+        my_channel = self.data_roi[:, :, idx]
         my_channel_rgb = np.repeat(my_channel[:, :, np.newaxis], 3, axis=2)
         rgb = tuple([int(self.fm._colors[idx][1 + 2 * c:3 + 2 * c], 16) / 255. for c in range(3)])
         self.color_data[0, :, :, :] = my_channel_rgb * rgb
@@ -400,27 +406,22 @@ class Peak_Params(QtWidgets.QMainWindow):
     def _calc_max_proj(self, state=None):
         if self.fm.ops.max_proj_data is None:
             self.fm.ops.calc_max_proj_data()
-        self.data = self.fm.ops.data
-        #self.data = self.fm.ops.max_proj_data
-        #self.data /= self.data.max()
-        #self.data *= self.fm.ops.norm_factor
         self._update_data()
-        self._update()
 
     @utils.wait_cursor('print')
     def _subtract_background(self, checked):
-        if checked:
-            self.background_correction = True
-            self.data_roi = self.fm.ops.subtract_background(self.data_roi, sigma=self.sigma_btn.value())
-        else:
-            self.background_correction = False
-            self.data_roi = self.orig_data_roi
-        self._update()
+        self.background_correction = self.background_btn.isChecked()
+        self._update_data()
+
+    @utils.wait_cursor('print')
+    def _invert_channel(self, checked):
+        self.invert = self.invert_btn.isChecked()
+        self._update_data()
 
     @utils.wait_cursor('print')
     def _change_peak_ref(self, state=None):
         self.peak_btn.setChecked(False)
-        self._update()
+        self._update_data()
 
     @utils.wait_cursor('print')
     def _change_ref(self, state=None):
@@ -431,7 +432,6 @@ class Peak_Params(QtWidgets.QMainWindow):
     def _align_channel(self, idx, state):
         self.fm._align_colors(idx, state)
         self._update_data()
-        self._update()
 
     @utils.wait_cursor('print')
     def _draw_roi(self, checked):
@@ -441,9 +441,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             if self.roi is not None:
                 self.peak_imview.removeItem(self.roi)
             self.print('Draw ROI in the image!')
-            pos = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
-            size = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
-            #qrect = QtCore.QRect(0, 0, self.data.shape[0], self.data.shape[1])
+            pos = np.array([self.data_roi.shape[0]//2, self.data_roi.shape[1]//2])
+            size = np.array([self.data_roi.shape[0]//2, self.data_roi.shape[1]//2])
             qrect = None
             self.roi = pg.ROI(pos=pos,size=size, maxBounds=qrect, resizable=True, rotatable=True, removable=False)
             self.roi.addScaleHandle(pos=[1,1], center=[0.5,0.5])
@@ -452,28 +451,27 @@ class Peak_Params(QtWidgets.QMainWindow):
         else:
             [self.peak_imview.removeItem(point) for point in self.peaks]
             self.reset_btn.setEnabled(True)
+            self.draw_btn.setEnabled(False)
             self.roi.movable = False
             self.roi.resizable = False
-            self.data_roi, self.coor = self.roi.getArrayRegion(self.data, self.peak_imview.getImageItem(), returnMappedCoords=True)
             self.transf = self.roi.getGlobalTransform()
-            print(self.transf)
 
-            self.orig_data_roi = np.copy(self.data_roi)
             self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
             self.log(self.data_roi.shape)
             self.print('Done drawing ROI at position ', self.roi_pos)
             self.peak_imview.removeItem(self.roi)
-            self._update()
+            self._update_data()
 
     @utils.wait_cursor('print')
     def _reset_roi(self, state=None):
         self.peak_btn.setChecked(False)
-        self.data_roi = self.data
+        self.draw_btn.setEnabled(True)
+        self.reset_btn.setEnabled(False)
+        self.data_roi = None
+        self.roi = None
+        self.coor = None
         self.roi_pos = None
-        self.orig_data_roi = np.copy(self.data_roi)
-        if self.background_correction:
-            self._subtract_background(checked=True)
-        self._update()
+        self._update_data()
 
     @utils.wait_cursor('print')
     def _set_noise_threshold(self, param, state=None):
@@ -488,6 +486,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.t_noise.setValue(10*float_value)
             self.t_noise.blockSignals(False)
             self.t_noise_label.clearFocus()
+
+        #self._update_data()
 
     @utils.wait_cursor('print')
     def _set_plt_threshold(self, param, state=None):
@@ -549,7 +549,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.flood_steps = self.flood_steps.value()
         self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
-                                 curr_slice=None, roi_pos= self.roi_pos)
+                                 curr_slice=None, roi_pos= self.roi_pos, background_correction=False)
 
         peaks_2d = np.copy(self.fm.ops.peak_slices[-1])
         if self.roi_pos is not None:
@@ -678,7 +678,6 @@ class Merge(QtGui.QMainWindow):
         self.imview_popup.ui.roiBtn.hide()
         self.imview_popup.ui.menuBtn.hide()
         self.imview_popup.scene.sigMouseClicked.connect(lambda evt: self._imview_clicked_popup(evt))
-        # self.imview_popup.setImage(np.sum(self.data_popup,axis=2), levels=(self.data_popup.min(), self.data_popup.max()//3))
         layout.addWidget(self.imview_popup)
 
         options = QtWidgets.QHBoxLayout()

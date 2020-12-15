@@ -29,7 +29,7 @@ class Peak_finding():
         self.aligning = False
 
 
-    def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos=None):
+    def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos=None, background_correction=None):
         start = time.time()
         if not roi:
             if transformed:
@@ -39,11 +39,10 @@ class Peak_finding():
                 if self.peak_slices is None:
                     self.peak_slices = [None] * (self.num_slices + 1)
 
+        img = np.copy(im)
+        if background_correction is None and self.background_correction:
+            img = self.subtract_background(img)
 
-        if self.background_correction:
-            img = self.subtract_background(im)
-        else:
-            img = np.copy(im)
         self.log(self.threshold)
         self.log(self.pixel_upper_threshold)
         self.log(self.pixel_lower_threshold)
@@ -74,7 +73,11 @@ class Peak_finding():
             labels_mp = label_mask_mp * labels
             labels_mp, n_m = ndi.label(labels_mp)
             for i in range(1, sum(mask_mp) + 1):
-                slice_x, slice_y = ndi.find_objects(labels_mp == i)[0]
+                objects = ndi.find_objects(labels_mp == i)
+                if len(objects) == 0:
+                    self.print('No beads found!')
+                    return None
+                slice_x, slice_y = objects[0]
                 roi_i = np.copy(img[slice_x, slice_y])
                 max_i = np.max(roi_i)
                 step = (0.95 * max_i - self.threshold) / self.flood_steps
