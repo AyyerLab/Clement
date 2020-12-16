@@ -239,6 +239,7 @@ class GUI(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):
+        self.scatter = None
         if self.fm_controls.other._err[idx] is None:
             return
         if idx == 0:
@@ -253,6 +254,7 @@ class GUI(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def _show_convergence(self, idx):
+        self.convergence = None
         if self.fm_controls.other._conv[idx] is None:
             return
         if len(self.fm_controls.other._conv[idx]) == 3:

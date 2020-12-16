@@ -531,9 +531,7 @@ class BaseControls(QtWidgets.QWidget):
             # Check if Z-fitting has been done for FM peaks in case of FIB image
             # If not, do the Z-fitting
             self.print('Fitting Z-positions of FM peaks')
-            #self.other.fm_sem_corr = self.other.ops.update_tr_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
             self.other.fm_sem_corr = self.other.ops.update_fm_sem_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
-        #    self.tr_matrices = self.ops.get_fib_transform(self.sem_ops.tf_matrix) @ self.other.fm_sem_corr
 
         if len(self.peaks) != 0:
             self.peaks = []
@@ -569,30 +567,17 @@ class BaseControls(QtWidgets.QWidget):
                         self.imview.removeItem(point)
         else:
             self.print('Calculating tr_matrices')
-            #src_sorted = np.array(
-            #    sorted(self.other.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
+            for i in range(len(self.other.refined_points)):
+                pos = QtCore.QPointF(self.other.refined_points[i][0] - self.other.orig_size / 2,
+                                     self.other.refined_points[i][1] - self.other.orig_size / 2)
+                point = PeakROI(pos, self.other.orig_size, self.imview.getImageItem(), color=(0, 255, 255))
+                self.other.imview.addItem(point)
 
-            #self.log(self.ops.points)
-            #if self.ops._tf_points is None:
-            #    tf_points = self.ops._tf_points_region
-            #else:
-            #    tf_points = self.ops._tf_points
-            #dst_sorted = np.array(
-            #    sorted(tf_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-            #tr_matrices = self.other.ops.get_transform(src_sorted, dst_sorted)
-            #if self.tr_matrices is None:
-            #    self.tr_matrices = np.copy(tr_matrices)
             for peak in self.other.ops.tf_peak_slices[-1]:
                 init = np.array([peak[0], peak[1], 1])
                 if self.show_btn.isChecked():
-                    #if self._refined:
-                    #    transf = np.linalg.inv(self.ops.tf_matrix) @ self.ops._refine_matrix @ tr_matrices @ init
-                    #else:
                     transf = np.linalg.inv(self.ops.tf_matrix) @ self.tr_matrices @ init
                 else:
-                    #if self._refined:
-                    #    transf = self.ops._refine_matrix @ tr_matrices @ init
-                    #else:
                     transf = self.tr_matrices @ init
                 pos = QtCore.QPointF(transf[0] - self.orig_size / 2, transf[1] - self.orig_size / 2)
                 color = None
@@ -1374,12 +1359,14 @@ class BaseControls(QtWidgets.QWidget):
 
         self.refined_points = []
         corr_points = []
+        self._update_tr_matrices()
         if idx != 1:
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size // 2, orig_point[1] + self.size // 2, 1])
                 corr_points.append(np.copy((self.other.tr_matrices @ init)[:2]))
-                transf = self.other.ops._refine_matrix @ self.other.tr_matrices @ init
+                #transf = self.other.ops._refine_matrix @ self.other.tr_matrices @ init
+                transf = self.other.tr_matrices @ init
                 self.refined_points.append(transf[:2])
         else:
             orig_fm_points_z = np.copy(self._points_corr_z)
