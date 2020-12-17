@@ -567,11 +567,11 @@ class BaseControls(QtWidgets.QWidget):
                         self.imview.removeItem(point)
         else:
             self.print('Calculating tr_matrices')
-            for i in range(len(self.other.refined_points)):
-                pos = QtCore.QPointF(self.other.refined_points[i][0] - self.other.orig_size / 2,
-                                     self.other.refined_points[i][1] - self.other.orig_size / 2)
-                point = PeakROI(pos, self.other.orig_size, self.imview.getImageItem(), color=(0, 255, 255))
-                self.other.imview.addItem(point)
+            #for i in range(len(self.other.refined_points)):
+            #    pos = QtCore.QPointF(self.other.refined_points[i][0] - self.other.orig_size / 2,
+            #                         self.other.refined_points[i][1] - self.other.orig_size / 2)
+            #    point = PeakROI(pos, self.other.orig_size, self.imview.getImageItem(), color=(0, 255, 255))
+            #    self.other.imview.addItem(point)
 
             for peak in self.other.ops.tf_peak_slices[-1]:
                 init = np.array([peak[0], peak[1], 1])
