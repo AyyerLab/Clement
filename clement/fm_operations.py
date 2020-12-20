@@ -345,7 +345,8 @@ class FM_ops(Peak_finding):
             if ind is not None:
                 z = self.peaks_z[ind]
             else:
-                z = self.calc_local_z(self.channel, pos, transformed)
+                point = np.linalg.inv(self._color_matrices[channel]) @ np.array([pos[0], pos[1], 1])
+                z = self.calc_local_z(self.channel, point, transformed)
         if z is None:
             self.print('Oops, something went wrong. Try somewhere else!')
             return None

@@ -11,6 +11,7 @@ from skimage.color import hsv2rgb
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, FormatStrFormatter
+from uncertainties import unumpy
 warnings.simplefilter('ignore', category=FutureWarning)
 
 from . import utils
@@ -633,7 +634,7 @@ class Merge(QtGui.QMainWindow):
             self.downsampling = 1
         else:
             self.fib = False
-            self.downsampling = 2
+            self.downsampling = 1
         if merged_data is not None:
             self.log(self._colors_popup)
             self.data_popup = np.copy(merged_data)
@@ -648,7 +649,7 @@ class Merge(QtGui.QMainWindow):
         self.data_orig_popup = np.copy(self.data_popup)
 
         self._init_ui()
-        self._calc_ellipses()
+        #self._calc_ellipses()
         self._copy_pois()
 
     def _init_ui(self):
@@ -780,65 +781,99 @@ class Merge(QtGui.QMainWindow):
         self.save_btn_popup.clicked.connect(self._save_data_popup)
         line.addWidget(self.save_btn_popup)
 
-    @utils.wait_cursor('print')
-    def _calc_ellipses(self, state=None):
-        cov_matrix = self.parent.fm_controls.other.cov_matrix # cov_matrix = [[a, b], [c, d]]
+    def _calc_ellipses(self, cov):
+        cov_matrix = np.copy(self.parent.fm_controls.other.cov_matrix)
+        #cov_matrix += cov
         self.log('Cov matrix: \n', cov_matrix)
         eigvals, eigvecs = np.linalg.eigh(cov_matrix)
         order = eigvals.argsort()[::-1]
         eigvals, eigvecs = eigvals[order], eigvecs[order]
         vx, vy = eigvecs[0,0], eigvecs[0,1]
-        self.theta = -np.arctan2(vy, vx) * 180 / np.pi
-        #scale eigenvalues to 75% confidence interval and pixel size
-        self.lambda_1, self.lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size[:2])
-        self.log(self.lambda_1, self.lambda_2)
+        theta = -np.arctan2(vy, vx) * 180 / np.pi
 
-    def _convert_pois(self, points):
-        transf_points = []
-        if self.other.tab_index == 1:
-            for i in range(len(points)):
-                pos = points[i]
-                point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
-                init, pos, z = self.parent.fm_controls._calc_optimized_position(point)
-                transf = np.dot(self.other.tr_matrices, init)
-                transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-                transf = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))
-                transf_points.append(transf[:2])
+        eigvals2, eigvecs2 = np.linalg.eigh(cov)
+        order = eigvals2.argsort()[::-1]
+        eigvals2, eigvecs2 = eigvals2[order], eigvecs2[order]
+        vx, vy = eigvecs2[0,0], eigvecs2[0,1]
+        theta2 = -np.arctan2(vy, vx) * 180 / np.pi
+
+        theta_eff = (theta + theta2) / 2
+        #print('Cov matrix ensemble: \n', cov_matrix)
+        #print('Cov matrix individual: \n', cov)
+        #print('Eigenvectors1: \n', eigvecs)
+        #print('Eigenvectors2: \n', eigvecs2)
+        #print('Eigenvalues1: ', eigvals)
+        #print('Eigenvalues2: ', eigvals2)
+        #print('Theta: ', theta, theta2, theta_eff)
+
+        #scale eigenvalues to 75% confidence interval and pixel size
+        lambda_1, lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size[:2])
+        self.log(lambda_1, lambda_2)
+        return lambda_1, lambda_2, theta_eff
+
+    def _convert_pois(self, points=None):
+        if points is None:
+            points = [p.pos() for p in self.parent.fm_controls._pois]
+            z_values = self.parent.fm_controls._pois_z
+            errs = self.parent.fm_controls._pois_err
+            covs = self.parent.fm_controls._pois_cov
+            sizes = self.parent.fm_controls._pois_sizes
         else:
+            z_values = [self.parent.fm_controls._pois_z[-1]]
+            errs = [self.parent.fm_controls._pois_err[-1]]
+            covs = [self.parent.fm_controls._pois_cov[-1]]
+            sizes = [self.parent.fm_controls._pois_sizes[-1]]
+        transf_points = []
+        transf_err = []
+        transf_covs = []
+        if self.other.tab_index == 1:
+            tr_matrix = np.copy(self.other.tr_matrices)
+            tr_matrix = np.insert(np.insert(tr_matrix, 2, 0, axis=0), 2, 0, axis=1)
+            tr_matrix[2, 2] = 1
+            refine_matrix = np.insert(np.insert(self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
+            refine_matrix[2, 2] = 1
+            tot_matrix = refine_matrix @ self.other.ops.fib_matrix @ tr_matrix
             for i in range(len(points)):
                 pos = points[i]
-                point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
-                init, pos, z = self.parent.fm_controls._calc_optimized_position(point)
-                transf = np.dot(self.other.tr_matrices, init)
-                transf_points.append(transf[:2])
-        return transf_points
+                std = errs[i]
+                size = sizes[i]
+                point = unumpy.uarray([pos.x() + size[0] // 2, pos.y() + size[1] // 2, z_values[i], 1], [std[0], std[1], std[2], 0])
+                transf = tot_matrix @ point
+                transf_points.append(unumpy.nominal_values(transf)[:2])
+                transf_err.append(unumpy.std_devs(transf)[:2])
+                cov_i = np.insert(np.insert(np.array(covs[i]), 3, 0, axis=0), 3, 0, axis=1)
+                cov_i[-1,-1] = 1
+                print(np.array(covs[i]))
+                transf_covs.append((tot_matrix @ cov_i @ tot_matrix.T)[:3,:3])
+        else:
+            tot_matrix = np.linalg.inv(self.other.ops.tf_matrix) @ self.other.tr_matrices
+            for i in range(len(points)):
+                pos = points[i]
+                std = errs[i][:2]
+                size = sizes[i]
+                point = unumpy.uarray([pos.x() + size[0] // 2, pos.y() + size[1] // 2, 1], [std[0], std[1], 0])
+                transf = tot_matrix @ point
+                transf_points.append(unumpy.nominal_values(transf)[:2] / self.downsampling)
+                transf_err.append(unumpy.std_devs(transf)[:2])
+                print(np.array(covs[i]))
+                print(tot_matrix)
+                transf_covs.append((tot_matrix @ np.array(covs[i]) @ tot_matrix.T)[:3, :3])
+
+        return transf_points, transf_err, transf_covs
 
     @utils.wait_cursor('print')
     def _copy_pois(self, state=None):
-        corr_points = self.parent.fm_controls._pois
-        tf_points = self._convert_pois([pt.pos() for pt in corr_points])
-        if not self.other.tab_index == 1:
-            for point in tf_points:
-                init = np.array([point[0], point[1], 1])
-                transf = (np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ init) / self.downsampling
-                pos = QtCore.QPointF(transf[0], transf[1])
-                self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
-        else:
-            for i in range(len(tf_points)):
-                pos = QtCore.QPointF(tf_points[i][0], tf_points[i][1])
-                self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+        tf_points, tf_errs, tf_covs = self._convert_pois()
+        for i in range(len(tf_points)):
+            pos = QtCore.QPointF(tf_points[i][0], tf_points[i][1])
+            self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem(), tf_covs[i])
         [self._clicked_points_popup_base_indices.append(i) for i in range(len(tf_points))]
 
     @utils.wait_cursor('print')
-    def _update_poi(self, pos, fib):
-        init = self._convert_pois([pos])[0]
-        if not fib:
-            transf = np.linalg.inv(self.parent.fm_controls.other.ops.tf_matrix) @ np.array([init[0], init[1], 1]) / self.downsampling
-            pos = QtCore.QPointF(transf[0], transf[1])
-        else:
-            pos = QtCore.QPointF(init[0], init[1])
-
-        self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem())
+    def _update_poi(self, pos):
+        tf_points, tf_errs, tf_covs = self._convert_pois([pos])
+        pos = QtCore.QPointF(tf_points[0][0], tf_points[0][1])
+        self._draw_correlated_points_popup(pos, self.imview_popup.getImageItem(), tf_covs[0])
         self._clicked_points_popup_base_indices.append(self.counter_popup-1)
 
     @utils.wait_cursor('print')
@@ -848,14 +883,18 @@ class Merge(QtGui.QMainWindow):
             return
 
     @utils.wait_cursor('print')
-    def _draw_correlated_points_popup(self, pos, item):
+    def _draw_correlated_points_popup(self, pos, item, tf_cov):
         img_center = np.array(self.data_popup.shape)/2
-        point = pg.EllipseROI(img_center, size=[self.lambda_1,self.lambda_2], angle=0, parent=item,
+        lambda_1, lambda_2, theta = self._calc_ellipses(tf_cov)
+        print(lambda_1, lambda_2, theta)
+        point = pg.EllipseROI(img_center, size=[lambda_1, lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
-        pos = [pos.x() - self.lambda_1/2, pos.y() - self.lambda_2/2]
-        point.setTransformOriginPoint(QtCore.QPointF(self.lambda_1/2, self.lambda_2/2))
-        point.setRotation(self.theta)
+        pos = [pos.x() - lambda_1/2, pos.y() - lambda_2/2]
+        self.print('Total error estimate: ', lambda_1/2, lambda_2/2)
+        print('Total error estimate: ', lambda_1/2, lambda_2/2)
+        point.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
+        point.setRotation(theta)
         point.setPos(pos)
         point.setPen(0, 255, 0)
         point.removeHandle(0)

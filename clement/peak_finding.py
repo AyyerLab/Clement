@@ -27,6 +27,7 @@ class Peak_finding():
         self.z_profiles = []
         self.sigma_z = None
         self.aligning = False
+        self.my_counter = None
 
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos=None, background_correction=None):
@@ -152,7 +153,7 @@ class Peak_finding():
         self.peaks_2d = np.round(
             np.array([r.weighted_centroid for r in measure.regionprops((labels > 0) * wshed, img)]))
 
-    def calc_transformed_coordinates(self, points, tf_matrix, roi_shape, roi_pos=None, slice=None):
+    def calc_transformed_coordinates(self, points, tf_matrix, roi_shape, roi_pos=None, slice=None, store=True):
         tf_matrix = np.copy(tf_matrix)
         if roi_pos is not None:
             nx, ny = roi_shape[:-1]
@@ -165,9 +166,8 @@ class Peak_finding():
             tf_pos = tf_matrix @ pos
             tf_pos_roi = tf_matrix @ origin
             shift = (tf_pos - tf_pos_roi)[:2]
-            tf_matrix[:2,2] +=  shift
+            tf_matrix[:2,2] += shift
 
-        print(roi_pos)
         if roi_pos is None:
             roi_pos = np.zeros(2)
         tf_points = []
@@ -177,14 +177,17 @@ class Peak_finding():
             tf_pt = tf_matrix @ init
             tf_points.append(tf_pt[:2])
 
-        if self.tf_peak_slices is None:
-            self.tf_peak_slices = [None] * len(self.peak_slices)
-        if slice is None:
-            self.tf_peak_slices[-1] = np.copy(tf_points)
+        if store:
+            if self.tf_peak_slices is None:
+                self.tf_peak_slices = [None] * len(self.peak_slices)
+            if slice is None:
+                self.tf_peak_slices[-1] = np.copy(tf_points)
+            else:
+                self.tf_peak_slices[slice] = np.copy(tf_points)
+            if self.orig_tf_peak_slices is None:
+                self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
         else:
-            self.tf_peak_slices[slice] = np.copy(tf_points)
-        if self.orig_tf_peak_slices is None:
-            self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+            return tf_points[0]
 
     def calc_original_coordinates(self, point, tf_mat, flip, tf_shape):
         if len(point) == 2:
@@ -231,6 +234,12 @@ class Peak_finding():
                     peaks_2d = self.peak_slices[curr_slice]
         else:
             peaks_2d = point
+            x_min = int(np.round(peaks_2d[0][0]) - 10)
+            x_max = int(np.round(peaks_2d[0][0]) + 10)
+            y_min = int(np.round(peaks_2d[0][1]) - 10)
+            y_max = int(np.round(peaks_2d[0][1]) + 10)
+            roi = data[x_min:x_max, y_min:y_max]
+
         if peaks_2d is None:
             if local:
                 self.print('You have to parse a point!')
@@ -333,6 +342,76 @@ class Peak_finding():
             self.print('Selection ambiguous. Try again!')
         else:
             return ind_arr[0]
+
+    def gauss_3d(self, point, transformed, channel=None):
+        def fit_func(mesh, mu_x, mu_y, mu_z, sigma_x, sigma_y, sigma_z, intens, offset):
+            x, y, z = mesh
+            return (intens * np.exp(-(x - mu_x) ** 2 / (2 * sigma_x **2)) * np.exp(-(y - mu_y) ** 2 / (2 * sigma_y ** 2)) *
+                    np.exp(-(z - mu_z) ** 2 / (2 * sigma_z ** 2)) + offset).ravel()
+
+        if channel is None:
+            channel = self._channel_idx
+
+        if transformed:
+            flip_list = [self.transp, self.rot, self.fliph, self.flipv]
+            tf_aligned = self.tf_matrix @ self._color_matrices[channel]
+            point = self.calc_original_coordinates(point, tf_aligned, flip_list, self.data.shape[:-1])
+        else:
+            point = np.linalg.inv(self._color_matrices[channel]) @ np.array([point[0], point[1], 1])
+
+        if point[0] < 0 or point[1] < 0 or point[0] > self.orig_data.shape[0] or point[1] > self.orig_data.shape[1]:
+            self.print('You have to select a point within the bounds of the image!')
+            return None, None, None
+        roi_size = 10
+        x_min = np.round(point[0] - roi_size/2).astype(int)
+        x_max = np.round(point[0] + roi_size/2).astype(int)
+        y_min = np.round(point[1] - roi_size/2).astype(int)
+        y_max = np.round(point[1] + roi_size/2).astype(int)
+        data = self.channel[x_min:x_max, y_min:y_max, :]
+        #if self.my_counter is None:
+        #    self.my_counter = 0
+        #np.save('virus{}.npy'.format(self.my_counter), data)
+        #self.my_counter += 1
+        offset = np.mean(data)
+        max_proj = np.max(data, axis=-1)
+        max_int = np.max(max_proj)
+        max_shape = np.array(data.shape).max()
+
+        x0, y0 = (data.shape[0]/2, data.shape[1]/2)
+        z0 = np.argmax(data[np.round(x0).astype(int), np.round(y0).astype(int), :])
+
+        #bounds for fitting params: x0, y0, z0, sigma_xy, sigma_z, intensity, offset
+        bounds = ((x0 - max_proj.shape[0] / 4, y0 - max_proj.shape[1] / 4, z0 - data.shape[-1] / 4, 0, 0, 0, np.mean(data),
+                   np.mean(data)), (
+                  x0 + max_proj.shape[0] / 4, y0 + max_proj.shape[1] / 4, z0 + data.shape[-1] / 4, 2, 2, 2, np.max(data),
+                  np.max(data)))
+
+        x = np.arange(max_shape)
+        x, y, z = np.meshgrid(x, x, x, indexing='ij')
+        data_pad = np.zeros_like(x).astype('f8')
+        data_pad[:data.shape[0], :data.shape[1], :data.shape[2]] = data
+
+        try:
+            popt, pcov = curve_fit(fit_func, (x, y, z), data_pad.ravel(), p0=[x0, y0, z0, 1, 1, 1, max_int, offset],
+                                   bounds=bounds)
+        except RuntimeError:
+            self.print('Unable to fit virus! Select another one!')
+            return None, None, None
+
+        perr = np.sqrt(np.diag(pcov))
+
+        if transformed:
+            tf_aligned = self.tf_matrix @ self._color_matrices[channel]
+            point = tf_aligned @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
+        else:
+            point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
+
+        z = self.num_slices - 1 - popt[2]
+        scaling = self.voxel_size[2] / self.voxel_size[0]
+        z *= scaling
+        init = np.array([point[0], point[1], z])
+        self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size)
+        return init, perr[:3], pcov[:3,:3]
 
     def reset_peaks(self):
         self.peak_slices = None

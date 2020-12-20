@@ -19,3 +19,4 @@ dependencies:
     - read-lif==0.3.1
     #- git+https://github.com/pyqtgraph/pyqtgraph.git@develop
     - pyqtgraph
+    - uncertainties
