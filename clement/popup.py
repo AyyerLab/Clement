@@ -783,33 +783,20 @@ class Merge(QtGui.QMainWindow):
 
     def _calc_ellipses(self, cov):
         cov_matrix = np.copy(self.parent.fm_controls.other.cov_matrix)
-        #cov_matrix += cov
         self.log('Cov matrix: \n', cov_matrix)
+        self.log('Cov_i matrix: \n', cov)
+        self.print('Fitting precision in merged frame: ', np.sqrt(np.diag(cov[:2, :2])) * self.pixel_size[0])
+        cov_matrix += cov[:2, :2] * self.pixel_size[0]
         eigvals, eigvecs = np.linalg.eigh(cov_matrix)
         order = eigvals.argsort()[::-1]
         eigvals, eigvecs = eigvals[order], eigvecs[order]
         vx, vy = eigvecs[0,0], eigvecs[0,1]
         theta = -np.arctan2(vy, vx) * 180 / np.pi
 
-        eigvals2, eigvecs2 = np.linalg.eigh(cov)
-        order = eigvals2.argsort()[::-1]
-        eigvals2, eigvecs2 = eigvals2[order], eigvecs2[order]
-        vx, vy = eigvecs2[0,0], eigvecs2[0,1]
-        theta2 = -np.arctan2(vy, vx) * 180 / np.pi
-
-        theta_eff = (theta + theta2) / 2
-        #print('Cov matrix ensemble: \n', cov_matrix)
-        #print('Cov matrix individual: \n', cov)
-        #print('Eigenvectors1: \n', eigvecs)
-        #print('Eigenvectors2: \n', eigvecs2)
-        #print('Eigenvalues1: ', eigvals)
-        #print('Eigenvalues2: ', eigvals2)
-        #print('Theta: ', theta, theta2, theta_eff)
-
         #scale eigenvalues to 75% confidence interval and pixel size
-        lambda_1, lambda_2 = 2 * np.sqrt(2.77*eigvals) / np.array(self.pixel_size[:2])
+        lambda_1, lambda_2 = 2 * np.sqrt(2.77*eigvals)[:2] / np.array(self.pixel_size[:2])
         self.log(lambda_1, lambda_2)
-        return lambda_1, lambda_2, theta_eff
+        return lambda_1, lambda_2, theta
 
     def _convert_pois(self, points=None):
         if points is None:
@@ -842,9 +829,8 @@ class Merge(QtGui.QMainWindow):
                 transf_points.append(unumpy.nominal_values(transf)[:2])
                 transf_err.append(unumpy.std_devs(transf)[:2])
                 cov_i = np.insert(np.insert(np.array(covs[i]), 3, 0, axis=0), 3, 0, axis=1)
-                cov_i[-1,-1] = 1
-                print(np.array(covs[i]))
-                transf_covs.append((tot_matrix @ cov_i @ tot_matrix.T)[:3,:3])
+                tf_cov = tot_matrix @ np.array(cov_i) @ tot_matrix.T
+                transf_covs.append(tf_cov)
         else:
             tot_matrix = np.linalg.inv(self.other.ops.tf_matrix) @ self.other.tr_matrices
             for i in range(len(points)):
@@ -855,9 +841,10 @@ class Merge(QtGui.QMainWindow):
                 transf = tot_matrix @ point
                 transf_points.append(unumpy.nominal_values(transf)[:2] / self.downsampling)
                 transf_err.append(unumpy.std_devs(transf)[:2])
-                print(np.array(covs[i]))
-                print(tot_matrix)
-                transf_covs.append((tot_matrix @ np.array(covs[i]) @ tot_matrix.T)[:3, :3])
+                cov_i = np.array(covs[i])
+                cov_i[-1,-1] = 0
+                tf_cov = tot_matrix @ cov_i @ tot_matrix.T
+                transf_covs.append(tf_cov[:3, :3])
 
         return transf_points, transf_err, transf_covs
 
@@ -886,13 +873,12 @@ class Merge(QtGui.QMainWindow):
     def _draw_correlated_points_popup(self, pos, item, tf_cov):
         img_center = np.array(self.data_popup.shape)/2
         lambda_1, lambda_2, theta = self._calc_ellipses(tf_cov)
-        print(lambda_1, lambda_2, theta)
         point = pg.EllipseROI(img_center, size=[lambda_1, lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
         pos = [pos.x() - lambda_1/2, pos.y() - lambda_2/2]
         self.print('Total error estimate: ', lambda_1/2, lambda_2/2)
-        print('Total error estimate: ', lambda_1/2, lambda_2/2)
+        print('Total error estimate: ', lambda_1/2*self.pixel_size[0], lambda_2/2*self.pixel_size[0])
         point.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
         point.setRotation(theta)
         point.setPos(pos)
