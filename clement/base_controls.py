@@ -359,9 +359,9 @@ class BaseControls(QtWidgets.QWidget):
         init = self._fit_poi(point)
         if init is None:
             return
+        init_base = copy.copy(init)
         if self.ops._transformed:
             self._calc_base_points(init[:2], poi=True)
-            init_base = copy.copy(init)
             init_base[:2] = [self._pois_base[-1].x(), self._pois_base[-1].y()]
         self._calc_raw_points(init_base[:2], poi=True)
         if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
@@ -894,7 +894,8 @@ class BaseControls(QtWidgets.QWidget):
             self._pois_sizes.remove(self._pois_sizes[idx])
             self._pois_err.remove(self._pois_err[idx])
             self._pois_cov.remove(self._pois_cov[idx])
-            self._pois_base.remove(self._pois_base[idx])
+            if len(self._pois_base) > 0:
+                self._pois_base.remove(self._pois_base[idx])
 
         for i in range(idx, len(self._pois)):
             self.poi_anno_list[i].setText(str(i + 1))
@@ -1158,6 +1159,11 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor('print')
     def _affine_transform(self, toggle_orig=True):
+        if not np.array_equal(np.identity(3), self.ops.tf_matrix):
+            self.ops.tf_matrix = np.identity(3)
+            self.ops.tf_peak_slices = None
+            self.ops.orig_tf_peak_slices = None
+
         if self.show_btn.isChecked():
             grid_box = self.grid_box
         else:
