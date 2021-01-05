@@ -649,7 +649,6 @@ class Merge(QtGui.QMainWindow):
         self.data_orig_popup = np.copy(self.data_popup)
 
         self._init_ui()
-        #self._calc_ellipses()
         self._copy_pois()
 
     def _init_ui(self):
@@ -781,7 +780,7 @@ class Merge(QtGui.QMainWindow):
         self.save_btn_popup.clicked.connect(self._save_data_popup)
         line.addWidget(self.save_btn_popup)
 
-    def _calc_ellipses(self, cov):
+    def _calc_ellipses_popup(self, cov):
         cov_matrix = np.copy(self.parent.fm_controls.other.cov_matrix)
         self.log('Cov matrix: \n', cov_matrix)
         self.log('Cov_i matrix: \n', cov)
@@ -872,13 +871,12 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _draw_correlated_points_popup(self, pos, item, tf_cov):
         img_center = np.array(self.data_popup.shape)/2
-        lambda_1, lambda_2, theta = self._calc_ellipses(tf_cov)
+        lambda_1, lambda_2, theta = self._calc_ellipses_popup(tf_cov)
         point = pg.EllipseROI(img_center, size=[lambda_1, lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
         pos = [pos.x() - lambda_1/2, pos.y() - lambda_2/2]
         self.print('Total error estimate: ', lambda_1/2, lambda_2/2)
-        print('Total error estimate: ', lambda_1/2*self.pixel_size[0], lambda_2/2*self.pixel_size[0])
         point.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
         point.setRotation(theta)
         point.setPos(pos)

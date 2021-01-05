@@ -260,9 +260,6 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
-            if (self.ops._transformed and self.ops.tf_peaks_z is None) or (not self.ops._transformed and self.ops.peaks_z is None):
-                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
-                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             self.print('Select points of interest on %s image' % self.tag)
         else:
@@ -304,6 +301,12 @@ class BaseControls(QtWidgets.QWidget):
             self.point_ref_btn.setEnabled(False)
 
             if (self.ops._transformed and self.ops.tf_peaks_z is None) or (not self.ops._transformed and self.ops.peaks_z is None):
+                uncheck = False
+                if self.peak_btn.isChecked == False:
+                    uncheck = True
+                self.peak_btn.setChecked(True)
+                if uncheck:
+                    self.peak_btn.setChecked(False)
                 if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
                     self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
                 color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[
@@ -353,21 +356,57 @@ class BaseControls(QtWidgets.QWidget):
 
     def _draw_pois(self, pos, item):
         point = np.copy(np.array([pos.x(), pos.y()]))
-
         init = self._fit_poi(point)
         if init is None:
             return
         if self.ops._transformed:
             self._calc_base_points(init[:2], poi=True)
-        self._calc_raw_points(init[:2], poi=True)
-        if not self.ops._transformed and self.ops.tf_matrix is not None:
+            init_base = copy.copy(init)
+            init_base[:2] = [self._pois_base[-1].x(), self._pois_base[-1].y()]
+        self._calc_raw_points(init_base[:2], poi=True)
+        if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
             self._transform_pois(init[:2], poi=True)
 
-        my_init = np.array([init[0], init[1], 1])
         self._draw_fm_pois(init[:2], item)
 
         if self.other.show_merge:
             self.other.popup._update_poi(pos)
+
+    def _calc_ellipses(self, counter):
+        #cov_matrix = np.copy(self._pois_cov[counter]) / self.ops.voxel_size[0]
+        cov_matrix = np.copy(self._pois_cov[counter])
+        if self.ops._transformed:
+            cov_matrix = self._update_cov_matrix(cov_matrix)
+        eigvals, eigvecs = np.linalg.eigh(cov_matrix[:2,:2])
+
+        order = eigvals.argsort()[::-1]
+        eigvals, eigvecs = eigvals[order], eigvecs[order]
+        vx, vy = eigvecs[0,0], eigvecs[0,1]
+        theta = -np.arctan2(vy, vx) * 180 / np.pi
+        #scale eigenvalues to 75% confidence interval and pixel size
+        lambda_1, lambda_2 = 2 * np.sqrt(2.77*eigvals)
+        self.log(lambda_1, lambda_2, theta)
+        return lambda_1, lambda_2, theta
+
+    def _update_cov_matrix(self, cov_matrix):
+        cov = np.copy(cov_matrix)
+        cov[-1,-1] = 0
+        tf_cov = self.ops.tf_matrix @ cov @ self.ops.tf_matrix.T
+        transp, rot, fliph, flipv = self.flips
+        if flipv:
+            tf_cov[0,1] *= -1
+            tf_cov[1,0] *= -1
+        if fliph:
+            tf_cov[1,0] *= -1
+        if rot:
+            cov_2d = np.copy(tf_cov[:2, :2])
+            rot_matrix = np.array([[np.cos(np.pi/2), -np.sin(np.pi/2)], [np.sin(np.pi/2), np.cos(np.pi/2)]])
+            cov_2d = rot_matrix @ cov_2d @ rot_matrix.T
+            tf_cov[:2, :2] = cov_2d
+        if transp:
+            #covariance matrices are symmetric...
+            pass
+        return tf_cov
 
     def _draw_fm_pois(self, init, item):
         cmap = matplotlib.cm.get_cmap('cool')
@@ -377,11 +416,17 @@ class BaseControls(QtWidgets.QWidget):
         color = colors[idx]
         color = matplotlib.colors.to_hex(color)
 
-        size = (self._pois_err[-1][0]*2, self._pois_err[-1][1]*2)
+        img_center = np.array(self.ops.data.shape) / 2
+        lambda_1, lambda_2, theta = self._calc_ellipses(self.poi_counter)
+        size = (lambda_1, lambda_2)
         pos = QtCore.QPointF(init[0]-size[0]/2, init[1]-size[1]/2)
-        point_obj = pg.EllipseROI(pos, size=[size[0],size[1]], angle=0, parent=item,
+        point_obj = pg.EllipseROI(img_center, size=[self.size, self.size], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
+        point_obj.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
+        point_obj.setRotation(theta)
+        point_obj.setPos(pos)
+        point_obj.setSize([size[0], size[1]])
         point_obj.setPen(color)
         point_obj.removeHandle(0)
         point_obj.removeHandle(0)
@@ -398,14 +443,16 @@ class BaseControls(QtWidgets.QWidget):
         point_obj.sigRemoveRequested.connect(lambda: self._remove_pois(point_obj))
 
     def _draw_correlated_points(self, pos, item):
-        point = np.array([pos.x() + self.size // 2, pos.y() + self.size // 2])
+        point = np.array([pos.x() + self.size / 2, pos.y() + self.size / 2])
         init, pos, z = self._calc_optimized_position(point, pos)
         if init is None:
             return
+        init_base = copy.copy(init)
         if self.ops._transformed:
             self._calc_base_points(init[:2])
-        self._calc_raw_points(init[:2])
-        if not self.ops._transformed and self.ops.tf_matrix is not None:
+            init_base[:2] = [self._points_base[-1].x() + self.size/2, self._points_base[-1].y()+self.size/2]
+        self._calc_raw_points(init_base[:2])
+        if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
             self._transform_pois(init[:2])
         self._draw_fm_points(pos, item)
         self._draw_em_points(init, z)
@@ -642,7 +689,6 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops.points is not None and self.other.ops.points is not None:
                 self.other._update_tr_matrices()
         if active:
-            print(self.tab_index)
             if self.tab_index != 1 and not (self.ops._transformed and self.other.ops._transformed):
                 self.print('You have to show the transformed data on both sides!')
                 self.refine_peaks_btn.setChecked(False)
@@ -692,18 +738,15 @@ class BaseControls(QtWidgets.QWidget):
                 points_tf = []
                 for i in range(len(self._pois_raw)):
                     pos = self._pois_raw[i]
-                    point = np.array([pos.x() + self.size/2, pos.y() + self.size/2])
+                    point = np.array([pos.x(), pos.y()])
                     point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
                     points_tf.append(point_tf[:2])
-
-                self._pois_raw = []
-                for i in range(len(points_tf)):
-                    pos = QtCore.QPointF(points_tf[i][0] - self.size / 2, points_tf[i][1] - self.size / 2)
-                    #self._draw_correlated_points(pos, self.imview.getImageItem())
-                    self._draw_pois(pos, self.imview.getImageItem())
+                    pos = QtCore.QPointF(points_tf[i][0], points_tf[i][1])
+                    self._draw_fm_pois(np.array([points_tf[i][0], points_tf[i][1]]), self.imview.getImageItem())
+                    self._pois_base.append(pos)
             else:
                 point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
-                pos = QtCore.QPointF(point_tf[0] - self.size / 2, point_tf[1] - self.size / 2)
+                pos = QtCore.QPointF(point_tf[0], point_tf[1])
                 self._pois_base.append(pos)
         else:
             if point is None:
@@ -713,12 +756,9 @@ class BaseControls(QtWidgets.QWidget):
                     point = np.array([pos.x() + self.size/2, pos.y() + self.size/2])
                     point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
                     points_tf.append(point_tf[:2])
-
-                self._points_raw = []
-                for i in range(len(points_tf)):
                     pos = QtCore.QPointF(points_tf[i][0] - self.size / 2, points_tf[i][1] - self.size / 2)
-                    #self._draw_correlated_points(pos, self.imview.getImageItem())
                     self._draw_fm_points(pos, self.imview.getImageItem())
+                    self._points_base.append(pos)
             else:
                 point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
                 pos = QtCore.QPointF(point_tf[0] - self.size / 2, point_tf[1] - self.size / 2)
@@ -739,25 +779,31 @@ class BaseControls(QtWidgets.QWidget):
         if transp:
             point = np.array([point[1], point[0], 1])
 
-        pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
         if poi:
+            pos = QtCore.QPointF(point[0], point[1])
             self._pois_base.append(pos)
         else:
+            pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
             self._points_base.append(pos)
 
     def _calc_raw_points(self, point, poi=False):
         point = np.copy(point)
-        if self.ops._transformed:
-            pos_raw = np.linalg.inv(self.ops.tf_matrix) @ np.array([point[0], point[1], 1])
-            pos = QtCore.QPointF(pos_raw[0] - self.size / 2, pos_raw[1] - self.size / 2)
-        else:
-            pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
         if poi:
-            self._pois_raw.append(pos)
+           if self.ops._transformed:
+               pos_raw = np.linalg.inv(self.ops.tf_matrix) @ np.array([point[0], point[1], 1])
+               pos = QtCore.QPointF(pos_raw[0], pos_raw[1])
+           else:
+               pos = QtCore.QPointF(point[0], point[1])
+           self._pois_raw.append(pos)
         else:
+            if self.ops._transformed:
+                pos_raw = np.linalg.inv(self.ops.tf_matrix) @ np.array([point[0], point[1], 1])
+                pos = QtCore.QPointF(pos_raw[0] - self.size / 2, pos_raw[1] - self.size / 2)
+            else:
+                pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
             self._points_raw.append(pos)
 
-    def _update_pois(self):
+    def _update_pois_and_points(self):
         points_base = []
         for i in range(len(self._points_base)):
             pos = self._points_base[i]
@@ -770,12 +816,12 @@ class BaseControls(QtWidgets.QWidget):
         pois_base = []
         for i in range(len(self._pois_base)):
             pos = self._pois_base[i]
-            pois_base.append(np.array([pos.x() + self.size/2, pos.y() + self.size/2]))
+            pois_base.append(np.array([pos.x(), pos.y()]))
         if len(pois_base) > 0:
             pois_updated = self.ops.update_points(np.array(pois_base))
             for i in range(len(pois_updated)):
-                pos = QtCore.QPointF(pois_updated[i][0] - self.size / 2, pois_updated[i][1] - self.size / 2)
-                self._draw_fm_pois(pos, self.imview.getImageItem())
+                init = np.array([pois_updated[i][0], pois_updated[i][1]])
+                self._draw_fm_pois(init, self.imview.getImageItem())
 
         self.fixed_orientation = False
 
@@ -871,7 +917,6 @@ class BaseControls(QtWidgets.QWidget):
         for i in range(len(self.other.peaks)):
             pos = [self.other.peaks[i].original_pos[0] + self.other.orig_size / 2, self.other.peaks[i].original_pos[1] + self.other.orig_size / 2]
             if np.allclose(pos, self.other._orig_points_corr[idx]):
-                print(self.other.peaks[i].original_color)
                 self.other.peaks[i].resetPos()
                 self.other.imview.addItem(self.other.peaks[i])
 
@@ -1156,13 +1201,15 @@ class BaseControls(QtWidgets.QWidget):
         self.define_btn.setEnabled(False)
 
         for i in range(len(self._points_corr)):
-            self._remove_correlated_points(self._points_corr[0])
-
+            self._remove_correlated_points(self._points_corr[0], remove_base=False)
+        for i in range(len(self._pois)):
+            self._remove_pois(self._pois[0], remove_base=False)
         if hasattr(self, 'select_btn'):
             self.point_ref_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
-            self._transform_pois()
+            self._transform_pois(poi=True)
+            self._transform_pois(poi=False)
 
         if self.ops is not None and self.other.ops is not None:
             if self.ops._transformed and self.other.ops._transformed:
@@ -1173,15 +1220,22 @@ class BaseControls(QtWidgets.QWidget):
                 elif not hasattr(self, 'tab_index') and self.other.tab_index != 1:
                     self.other.show_peaks_btn.setEnabled(True)
 
+
     def _show_original(self):
         if self.ops is None:
             return
+        [self.imview.removeItem(poi) for poi in self._pois]
+        [self.imview.removeItem(anno) for anno in self.poi_anno_list]
+        self._pois = []
+        self.poi_anno_list = []
+        self.poi_counter = 0
 
         [self.imview.removeItem(point) for point in self._points_corr]
         [self.imview.removeItem(anno) for anno in self.anno_list]
         self._points_corr = []
         self.anno_list = []
         self.counter = 0
+
 
         self.ops._transformed = not self.ops._transformed
         align = False
@@ -1245,10 +1299,13 @@ class BaseControls(QtWidgets.QWidget):
 
         if hasattr(self, 'select_btn'):
             if self.ops._transformed:
-                self._update_pois()
+                self._update_pois_and_points()
             else:
                 for i in range(len(self._points_raw)):
                     self._draw_fm_points(self._points_raw[i], self.imview.getImageItem())
+                for i in range(len(self._pois_raw)):
+                    init = np.array([self._pois_raw[i].x(), self._pois_raw[i].y()])
+                    self._draw_fm_pois(init, self.imview.getImageItem())
 
     @utils.wait_cursor('print')
     def _refine(self, state=None):

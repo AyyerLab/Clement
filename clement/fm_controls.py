@@ -441,7 +441,7 @@ class FMControls(BaseControls):
         self.ops.flip_horizontal(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois()
+        self._update_pois_and_points()
 
     @utils.wait_cursor('print')
     def _flipv(self, state):
@@ -457,7 +457,7 @@ class FMControls(BaseControls):
         self.ops.flip_vertical(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois()
+        self._update_pois_and_points()
 
     @utils.wait_cursor('print')
     def _trans(self, state):
@@ -473,7 +473,7 @@ class FMControls(BaseControls):
         self.ops.transpose(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois()
+        self._update_pois_and_points()
 
     @utils.wait_cursor('print')
     def _rot(self, state):
@@ -489,7 +489,7 @@ class FMControls(BaseControls):
         self.ops.rotate_clockwise(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois()
+        self._update_pois_and_points()
 
     @utils.wait_cursor('print')
     def _slice_changed(self, state=None):

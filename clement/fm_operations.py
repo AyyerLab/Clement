@@ -196,7 +196,7 @@ class FM_ops(Peak_finding):
         if transp:
             points = np.array([np.flip(point) for point in points])
         if rot:
-            temp = self.data.shape[0] - 1 - points[:, 1]
+            temp = self.data.shape[0] - points[:, 1]
             points[:, 1] = points[:, 0]
             points[:, 0] = temp
         if fliph:
