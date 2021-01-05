@@ -373,7 +373,6 @@ class BaseControls(QtWidgets.QWidget):
             self.other.popup._update_poi(pos)
 
     def _calc_ellipses(self, counter):
-        #cov_matrix = np.copy(self._pois_cov[counter]) / self.ops.voxel_size[0]
         cov_matrix = np.copy(self._pois_cov[counter])
         if self.ops._transformed:
             cov_matrix = self._update_cov_matrix(cov_matrix)

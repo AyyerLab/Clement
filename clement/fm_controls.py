@@ -271,6 +271,9 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _update_imview(self, state=None):
+        channel_idx = None
+        if self.imview.axes['t'] is not None:
+            channel_idx = self.imview.timeLine.value()
         if self.ops is None:
             return
         self.print(self.ops.data.shape)
@@ -291,6 +294,8 @@ class FMControls(BaseControls):
             self.imview.setImage(self.color_data, levels=levels)
             if old_shape == new_shape:
                 self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+        if channel_idx is not None:
+            self.imview.timeLine.setValue(channel_idx)
 
     def _load_fm_images(self):
         if self._curr_folder is None:
