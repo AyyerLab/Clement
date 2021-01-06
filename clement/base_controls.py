@@ -426,7 +426,7 @@ class BaseControls(QtWidgets.QWidget):
 
         point_obj.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
         point_obj.setRotation(theta)
-        point_obj.setPos([pos.x() + 0.5, pos.y() + 0.5]) #correct for pixel appearance, tick at beginning, not centered
+        point_obj.setPos([pos.x(), pos.y()])
         point_obj.setPen(color)
         point_obj.removeHandle(0)
         point_obj.removeHandle(0)
