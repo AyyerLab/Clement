@@ -374,6 +374,7 @@ class FMControls(BaseControls):
             self.peak_btn.setEnabled(True)
             self.map_btn.setEnabled(True)
             self.remove_tilt_btn.setEnabled(True)
+            self.point_ref_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
             self.poi_btn.setEnabled(True)
             self.clear_btn.setEnabled(True)
@@ -574,7 +575,7 @@ class FMControls(BaseControls):
                 #                          curr_slice = self._current_slice, roi_pos=self.peak_controls.roi_pos)
                 peaks_2d = self.ops.peak_slices[self._current_slice]
 
-        if len(peaks_2d.shape) > 0:
+        if peaks_2d is not None and len(peaks_2d.shape) > 0:
             for i in range(len(peaks_2d)):
                 pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)
                 point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,

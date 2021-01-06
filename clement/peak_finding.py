@@ -368,10 +368,10 @@ class Peak_finding():
         y_min = np.round(point[1] - roi_size/2).astype(int)
         y_max = np.round(point[1] + roi_size/2).astype(int)
         data = self.channel[x_min:x_max, y_min:y_max, :]
-        #if self.my_counter is None:
-        #    self.my_counter = 0
-        #np.save('virus{}.npy'.format(self.my_counter), data)
-        #self.my_counter += 1
+        if self.my_counter is None:
+            self.my_counter = 0
+        np.save('virus{}.npy'.format(self.my_counter), data)
+        self.my_counter += 1
         offset = np.mean(data)
         max_proj = np.max(data, axis=-1)
         max_int = np.max(max_proj)
@@ -398,6 +398,11 @@ class Peak_finding():
             self.print('Unable to fit virus! Select another one!')
             return None, None, None
 
+        fit = fit_func((x, y, z), *popt).reshape(x.shape)[:data.shape[0], :data.shape[1], :data.shape[2]]
+        ss_res = np.sum((data - fit) ** 2)
+        ss_tot = np.sum((data - data.mean()) ** 2)
+        r2 = 1 - (ss_res / ss_tot)
+
         perr = np.sqrt(np.diag(pcov))
 
         if transformed:
@@ -410,7 +415,11 @@ class Peak_finding():
         scaling = self.voxel_size[2] / self.voxel_size[0]
         z *= scaling
         init = np.array([point[0], point[1], z])
-        self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size)
+        self.log('Model fit: ', r2)
+        if r2 < 0.2:
+            self.print('Model does not fit the data. You should consider selecting a different virus!')
+        else:
+            self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size)
         return init, perr[:3], pcov[:3,:3]
 
     def reset_peaks(self):

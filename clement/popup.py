@@ -875,7 +875,8 @@ class Merge(QtGui.QMainWindow):
         point = pg.EllipseROI(img_center, size=[lambda_1, lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
-        pos = [pos.x() - lambda_1/2, pos.y() - lambda_2/2]
+        pos = [pos.x() - lambda_1 / 2, pos.y() - lambda_2 / 2]
+        pos = [pos.x() + 0.5, pos.y() + 0.5] #correct for pixel appearance, tick at beginning, not centered
         self.print('Total error estimate: ', lambda_1/2, lambda_2/2)
         point.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
         point.setRotation(theta)

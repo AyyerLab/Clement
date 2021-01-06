@@ -273,6 +273,8 @@ class BaseControls(QtWidgets.QWidget):
                 self.rotate.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
 
+
+
     @utils.wait_cursor('print')
     def _define_corr_toggled(self, checked):
         if self.ops.adjusted_params == False:
@@ -419,13 +421,12 @@ class BaseControls(QtWidgets.QWidget):
         lambda_1, lambda_2, theta = self._calc_ellipses(self.poi_counter)
         size = (lambda_1, lambda_2)
         pos = QtCore.QPointF(init[0]-size[0]/2, init[1]-size[1]/2)
-        point_obj = pg.EllipseROI(img_center, size=[self.size, self.size], angle=0, parent=item,
+        point_obj = pg.EllipseROI(img_center, size=[size[0], size[1]], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
         point_obj.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
         point_obj.setRotation(theta)
-        point_obj.setPos(pos)
-        point_obj.setSize([size[0], size[1]])
+        point_obj.setPos([pos.x() + 0.5, pos.y() + 0.5]) #correct for pixel appearance, tick at beginning, not centered
         point_obj.setPen(color)
         point_obj.removeHandle(0)
         point_obj.removeHandle(0)
