@@ -552,7 +552,10 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
                                  curr_slice=None, roi_pos= self.roi_pos, background_correction=False)
 
-        peaks_2d = np.copy(self.fm.ops.peak_slices[-1])
+        peaks_2d = copy.copy(self.fm.ops.peak_slices[-1])
+        if peaks_2d is None:
+            self.print('No peaks have been found! Adjust parameters!')
+            return
         if self.roi_pos is not None:
             peaks_2d -= self.roi_pos #correct for roi_pos bug out of range, qrect for roi not resizable
         if len(peaks_2d.shape) > 0:

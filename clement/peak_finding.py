@@ -104,6 +104,8 @@ class Peak_finding():
                     coor_sp.append(coor_tmp + np.array((slice_x.start, slice_y.start)))
 
         coor = np.array(coor_sp)
+        if len(coor) == 0:
+            return None
         if roi:
             try:
                 return np.round(coor)[0]

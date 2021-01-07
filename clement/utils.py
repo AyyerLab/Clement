@@ -16,13 +16,13 @@ def wait_cursor(printer=None):
             if getattr(self, 'print') is not None:
                 printer = getattr(self, 'print')
                 printer('Run ', func.__name__)
-            print_done = False
+            #print_done = False
             try:
-                start = time.time()
+                #start = time.time()
                 func(self, *args, **kwargs)
-                end = time.time()
-                if (end-start) > 1 and printer is not None:
-                    printer('Done')
+                #end = time.time()
+                #if (end-start) > 1 and printer is not None:
+                #    printer('Done')
             except Exception as e:
                 QtWidgets.QApplication.restoreOverrideCursor()
                 if printer is not None:
