@@ -131,9 +131,9 @@ def add_transform_grid_line(parent, vbox, show_original=True):
     parent.transform_btn.clicked.connect(parent._affine_transform)
     parent.transform_btn.setEnabled(False)
     line.addWidget(parent.transform_btn)
-    parent.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', parent)
-    parent.rot_transform_btn.setEnabled(False)
-    line.addWidget(parent.rot_transform_btn)
+    #parent.rot_transform_btn = QtWidgets.QCheckBox('Disable Shearing', parent)
+    #parent.rot_transform_btn.setEnabled(False)
+    #line.addWidget(parent.rot_transform_btn)
     if show_original:
         parent.show_btn = QtWidgets.QCheckBox('Show original data', parent)
         parent.show_btn.setEnabled(False)

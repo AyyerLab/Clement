@@ -656,6 +656,10 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _mapping(self, state=None):
+        if self.ops.adjusted_params == False:
+            self.print('You have to adjust and save the peak finding parameters first!')
+            self.map_btn.setChecked(False)
+            return
         #self.align_btn.setEnabled(not self.map_btn.isChecked())
         self.ops.calc_mapping()
         self._update_imview()
@@ -746,7 +750,7 @@ class FMControls(BaseControls):
 
         self.define_btn.setEnabled(False)
         self.transform_btn.setEnabled(False)
-        self.rot_transform_btn.setEnabled(False)
+        #self.rot_transform_btn.setEnabled(False)
         self.show_btn.setEnabled(False)
         self.show_btn.setChecked(True)
         self.show_grid_btn.setEnabled(False)

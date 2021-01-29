@@ -86,7 +86,7 @@ class Project(QtWidgets.QWidget):
                 self.fm.ops.points = np.copy(self.fm.ops._orig_points)
                 self.fm.show_grid_btn.setEnabled(True)
                 self.fm._recalc_grid()
-            self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
+            #self.fm.rot_transform_btn.setChecked(fmdict['Rotation only'])
 
             try:
                 self.fm.ops._tf_points = np.array(fmdict['Transformed grid points'])
@@ -163,7 +163,7 @@ class Project(QtWidgets.QWidget):
                 em._recalc_grid()
                 em.show_grid_btn.setChecked(emdict['Show grid box'])
                 em.transform_btn.setEnabled(True)
-                em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                #em.rot_transform_btn.setChecked(emdict['Rotation only'])
             except KeyError:
                 pass
             try:
@@ -175,7 +175,7 @@ class Project(QtWidgets.QWidget):
                 em._recalc_grid()
                 em.show_grid_btn.setEnabled(True)
                 em.show_grid_btn.setChecked(emdict['Show grid box'])
-                em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                #em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
                     em.show_grid_btn.setChecked(False)
                     em.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
@@ -200,7 +200,7 @@ class Project(QtWidgets.QWidget):
                 em._recalc_grid()
                 em.show_grid_btn.setChecked(emdict['Show grid box'])
                 em.transform_btn.setEnabled(True)
-                em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                #em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
                     em.ops._tf_points = np.array(emdict['Transformed grid points'])
                     em._affine_transform()
@@ -216,7 +216,7 @@ class Project(QtWidgets.QWidget):
                 em.ops.points = np.copy(em.ops._orig_points_region)
                 em._recalc_grid()
                 em.show_grid_btn.setChecked(emdict['Show grid box'])
-                em.rot_transform_btn.setChecked(emdict['Rotation only'])
+                #em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
                     em.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
                     em._affine_transform()
@@ -483,7 +483,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Max projection'] = self.fm.max_proj_btn.isChecked()
 
         fmdict['Show grid box'] = self.fm.show_grid_btn.isChecked()
-        fmdict['Rotation only'] = self.fm.rot_transform_btn.isChecked()
+        #fmdict['Rotation only'] = self.fm.rot_transform_btn.isChecked()
         if self.fm.ops._orig_points is not None:
             fmdict['Original grid points'] = self.fm.ops._orig_points.tolist()
         if self.fm.ops._tf_points is not None:
@@ -519,7 +519,7 @@ class Project(QtWidgets.QWidget):
         emdict['Transpose'] = em.transp_btn.isChecked()
         emdict['Downsampling'] = em._downsampling
         emdict['Show grid box'] = em.show_grid_btn.isChecked()
-        emdict['Rotation only'] = em.rot_transform_btn.isChecked()
+        #emdict['Rotation only'] = em.rot_transform_btn.isChecked()
         if em.ops._orig_points is not None:
             emdict['Original grid points'] = em.ops._orig_points.tolist()
         if em.ops._tf_points is not None:

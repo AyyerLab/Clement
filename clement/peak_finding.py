@@ -312,6 +312,7 @@ class Peak_finding():
                 self.tf_peaks_z = np.copy(mean_values)
             else:
                 self.peaks_z = np.copy(mean_values)
+                #np.save('z_values_tilted.npy', self.peaks_z)
 
     def calc_local_z(self, data, point, transformed, tf_matrix=None, flips=None, shape=None):
         if transformed:
@@ -372,7 +373,7 @@ class Peak_finding():
         data = self.channel[x_min:x_max, y_min:y_max, :]
         if self.my_counter is None:
             self.my_counter = 0
-        np.save('virus{}.npy'.format(self.my_counter), data)
+        #np.save('virus{}.npy'.format(self.my_counter), data)
         self.my_counter += 1
         offset = np.mean(data)
         max_proj = np.max(data, axis=-1)
@@ -420,9 +421,10 @@ class Peak_finding():
         self.log('Model fit: ', r2)
         if r2 < 0.2:
             self.print('Model does not fit the data. You should consider selecting a different virus!')
+            return None, None, None
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size)
-        return init, perr[:3], pcov[:3,:3]
+            return init, perr[:3], pcov[:3,:3]
 
     def reset_peaks(self):
         self.peak_slices = None

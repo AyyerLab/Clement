@@ -462,6 +462,7 @@ class BaseControls(QtWidgets.QWidget):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.point_ref_btn.currentIndex())
         if init is None:
+            QtWidgets.QApplication.restoreOverrideCursor()
             return None
         self._pois_z.append(init[-1])
         if self.ops._transformed:
@@ -1074,7 +1075,7 @@ class BaseControls(QtWidgets.QWidget):
         self.clicked_points = []
 
         self.transform_btn.setEnabled(True)
-        self.rot_transform_btn.setEnabled(True)
+        #self.rot_transform_btn.setEnabled(True)
         self.show_grid_btn.setEnabled(True)
         self.show_grid_btn.setChecked(True)
 
@@ -1189,12 +1190,12 @@ class BaseControls(QtWidgets.QWidget):
 
         points_obj = grid_box.getState()['points']
         points = np.array([list((point[0], point[1])) for point in points_obj])
-        if self.rot_transform_btn.isChecked():
-            self.print('Performing rotation on %s image' % self.tag)
-            self.ops.calc_rot_transform(points)
-        else:
-            self.print('Performing affine transformation on %s image' % self.tag)
-            self.ops.calc_affine_transform(points)
+        #if self.rot_transform_btn.isChecked():
+        #    self.print('Performing rotation on %s image' % self.tag)
+        #    self.ops.calc_rot_transform(points)
+        #else:
+        self.print('Performing affine transformation on %s image' % self.tag)
+        self.ops.calc_affine_transform(points)
 
         self.show_btn.blockSignals(True)
         self.show_btn.setEnabled(True)
@@ -1203,7 +1204,7 @@ class BaseControls(QtWidgets.QWidget):
         self._recalc_grid(toggle_orig=toggle_orig)
         self._update_imview()
         self.transform_btn.setEnabled(False)
-        self.rot_transform_btn.setEnabled(False)
+        #self.rot_transform_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
 
         for i in range(len(self._points_corr)):
@@ -1291,11 +1292,11 @@ class BaseControls(QtWidgets.QWidget):
         self._update_imview()
         if self.ops._transformed:
             self.transform_btn.setEnabled(False)
-            self.rot_transform_btn.setEnabled(False)
+            #self.rot_transform_btn.setEnabled(False)
             self.define_btn.setEnabled(False)
         else:
             self.transform_btn.setEnabled(True)
-            self.rot_transform_btn.setEnabled(True)
+            #self.rot_transform_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
 
         if show_peaks:

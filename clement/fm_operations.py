@@ -305,7 +305,8 @@ class FM_ops(Peak_finding):
             if self.peak_slices is None or self.peak_slices[-1] is None:
                 self.peak_finding(self.max_proj_data[:, :, self._channel_idx], transformed=False)
             ref = np.array(self.reader.getFrame(channel=self._channel_idx, dtype='u2').astype('f4')).transpose((2, 1, 0))
-            self.fit_z(ref, transformed=False)
+            if self.peaks_z is None:
+                self.fit_z(ref, transformed=False)
             # fit plane to peaks with least squares to remove tilt
             peaks_2d = self.peak_slices[-1]
 
