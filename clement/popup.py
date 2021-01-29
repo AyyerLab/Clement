@@ -431,8 +431,14 @@ class Peak_Params(QtWidgets.QMainWindow):
         [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
 
     def _align_channel(self, idx, state):
+        recalc_peaks = False
+        if self.peak_btn.isChecked():
+            recalc_peaks = True
         self.fm._align_colors(idx, state)
         self._update_data()
+        if recalc_peaks:
+            self.peak_btn.setChecked(False)
+            self.peak_btn.setChecked(True)
 
     @utils.wait_cursor('print')
     def _draw_roi(self, checked):
