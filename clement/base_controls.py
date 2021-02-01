@@ -597,10 +597,11 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         if self.tab_index == 1 and self.tr_matrices is None:
-            # Check if Z-fitting has been done for FM peaks in case of FIB image
-            # If not, do the Z-fitting
-            self.print('Fitting Z-positions of FM peaks')
             self.other.fm_sem_corr = self.other.ops.update_fm_sem_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
+            if not self.ops._transformed:
+                self.print('You have to transform the SEM image first!')
+                self.show_peaks_btn.setChecked(False)
+                return
 
         if len(self.peaks) != 0:
             self.peaks = []
@@ -705,18 +706,23 @@ class BaseControls(QtWidgets.QWidget):
                 p.sigRegionChangeFinished.connect(lambda pt=p: self._peak_to_poi(pt))
         else:
             for p in self.peaks:
-                #p.sigRegionChangeFinished.disconnect()
+                p.sigRegionChangeFinished.disconnect()
                 p.translatable = False
 
     def _peak_to_poi(self, peak):
+        print('heeere')
         idx = self._check_point_idx(peak)
+        print(idx)
         if idx is None:
-            peak.peakMoved(None)
             self.imview.removeItem(peak)
+            peak.peakMoved(None)
             ref_ind = [i for i in range(len(self.peaks)) if self.peaks[i] == peak]
+            print(ref_ind)
             pos = self.other.ops.tf_peak_slices[-1][ref_ind[0]]
             point = QtCore.QPointF(pos[0] - self.other.size / 2, pos[1] - self.other.size / 2)
+            print(len(self._points_corr))
             self.other._draw_correlated_points(point, self.imview.getImageItem())
+            print(len(self._points_corr))
             self._points_corr[-1].setPos(peak.pos())
 
     def _check_point_idx(self, point):

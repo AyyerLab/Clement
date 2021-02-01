@@ -140,7 +140,7 @@ class GUI(QtWidgets.QMainWindow):
         options.addWidget(self.fm_controls)
         options.addLayout(vbox)
 
-        self.tabs.currentChanged.connect(self.select_tab)
+        self.tabs.currentChanged.connect(self.change_tab)
         # Connect controllers
         self.fm_controls.err_plt_btn.clicked.connect(lambda: self._show_scatter(idx=self.tabs.currentIndex()))
         self.fm_controls.convergence_btn.clicked.connect(lambda: self._show_convergence(idx=self.tabs.currentIndex()))
@@ -233,7 +233,7 @@ class GUI(QtWidgets.QMainWindow):
         self.tabs.setCurrentIndex(idx)
 
     @utils.wait_cursor('print')
-    def select_tab(self, idx):
+    def change_tab(self, idx):
         self.em_imview.setCurrentIndex(idx)
         self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.tem_controls)
 

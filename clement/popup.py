@@ -624,8 +624,7 @@ class Merge(QtGui.QMainWindow):
         self.size = self.parent.fm_controls.size
         self.lines = None
         self.pixel_size = self.parent.fm_controls.other.ops.pixel_size
-        self.lambda_1 = None
-        self.lambda_2 = None
+        self.lambda_list = []
         self.theta = None
         self.lamella_pos = None
         self.lamella_size = None
@@ -775,7 +774,7 @@ class Merge(QtGui.QMainWindow):
         self.lamella_btn.textChanged.connect(self._set_lamella_size)
         self.draw_lines_btn = QtWidgets.QCheckBox('Draw lamella')
         self.draw_lines_btn.setEnabled(self.fib)
-        self.draw_lines_btn.stateChanged.connect(self._draw_lines)
+        self.draw_lines_btn.stateChanged.connect(self._toggle_lines)
         self.lamella_btn.setText('300')
         line.addWidget(label)
         line.addWidget(self.lamella_btn)
@@ -876,6 +875,13 @@ class Merge(QtGui.QMainWindow):
         if event.button() == QtCore.Qt.RightButton:
             event.ignore()
             return
+        if self.draw_lines_btn.isChecked():
+            pos = self.imview_popup.getImageItem().mapFromScene(event.pos())
+            idx = self._check_ellipse_index(pos)
+            if idx is not None:
+                self._draw_lines(idx)
+            else:
+                self.print('You have to select a POI!')
 
     @utils.wait_cursor('print')
     def _draw_correlated_points_popup(self, pos, item, tf_cov):
@@ -894,7 +900,8 @@ class Merge(QtGui.QMainWindow):
         point.removeHandle(0)
         self.imview_popup.addItem(point)
         self._clicked_points_popup.append(point)
-
+        print('calced point: ', point)
+        self.lambda_list.append((lambda_1, lambda_2))
         self.counter_popup += 1
         annotation = pg.TextItem(str(self.counter_popup), color=(0, 255, 0), anchor=(0, 0))
         annotation.setPos(pos[0] + 5, pos[1] + 5)
@@ -991,8 +998,11 @@ class Merge(QtGui.QMainWindow):
                 self.stage_positions_popup = None
                 self.coordinates = []
         else:
-            self.coordinates = np.array([self.downsampling * np.array([point.x() + self.lambda_1 / 2, point.y() + self.lambda_2 / 2]) for point in
-                           self._clicked_points_popup])
+            coordinates = []
+            for i in range(len(self._clicked_points_popup)):
+                coordinates.append(self.downsampling * np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2,
+                                                                 self._clicked_points_popup[i].pos().y() + self.lambda_list[i][1] / 2]))
+            self.coordinates = np.array(coordinates)
             self.coordinates[:,1] = self.data_popup.shape[1] - self.coordinates[:,1]
 
             #if self.fib:
@@ -1074,7 +1084,6 @@ class Merge(QtGui.QMainWindow):
             self._current_slice_popup = num
             self.slice_select_btn_popup.clearFocus()
 
-
     @utils.wait_cursor('print')
     def _set_lamella_size(self, state=None):
         if self.lamella_btn.text() is not '':
@@ -1093,31 +1102,45 @@ class Merge(QtGui.QMainWindow):
             self.lines[0].setPos(pos+k)
             self.lamella_pos = pos + k / 2
 
+    def _check_ellipse_index(self, pos):
+        point = np.array([pos.x(), pos.y()])
+        idx = None
+        for i in range(len(self.lambda_list)):
+            poi = np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2 ,
+                            self._clicked_points_popup[i].y() + self.lambda_list[i][1] / 2])
+            diff = point - poi
+            dist = np.sqrt(diff[0]**2 + diff[1]**2)
+            ref = np.sqrt(self.lambda_list[i][0]**2 + self.lambda_list[i][1]**2)
+            if dist <= ref:
+                idx = i
+                break
+        return idx
+
     @utils.wait_cursor('print')
-    def _draw_lines(self, checked):
+    def _toggle_lines(self, checked):
         if checked:
+            self.print('Selct a POI!')
             self.lines = []
-            if self.lamella_pos is None:
-                if len(self._clicked_points_popup) > 0:
-                    point = self._clicked_points_popup[-1].pos()
-                    self.lamella_pos = point.y() + self.lambda_2 / 2
-                else:
-                    self.lamella_pos = self.data_popup.shape[0] // 2
-
-            k = self.lamella_size / self.pixel_size[1] / 2
-            line = pg.InfiniteLine(pos=self.lamella_pos + k, angle=0, pen='r', hoverPen='c', movable=True,
-                                   bounds=[0, self.data_popup.shape[0]])
-            line2 = pg.InfiniteLine(pos=self.lamella_pos - k, angle=0, pen='r', hoverPen='c', movable=True,
-                                    bounds=[0, self.data_popup.shape[0]])
-            line.sigPositionChanged.connect(lambda : self._update_lines(idx=0))
-            line2.sigPositionChanged.connect(lambda : self._update_lines(idx=1))
-
-            self.lines.append(line)
-            self.lines.append(line2)
-            for i in range(len(self.lines)):
-                self.imview_popup.addItem(self.lines[i])
         else:
             [self.imview_popup.removeItem(line) for line in self.lines]
+
+    @utils.wait_cursor('print')
+    def _draw_lines(self, idx):
+        point = self._clicked_points_popup[idx].pos()
+        self.lamella_pos = point.y() + self.lambda_list[idx][1] / 2
+
+        k = self.lamella_size / self.pixel_size[1] / 2
+        line = pg.InfiniteLine(pos=self.lamella_pos + k, angle=0, pen='r', hoverPen='c', movable=True,
+                               bounds=[0, self.data_popup.shape[0]])
+        line2 = pg.InfiniteLine(pos=self.lamella_pos - k, angle=0, pen='r', hoverPen='c', movable=True,
+                                bounds=[0, self.data_popup.shape[0]])
+        line.sigPositionChanged.connect(lambda : self._update_lines(idx=0))
+        line2.sigPositionChanged.connect(lambda : self._update_lines(idx=1))
+
+        self.lines.append(line)
+        self.lines.append(line2)
+        for i in range(len(self.lines)):
+            self.imview_popup.addItem(self.lines[i])
 
     @utils.wait_cursor('print')
     def _set_theme_popup(self, name):
