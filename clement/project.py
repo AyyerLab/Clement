@@ -80,6 +80,14 @@ class Project(QtWidgets.QWidget):
                 if self.fm.ops._aligned_channels[i]:
                     self.fm.peak_controls.action_btns[i].setChecked(True)
             self.fm.peak_controls.save_btn.click()
+
+        try:
+            pois_raw = fmdict['Pois raw']
+            qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(pois_raw)]
+            for i in range(len(qpoints)):
+                self.fm._draw_pois(qpoints[i], self.fm.imview.getImageItem())
+        except KeyError:
+            pass
         try:
             if 'Original grid points' in fmdict:
                 self.fm.ops._orig_points = np.array(fmdict['Original grid points'])
@@ -313,7 +321,7 @@ class Project(QtWidgets.QWidget):
             [circle.setPen(0, 255, 0) for circle in fm_circles]
             [circle.removeHandle(0) for circle in fm_circles]
             self.fm._points_corr = copy.copy(fm_circles)
-            self.fm._points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
+            self.fm.points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
             self.fm._orig_points_corr = copy.copy(fmdict['Original correlated points history'][i])
 
             em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter[idx]]]
@@ -323,7 +331,7 @@ class Project(QtWidgets.QWidget):
             [circle.removeHandle(0) for circle in em_circles]
 
             em._points_corr = copy.copy(em_circles)
-            em._points_corr_z = copy.copy(emdict['Correlated points z history'][counter[idx]])
+            em.points_corr_z = copy.copy(emdict['Correlated points z history'][counter[idx]])
             em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter[idx]])
             em.ops._refine_matrix = np.array(emdict['Refinement history'][counter[idx]])
 
@@ -413,8 +421,6 @@ class Project(QtWidgets.QWidget):
                     qpoint = QtCore.QPointF(points[i][0], points[i][1])
                     self.popup._draw_correlated_points_popup(qpoint, self.popup.imview_popup.getImageItem())
 
-        print('Data Popup:', self.popup.data_popup.shape)
-
     def _save_project(self):
         if self.fm.ops is not None or self.sem.ops is not None or self.tem.ops is not None:
             if self.fm.select_btn.isChecked():
@@ -494,6 +500,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
         fmdict['FIB flips'] = self.fm._fib_flips
+
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
         fmdict['Original correlated points'] = np.array(self.fm._orig_points_corr).tolist()
@@ -501,8 +508,11 @@ class Project(QtWidgets.QWidget):
         fmdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                self.fm._points_corr_history]
         fmdict['Correlated points z history'] = [np.array(zhist).tolist() for zhist in self.fm._points_corr_z_history]
-        fmdict['Original correlated points history'] = np.array(self.fm._orig_points_corr_history).tolist()
+        fmdict['Original correlated points history'] = self.fm._orig_points_corr_history
         fmdict['FIB vs SEM history'] = self.fm._fib_vs_sem_history
+
+        pois_raw = [[p.x(), p.y()] for p in self.fm._pois_raw]
+        fmdict['Pois raw'] = pois_raw
 
     def _save_em(self, project, sem):
         emdict = {}
@@ -542,9 +552,9 @@ class Project(QtWidgets.QWidget):
         emdict['Correlated points indices'] = em._points_corr_indices
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                em._points_corr_history]
-        emdict['Correlated points z history'] = np.array(em._points_corr_z_history).tolist()
-        emdict['Original correlated points history'] = np.array(em._orig_points_corr_history).tolist()
-        emdict['Size history'] = np.array(em._size_history).tolist()
+        emdict['Correlated points z history'] = em._points_corr_z_history
+        emdict['Original correlated points history'] = em._orig_points_corr_history
+        emdict['Size history'] = em._size_history
         emdict['Refined'] = em._refined
         emdict['Refinement history'] = np.array(em.ops._refine_history).tolist()
 
@@ -573,9 +583,9 @@ class Project(QtWidgets.QWidget):
         fibdict['Correlated points indices'] = self.fib._points_corr_indices
         fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                 self.fib._points_corr_history]
-        fibdict['Correlated points z history'] = np.array(self.fib._points_corr_z_history).tolist()
-        fibdict['Original correlated points history'] = np.array(self.fib._orig_points_corr_history).tolist()
-        fibdict['Size history'] = np.array(self.fib._size_history).tolist()
+        fibdict['Correlated points z history'] = self.fib._points_corr_z_history
+        fibdict['Original correlated points history'] = self.fib._orig_points_corr_history
+        fibdict['Size history'] = self.fib._size_history
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
 

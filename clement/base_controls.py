@@ -60,19 +60,13 @@ class BaseControls(QtWidgets.QWidget):
         self.print = None
 
         self._box_coordinate = None
-        self._pois = []
-        self._pois_sizes = []
+
         self._pois_raw = []
-        self._pois_base = []
-        self._pois_z = []
-        self._pois_err = []
-        self._pois_cov = []
-        self._points_raw = []
-        self._points_base = []
+
         self._points_corr = []
-        self._points_corr_z = []
         self._orig_points_corr = []
         self._points_corr_indices = []
+
         self._refined = False
         self.diff = None
         self._err = [None, None, None]
@@ -86,6 +80,17 @@ class BaseControls(QtWidgets.QWidget):
         self._fib_vs_sem_history = []
         self._size_history = []
         self._fib_flips = []
+
+        self.pois = []
+        self.pois_sizes = []
+        self.pois_base = []
+        self.pois_z = []
+        self.pois_err = []
+        self.pois_cov = []
+
+        self.points_raw = []
+        self.points_base = []
+        self.points_corr_z = []
 
         self.flips = [False, False, False, False]
         self.tr_matrices = None
@@ -113,6 +118,11 @@ class BaseControls(QtWidgets.QWidget):
         self.show_merge = False
         self.progress = 0
         self.cov_matrix = None
+
+
+
+
+
 
     def _init_ui(self):
         self.log('This message should not be seen. Please override _init_ui')
@@ -191,7 +201,7 @@ class BaseControls(QtWidgets.QWidget):
                 [self.imview.removeItem(anno) for anno in self.anno_list]
                 self.anno_list = []
                 self._points_corr_indices = []
-                self._points_corr_z = []
+                self.points_corr_z = []
 
             self._update_tr_matrices()
 
@@ -254,7 +264,7 @@ class BaseControls(QtWidgets.QWidget):
         if checked:
             if self.select_btn.isChecked():
                 self.select_btn.setChecked(False)
-            self.poi_counter = len(self._pois)
+            self.poi_counter = len(self.pois)
             self.fliph.setEnabled(False)
             self.flipv.setEnabled(False)
             self.transpose.setEnabled(False)
@@ -272,8 +282,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.transpose.setEnabled(True)
                 self.rotate.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
-
-
 
     @utils.wait_cursor('print')
     def _define_corr_toggled(self, checked):
@@ -364,7 +372,7 @@ class BaseControls(QtWidgets.QWidget):
         init_base = copy.copy(init)
         if self.ops._transformed:
             self._calc_base_points(init[:2], poi=True)
-            init_base[:2] = [self._pois_base[-1].x(), self._pois_base[-1].y()]
+            init_base[:2] = [self.pois_base[-1].x(), self.pois_base[-1].y()]
         self._calc_raw_points(init_base[:2], poi=True)
         if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
             self._transform_pois(init[:2], poi=True)
@@ -375,7 +383,7 @@ class BaseControls(QtWidgets.QWidget):
             self.other.popup._update_poi(pos)
 
     def _calc_ellipses(self, counter):
-        cov_matrix = np.copy(self._pois_cov[counter])
+        cov_matrix = np.copy(self.pois_cov[counter])
         if self.ops._transformed:
             cov_matrix = self._update_cov_matrix(cov_matrix)
         eigvals, eigvecs = np.linalg.eigh(cov_matrix[:2,:2])
@@ -413,7 +421,7 @@ class BaseControls(QtWidgets.QWidget):
         cmap = matplotlib.cm.get_cmap('cool')
         lin = np.linspace(0, 1, 100)
         colors = cmap(lin)
-        idx = np.argmin(np.abs(lin-self._pois_err[-1][-1]))
+        idx = np.argmin(np.abs(lin-self.pois_err[-1][-1]))
         color = colors[idx]
         color = matplotlib.colors.to_hex(color)
 
@@ -432,8 +440,8 @@ class BaseControls(QtWidgets.QWidget):
         point_obj.removeHandle(0)
         self.imview.addItem(point_obj)
 
-        self._pois.append(point_obj)
-        self._pois_sizes.append(size)
+        self.pois.append(point_obj)
+        self.pois_sizes.append(size)
         self.poi_counter += 1
         annotation_obj = pg.TextItem(str(self.poi_counter), color=color, anchor=(0, 0))
         annotation_obj.setPos(pos.x() + 1, pos.y() + 1)
@@ -450,7 +458,7 @@ class BaseControls(QtWidgets.QWidget):
         init_base = copy.copy(init)
         if self.ops._transformed:
             self._calc_base_points(init[:2])
-            init_base[:2] = [self._points_base[-1].x() + self.size/2, self._points_base[-1].y()+self.size/2]
+            init_base[:2] = [self.points_base[-1].x() + self.size/2, self.points_base[-1].y()+self.size/2]
         self._calc_raw_points(init_base[:2])
         if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
             self._transform_pois(init[:2])
@@ -464,12 +472,12 @@ class BaseControls(QtWidgets.QWidget):
         if init is None:
             QtWidgets.QApplication.restoreOverrideCursor()
             return None
-        self._pois_z.append(init[-1])
+        self.pois_z.append(init[-1])
         if self.ops._transformed:
             init = self.ops.update_points(np.expand_dims(init[:2], axis=0))[0]
 
-        self._pois_err.append(err.tolist())
-        self._pois_cov.append(cov.tolist())
+        self.pois_err.append(err.tolist())
+        self.pois_cov.append(cov.tolist())
         QtWidgets.QApplication.restoreOverrideCursor()
         return init
 
@@ -488,7 +496,7 @@ class BaseControls(QtWidgets.QWidget):
         if z is None:
             self.print('z is None, something went wrong here... Try another bead!')
             return None, None, None
-        self._points_corr_z.append(z)
+        self.points_corr_z.append(z)
 
         if ind is not None:
             if pos is not None:
@@ -541,7 +549,7 @@ class BaseControls(QtWidgets.QWidget):
         if self.other.tab_index == 1:
             transf = np.dot(self.other.tr_matrices, init)
             transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
-            self.other._points_corr_z.append(transf[2])
+            self.other.points_corr_z.append(transf[2])
             if self.other._refined:
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
         else:
@@ -710,19 +718,14 @@ class BaseControls(QtWidgets.QWidget):
                 p.translatable = False
 
     def _peak_to_poi(self, peak):
-        print('heeere')
         idx = self._check_point_idx(peak)
-        print(idx)
         if idx is None:
             self.imview.removeItem(peak)
             peak.peakMoved(None)
             ref_ind = [i for i in range(len(self.peaks)) if self.peaks[i] == peak]
-            print(ref_ind)
             pos = self.other.ops.tf_peak_slices[-1][ref_ind[0]]
             point = QtCore.QPointF(pos[0] - self.other.size / 2, pos[1] - self.other.size / 2)
-            print(len(self._points_corr))
             self.other._draw_correlated_points(point, self.imview.getImageItem())
-            print(len(self._points_corr))
             self._points_corr[-1].setPos(peak.pos())
 
     def _check_point_idx(self, point):
@@ -750,26 +753,26 @@ class BaseControls(QtWidgets.QWidget):
                     points_tf.append(point_tf[:2])
                     pos = QtCore.QPointF(points_tf[i][0], points_tf[i][1])
                     self._draw_fm_pois(np.array([points_tf[i][0], points_tf[i][1]]), self.imview.getImageItem())
-                    self._pois_base.append(pos)
+                    self.pois_base.append(pos)
             else:
                 point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
                 pos = QtCore.QPointF(point_tf[0], point_tf[1])
-                self._pois_base.append(pos)
+                self.pois_base.append(pos)
         else:
             if point is None:
                 points_tf = []
-                for i in range(len(self._points_raw)):
-                    pos = self._points_raw[i]
+                for i in range(len(self.points_raw)):
+                    pos = self.points_raw[i]
                     point = np.array([pos.x() + self.size/2, pos.y() + self.size/2])
                     point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
                     points_tf.append(point_tf[:2])
                     pos = QtCore.QPointF(points_tf[i][0] - self.size / 2, points_tf[i][1] - self.size / 2)
                     self._draw_fm_points(pos, self.imview.getImageItem())
-                    self._points_base.append(pos)
+                    self.points_base.append(pos)
             else:
                 point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
                 pos = QtCore.QPointF(point_tf[0] - self.size / 2, point_tf[1] - self.size / 2)
-                self._points_base.append(pos)
+                self.points_base.append(pos)
 
     def _calc_base_points(self, point, poi=False):
         point = np.copy(point)
@@ -788,10 +791,10 @@ class BaseControls(QtWidgets.QWidget):
 
         if poi:
             pos = QtCore.QPointF(point[0], point[1])
-            self._pois_base.append(pos)
+            self.pois_base.append(pos)
         else:
             pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
-            self._points_base.append(pos)
+            self.points_base.append(pos)
 
     def _calc_raw_points(self, point, poi=False):
         point = np.copy(point)
@@ -808,12 +811,12 @@ class BaseControls(QtWidgets.QWidget):
                 pos = QtCore.QPointF(pos_raw[0] - self.size / 2, pos_raw[1] - self.size / 2)
             else:
                 pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
-            self._points_raw.append(pos)
+            self.points_raw.append(pos)
 
     def _update_pois_and_points(self):
         points_base = []
-        for i in range(len(self._points_base)):
-            pos = self._points_base[i]
+        for i in range(len(self.points_base)):
+            pos = self.points_base[i]
             points_base.append(np.array([pos.x() + self.size/2, pos.y() + self.size/2]))
         if len(points_base) > 0:
             points_updated = self.ops.update_points(np.array(points_base))
@@ -821,8 +824,8 @@ class BaseControls(QtWidgets.QWidget):
                 pos = QtCore.QPointF(points_updated[i][0] - self.size / 2, points_updated[i][1] - self.size / 2)
                 self._draw_fm_points(pos, self.imview.getImageItem())
         pois_base = []
-        for i in range(len(self._pois_base)):
-            pos = self._pois_base[i]
+        for i in range(len(self.pois_base)):
+            pos = self.pois_base[i]
             pois_base.append(np.array([pos.x(), pos.y()]))
         if len(pois_base) > 0:
             pois_updated = self.ops.update_points(np.array(pois_base))
@@ -889,23 +892,23 @@ class BaseControls(QtWidgets.QWidget):
 
     def _remove_pois(self, point, remove_base=True):
         idx = None
-        for i in range(len(self._pois)):
-            if self._pois[i] == point:
+        for i in range(len(self.pois)):
+            if self.pois[i] == point:
                 idx = i
                 break
-        self.imview.removeItem(self._pois[idx])
+        self.imview.removeItem(self.pois[idx])
         self.imview.removeItem(self.poi_anno_list[idx])
-        self._pois.remove(self._pois[idx])
+        self.pois.remove(self.pois[idx])
         self.poi_anno_list.remove(self.poi_anno_list[idx])
         if remove_base:
-            self._pois_z.remove(self._pois_z[idx])
-            self._pois_sizes.remove(self._pois_sizes[idx])
-            self._pois_err.remove(self._pois_err[idx])
-            self._pois_cov.remove(self._pois_cov[idx])
-            if len(self._pois_base) > 0:
-                self._pois_base.remove(self._pois_base[idx])
+            self.pois_z.remove(self.pois_z[idx])
+            self.pois_sizes.remove(self.pois_sizes[idx])
+            self.pois_err.remove(self.pois_err[idx])
+            self.pois_cov.remove(self.pois_cov[idx])
+            if len(self.pois_base) > 0:
+                self.pois_base.remove(self.pois_base[idx])
 
-        for i in range(idx, len(self._pois)):
+        for i in range(idx, len(self.pois)):
             self.poi_anno_list[i].setText(str(i + 1))
 
         self.poi_counter -= 1
@@ -914,7 +917,7 @@ class BaseControls(QtWidgets.QWidget):
         idx = self._check_point_idx(point)
         num_beads = len(self._points_corr)
         if remove_raw:
-            self._points_raw.remove(self._points_raw[idx])
+            self.points_raw.remove(self.points_raw[idx])
 
         #Remove FM beads information
         for i in range(len(self.peaks)):
@@ -930,16 +933,16 @@ class BaseControls(QtWidgets.QWidget):
 
         self.imview.removeItem(self._points_corr[idx])
         self._points_corr.remove(self._points_corr[idx])
-        if remove_base and len(self._points_base) > 0:
-            self._points_base.remove(self._points_base[idx])
+        if remove_base and len(self.points_base) > 0:
+            self.points_base.remove(self.points_base[idx])
         self._orig_points_corr.remove(self._orig_points_corr[idx])
         if len(self.anno_list) > 0:
             self.imview.removeItem(self.anno_list[idx])
             self.anno_list.remove(self.anno_list[idx])
         if len(self._points_corr_indices) > 0:
             self._points_corr_indices.remove(self._points_corr_indices[idx])
-        if self.other.tab_index == 1 and len(self._points_corr_z) > 0:
-            self._points_corr_z.remove(self._points_corr_z[idx])
+        if self.other.tab_index == 1 and len(self.points_corr_z) > 0:
+            self.points_corr_z.remove(self.points_corr_z[idx])
         for i in range(idx, len(self._points_corr)):
             self.anno_list[i].setText(str(i+1))
             self._points_corr_indices[i] -= 1
@@ -955,8 +958,8 @@ class BaseControls(QtWidgets.QWidget):
             if len(self.other._points_corr_indices) > 0:
                 self.other._points_corr_indices.remove(self.other._points_corr_indices[idx])
             if self.other.tab_index == 1:
-                if len(self.other._points_corr_z) > 0:
-                    self.other._points_corr_z.remove(self.other._points_corr_z[idx])
+                if len(self.other.points_corr_z) > 0:
+                    self.other.points_corr_z.remove(self.other.points_corr_z[idx])
             for i in range(idx, len(self._points_corr)):
                 self.other.anno_list[i].setText(str(i+1))
                 self.other._points_corr_indices[i] -= 1
@@ -986,13 +989,13 @@ class BaseControls(QtWidgets.QWidget):
         self.temcontrols._orig_points_corr = []
 
         #Remove base point
-        self._points_base = []
-        self.fibcontrols._points_base = []
-        self.semcontrols._points_base = []
-        self.temcontrols._points_base = []
+        self.points_base = []
+        self.fibcontrols.points_base = []
+        self.semcontrols.points_base = []
+        self.temcontrols.points_base = []
 
         #Remove raw_points
-        self._points_raw = []
+        self.points_raw = []
 
         # Remove annotation
         if len(self.anno_list) > 0:
@@ -1012,16 +1015,16 @@ class BaseControls(QtWidgets.QWidget):
         self.temcontrols._points_corr_indices = []
 
         # Remove FIB z-position
-        self._points_corr_z = []
-        self.fibcontrols._points_corr_z = []
-        self.semcontrols._points_corr_z = []
-        self.temcontrols._points_corr_z = []
+        self.points_corr_z = []
+        self.fibcontrols.points_corr_z = []
+        self.semcontrols.points_corr_z = []
+        self.temcontrols.points_corr_z = []
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0], remove_base=False)
-        for i in range(len(self._pois)):
-            self._remove_pois(self._pois[0], remove_base=False)
+        for i in range(len(self.pois)):
+            self._remove_pois(self.pois[0], remove_base=False)
         self.fixed_orientation = False
 
     def _store_fib_flips(self, idx):
@@ -1215,8 +1218,8 @@ class BaseControls(QtWidgets.QWidget):
 
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0], remove_base=False)
-        for i in range(len(self._pois)):
-            self._remove_pois(self._pois[0], remove_base=False)
+        for i in range(len(self.pois)):
+            self._remove_pois(self.pois[0], remove_base=False)
         if hasattr(self, 'select_btn'):
             self.point_ref_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
@@ -1233,13 +1236,12 @@ class BaseControls(QtWidgets.QWidget):
                 elif not hasattr(self, 'tab_index') and self.other.tab_index != 1:
                     self.other.show_peaks_btn.setEnabled(True)
 
-
     def _show_original(self):
         if self.ops is None:
             return
-        [self.imview.removeItem(poi) for poi in self._pois]
+        [self.imview.removeItem(poi) for poi in self.pois]
         [self.imview.removeItem(anno) for anno in self.poi_anno_list]
-        self._pois = []
+        self.pois = []
         self.poi_anno_list = []
         self.poi_counter = 0
 
@@ -1314,8 +1316,8 @@ class BaseControls(QtWidgets.QWidget):
             if self.ops._transformed:
                 self._update_pois_and_points()
             else:
-                for i in range(len(self._points_raw)):
-                    self._draw_fm_points(self._points_raw[i], self.imview.getImageItem())
+                for i in range(len(self.points_raw)):
+                    self._draw_fm_points(self.points_raw[i], self.imview.getImageItem())
                 for i in range(len(self._pois_raw)):
                     init = np.array([self._pois_raw[i].x(), self._pois_raw[i].y()])
                     self._draw_fm_pois(init, self.imview.getImageItem())
@@ -1341,10 +1343,10 @@ class BaseControls(QtWidgets.QWidget):
         src = np.array([[point[0], point[1]] for point in self.other._orig_points_corr])
 
         self._points_corr_history.append(copy.copy(self._points_corr))
-        self._points_corr_z_history.append(copy.copy(self._points_corr_z))
+        self._points_corr_z_history.append(copy.copy(self.points_corr_z))
         self._orig_points_corr_history.append(copy.copy(self._orig_points_corr))
         self.other._points_corr_history.append(copy.copy(self.other._points_corr))
-        self.other._points_corr_z_history.append(copy.copy(self.other._points_corr_z))
+        self.other._points_corr_z_history.append(copy.copy(self.other.points_corr_z))
         self.other._orig_points_corr_history.append(copy.copy(self.other._orig_points_corr))
         self._fib_vs_sem_history.append(self.other.tab_index)
         self.other._size_history.append(self.other.size)
@@ -1379,10 +1381,10 @@ class BaseControls(QtWidgets.QWidget):
             self.other.show_peaks_btn.setChecked(True)
 
         self._points_corr = []
-        self._points_corr_z = []
+        self.points_corr_z = []
         self._orig_points_corr = []
         self.other._points_corr = []
-        self.other._points_corr_z = []
+        self.other.points_corr_z = []
         self.other._orig_points_corr = []
 
     def _undo_refinement(self):
@@ -1457,7 +1459,7 @@ class BaseControls(QtWidgets.QWidget):
                 transf = self.other.tr_matrices @ init
                 self.refined_points.append(transf[:2])
         else:
-            orig_fm_points_z = np.copy(self._points_corr_z)
+            orig_fm_points_z = np.copy(self.points_corr_z)
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 z = orig_fm_points_z[i]
@@ -1611,8 +1613,8 @@ class BaseControls(QtWidgets.QWidget):
         self.other.counter = 0
         self._points_corr = []
         self.other._points_corr = []
-        self._points_corr_z = []
-        self.other._points_corr_z = []
+        self.points_corr_z = []
+        self.other.points_corr_z = []
         self._orig_points_corr = []
         self.other._orig_points_corr = []
         self._points_corr_indices = []
