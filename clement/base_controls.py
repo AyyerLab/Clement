@@ -610,7 +610,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.print('You have to transform the SEM image first!')
                 self.show_peaks_btn.setChecked(False)
                 return
-
         if len(self.peaks) != 0:
             self.peaks = []
 

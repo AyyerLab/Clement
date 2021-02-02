@@ -1047,9 +1047,8 @@ class Merge(QtGui.QMainWindow):
         lamella_pos = []
         lamella_strings = ['Lamella upper boundary:', 'Lamella lower boundary:' ]
         if self.lines is not None:
-            for k in range(len(self.lines)):
-                for i in range(len(self.lines[k])):
-                    lamella_pos.append([lamella_strings[i], self.lines[k][i].pos().y()])
+            for i in range(len(self.lines)):
+                lamella_pos.append([lamella_strings[i], self.lines[i].pos().y()])
 
         with open(fname + '.txt', 'w', newline='') as f:
             csv.writer(f, delimiter=' ').writerows(enumerated)
@@ -1093,14 +1092,14 @@ class Merge(QtGui.QMainWindow):
                 self.draw_lines_btn.setChecked(False)
                 self.draw_lines_btn.setChecked(True)
 
-    def _update_lines(self, idx, i):
-        pos = self.lines[idx][i].pos().y()
+    def _update_lines(self, i):
+        pos = self.lines[i].pos().y()
         k = self.lamella_size / self.pixel_size[1]
         if i == 0:
-            self.lines[idx][1].setPos(pos-k)
+            self.lines[1].setPos(pos-k)
             self.lamella_pos = pos - k / 2
         else:
-            self.lines[idx][0].setPos(pos+k)
+            self.lines[0].setPos(pos+k)
             self.lamella_pos = pos + k / 2
 
     def _check_ellipse_index(self, pos):
@@ -1123,7 +1122,7 @@ class Merge(QtGui.QMainWindow):
             self.print('Selct a POI!')
             self.lines = []
         else:
-            [self.imview_popup.removeItem(line[k]) for line in self.lines for k in line]
+            [self.imview_popup.removeItem(line) for line in self.lines]
 
     @utils.wait_cursor('print')
     def _draw_lines(self, idx):
@@ -1136,12 +1135,15 @@ class Merge(QtGui.QMainWindow):
         line2 = pg.InfiniteLine(pos=self.lamella_pos - k, angle=0, pen='r', hoverPen='c', movable=True,
                                 bounds=[0, self.data_popup.shape[0]])
 
-        line.sigPositionChanged.connect(lambda : self._update_lines(copy.copy(len(self.lines)-1), 0))
-        line2.sigPositionChanged.connect(lambda : self._update_lines(copy.copy(len(self.lines)-1), 1))
-        self.lines.append((line, line2))
-
-        for i in range(len(self.lines[-1])):
-            self.imview_popup.addItem(self.lines[-1][i])
+        line.sigPositionChanged.connect(lambda : self._update_lines(0))
+        line2.sigPositionChanged.connect(lambda : self._update_lines(1))
+        for i in range(len(self.lines)):
+            self.imview_popup.removeItem(self.lines[i])
+        self.lines = []
+        self.lines.append(line)
+        self.lines.append(line2)
+        for i in range(len(self.lines)):
+            self.imview_popup.addItem(self.lines[i])
 
     @utils.wait_cursor('print')
     def _set_theme_popup(self, name):

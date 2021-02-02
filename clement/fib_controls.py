@@ -97,6 +97,8 @@ class FIBControls(BaseControls):
             self.sigma_btn.setEnabled(True)
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
+            if self.sem_ops is not None and self.sem_ops._tf_points is not None:
+                self.ops._transformed = True
             self.show_grid_btn.setChecked(False)
         else:
             self.print('You have to choose a file first!')
