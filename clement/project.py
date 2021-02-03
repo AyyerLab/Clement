@@ -46,7 +46,7 @@ class Project(QtWidgets.QWidget):
             self._load_em(project, sem=True)
             self._load_fib(project)
             self._load_em(project, sem=False)
-            self._load_base(project)
+            #self._load_base(project)
 
     def _load_fm(self, project):
         if 'FM' not in project:
@@ -234,6 +234,13 @@ class Project(QtWidgets.QWidget):
                 if em.select_region_btn.isChecked():
                     em.select_region_btn.setChecked(False)
 
+        if emdict['Refined']:
+            if sem:
+                idx = 0
+            else:
+                idx = 2
+            self._load_base(project, idx)
+
         em.show_assembled_btn.setChecked(emdict['Show assembled'])
         em.show_btn.setChecked(emdict['Show original'])
 
@@ -277,7 +284,10 @@ class Project(QtWidgets.QWidget):
             if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
                 self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
 
-    def _load_base(self, project):
+        if fibdict['Refined']:
+            self._load_base(project, idx=1)
+
+    def _load_base(self, project, idx):
         if self.show_fib:
             if 0 in self.fm._fib_flips:
                 self.fm.transpose.setChecked(not self.fm.transpose.isChecked())
@@ -294,62 +304,60 @@ class Project(QtWidgets.QWidget):
         self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
         fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
         counter = [0, 0, 0]
+        if idx == 0:
+            emdict = project['SEM']
+            em = self.sem
+            em.fib = False
+        elif idx == 1:
+            emdict = project['FIB']
+            em = self.fib
+            em.fib = True
+        else:
+            emdict = project['TEM']
+            em = self.tem
+            em.fib = False
         for i in range(len(copy.copy(fmdict['FIB vs SEM history']))):
-            if fib_vs_sem_history[i] == 0:
-                emdict = project['SEM']
-                em = self.sem
-                em.fib = False
-                idx = 0
-            elif fib_vs_sem_history[i] == 1:
-                emdict = project['FIB']
-                em = self.fib
-                em.fib = True
-                idx = 1
-            else:
-                emdict = project['TEM']
-                em = self.tem
-                em.fib = False
-                idx = 2
-            self.parent.tabs.setCurrentIndex(idx)
-            self.fm.other = em
+            if fib_vs_sem_history[i] == idx:
+                self.parent.tabs.setCurrentIndex(idx)
+                self.fm.other = em
 
-            self.fm.select_btn.setChecked(True)
-            em.size = emdict['Size history'][counter[idx]]
-            fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
-            fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
-                                       movable=True, removable=True) for i in range(len(fm_qpoints))]
-            [circle.setPen(0, 255, 0) for circle in fm_circles]
-            [circle.removeHandle(0) for circle in fm_circles]
-            self.fm._points_corr = copy.copy(fm_circles)
-            self.fm.points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
-            self.fm._orig_points_corr = copy.copy(fmdict['Original correlated points history'][i])
+                self.fm.select_btn.setChecked(True)
+                em.size = emdict['Size history'][counter[idx]]
+                fm_qpoints = [QtCore.QPointF(p[0], p[1]) for p in fmdict['Correlated points history'][i]]
+                fm_circles = [pg.CircleROI(fm_qpoints[i], self.fm.size, parent=self.fm.imview.getImageItem(),
+                                           movable=True, removable=True) for i in range(len(fm_qpoints))]
+                [circle.setPen(0, 255, 0) for circle in fm_circles]
+                [circle.removeHandle(0) for circle in fm_circles]
+                self.fm._points_corr = copy.copy(fm_circles)
+                self.fm.points_corr_z = copy.copy(fmdict['Correlated points z history'][i])
+                self.fm._orig_points_corr = copy.copy(fmdict['Original correlated points history'][i])
 
-            em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter[idx]]]
-            em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
-                                       movable=True, removable=True) for i in range(len(em_qpoints))]
-            [circle.setPen(0, 255, 255) for circle in em_circles]
-            [circle.removeHandle(0) for circle in em_circles]
+                em_qpoints = [QtCore.QPointF(p[0], p[1]) for p in emdict['Correlated points history'][counter[idx]]]
+                em_circles = [pg.CircleROI(em_qpoints[i], em.size, parent=em.imview.getImageItem(),
+                                           movable=True, removable=True) for i in range(len(em_qpoints))]
+                [circle.setPen(0, 255, 255) for circle in em_circles]
+                [circle.removeHandle(0) for circle in em_circles]
 
-            em._points_corr = copy.copy(em_circles)
-            em.points_corr_z = copy.copy(emdict['Correlated points z history'][counter[idx]])
-            em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter[idx]])
-            em.ops._refine_matrix = np.array(emdict['Refinement history'][counter[idx]])
+                em._points_corr = copy.copy(em_circles)
+                em.points_corr_z = copy.copy(emdict['Correlated points z history'][counter[idx]])
+                em._orig_points_corr = copy.copy(emdict['Original correlated points history'][counter[idx]])
+                em.ops._refine_matrix = np.array(emdict['Refinement history'][counter[idx]])
 
-            # This is just to avoid index error when removing points during refinement
-            [self.fm.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
-             range(len(fm_qpoints))]
-            [em.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
-             range(len(fm_qpoints))]
-            [self.fm._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
-            [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
+                # This is just to avoid index error when removing points during refinement
+                [self.fm.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
+                 range(len(fm_qpoints))]
+                [em.anno_list.append(pg.TextItem(str(0), color=(0, 255, 0), anchor=(0, 0))) for i in
+                 range(len(fm_qpoints))]
+                [self.fm._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
+                [em._points_corr_indices.append(0) for i in range(len(fm_qpoints))]
 
-            self.fm.select_btn.setChecked(False)
-            self.fm.counter = len(self.fm._points_corr)
-            self.fm.other.counter = len(self.fm.other._points_corr)
-            self.fm._refine()
+                self.fm.select_btn.setChecked(False)
+                self.fm.counter = len(self.fm._points_corr)
+                self.fm.other.counter = len(self.fm.other._points_corr)
+                self.fm._refine()
 
-            em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
-            counter[idx] += 1
+                em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
+                counter[idx] += 1
         try:
             if self.fib.tab_index == 1:
                 emdict = project['FIB']
@@ -414,7 +422,6 @@ class Project(QtWidgets.QWidget):
             self.popup._clicked_points_popup_base_indices = mdict['Points base indices']
         self.popup.select_btn_popup.setChecked(True)
         points = np.array(mdict['Selected points'])
-        print(self.popup._clicked_points_popup_base_indices)
         if len(points) > 0:
             for i in range(len(points)):
                 if i not in self.popup._clicked_points_popup_base_indices:
@@ -507,8 +514,9 @@ class Project(QtWidgets.QWidget):
         fmdict['Correlated points indices'] = self.fm._points_corr_indices
         fmdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                self.fm._points_corr_history]
+
         fmdict['Correlated points z history'] = [np.array(zhist).tolist() for zhist in self.fm._points_corr_z_history]
-        fmdict['Original correlated points history'] = self.fm._orig_points_corr_history
+        fmdict['Original correlated points history'] = np.array(self.fm._orig_points_corr_history, dtype='object').tolist()
         fmdict['FIB vs SEM history'] = self.fm._fib_vs_sem_history
 
         pois_raw = [[p.x(), p.y()] for p in self.fm._pois_raw]
@@ -552,9 +560,10 @@ class Project(QtWidgets.QWidget):
         emdict['Correlated points indices'] = em._points_corr_indices
         emdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                em._points_corr_history]
-        emdict['Correlated points z history'] = em._points_corr_z_history
-        emdict['Original correlated points history'] = em._orig_points_corr_history
-        emdict['Size history'] = em._size_history
+
+        emdict['Original correlated points history'] = [np.array(orig).tolist() for orig in em._orig_points_corr_history]
+        emdict['Correlated points z history'] = [np.array(zhist).tolist() for zhist in em._points_corr_z_history]
+        emdict['Size history'] = np.array(em._size_history).tolist()
         emdict['Refined'] = em._refined
         emdict['Refinement history'] = np.array(em.ops._refine_history).tolist()
 
@@ -583,9 +592,10 @@ class Project(QtWidgets.QWidget):
         fibdict['Correlated points indices'] = self.fib._points_corr_indices
         fibdict['Correlated points history'] = [[[p.pos().x(), p.pos().y()] for p in plist] for plist in
                                                 self.fib._points_corr_history]
-        fibdict['Correlated points z history'] = self.fib._points_corr_z_history
-        fibdict['Original correlated points history'] = self.fib._orig_points_corr_history
-        fibdict['Size history'] = self.fib._size_history
+
+        fibdict['Correlated points z history'] = [np.array(zhist).tolist() for zhist in self.fib._points_corr_z_history]
+        fibdict['Original correlated points history'] = [np.array(orig).tolist() for orig in self.fib._orig_points_corr_history]
+        fibdict['Size history'] = np.array(self.fib._size_history).tolist()
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
 

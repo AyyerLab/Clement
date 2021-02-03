@@ -119,11 +119,6 @@ class BaseControls(QtWidgets.QWidget):
         self.progress = 0
         self.cov_matrix = None
 
-
-
-
-
-
     def _init_ui(self):
         self.log('This message should not be seen. Please override _init_ui')
 
