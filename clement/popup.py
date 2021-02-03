@@ -793,16 +793,28 @@ class Merge(QtGui.QMainWindow):
         self.log('Cov matrix: \n', cov_matrix)
         self.log('Cov_i matrix: \n', cov)
         self.print('Fitting precision in merged frame: ', np.sqrt(np.diag(cov[:2, :2])) * self.pixel_size[0])
-        cov_matrix += cov[:2, :2] * self.pixel_size[0]
+        print('Correlation covariance: \n', cov_matrix)
+        print('Transformed cov_i matrix: \n', cov[:2,:2] * (self.pixel_size[0])**2)
+        cov_matrix += (cov[:2, :2] * (self.pixel_size[0]**2))
+
+        print('Total covariance: \n', cov_matrix)
+        print('Total transformed errors: ', np.sqrt(np.diag(cov_matrix)))
         eigvals, eigvecs = np.linalg.eigh(cov_matrix)
+        print('Eigenvalues: ', eigvals)
+
         order = eigvals.argsort()[::-1]
         eigvals, eigvecs = eigvals[order], eigvecs[order]
         vx, vy = eigvecs[0,0], eigvecs[0,1]
         theta = -np.arctan2(vy, vx) * 180 / np.pi
 
         #scale eigenvalues to 75% confidence interval and pixel size
-        lambda_1, lambda_2 = 2 * np.sqrt(2.77*eigvals)[:2] / np.array(self.pixel_size[:2])
+        #lambda_1, lambda_2 = 2 * np.sqrt(2.77*eigvals)[:2] / np.array(self.pixel_size[:2])
+        #scale eigenvalues to 68.3% (1sigma) confidence interval and pixel size
+        #lambda_1, lambda_2 = 2 * np.sqrt(2.3*eigvals)[:2] / np.array(self.pixel_size[:2])
+        #scale eigenvalues to 50%  confidence interval and pixel size
+        lambda_1, lambda_2 = 2 * np.sqrt(1.39*eigvals)[:2] / np.array(self.pixel_size[:2])
         self.log(lambda_1, lambda_2)
+        print('Lambdas [nm]: ', lambda_1*self.pixel_size[0], lambda_2*self.pixel_size[0])
         return lambda_1, lambda_2, theta
 
     def _convert_pois(self, points=None):
@@ -831,12 +843,18 @@ class Merge(QtGui.QMainWindow):
                 pos = points[i]
                 std = errs[i]
                 size = sizes[i]
-                point = unumpy.uarray([pos.x() + size[0] // 2, pos.y() + size[1] // 2, z_values[i], 1], [std[0], std[1], std[2], 0])
+                scaling = self.parent.fm_controls.ops.voxel_size[2] / self.parent.fm_controls.ops.voxel_size[0]
+                point = unumpy.uarray([pos.x() + size[0] // 2, pos.y() + size[1] // 2, z_values[i], 1], [std[0], std[1], std[2]*scaling, 0])
                 transf = tot_matrix @ point
                 transf_points.append(unumpy.nominal_values(transf)[:2])
                 transf_err.append(unumpy.std_devs(transf)[:2])
                 cov_i = np.insert(np.insert(np.array(covs[i]), 3, 0, axis=0), 3, 0, axis=1)
+                cov_i[:,-2] *= scaling**2
+                cov_i[-2,:] *= scaling**2
                 tf_cov = tot_matrix @ np.array(cov_i) @ tot_matrix.T
+                perr = np.sqrt(np.diag(tf_cov))
+                print('Original fitting errors {} [nm]: '.format(i), errs[i]*self.parent.fm_controls.ops.voxel_size*1e9)
+                print('Transformed fitting errors {} [nm]: '.format(i), transf_err[-1]*self.other.ops.pixel_size)
                 transf_covs.append(tf_cov)
         else:
             tot_matrix = np.linalg.inv(self.other.ops.tf_matrix) @ self.other.tr_matrices
@@ -900,7 +918,6 @@ class Merge(QtGui.QMainWindow):
         point.removeHandle(0)
         self.imview_popup.addItem(point)
         self._clicked_points_popup.append(point)
-        print('calced point: ', point)
         self.lambda_list.append((lambda_1, lambda_2))
         self.counter_popup += 1
         annotation = pg.TextItem(str(self.counter_popup), color=(0, 255, 0), anchor=(0, 0))

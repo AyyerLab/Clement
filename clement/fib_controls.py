@@ -125,6 +125,7 @@ class FIBControls(BaseControls):
         if self.ops is not None and self.ops.data is not None:
             self.show_grid_btn.setEnabled(enable)
 
+
     @utils.wait_cursor('print')
     def _show_grid(self, state=2):
         if state > 0:
@@ -175,6 +176,7 @@ class FIBControls(BaseControls):
             if self.show_grid_box:
                 self.imview.addItem(self.grid_box)
             self.show_peaks_btn.setEnabled(True)
+            self.auto_opt_btn.setEnabled(True)
             if self.show_peaks_btn.isChecked():
                 self.show_peaks_btn.setChecked(False)
                 self.show_peaks_btn.setChecked(True)
