@@ -265,12 +265,12 @@ class Project(QtWidgets.QWidget):
 
         try:
             self.fib.ops._orig_points = np.array(fibdict['Original points'])
-            self.fib.show_grid_btn.setChecked(True)
-            if 'Box shift' in fibdict:
-                pos = self.fib.grid_box.pos()
-                shift = fibdict['Box shift']
-                new_pos = [pos.x() + shift[0], pos.y() + shift[1]]
-                self.fib.grid_box.setPos(QtCore.QPointF(new_pos[0], new_pos[1]))
+            #self.fib.show_grid_btn.setChecked(True)
+            #if 'Box shift' in fibdict:
+            #    pos = self.fib.grid_box.pos()
+            #    shift = fibdict['Box shift']
+            #    new_pos = [pos.x() + shift[0], pos.y() + shift[1]]
+            #    self.fib.grid_box.setPos(QtCore.QPointF(new_pos[0], new_pos[1]))
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
             #self.fib._recalc_grid()
         except KeyError:
@@ -578,8 +578,8 @@ class Project(QtWidgets.QWidget):
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
         if self.fib.ops._orig_points is not None:
             fibdict['Original points'] = self.fib.ops._orig_points.tolist()
-        if self.fib.box_shift is not None:
-            fibdict['Box shift'] = self.fib.box_shift.tolist()
+        #if self.fib.box_shift is not None:
+        #    fibdict['Box shift'] = self.fib.box_shift.tolist()
         if self.fib.ops._total_shift is not None:
             fibdict['Total shift'] = self.fib.ops._total_shift.tolist() if self.fib.ops._total_shift is not None else [
                 0.0, 0.0]

@@ -407,7 +407,6 @@ class Peak_finding():
         r2 = 1 - (ss_res / ss_tot)
 
         perr = np.sqrt(np.diag(pcov))
-
         if transformed:
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
             point = tf_aligned @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
@@ -415,8 +414,6 @@ class Peak_finding():
             point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
         z = self.num_slices - 1 - popt[2]
-        scaling = self.voxel_size[2] / self.voxel_size[0]
-        z *= scaling
         init = np.array([point[0], point[1], z])
         self.log('Model fit: ', r2)
         if r2 < 0.2:

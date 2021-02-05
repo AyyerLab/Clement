@@ -149,7 +149,7 @@ class FIBControls(BaseControls):
             is_transposed = self.transp_btn.isChecked()
 
             self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
-                                        self.sem_ops.pixel_size, shift=shift, sem_transpose=is_transposed)
+                                        self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=is_transposed)
             self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
@@ -161,7 +161,7 @@ class FIBControls(BaseControls):
                 self.old_pos0 = [0, 0]
             self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
             if redo:
-                self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
+                self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape, self.other.ops.voxel_size,
                                             self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=is_transposed)
                 self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
                 pos = list(self.ops.points)
@@ -177,6 +177,7 @@ class FIBControls(BaseControls):
                 self.imview.addItem(self.grid_box)
             self.show_peaks_btn.setEnabled(True)
             self.auto_opt_btn.setEnabled(True)
+            self.size_box.setEnabled(True)
             if self.show_peaks_btn.isChecked():
                 self.show_peaks_btn.setChecked(False)
                 self.show_peaks_btn.setChecked(True)

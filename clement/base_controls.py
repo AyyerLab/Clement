@@ -477,20 +477,25 @@ class BaseControls(QtWidgets.QWidget):
         return init
 
     def _calc_optimized_position(self, point, pos=None):
+        print(1)
         peaks = None
         ind = self.ops.check_peak_index(point, self.size, transformed=self.ops._transformed)
         if ind is None and self.other.tab_index == 1 and not self.other._refined:
             self.print('If the FIB tab is selected, you have to select a bead for the first refinement!')
+            print(2)
             return None, None, None
         if ind is not None:
+            print(3)
             if self.ops._transformed:
                 peaks = self.ops.tf_peak_slices[-1]
             else:
                 peaks = self.ops.peak_slices[-1]
         z = self.ops.calc_z(ind, point, self.ops._transformed, self.point_ref_btn.currentIndex())
         if z is None:
+            print(4)
             self.print('z is None, something went wrong here... Try another bead!')
             return None, None, None
+        print(5)
         self.points_corr_z.append(z)
 
         if ind is not None:
@@ -1382,6 +1387,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other._orig_points_corr = []
 
     def _undo_refinement(self):
+        print(len(self.other._points_corr_history))
         self.other.ops.undo_refinement()
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
@@ -1404,14 +1410,12 @@ class BaseControls(QtWidgets.QWidget):
             self.other._recalc_grid()
             self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
-            idx = self.other.tab_index
-            self._estimate_precision(idx, self.other.ops._refine_matrix)
-            self.other.size = copy.copy(self.size)
-
         self._update_tr_matrices()
         #self.select_btn.setChecked(True)
         self.other.size = copy.copy(self.other._size_history[-1])
+        print('heeere')
         for i in range(len(self._points_corr_history[-1])):
+            print(i)
             point = self._points_corr_history[-1][i]
             self._draw_correlated_points(point.pos(), self.imview.getImageItem())
             point_other = self.other._points_corr_history[-1][i]
@@ -1423,6 +1427,13 @@ class BaseControls(QtWidgets.QWidget):
             self.other.show_peaks_btn.setChecked(True)
 
         self.other.ops.merged[self.other.tab_index] = None
+
+        print(len(self.other._points_corr_history))
+        if len(self.other.ops._refine_history) != 0:
+            idx = self.other.tab_index
+            self._estimate_precision(idx, self.other.ops._refine_matrix)
+            self.other.size = copy.copy(self.size)
+
         id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(self.other.tab_index) - 1
 
         del self._fib_vs_sem_history[id]

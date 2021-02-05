@@ -102,6 +102,7 @@ class FM_ops(Peak_finding):
                 self.print('Voxel size: ', self.voxel_size)
                 self.old_fname = fname
 
+
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
             self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z, :, :].astype('f4')
@@ -351,10 +352,8 @@ class FM_ops(Peak_finding):
         if z is None:
             self.print('Oops, something went wrong. Try somewhere else!')
             return None
-        # flip z axis and scale by voxel size ratio
+        # flip z axis
         z = self.num_slices - 1 - z
-        scaling = self.voxel_size[2] / self.voxel_size[0]
-        z *= scaling
         return z
 
     def load_channel(self, ind):

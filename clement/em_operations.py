@@ -344,19 +344,13 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, delta_sigma, sem_shape, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
+    def calc_fib_transform(self, delta_sigma, sem_shape, fm_voxel, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
         if self.box_shift is not None:
             shift = self.box_shift - shift
         if sem_transpose:
             self.fib_matrix = np.array([[0., 1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         else:
             self.fib_matrix = np.identity(4)
-
-        # rotate by phi angle in plane
-        self.fib_matrix = np.array([[1, 0, 0, 0],
-                                    [0, 1, 0, 0],
-                                    [0, 0, 1, 0],
-                                    [0, 0, 0, 1]]) @ self.fib_matrix
 
         # Scale according to pixel sizes
         scale = sem_pixel_size[:2] / self.pixel_size[:2]
@@ -365,7 +359,8 @@ class EM_ops():
         self.log('Scale: ', scale)
         self.fib_matrix = np.array([[scale[0], 0, 0, 0],
                                     [0, scale[1], 0, 0],
-                                    [0, 0, 1, 0],
+                                    #[0, 0, 1, 0],
+                                    [0, 0, fm_voxel[2]*1e9/self.pixel_size[0], 0],
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
         # Rotate SEM image according to sigma angles
@@ -383,6 +378,12 @@ class EM_ops():
         self.fib_matrix[:3, 3] += self.fib_shift
         self.fib_matrix[:2, 3] -= shift
         self.log('Shifted fib matrix: ', self.fib_matrix)
+
+        p1 = np.array([400,600,0,1])
+        p2 = np.array([400,600,25*fm_voxel[2]/fm_voxel[0],1])
+        print('Test p1: ', self.fib_matrix @ p1)
+        print('Test p2: ', self.fib_matrix @ p2)
+
 
     def apply_fib_transform(self, points, num_slices, scaling=1):
         self.log('Num slices: ', num_slices)
@@ -672,7 +673,7 @@ class EM_ops():
                 [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
 
         p0 = np.array([0, 0, 0, 1])
-        p1 = np.array([0, 0, voxel_size[2] / voxel_size[0], 1])
+        p1 = np.array([0, 0, 1, 1])
         self.z_shift = (self.fib_matrix @ p1)[:2] - (self.fib_matrix @ p0)[:2]
         self.log('z_shift: ', self.z_shift)
 
@@ -683,8 +684,6 @@ class EM_ops():
         tf_matrix = np.copy(tf_matrix_fm)
         tf_matrix[:2, 2] += tf_corners_fm.min(1)[:2]
 
-        if self._refine_matrix is None:
-            refine_matrix = np.identity(3)
         total_matrix = self._refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
 
         nx, ny = fm_data_orig.shape[:2]
@@ -698,7 +697,7 @@ class EM_ops():
             for i in range(len(orig_points)):
                 img_tmp = np.zeros([nx, ny])
                 img_tmp[int(np.round(orig_points[i][0])), int(np.round(orig_points[i][1]))] = 1
-                z = fm_z_values[i] / (voxel_size[2] / voxel_size[0])
+                z = fm_z_values[i]
                 fib_new = np.copy(fib_2d)
                 fib_new[:2, 2] += z * self.z_shift
                 shift_matrix = self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[0]

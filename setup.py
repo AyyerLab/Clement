@@ -37,7 +37,6 @@ setuptools.setup(
         #'pyqtgraph',
         'pyqtgraph==0.11.0rc0',
         'pyyaml',
-        'uncertainties',
     ],
     package_data={'clement': ['styles/*.qss']},
     entry_points={'gui_scripts': [
