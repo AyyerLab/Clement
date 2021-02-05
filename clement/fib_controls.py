@@ -156,9 +156,6 @@ class FIBControls(BaseControls):
                 shift = self.box_shift
                 redo = False
 
-            print('hello')
-            print(shift)
-            print(redo)
             sigma_angle = float(self.sigma_btn.text())
             is_transposed = self.transp_btn.isChecked()
 
@@ -199,8 +196,6 @@ class FIBControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _update_shifts(self, state):
-        print(1)
-        #new_pos = state.pos() + self.old_pos0
         new_pos = self.grid_box.pos() + self.old_pos0
         self.box_shift = np.array(new_pos)
         self.ops.points = np.copy([point + self.box_shift for point in self.ops.points])

@@ -17,7 +17,7 @@ class Project(QtWidgets.QWidget):
         self.fib = fib
         self.tem = tem
         self.show_fib = False
-        self.merged = False
+        self.merged = [False, False, False]
         self.popup = None
         self.parent = parent
         self.load_merge = False
@@ -84,8 +84,16 @@ class Project(QtWidgets.QWidget):
         try:
             pois_raw = fmdict['Pois raw']
             qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(pois_raw)]
-            for i in range(len(qpoints)):
+            self.fm._pois_channel_indices = fmdict['Poi channel indices']
+
+            for i in range(len(self.fm._pois_channel_indices)):
+                if self.fm._pois_channel_indices[i] != self.fm.point_ref_btn.currentIndex():
+                    self.fm.point_ref_btn.setCurrentIndex(self.fm._pois_channel_indices[i])
+                self.fm.poi_btn.setChecked(True)
+                if self.fm._pois_channel_indices[i] != self.fm.point_ref_btn.currentIndex():
+                    self.fm.point_ref_btn.setCurrentIndex(self.fm._pois_channel_indices[i])
                 self.fm._draw_pois(qpoints[i], self.fm.imview.getImageItem())
+                self.fm.poi_btn.setChecked(False)
         except KeyError:
             pass
         try:
@@ -404,7 +412,7 @@ class Project(QtWidgets.QWidget):
 
         mdict = project['MERGE']
         self.merged = mdict['Merged']
-        if self.merged:
+        if self.merged[idx]:
             self.load_merge = True
             self.parent.merge(mdict)
 
@@ -418,15 +426,15 @@ class Project(QtWidgets.QWidget):
             self.popup._slice_changed_popup()
 
         self.popup._update_imview_popup()
-        if 'Points base indices' in mdict:
-            self.popup._clicked_points_popup_base_indices = mdict['Points base indices']
-        self.popup.select_btn_popup.setChecked(True)
-        points = np.array(mdict['Selected points'])
-        if len(points) > 0:
-            for i in range(len(points)):
-                if i not in self.popup._clicked_points_popup_base_indices:
-                    qpoint = QtCore.QPointF(points[i][0], points[i][1])
-                    self.popup._draw_correlated_points_popup(qpoint, self.popup.imview_popup.getImageItem())
+        #if 'Points base indices' in mdict:
+        #    self.popup._clicked_points_popup_base_indices = mdict['Points base indices']
+        #self.popup.select_btn_popup.setChecked(True)
+        #points = np.array(mdict['Selected points'])
+        #if len(points) > 0:
+        #    for i in range(len(points)):
+        #        if i not in self.popup._clicked_points_popup_base_indices:
+        #            qpoint = QtCore.QPointF(points[i][0], points[i][1])
+        #            self.popup._draw_correlated_points_popup(qpoint, self.popup.imview_popup.getImageItem())
 
     def _save_project(self):
         if self.fm.ops is not None or self.sem.ops is not None or self.tem.ops is not None:
@@ -461,8 +469,8 @@ class Project(QtWidgets.QWidget):
             if self.tem.ops is not None:
                 self._save_em(project, sem=False)
             project['MERGE'] = {}
-            project['MERGE']['Merged'] = self.merged
-            if self.merged:
+            project['MERGE']['idx'] = self.merged
+            if True in self.merged:
                 self._save_merge(project['MERGE'])
             self._project_folder = os.path.dirname(file_name)
             with open(file_name, 'w') as fptr:
@@ -521,6 +529,7 @@ class Project(QtWidgets.QWidget):
 
         pois_raw = [[p.x(), p.y()] for p in self.fm._pois_raw]
         fmdict['Pois raw'] = pois_raw
+        fmdict['Poi channel indices'] = self.fm._pois_channel_indices
 
     def _save_em(self, project, sem):
         emdict = {}

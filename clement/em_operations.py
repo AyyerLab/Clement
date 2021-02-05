@@ -395,8 +395,6 @@ class EM_ops():
                 dst[i, :3] = self._refine_matrix @ np.array([dst[i, 0], dst[i, 1], 1])
         self.points = np.array(dst[:, :2])
 
-        print('heeeeeeeere')
-        print(self.box_shift)
         if self.box_shift is None:
             com = self.points.mean(0)
             img_center = np.array([self.data.shape[0]//2, self.data.shape[1]//2])

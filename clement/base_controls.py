@@ -62,6 +62,7 @@ class BaseControls(QtWidgets.QWidget):
         self._box_coordinate = None
 
         self._pois_raw = []
+        self._pois_channel_indices = []
 
         self._points_corr = []
         self._orig_points_corr = []
@@ -265,6 +266,7 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
+
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             self.print('Select points of interest on %s image' % self.tag)
         else:
@@ -439,6 +441,7 @@ class BaseControls(QtWidgets.QWidget):
         self.imview.addItem(point_obj)
 
         self.pois.append(point_obj)
+        self._pois_channel_indices.append(self.point_ref_btn.currentIndex())
         self.pois_sizes.append(size)
         self.poi_counter += 1
         annotation_obj = pg.TextItem(str(self.poi_counter), color=color, anchor=(0, 0))
@@ -903,6 +906,7 @@ class BaseControls(QtWidgets.QWidget):
             self.pois_sizes.remove(self.pois_sizes[idx])
             self.pois_err.remove(self.pois_err[idx])
             self.pois_cov.remove(self.pois_cov[idx])
+            self._pois_raw.remove(self._pois_raw[idx])
             if len(self.pois_base) > 0:
                 self.pois_base.remove(self.pois_base[idx])
 

@@ -308,7 +308,7 @@ class GUI(QtWidgets.QMainWindow):
                             popup.close()
                         popup = Merge(self, self.print, self.log)
                         controls.popup = popup
-                        self.project.merged = True
+                        self.project.merged[self.tabs.currentIndex()] = True
                         self.project.popup = popup
                         if self.project.load_merge:
                             self.project._load_merge(project)
