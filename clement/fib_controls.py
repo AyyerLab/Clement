@@ -52,6 +52,7 @@ class FIBControls(BaseControls):
         self.sigma_btn.setMaximumWidth(30)
         self.sigma_btn.setText('0')
         self._sigma_angle = int(self.sigma_btn.text())
+        self.sigma_btn.textChanged.connect(self._recalc_sigma)
         self.sigma_btn.setEnabled(False)
         line.addWidget(self.sigma_btn)
 
@@ -137,6 +138,15 @@ class FIBControls(BaseControls):
                 self.imview.removeItem(self.grid_box)
 
     @utils.wait_cursor('print')
+    def _recalc_sigma(self, state=None):
+        if self.sigma_btn.text() is not '':
+            self._sigma_angle = int(self.sigma_btn.text())
+            self.box_shift = None
+            self.ops.box_shift = None
+            self._recalc_grid()
+
+
+    @utils.wait_cursor('print')
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):
         if self.sem_ops is not None and recalc_matrix:
             if self.box_shift is None:
@@ -145,6 +155,10 @@ class FIBControls(BaseControls):
             else:
                 shift = self.box_shift
                 redo = False
+
+            print('hello')
+            print(shift)
+            print(redo)
             sigma_angle = float(self.sigma_btn.text())
             is_transposed = self.transp_btn.isChecked()
 
@@ -185,7 +199,9 @@ class FIBControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _update_shifts(self, state):
-        new_pos = state.pos() + self.old_pos0
+        print(1)
+        #new_pos = state.pos() + self.old_pos0
+        new_pos = self.grid_box.pos() + self.old_pos0
         self.box_shift = np.array(new_pos)
         self.ops.points = np.copy([point + self.box_shift for point in self.ops.points])
         self.old_pos0 = new_pos

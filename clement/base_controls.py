@@ -351,7 +351,10 @@ class BaseControls(QtWidgets.QWidget):
 
     def _update_tr_matrices(self):
         if self.other.tab_index == 1:
-            self.other.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
+            if self.other.sem_ops._refine_matrix is not None:
+                self.other.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops._refine_matrix @ self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
+            else:
+                self.other.tr_matrices = self.other.ops.get_fib_transform(self.other.sem_ops.tf_matrix) @ self.fm_sem_corr
         else:
             src_sorted = np.array(
                 sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
@@ -477,25 +480,20 @@ class BaseControls(QtWidgets.QWidget):
         return init
 
     def _calc_optimized_position(self, point, pos=None):
-        print(1)
         peaks = None
         ind = self.ops.check_peak_index(point, self.size, transformed=self.ops._transformed)
         if ind is None and self.other.tab_index == 1 and not self.other._refined:
             self.print('If the FIB tab is selected, you have to select a bead for the first refinement!')
-            print(2)
             return None, None, None
         if ind is not None:
-            print(3)
             if self.ops._transformed:
                 peaks = self.ops.tf_peak_slices[-1]
             else:
                 peaks = self.ops.peak_slices[-1]
         z = self.ops.calc_z(ind, point, self.ops._transformed, self.point_ref_btn.currentIndex())
         if z is None:
-            print(4)
             self.print('z is None, something went wrong here... Try another bead!')
             return None, None, None
-        print(5)
         self.points_corr_z.append(z)
 
         if ind is not None:
@@ -686,6 +684,7 @@ class BaseControls(QtWidgets.QWidget):
     def _translate_peaks_slot(self, item):
         ind = np.where(item == self.peaks)[0][0]
         shift = item.pos() - self._old_peak_pos[ind]
+        self.grid_box.setPos(self.grid_box.pos().x()+shift[0], self.grid_box.pos().y()+shift[1])
         self.log(ind, shift)
         for i in range(len(self.peaks)):
             self._old_peak_pos[i][0] += shift.x()
@@ -1385,10 +1384,6 @@ class BaseControls(QtWidgets.QWidget):
         self.other._points_corr = []
         self.other.points_corr_z = []
         self.other._orig_points_corr = []
-
-        for i in range(len(self._points_corr_history)):
-            print(len(self._points_corr_history[i]))
-            print(len(self.other._points_corr_history[i]))
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()

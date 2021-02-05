@@ -379,11 +379,6 @@ class EM_ops():
         self.fib_matrix[:2, 3] -= shift
         self.log('Shifted fib matrix: ', self.fib_matrix)
 
-        p1 = np.array([400,600,0,1])
-        p2 = np.array([400,600,25*fm_voxel[2]/fm_voxel[0],1])
-        print('Test p1: ', self.fib_matrix @ p1)
-        print('Test p2: ', self.fib_matrix @ p2)
-
 
     def apply_fib_transform(self, points, num_slices, scaling=1):
         self.log('Num slices: ', num_slices)
@@ -400,6 +395,8 @@ class EM_ops():
                 dst[i, :3] = self._refine_matrix @ np.array([dst[i, 0], dst[i, 1], 1])
         self.points = np.array(dst[:, :2])
 
+        print('heeeeeeeere')
+        print(self.box_shift)
         if self.box_shift is None:
             com = self.points.mean(0)
             img_center = np.array([self.data.shape[0]//2, self.data.shape[1]//2])
