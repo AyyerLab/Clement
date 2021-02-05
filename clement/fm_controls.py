@@ -291,7 +291,10 @@ class FMControls(BaseControls):
             if old_shape == new_shape:
                 vr = self.imview.getImageItem().getViewBox().targetRect()
             levels = self.imview.getHistogramWidget().item.getLevels()
-            self.imview.setImage(self.color_data, levels=levels)
+            if self.color_data.max() > 0:
+                self.imview.setImage(self.color_data, levels=levels)
+            else:
+                self.imview.setImage(self.color_data)
             if old_shape == new_shape:
                 self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
         if channel_idx is not None:

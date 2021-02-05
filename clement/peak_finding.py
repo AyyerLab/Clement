@@ -417,11 +417,13 @@ class Peak_finding():
         init = np.array([point[0], point[1], z])
         self.log('Model fit: ', r2)
         if r2 < 0.2:
-            self.print('Model does not fit the data. You should consider selecting a different virus!')
-            return None, None, None
+            self.print('Model does not fit well to the data. You should consider selecting a different virus!',
+                       ' Uncertainty: ', perr[:3]*self.voxel_size)
+        #    return None, None, None
+        #
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size)
-            return init, perr[:3], pcov[:3,:3]
+        return init, perr[:3], pcov[:3,:3]
 
     def reset_peaks(self):
         self.peak_slices = None
