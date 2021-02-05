@@ -1386,12 +1386,14 @@ class BaseControls(QtWidgets.QWidget):
         self.other.points_corr_z = []
         self.other._orig_points_corr = []
 
+        for i in range(len(self._points_corr_history)):
+            print(len(self._points_corr_history[i]))
+            print(len(self.other._points_corr_history[i]))
+
     def _undo_refinement(self):
-        print(len(self.other._points_corr_history))
         self.other.ops.undo_refinement()
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
-
 
         if len(self.other.ops._refine_history) == 1:
             self.fliph.setEnabled(True)
@@ -1411,11 +1413,8 @@ class BaseControls(QtWidgets.QWidget):
             self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
         self._update_tr_matrices()
-        #self.select_btn.setChecked(True)
         self.other.size = copy.copy(self.other._size_history[-1])
-        print('heeere')
         for i in range(len(self._points_corr_history[-1])):
-            print(i)
             point = self._points_corr_history[-1][i]
             self._draw_correlated_points(point.pos(), self.imview.getImageItem())
             point_other = self.other._points_corr_history[-1][i]
@@ -1428,12 +1427,6 @@ class BaseControls(QtWidgets.QWidget):
 
         self.other.ops.merged[self.other.tab_index] = None
 
-        print(len(self.other._points_corr_history))
-        if len(self.other.ops._refine_history) != 0:
-            idx = self.other.tab_index
-            self._estimate_precision(idx, self.other.ops._refine_matrix)
-            self.other.size = copy.copy(self.size)
-
         id = len(self._fib_vs_sem_history) - self._fib_vs_sem_history[::-1].index(self.other.tab_index) - 1
 
         del self._fib_vs_sem_history[id]
@@ -1445,6 +1438,13 @@ class BaseControls(QtWidgets.QWidget):
         del self.other._points_corr_z_history[-1]
         del self.other._orig_points_corr_history[-1]
         del self.other._size_history[-1]
+
+        if len(self.other.ops._refine_history) > 1:
+            idx = self.other.tab_index
+            self._estimate_precision(idx, self.other.ops._refine_matrix)
+            self.other.size = copy.copy(self.size)
+
+
 
     @utils.wait_cursor('print')
     def _estimate_precision(self, idx, refine_matrix_old):
@@ -1460,11 +1460,11 @@ class BaseControls(QtWidgets.QWidget):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size // 2, orig_point[1] + self.size // 2, 1])
                 corr_points.append(np.copy((self.other.tr_matrices @ init)[:2]))
-                #transf = self.other.ops._refine_matrix @ self.other.tr_matrices @ init
                 transf = self.other.tr_matrices @ init
                 self.refined_points.append(transf[:2])
         else:
-            orig_fm_points_z = np.copy(self.points_corr_z)
+            #orig_fm_points_z = np.copy(self.points_corr_z)
+            orig_fm_points_z = np.copy(self._points_corr_z_history[-1])
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 z = orig_fm_points_z[i]
