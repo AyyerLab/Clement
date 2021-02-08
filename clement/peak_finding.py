@@ -4,13 +4,14 @@ from scipy.optimize import curve_fit
 import time
 from skimage import measure, morphology
 import read_lif
+import copy
 
 class Peak_finding():
     def __init__(self, threshold=0, plt=10, put=200):
         self.num_slices = None
-        self.peak_slices = None
-        self.tf_peak_slices = None
-        self.orig_tf_peak_slices = None
+        self.peaks = None
+        self.tf_peaks = None
+        self.orig_tf_peaks = None
         self.tf_peaks_z = None
         self.peaks_z = None
         self.peaks_align_ref = None
@@ -32,14 +33,6 @@ class Peak_finding():
 
     def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos=None, background_correction=None):
         start = time.time()
-        if not roi:
-            if transformed:
-                if self.tf_peak_slices is None:
-                    self.tf_peak_slices = [None] * (self.num_slices + 1)
-            else:
-                if self.peak_slices is None:
-                    self.peak_slices = [None] * (self.num_slices + 1)
-
         img = np.copy(im)
         if background_correction is None and self.background_correction:
             img = self.subtract_background(img)
@@ -122,17 +115,11 @@ class Peak_finding():
                     self.peaks_align_ref = np.copy(peaks_2d)
             else:
                 if transformed:
-                    if curr_slice is None:
-                        self.tf_peak_slices[-1] = np.copy(peaks_2d)
-                    else:
-                        self.tf_peak_slices[curr_slice] = np.copy(peaks_2d)
-                    if self.orig_tf_peak_slices is None:
-                        self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+                    self.tf_peaks = peaks_2d
+                    if self.orig_tf_peaks is None:
+                        self.orig_tf_peaks = np.copy(self.tf_peaks)
                 else:
-                    if curr_slice is None:
-                        self.peak_slices[-1] = np.copy(peaks_2d)
-                    else:
-                        self.peak_slices[curr_slice] = np.copy(peaks_2d)
+                    self.peaks = np.copy(peaks_2d)
         end = time.time()
         self.log('duration: ', end - start)
         self.print('Number of peaks found: ', peaks_2d.shape[0])
@@ -145,15 +132,6 @@ class Peak_finding():
         diff = img-img_blurred
         diff /= diff.max()
         return diff*norm
-
-    def wshed_peaks(self, img):
-        if self.threshold == 0:
-            self.threshold = 0.1 * np.sort(img.ravel())[-100:].mean()
-        labels = morphology.label(img >= self.threshold, connectivity=1)
-        morphology.remove_small_objects(labels, self.pixel_lower_threshold, connectivity=1, in_place=True)
-        wshed = morphology.watershed(-img * (labels > 0), labels)
-        self.peaks_2d = np.round(
-            np.array([r.weighted_centroid for r in measure.regionprops((labels > 0) * wshed, img)]))
 
     def calc_transformed_coordinates(self, points, tf_matrix, roi_shape, roi_pos=None, slice=None, store=True):
         tf_matrix = np.copy(tf_matrix)
@@ -180,14 +158,10 @@ class Peak_finding():
             tf_points.append(tf_pt[:2])
 
         if store:
-            if self.tf_peak_slices is None:
-                self.tf_peak_slices = [None] * len(self.peak_slices)
-            if slice is None:
-                self.tf_peak_slices[-1] = np.copy(tf_points)
-            else:
-                self.tf_peak_slices[slice] = np.copy(tf_points)
-            if self.orig_tf_peak_slices is None:
-                self.orig_tf_peak_slices = list(np.copy(self.tf_peak_slices))
+            if self.tf_peaks is None:
+                self.tf_peaks = np.copy(tf_points)
+            if self.orig_tf_peaks is None:
+                self.orig_tf_peaks = np.copy(self.tf_peaks)
         else:
             return tf_points[0]
 
@@ -220,20 +194,14 @@ class Peak_finding():
                 if tf_matrix is None:
                     self.print('You have to parse the tf_matrix!')
                     return
-                if curr_slice is None:
-                    tf_peaks = self.tf_peak_slices[-1]
-                else:
-                    tf_peaks = self.tf_peak_slices[curr_slice]
+                tf_peaks = np.copy(self.tf_peaks)
                 peaks_2d = np.zeros_like(tf_peaks)
                 for k in range(tf_peaks.shape[0]):
                     point = np.array([tf_peaks[k, 0], tf_peaks[k, 1], 1])
                     orig_point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
                     peaks_2d[k] = orig_point
             else:
-                if curr_slice is None:
-                    peaks_2d = self.peak_slices[-1]
-                else:
-                    peaks_2d = self.peak_slices[curr_slice]
+                peaks_2d = np.copy(self.peaks)
         else:
             peaks_2d = point
             x_min = int(np.round(peaks_2d[0][0]) - 10)
@@ -330,11 +298,11 @@ class Peak_finding():
 
     def check_peak_index(self, point, size, transformed):
         if transformed:
-            if self.tf_peak_slices is not None and self.tf_peak_slices[-1] is not None:
-                peaks_2d = self.tf_peak_slices[-1]
+            if self.tf_peaks is not None:
+                peaks_2d = self.tf_peaks
         else:
-            if self.peak_slices is not None and self.peak_slices[-1] is not None:
-                peaks_2d = self.peak_slices[-1]
+            if self.peaks is not None:
+                peaks_2d = self.peaks
 
         diff = peaks_2d - point
         diff_err = np.sqrt(diff[:, 0] ** 2 + diff[:, 1] ** 2)
@@ -426,9 +394,9 @@ class Peak_finding():
         return init, perr[:3], pcov[:3,:3]
 
     def reset_peaks(self):
-        self.peak_slices = None
-        self.tf_peak_slices = None
-        self.orig_tf_peak_slices = None
+        self.peaks = None
+        self.tf_peaks = None
+        self.orig_tf_peaks = None
         self.tf_peaks_z = None
         self.peaks_z = None
         self.peaks_z_std = []

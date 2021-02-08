@@ -557,7 +557,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
                                  curr_slice=None, roi_pos= self.roi_pos, background_correction=False)
 
-        peaks_2d = copy.copy(self.fm.ops.peak_slices[-1])
+        peaks_2d = copy.copy(self.fm.ops.peaks)
         if peaks_2d is None:
             self.print('No peaks have been found! Adjust parameters!')
             return
@@ -572,8 +572,8 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peak_imview.addItem(point_obj)
                 self.peaks.append(point_obj)
             if self.coor is not None:
-                for i in range(len(self.fm.ops.peak_slices[-1])):
-                    self.fm.ops.peak_slices[-1][i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
+                for i in range(len(self.fm.ops.peaks)):
+                    self.fm.ops.peaks[i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
 
         self.fm.ops.adjusted_params = True
 

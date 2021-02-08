@@ -490,9 +490,9 @@ class BaseControls(QtWidgets.QWidget):
             return None, None, None
         if ind is not None:
             if self.ops._transformed:
-                peaks = self.ops.tf_peak_slices[-1]
+                peaks = self.ops.tf_peaks
             else:
-                peaks = self.ops.peak_slices[-1]
+                peaks = self.ops.peaks
         z = self.ops.calc_z(ind, point, self.ops._transformed, self.point_ref_btn.currentIndex())
         if z is None:
             self.print('z is None, something went wrong here... Try another bead!')

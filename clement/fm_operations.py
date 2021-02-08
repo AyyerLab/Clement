@@ -176,13 +176,10 @@ class FM_ops(Peak_finding):
     def update_points(self, points):
         peaks = None
         if self._transformed:
-            if self.tf_peak_slices is not None:
-                if self._show_max_proj:
-                    peaks = self.orig_tf_peak_slices[-1]
-                else:
-                    peaks = self.orig_tf_peak_slices[self.selected_slice]
-                if peaks is not None:
-                    peaks = np.array(peaks)
+            if self.orig_tf_peaks is not None:
+                peaks = np.copy(self.orig_tf_peaks)
+            else:
+                peaks = None
             fliph = self.fliph
             flipv = self.flipv
             transp = self.transp
@@ -216,10 +213,7 @@ class FM_ops(Peak_finding):
             if flipv:
                 peaks[:, 1] = self.data.shape[1] - peaks[:, 1]
 
-            if self._show_max_proj:
-                self.tf_peak_slices[-1] = np.copy(peaks)
-            else:
-                self.tf_peak_slices[self.selected_slice] = np.copy(peaks)
+            self.tf_peaks = np.copy(peaks)
         return points
 
     def flip_horizontal(self, do_flip):
@@ -302,13 +296,13 @@ class FM_ops(Peak_finding):
     def remove_tilt(self, remove_tilt):
         self._show_no_tilt = remove_tilt
         if self.hsv_map_no_tilt is None:
-            if self.peak_slices is None or self.peak_slices[-1] is None:
+            if self.peaks is None:
                 self.peak_finding(self.max_proj_data[:, :, self._channel_idx], transformed=False)
             ref = np.array(self.reader.getFrame(channel=self._channel_idx, dtype='u2').astype('f4')).transpose((2, 1, 0))
             if self.peaks_z is None:
                 self.fit_z(ref, transformed=False)
             # fit plane to peaks with least squares to remove tilt
-            peaks_2d = self.peak_slices[-1]
+            peaks_2d = self.peaks
 
             A = np.array([peaks_2d[:, 0], peaks_2d[:, 1], np.ones_like(peaks_2d[:, 0])]).T  # matrix
             beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_z, axis=1))  # params

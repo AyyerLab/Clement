@@ -528,15 +528,13 @@ class FMControls(BaseControls):
             self.peak_btn.setChecked(False)
             return
 
-
         if not self.peak_btn.isChecked():
             [self.imview.removeItem(point) for point in self._peaks]
             self._peaks = []
-            # self.max_proj_btn.setChecked(show_max_proj)
             return
 
         flip = False
-        if self.ops._transformed and self.ops.orig_tf_peak_slices is None:
+        if self.ops._transformed and self.ops.orig_tf_peaks is None:
             fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
             self.ops.fliph = False
             self.ops.flipv = False
@@ -547,40 +545,18 @@ class FMControls(BaseControls):
 
         channel = self.peak_controls.peak_channel_btn.currentIndex()
         self.print('Perform peak finding on channel: ', channel+1)
-        peaks_2d = None
         if self.ops._transformed:
-            if self.map_btn.isChecked() or self.max_proj_btn.isChecked():
-                peaks_2d = self.ops.peak_slices[-1]
-                if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[-1] is None:
-                    self.ops.calc_transformed_coordinates(peaks_2d, self.ops.tf_matrix, self.peak_controls.data_roi.shape,
-                                                          self.peak_controls.roi_pos)
-                peaks_2d = self.ops.tf_peak_slices[-1]
-            else:
-                peaks_2d = self.ops.peak_slices[self._current_slice]
-                if self.ops.tf_peak_slices is None or self.ops.tf_peak_slices[self._current_slice] is None:
-                    self.ops.calc_transformed_coordinates(peaks_2d, self.ops.tf_matrix, self.peak_controls.data_roi.shape,
-                                                          self.peak_controls.roi_pos, slice=self._current_slice)
-                peaks_2d = self.ops.tf_peak_slices[self._current_slice]
+            if self.ops.orig_tf_peaks is None:
+                peaks_2d = self.ops.peaks
+                self.ops.calc_transformed_coordinates(peaks_2d, self.ops.tf_matrix, self.peak_controls.data_roi.shape,
+                                                      self.peak_controls.roi_pos)
+            peaks_2d = self.ops.tf_peaks
         else:
-            if self.map_btn.isChecked():
-                #if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
-                #                          roi_pos=self.peak_controls.roi_pos)
-                peaks_2d = self.ops.peak_slices[-1]
-            elif self.max_proj_btn.isChecked():
-                #if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
-                #                          roi_pos=self.peak_controls.roi_pos)
-                peaks_2d = self.ops.peak_slices[-1]
-            else:
-                #if self.ops.peak_slices is None or self.ops.peak_slices[self._current_slice] is None:
-                #    self.ops.peak_finding(self.peak_controls.data_roi[:, :, channel], transformed=False,
-                #                          curr_slice = self._current_slice, roi_pos=self.peak_controls.roi_pos)
-                peaks_2d = self.ops.peak_slices[self._current_slice]
+            peaks_2d = self.ops.peaks
 
-        if peaks_2d is not None and len(peaks_2d.shape) > 0:
-            for i in range(len(peaks_2d)):
-                pos = QtCore.QPointF(peaks_2d[i][0] - self.size / 2, peaks_2d[i][1] - self.size / 2)
+        if peaks_2d is not None:
+            for i in range(peaks_2d.shape[0]):
+                pos = QtCore.QPointF(peaks_2d[i,0] - self.size / 2, peaks_2d[i,1] - self.size / 2)
                 point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=True)
                 point_obj.removeHandle(0)
@@ -633,10 +609,7 @@ class FMControls(BaseControls):
 
             peak_channel_idx = self.peak_controls.peak_channel_btn.currentIndex()
             if reference == peak_channel_idx:
-                if self.ops.peak_slices is None or self.ops.peak_slices[-1] is None:
-                    peaks_2d = None
-                else:
-                    peaks_2d = self.ops.peak_slices[-1]
+                peaks_2d = self.ops.peaks
             else:
                 self.peak_controls.peak_channel_btn.setCurrentIndex(reference)
                 peaks_2d = None
@@ -663,7 +636,6 @@ class FMControls(BaseControls):
             self.print('You have to adjust and save the peak finding parameters first!')
             self.map_btn.setChecked(False)
             return
-        #self.align_btn.setEnabled(not self.map_btn.isChecked())
         self.ops.calc_mapping()
         self._update_imview()
         if self.remove_tilt_btn.isChecked():
