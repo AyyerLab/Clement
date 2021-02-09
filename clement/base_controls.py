@@ -599,7 +599,7 @@ class BaseControls(QtWidgets.QWidget):
             self.show_peaks_btn.setChecked(False)
             return
 
-        if self.other.ops.tf_peak_slices is None or self.other.ops.tf_peak_slices[-1] is None:
+        if self.other.ops.tf_peaks is None:
             # Check that peaks have been found for FM image
             self.print('Calculate FM peak positions for maximum projection first')
             self.show_peaks_btn.setChecked(False)
@@ -622,10 +622,10 @@ class BaseControls(QtWidgets.QWidget):
             diff_abs = np.sqrt(diff_normed[:,0]**2 + diff_normed[:,1]**2)
             colors = cmap(diff_abs)
         if self.tab_index == 1:
-            for i in range(len(self.other.ops.tf_peak_slices[-1])):
+            for i in range(len(self.other.ops.tf_peaks[-1])):
                 z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i], self.other.ops._transformed)
                 init = np.array(
-                    [self.other.ops.tf_peak_slices[-1][i, 0], self.other.ops.tf_peak_slices[-1][i, 1], 1])
+                    [self.other.ops.tf_peaks[i, 0], self.other.ops.tf_peaks[-1][i, 1], 1])
                 transf = np.dot(self.tr_matrices, init)
                 transf = self.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
                 if self._refined:
@@ -645,7 +645,7 @@ class BaseControls(QtWidgets.QWidget):
                     if np.allclose(transf[:2], self._orig_points_corr[i]):
                         self.imview.removeItem(point)
         else:
-            for peak in self.other.ops.tf_peak_slices[-1]:
+            for peak in self.other.ops.tf_peaks[-1]:
                 init = np.array([peak[0], peak[1], 1])
                 if self.show_btn.isChecked():
                     transf = np.linalg.inv(self.ops.tf_matrix) @ self.tr_matrices @ init
@@ -724,7 +724,7 @@ class BaseControls(QtWidgets.QWidget):
             self.imview.removeItem(peak)
             peak.peakMoved(None)
             ref_ind = [i for i in range(len(self.peaks)) if self.peaks[i] == peak]
-            pos = self.other.ops.tf_peak_slices[-1][ref_ind[0]]
+            pos = self.other.ops.tf_peaks[-1][ref_ind[0]]
             point = QtCore.QPointF(pos[0] - self.other.size / 2, pos[1] - self.other.size / 2)
             self.other._draw_correlated_points(point, self.imview.getImageItem())
             self._points_corr[-1].setPos(peak.pos())
@@ -1174,8 +1174,8 @@ class BaseControls(QtWidgets.QWidget):
     def _affine_transform(self, toggle_orig=True):
         if not np.array_equal(np.identity(3), self.ops.tf_matrix):
             self.ops.tf_matrix = np.identity(3)
-            self.ops.tf_peak_slices = None
-            self.ops.orig_tf_peak_slices = None
+            self.ops.tf_peaks = None
+            self.ops.orig_tf_peaks = None
 
         if self.show_btn.isChecked():
             grid_box = self.grid_box
