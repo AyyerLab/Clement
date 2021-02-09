@@ -1188,7 +1188,7 @@ class Merge(QtGui.QMainWindow):
             if self.parent.fm_controls.other == self.other:
                 self.parent.fm_controls.progress_bar.setValue(0)
             self.other.progress = 0
-            self.parent.project.merged = False
+            self.parent.project.merged = [False, False, False]
             self.other.show_merge = False
         self._reset_init()
         event.accept()
