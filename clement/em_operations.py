@@ -704,7 +704,6 @@ class EM_ops():
                     tf_points.append([tf_point[0][0], tf_point[1][0]])
                     corr_points_fib_red.append(corr_points_fib[i])
 
-            diff = np.array(tf_points) - np.array(corr_points_fib_red)
             self.merge_shift = np.mean(tf_points, axis=0) - np.mean(corr_points_fib_red, axis=0)
             self.log('IMG shift: ', self.merge_shift)
 

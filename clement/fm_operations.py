@@ -364,6 +364,7 @@ class FM_ops(Peak_finding):
         roi_size = 20
         tmp = []
         ref = []
+        err = []
         for i in range(len(peaks_2d)):
             roi_min_0 = int(peaks_2d[i][0] - roi_size // 2) if int(peaks_2d[i][0] - roi_size // 2) > 0 else 0
             roi_min_1 = int(peaks_2d[i][1] - roi_size // 2) if int(peaks_2d[i][1] - roi_size // 2) > 0 else 0
@@ -383,8 +384,19 @@ class FM_ops(Peak_finding):
                 if np.linalg.norm(diff) < roi_size:
                     tmp.append(tmp_i)
                     ref.append(peaks_2d[i])
+
         if len(ref) != 0 and len(tmp) != 0:
             color_matrix = tf.estimate_transform('affine', np.array(tmp), np.array(ref)).params
+            for i in range(len(tmp)):
+                transf = color_matrix @ np.array([tmp[i][0], tmp[i][1], 1])
+                diff = np.array(transf[:2] - ref[i])
+                err.append(np.sqrt(diff[0] ** 2 + diff[1] ** 2))
+                #print('TMP: ', tmp[i])
+                #print('TRANSF: ', transf[:2])
+                #print('REF: ', ref[i])
+                #print('DIFF: ', diff)
+            #print('Color matrix: \n', color_matrix)
+            self.print('Alignment error RMS [nm]: ', np.sqrt(1 / len(err) * np.sum(err)) * self.voxel_size[0] * 1e9)
             if np.array_equal(color_matrix[2,:], np.array([0, 0, 1])):
                 self._color_matrices[idx] = np.copy(color_matrix)
                 self._aligned_channels[idx] = True

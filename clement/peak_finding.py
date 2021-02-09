@@ -24,8 +24,6 @@ class Peak_finding():
         self.roi_min_size = 10
         self.background_correction = False
         self.adjusted_params = False
-        self.peaks_z_std = []
-        self.z_profiles = []
         self.sigma_z = None
         self.aligning = False
         self.my_counter = None
@@ -243,10 +241,6 @@ class Peak_finding():
             except RuntimeError:
                 pass
         if local:
-            perr = np.sqrt(np.diag(pcov))[0]
-            self.print('Std z fit: ', perr)
-            self.peaks_z_std.append(perr)
-            self.z_profiles.append(z_profile[i])
             return popt[0]
         else:
             if len(sigma_list) == 0:
@@ -268,12 +262,8 @@ class Peak_finding():
                     self.print('Unable to fit z profile. Calculate argmax(z).')
                     self.print('WARNING! Calculation of the z-position might be inaccurate!')
                     mean_values.append(np.argmax(z_profile[i]))
-                    self.peaks_z_std.append(10)
-
                 perr = np.sqrt(np.diag(pcov))[0]
                 self.log('Std z fit: ', perr)
-                self.peaks_z_std.append(perr)
-                self.z_profiles.append(z_profile[i])
                 mean_values.append(popt[0])
 
             if transformed:
@@ -399,6 +389,4 @@ class Peak_finding():
         self.orig_tf_peaks = None
         self.tf_peaks_z = None
         self.peaks_z = None
-        self.peaks_z_std = []
-        self.z_profiles = []
         self.mu = []
