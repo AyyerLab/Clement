@@ -111,14 +111,7 @@ class FM_ops(Peak_finding):
             for i in range(self.orig_data.shape[-1]):
                 self.orig_data[:, :, i] = (self.orig_data[:, :, i] - self.orig_data[:, :, i].min()) / \
                                              (self.orig_data[:, :, i].max() - self.orig_data[:, :, i].min())
-                if i == 1:
-                    norm_factor = self.norm_factor / 10
-                elif i == 2:
-                    norm_factor = self.norm_factor * 100
-                else:
-                    norm_factor = self.norm_factor
-                #self.orig_data[:,:,i] *= self.norm_factor
-                self.orig_data[:,:,i] *= norm_factor
+                self.orig_data[:,:,i] *= self.norm_factor
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
             [self._aligned_channels.append(False) for i in range(self.num_channels)]
