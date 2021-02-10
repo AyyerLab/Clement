@@ -112,9 +112,9 @@ class FM_ops(Peak_finding):
                 self.orig_data[:, :, i] = (self.orig_data[:, :, i] - self.orig_data[:, :, i].min()) / \
                                              (self.orig_data[:, :, i].max() - self.orig_data[:, :, i].min())
                 if i == 1:
-                    norm_factor = 10
+                    norm_factor = self.norm_factor / 10
                 elif i == 2:
-                    norm_factor = 1000
+                    norm_factor = self.norm_factor * 100
                 else:
                     norm_factor = self.norm_factor
                 #self.orig_data[:,:,i] *= self.norm_factor
