@@ -88,6 +88,7 @@ class FIBControls(BaseControls):
         if self._file_name != '':
             if self.ops is not None:
                 self.reset_init()
+                self.tab_index = 1
             self.mrc_fname.setText(os.path.basename(self._file_name))
 
             self.ops = EM_ops(self.print, self.log)

@@ -6,6 +6,7 @@ import copy
 import mrcfile as mrc
 from scipy import ndimage as ndi
 from scipy import signal as sc
+from scipy.interpolate import RegularGridInterpolator
 from skimage import transform as tf
 from skimage import io, measure, feature
 from sklearn import cluster, mixture
@@ -389,7 +390,7 @@ class EM_ops():
         src = np.zeros((points.shape[0], 4))
         dst = np.zeros_like(src)
         for i in range(points.shape[0]):
-            src[i, :] = [points[i, 0], points[i, 1], int(num_slices / 2), 1]
+            src[i, :] = [points[i, 0], points[i, 1], 12, 1] #z == 12 is an estimate for the z position of the sem grid square
             dst[i, :] = self.fib_matrix @ src[i, :]
             if self._refine_matrix is not None:
                 dst[i, :3] = self._refine_matrix @ np.array([dst[i, 0], dst[i, 1], 1])
@@ -669,6 +670,7 @@ class EM_ops():
 
         p0 = np.array([0, 0, 0, 1])
         p1 = np.array([0, 0, 1, 1])
+        #p1 = np.array([0, 0, voxel_size[2]/voxel_size[0], 1])
         self.z_shift = (self.fib_matrix @ p1)[:2] - (self.fib_matrix @ p0)[:2]
         self.log('z_shift: ', self.z_shift)
 
@@ -708,7 +710,18 @@ class EM_ops():
             self.log('IMG shift: ', self.merge_shift)
 
         z_data = []
+
+        #x = np.arange(fm_data_orig.shape[0])
+        #y = np.arange(fm_data_orig.shape[1])
+        #interp_function = RegularGridInterpolator((x, y, np.arange(fm_data_orig.shape[2])), fm_data_orig)
+        #z = np.linspace(0, fm_data_orig.shape[2]-1, 4*fm_data_orig.shape[2])
+        #print(z)
+        #X, Y, Z = np.meshgrid(x,y,z, indexing='ij', sparse=True)
+        #data_interp = interp_function((X,Y,Z))
+        #print(data_interp.shape)
+        #print(data_interp.max())
         for z in range(num_slices):
+        #for z in range(data_interp.shape[-1]):
             fib_new = np.copy(fib_2d)
             z_reverse = num_slices - 1 - z
             fib_new[:2, 2] += z_reverse * self.z_shift
@@ -717,6 +730,7 @@ class EM_ops():
             total_matrix[:2, 2] -= self.merge_shift.T
 
             refined = np.copy(ndi.affine_transform(fm_data_orig[:, :, z], np.linalg.inv(total_matrix), order=1,
+            #refined = np.copy(ndi.affine_transform(data_interp[:, :, z], np.linalg.inv(total_matrix), order=1,
                                            output_shape=self.data.shape))
             z_data.append(refined)
 

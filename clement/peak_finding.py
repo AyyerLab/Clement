@@ -241,7 +241,7 @@ class Peak_finding():
             except RuntimeError:
                 pass
         if local:
-            return popt[0]
+            return self.num_slices - 1 - popt[0]
         else:
             if len(sigma_list) == 0:
                 self.print('Z fitting of the beads failed. Contact developers!')
@@ -263,8 +263,7 @@ class Peak_finding():
                     self.print('WARNING! Calculation of the z-position might be inaccurate!')
                     mean_values.append(np.argmax(z_profile[i]))
                 perr = np.sqrt(np.diag(pcov))[0]
-                self.log('Std z fit: ', perr)
-                mean_values.append(popt[0])
+                mean_values.append(self.num_slices - 1 - popt[0])
 
             if transformed:
                 self.tf_peaks_z = np.copy(mean_values)
@@ -310,6 +309,7 @@ class Peak_finding():
             return (intens * np.exp(-(x - mu_x) ** 2 / (2 * sigma_x **2)) * np.exp(-(y - mu_y) ** 2 / (2 * sigma_y ** 2)) *
                     np.exp(-(z - mu_z) ** 2 / (2 * sigma_z ** 2)) + offset).ravel()
 
+
         if channel is None:
             channel = self._channel_idx
 
@@ -323,12 +323,23 @@ class Peak_finding():
         if point[0] < 0 or point[1] < 0 or point[0] > self.orig_data.shape[0] or point[1] > self.orig_data.shape[1]:
             self.print('You have to select a point within the bounds of the image!')
             return None, None, None
+
+        idx = self.check_peak_index(point, 10, False)
+        my_point = np.copy(point)
+        if idx is not None:
+            peaks_2d = self.peaks[idx]
+            bead = True
+        else:
+            peaks_2d = my_point
+            bead = False
+
         roi_size = 10
         x_min = np.round(point[0] - roi_size/2).astype(int)
         x_max = np.round(point[0] + roi_size/2).astype(int)
         y_min = np.round(point[1] - roi_size/2).astype(int)
         y_max = np.round(point[1] + roi_size/2).astype(int)
         data = self.channel[x_min:x_max, y_min:y_max, :]
+
         if self.my_counter is None:
             self.my_counter = 0
         #np.save('virus{}.npy'.format(self.my_counter), data)
@@ -341,11 +352,13 @@ class Peak_finding():
         x0, y0 = (data.shape[0]/2, data.shape[1]/2)
         z0 = np.argmax(data[np.round(x0).astype(int), np.round(y0).astype(int), :])
 
-        #bounds for fitting params: x0, y0, z0, sigma_xy, sigma_z, intensity, offset
-        bounds = ((x0 - max_proj.shape[0] / 4, y0 - max_proj.shape[1] / 4, z0 - data.shape[-1] / 4, 0, 0, 0, np.mean(data),
-                   np.mean(data)), (
-                  x0 + max_proj.shape[0] / 4, y0 + max_proj.shape[1] / 4, z0 + data.shape[-1] / 4, 2, 2, 2, np.max(data),
-                  np.max(data)))
+        #bounds for fitting params: x0, y0, z0, sigma_x, sigma_y, sigma_z, intensity, offset
+        if bead:
+            bounds = ((x0 - max_proj.shape[0] / 4, y0 - max_proj.shape[1] / 4, z0 - data.shape[-1] / 4, 0, 0, 0, np.mean(data), 0),
+                     (x0 + max_proj.shape[0] / 4, y0 + max_proj.shape[1] / 4, z0 + data.shape[-1] / 4, 10, 10, 2, np.max(data), np.max(data)))
+        else:
+            bounds = ((x0 - max_proj.shape[0] / 4, y0 - max_proj.shape[1] / 4, z0 - data.shape[-1] / 4, 0, 0, 0, np.mean(data),np.mean(data)),
+                      (x0 + max_proj.shape[0] / 4, y0 + max_proj.shape[1] / 4, z0 + data.shape[-1] / 4, 2, 2, 2, np.max(data), np.max(data)))
 
         x = np.arange(max_shape)
         x, y, z = np.meshgrid(x, x, x, indexing='ij')
@@ -372,15 +385,46 @@ class Peak_finding():
             point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
         z = self.num_slices - 1 - popt[2]
+        #print('Gauss fit: ', z)
         init = np.array([point[0], point[1], z])
         self.log('Model fit: ', r2)
+
         if r2 < 0.2:
             self.print('Model does not fit well to the data. You should consider selecting a different virus!',
-                       ' Uncertainty: ', perr[:3]*self.voxel_size)
+                       ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
         #    return None, None, None
         #
         else:
-            self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size)
+            self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
+
+
+        z_profile = self.channel[np.round(peaks_2d[0]).astype(int), np.round(peaks_2d[1]).astype(int)]
+        z_profile = np.expand_dims(z_profile, axis=0)
+        mean_int = np.median(np.max(z_profile, axis=1), axis=0)
+        max_int = np.max(z_profile)
+        z_max = np.argmax(z_profile, axis=1)
+        x = np.arange(len(z_profile[0]))
+        gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
+
+        sigma_list = []
+        for i in range(len(z_profile)):
+            try:
+                z_peak = x[z_profile[i] > np.exp(-0.5) * z_profile[i].max()]
+                sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
+                if sigma_guess == 0:
+                    sigma_guess = 2
+                offset = z_profile[i].min()
+                mask = np.zeros_like(z_profile[i]).astype(int)
+                mask[z_profile[i] == max_int] = 1
+                x_masked = np.ma.masked_array(x, mask)
+                z_masked = np.ma.masked_array(z_profile[i], mask)
+                popt_z, pcov_z = curve_fit(gauss, x_masked, z_masked, p0=[np.argmax(z_profile[i]), sigma_guess, offset])
+                if popt_z[0] > 0 and popt_z[0] < z_profile.shape[1]:
+                    sigma_list.append(popt_z[1])
+            except RuntimeError:
+                pass
+        #print('z fit: ', self.num_slices - 1 - popt_z[0])
+
         return init, perr[:3], pcov[:3,:3]
 
     def reset_peaks(self):

@@ -469,7 +469,7 @@ class Project(QtWidgets.QWidget):
             if self.tem.ops is not None:
                 self._save_em(project, sem=False)
             project['MERGE'] = {}
-            project['MERGE']['idx'] = self.merged
+            project['MERGE']['Merged'] = self.merged
             if True in self.merged:
                 self._save_merge(project['MERGE'])
             self._project_folder = os.path.dirname(file_name)

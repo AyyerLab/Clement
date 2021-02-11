@@ -345,8 +345,6 @@ class FM_ops(Peak_finding):
         if z is None:
             self.print('Oops, something went wrong. Try somewhere else!')
             return None
-        # flip z axis
-        z = self.num_slices - 1 - z
         return z
 
     def load_channel(self, ind):

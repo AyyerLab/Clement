@@ -3,6 +3,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 import copy
 import matplotlib
+import math
 
 from . import utils
 
@@ -427,6 +428,15 @@ class BaseControls(QtWidgets.QWidget):
 
         img_center = np.array(self.ops.data.shape) / 2
         lambda_1, lambda_2, theta = self._calc_ellipses(self.poi_counter)
+        if math.isnan(lambda_1) or math.isnan(lambda_2):
+            del self.pois_err[-1]
+            del self.pois_cov[-1]
+            del self._pois_raw[-1]
+            del self.pois_base[-1]
+            del self.pois_z[-1]
+            QtWidgets.QApplication.restoreOverrideCursor()
+            return
+
         size = (lambda_1, lambda_2)
         pos = QtCore.QPointF(init[0]-size[0]/2, init[1]-size[1]/2)
         point_obj = pg.EllipseROI(img_center, size=[size[0], size[1]], angle=0, parent=item,
@@ -623,7 +633,7 @@ class BaseControls(QtWidgets.QWidget):
             colors = cmap(diff_abs)
         if self.tab_index == 1:
             for i in range(len(self.other.ops.tf_peaks)):
-                z = self.other.ops.calc_z(i, self.other.ops.tf_peaks_z[i], self.other.ops._transformed)
+                z = self.other.ops.tf_peaks_z[i]
                 init = np.array(
                     [self.other.ops.tf_peaks[i, 0], self.other.ops.tf_peaks[i, 1], 1])
                 transf = np.dot(self.tr_matrices, init)
@@ -712,13 +722,13 @@ class BaseControls(QtWidgets.QWidget):
             self.translate_peaks_btn.setChecked(False)
             for p in self.peaks:
                 p.translatable = True
-                p.sigRegionChangeFinished.connect(lambda pt=p: self._peak_to_poi(pt))
+                p.sigRegionChangeFinished.connect(lambda pt=p: self._peak_to_point(pt))
         else:
             for p in self.peaks:
                 p.sigRegionChangeFinished.disconnect()
                 p.translatable = False
 
-    def _peak_to_poi(self, peak):
+    def _peak_to_point(self, peak):
         idx = self._check_point_idx(peak)
         if idx is None:
             self.imview.removeItem(peak)
