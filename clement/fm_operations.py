@@ -303,13 +303,12 @@ class FM_ops(Peak_finding):
                 self.fit_z(ref, transformed=False)
             # fit plane to peaks with least squares to remove tilt
             peaks_2d = self.peaks
-
             A = np.array([peaks_2d[:, 0], peaks_2d[:, 1], np.ones_like(peaks_2d[:, 0])]).T  # matrix
             beta = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), np.expand_dims(self.peaks_z, axis=1))  # params
-            point = np.array([0.0, 0.0, beta[2]])  # point on plane
+            point = np.array([0.0, 0.0, beta[2][0]])  # point on plane
             normal = np.array(np.cross([1, 0, beta[0][0]], [0, 1, beta[1][0]]))  # normal vector of plane
             d = -point.dot(normal)  # distance to origin
-            x, y = np.indices((2048, 2048))
+            x, y = np.indices(ref[:,:,-1].shape)
             z_plane = -(normal[0] * x + normal[1] * y + d) / normal[2]  # z values of plane for whole image
             z_max_all = np.argmax(ref, axis=2)
 
@@ -363,6 +362,10 @@ class FM_ops(Peak_finding):
         tmp = []
         ref = []
         err = []
+
+        #self.green_coor = []
+        #self.red_coor = []
+        #self.red_coor_z = []
         for i in range(len(peaks_2d)):
             roi_min_0 = int(peaks_2d[i][0] - roi_size // 2) if int(peaks_2d[i][0] - roi_size // 2) > 0 else 0
             roi_min_1 = int(peaks_2d[i][1] - roi_size // 2) if int(peaks_2d[i][1] - roi_size // 2) > 0 else 0
@@ -372,17 +375,22 @@ class FM_ops(Peak_finding):
                 1] else self.data.shape[1]
             tmp_coor_i = self.peak_finding(self.max_proj_data[:, :, idx][roi_min_0:roi_max_0, roi_min_1:roi_max_1],
                                              transformed=False, roi=True)
+
+
             if tmp_coor_i is not None:
                 tmp_coor_0 = tmp_coor_i[0] + peaks_2d[i][0] - roi_size // 2 \
                                 if tmp_coor_i[0] + peaks_2d[i][0] - roi_size // 2 > 0 else tmp_coor_i[0]
                 tmp_coor_1 = tmp_coor_i[1] + peaks_2d[i][1] - roi_size // 2 \
                                 if tmp_coor_i[1] + peaks_2d[i][1] - roi_size // 2 > 0 else tmp_coor_i[1]
                 tmp_i = np.array((tmp_coor_0, tmp_coor_1))
+                #self.green_coor.append(tmp_i)
                 diff = np.array(tmp_i - peaks_2d[i])
                 if np.linalg.norm(diff) < roi_size:
                     tmp.append(tmp_i)
                     ref.append(peaks_2d[i])
-
+                    #self.red_coor.append(peaks_2d[i])
+                    #self.red_coor_z.append(self.peaks_z[i])
+        #print(len(self.green_coor))
         if len(ref) != 0 and len(tmp) != 0:
             color_matrix = tf.estimate_transform('affine', np.array(tmp), np.array(ref)).params
             for i in range(len(tmp)):
