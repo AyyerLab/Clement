@@ -1401,6 +1401,10 @@ class BaseControls(QtWidgets.QWidget):
         self.other._points_corr = []
         self.other.points_corr_z = []
         self.other._orig_points_corr = []
+        self.points_raw = []
+        self.other.points_raw = []
+        self.points_base = []
+        self.other.points_base = []
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()
@@ -1535,8 +1539,6 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(self.other.ops.num_channels):
                     if self.show_assembled_btn.isChecked():
                         show_region = False
-                        #self.ops.apply_merge_2d(self.other.ops.orig_data, self.other.ops.tf_matrix_orig,
-                        #                        self.other.ops.data.shape, self.other.ops.points, i)
                     else:
                         show_region = True
                     self.ops.apply_merge_2d(self.other.ops.data[:,:,i], self.other.ops.points, i,
@@ -1557,9 +1559,6 @@ class BaseControls(QtWidgets.QWidget):
                     flip_list = [self.other.ops.transp, self.other.ops.rot, self.other.ops.fliph, self.other.ops.flipv]
                     for i in range(self.other.ops.num_channels):
                         self.other.ops.load_channel(i)
-                        #self.ops.apply_merge_3d(self.other.tr_matrices, self.other.ops.fib_matrix,
-                        #                        self.other.ops._refine_matrix,
-                        #                        self.other.ops.data, src, src_z, dst, i)
                         orig_coor = []
                         tf_aligned_orig_shift = self.other.ops.tf_matrix @ self.other.ops._color_matrices[0]
                         for k in range(len(src)):
