@@ -218,7 +218,6 @@ class Peak_finding():
         z_profile = data[np.round(peaks_2d[:, 0]).astype(int), np.round(peaks_2d[:, 1]).astype(int)]
         mean_int = np.median(np.max(z_profile, axis=1), axis=0)
         max_int = np.max(z_profile)
-        z_max = np.argmax(z_profile, axis=1)
         x = np.arange(len(z_profile[0]))
 
         gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
@@ -241,7 +240,7 @@ class Peak_finding():
             except RuntimeError:
                 pass
         if local:
-            return self.num_slices - 1 - popt[0]
+            return popt[0]
         else:
             if len(sigma_list) == 0:
                 self.print('Z fitting of the beads failed. Contact developers!')
@@ -262,14 +261,12 @@ class Peak_finding():
                     self.print('Unable to fit z profile. Calculate argmax(z).')
                     self.print('WARNING! Calculation of the z-position might be inaccurate!')
                     mean_values.append(np.argmax(z_profile[i]))
-                perr = np.sqrt(np.diag(pcov))[0]
-                mean_values.append(self.num_slices - 1 - popt[0])
+                mean_values.append(popt[0])
 
             if transformed:
                 self.tf_peaks_z = np.copy(mean_values)
             else:
                 self.peaks_z = np.copy(mean_values)
-                #np.save('z_values_tilted.npy', self.peaks_z)
 
     def calc_local_z(self, data, point, transformed, tf_matrix=None, flips=None, shape=None):
         if transformed:
@@ -309,7 +306,6 @@ class Peak_finding():
             return (intens * np.exp(-(x - mu_x) ** 2 / (2 * sigma_x **2)) * np.exp(-(y - mu_y) ** 2 / (2 * sigma_y ** 2)) *
                     np.exp(-(z - mu_z) ** 2 / (2 * sigma_z ** 2)) + offset).ravel()
 
-
         if channel is None:
             channel = self._channel_idx
 
@@ -324,13 +320,15 @@ class Peak_finding():
             self.print('You have to select a point within the bounds of the image!')
             return None, None, None
 
-        idx = self.check_peak_index(point, 10, False)
-        my_point = np.copy(point)
+        idx = None
+        if self.peaks is not None:
+            idx = self.check_peak_index(point[:2], 10, False)
+        point_tmp = np.copy(point)
         if idx is not None:
             peaks_2d = self.peaks[idx]
             bead = True
         else:
-            peaks_2d = my_point
+            peaks_2d = point_tmp
             bead = False
 
         roi_size = 10
@@ -342,7 +340,6 @@ class Peak_finding():
 
         if self.my_counter is None:
             self.my_counter = 0
-        #np.save('virus{}.npy'.format(self.my_counter), data)
         self.my_counter += 1
         offset = np.mean(data)
         max_proj = np.max(data, axis=-1)
@@ -384,8 +381,8 @@ class Peak_finding():
         else:
             point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
-        z = self.num_slices - 1 - popt[2]
-        #print('Gauss fit: ', z)
+        z = popt[2]
+        print('Gauss fit: ', z)
         init = np.array([point[0], point[1], z])
         self.log('Model fit: ', r2)
 
@@ -397,12 +394,10 @@ class Peak_finding():
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
 
-
         z_profile = self.channel[np.round(peaks_2d[0]).astype(int), np.round(peaks_2d[1]).astype(int)]
         z_profile = np.expand_dims(z_profile, axis=0)
         mean_int = np.median(np.max(z_profile, axis=1), axis=0)
         max_int = np.max(z_profile)
-        z_max = np.argmax(z_profile, axis=1)
         x = np.arange(len(z_profile[0]))
         gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
 
@@ -423,7 +418,7 @@ class Peak_finding():
                     sigma_list.append(popt_z[1])
             except RuntimeError:
                 pass
-        #print('z fit: ', self.num_slices - 1 - popt_z[0])
+        print('z fit: ', popt_z[0])
 
         return init, perr[:3], pcov[:3,:3]
 

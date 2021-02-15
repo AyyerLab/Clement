@@ -149,7 +149,7 @@ class FIBControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):
-        if self.sem_ops is not None and recalc_matrix:
+        if self.sem_ops is not None and self.sem_ops.points is not None and recalc_matrix:
             if self.box_shift is None:
                 shift = np.zeros(2)
                 redo = True
@@ -158,10 +158,10 @@ class FIBControls(BaseControls):
                 redo = False
 
             sigma_angle = float(self.sigma_btn.text())
-            is_transposed = self.transp_btn.isChecked()
+            #is_transposed = not self.transp_btn.isChecked()
 
             self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
-                                        self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=is_transposed)
+                                        self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=False)
             self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
         if self.ops.points is not None:
@@ -174,7 +174,7 @@ class FIBControls(BaseControls):
             self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
             if redo:
                 self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape, self.other.ops.voxel_size,
-                                            self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=is_transposed)
+                                            self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=False)
                 self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
                 pos = list(self.ops.points)
                 self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False,
@@ -193,7 +193,6 @@ class FIBControls(BaseControls):
             if self.show_peaks_btn.isChecked():
                 self.show_peaks_btn.setChecked(False)
                 self.show_peaks_btn.setChecked(True)
-
 
     @utils.wait_cursor('print')
     def _update_shifts(self, state):

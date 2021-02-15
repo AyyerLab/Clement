@@ -102,16 +102,18 @@ class FM_ops(Peak_finding):
                 self.print('Voxel size: ', self.voxel_size)
                 self.old_fname = fname
 
+            z = self.num_slices - 1 - z #flip z axis, now z=0 is the most upper slice
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
             self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z, :, :].astype('f4')
                                        for i in range(self.num_channels)])
-            self.orig_data = self.orig_data.transpose(2, 1, 0)
+            self.orig_data = self.orig_data.transpose(1, 2, 0)
             #normalize to 100
             for i in range(self.orig_data.shape[-1]):
                 self.orig_data[:, :, i] = (self.orig_data[:, :, i] - self.orig_data[:, :, i].min()) / \
                                              (self.orig_data[:, :, i].max() - self.orig_data[:, :, i].min())
                 self.orig_data[:,:,i] *= self.norm_factor
+
             self.data = np.copy(self.orig_data)
             self.selected_slice = z
             [self._aligned_channels.append(False) for i in range(self.num_channels)]
@@ -250,7 +252,7 @@ class FM_ops(Peak_finding):
             #self.max_proj_data /= self.max_proj_data.mean((0, 1))
         else:
             self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
-                                           for i in range(self.num_channels)]).transpose(2, 1, 0).astype('f4')
+                                           for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
             #self.max_proj_data /= self.max_proj_data.mean((0, 1))
             for i in range(self.num_channels):
                 self.max_proj_data[:,:,i] = (self.max_proj_data[:,:,i] - self.max_proj_data[:,:,i].min()) / \
@@ -347,7 +349,8 @@ class FM_ops(Peak_finding):
         return z
 
     def load_channel(self, ind):
-        self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((2, 1, 0))
+        self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
+        self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
         self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
         self.channel *= self.norm_factor
         self._channel_idx = ind

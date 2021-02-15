@@ -379,6 +379,8 @@ class BaseControls(QtWidgets.QWidget):
             self._transform_pois(init[:2], poi=True)
 
         self._draw_fm_pois(init[:2], item)
+        #if len(self.pois_z) > 0:
+        #    self._draw_correlated_points(QtCore.QPointF(init[0]-self.size/2, init[1]-self.size/2), self.imview.getImageItem(), skip=True)
 
         if self.other.show_merge:
             self.other.popup._update_poi(pos)
@@ -461,9 +463,13 @@ class BaseControls(QtWidgets.QWidget):
 
         point_obj.sigRemoveRequested.connect(lambda: self._remove_pois(point_obj))
 
-    def _draw_correlated_points(self, pos, item):
+    def _draw_correlated_points(self, pos, item, skip=False):
         point = np.array([pos.x() + self.size / 2, pos.y() + self.size / 2])
-        init, pos, z = self._calc_optimized_position(point, pos)
+        if not skip:
+            init, pos, z = self._calc_optimized_position(point, pos)
+        else:
+            init = np.array([point[0], point[1], 1])
+            z = self.pois_z[-1]
         if init is None:
             return
         init_base = copy.copy(init)
@@ -1245,7 +1251,7 @@ class BaseControls(QtWidgets.QWidget):
                     if self.tab_index != 1:
                         self.show_peaks_btn.setEnabled(True)
 
-                elif not hasattr(self, 'tab_index') and self.other.tab_index != 1:
+                elif not hasattr(self, 'tab_index'):
                     self.other.show_peaks_btn.setEnabled(True)
 
     def _show_original(self):
