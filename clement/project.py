@@ -286,20 +286,7 @@ class Project(QtWidgets.QWidget):
             self._load_base(project, idx=1)
 
     def _load_base(self, project, idx):
-        if self.show_fib:
-            if 0 in self.fm._fib_flips:
-                self.fm.transpose.setChecked(not self.fm.transpose.isChecked())
-            if 1 in self.fm._fib_flips:
-                print(self.fm.rotate.isChecked())
-                self.fm.rotate.setChecked(not self.fm.rotate.isChecked())
-            if 2 in self.fm._fib_flips:
-                print(self.fm.fliph.isChecked())
-                self.fm.fliph.setChecked(not self.fm.fliph.isChecked())
-            if 3 in self.fm._fib_flips:
-                print(self.fm.flipv.isChecked())
-                self.fm.flipv.setChecked(not self.fm.flipv.isChecked())
         fmdict = project['FM']
-        self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
         fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
         counter = [0, 0, 0]
         if idx == 0:
@@ -504,7 +491,6 @@ class Project(QtWidgets.QWidget):
         fmdict['Fliph'] = self.fm.fliph.isChecked()
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
-        fmdict['FIB flips'] = self.fm._fib_flips
 
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
