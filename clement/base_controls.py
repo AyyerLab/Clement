@@ -941,6 +941,7 @@ class BaseControls(QtWidgets.QWidget):
             if np.allclose(pos, self._orig_points_corr[idx]):
                 self.peaks[i].resetPos()
                 self.imview.addItem(self.peaks[i])
+
         for i in range(len(self.other.peaks)):
             pos = [self.other.peaks[i].original_pos[0] + self.other.orig_size / 2, self.other.peaks[i].original_pos[1] + self.other.orig_size / 2]
             if np.allclose(pos, self.other._orig_points_corr[idx]):
@@ -984,7 +985,7 @@ class BaseControls(QtWidgets.QWidget):
         self.counter -= 1
         self.other.counter -= 1
 
-    def _clear_pois(self):
+    def _clear_points(self):
         self.counter = 0
         self.other.counter = 0
         # Remove circle from imviews
@@ -1035,6 +1036,10 @@ class BaseControls(QtWidgets.QWidget):
         self.fibcontrols.points_corr_z = []
         self.semcontrols.points_corr_z = []
         self.temcontrols.points_corr_z = []
+
+        if self.other.show_peaks_btn.isChecked():
+            self.other.show_peaks_btn.setChecked(False)
+            self.other.show_peaks_btn.setChecked(True)
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
@@ -1429,6 +1434,7 @@ class BaseControls(QtWidgets.QWidget):
             self.other.anno_list[i].setPos(point_other.pos().x()+5, point_other.pos().y()+5)
 
         if self.other.show_peaks_btn.isChecked():
+            self.other.size = self.size
             self.other.show_peaks_btn.setChecked(False)
             self.other.show_peaks_btn.setChecked(True)
 

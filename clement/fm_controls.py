@@ -213,7 +213,7 @@ class FMControls(BaseControls):
         self.select_btn.toggled.connect(self._define_corr_toggled)
         self.select_btn.setEnabled(False)
         self.clear_btn = QtWidgets.QPushButton('Remove references')
-        self.clear_btn.clicked.connect(self._clear_pois)
+        self.clear_btn.clicked.connect(self._clear_points)
         self.clear_btn.setEnabled(False)
         self.poi_btn = QtWidgets.QPushButton('Select POIs', self)
         self.poi_btn.setCheckable(True)
