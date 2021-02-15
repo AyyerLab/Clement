@@ -416,9 +416,9 @@ class Peak_finding():
                 popt_z, pcov_z = curve_fit(gauss, x_masked, z_masked, p0=[np.argmax(z_profile[i]), sigma_guess, offset])
                 if popt_z[0] > 0 and popt_z[0] < z_profile.shape[1]:
                     sigma_list.append(popt_z[1])
+                print('z fit: ', popt_z[0])
             except RuntimeError:
                 pass
-        print('z fit: ', popt_z[0])
 
         return init, perr[:3], pcov[:3,:3]
 

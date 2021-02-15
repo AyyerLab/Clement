@@ -726,8 +726,7 @@ class EM_ops():
         for z in range(num_slices):
         #for z in range(data_interp.shape[-1]):
             fib_new = np.copy(fib_2d)
-            z_reverse = num_slices - 1 - z
-            fib_new[:2, 2] += z_reverse * self.z_shift
+            fib_new[:2, 2] += z * self.z_shift
             total_matrix = self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[channel]
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T

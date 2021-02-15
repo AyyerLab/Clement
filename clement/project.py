@@ -543,7 +543,7 @@ class Project(QtWidgets.QWidget):
         emdict['Tab index'] = self.parent.em_imview.currentIndex()
         emdict['Directory'] = em._curr_folder
         emdict['File'] = em._file_name
-        #emdict['Transpose'] = em.transp_btn.isChecked()
+        emdict['Transpose'] = em.transp_btn.isChecked()
         emdict['Downsampling'] = em._downsampling
         emdict['Show grid box'] = em.show_grid_btn.isChecked()
         #emdict['Rotation only'] = em.rot_transform_btn.isChecked()
@@ -583,7 +583,7 @@ class Project(QtWidgets.QWidget):
         fibdict['Directory'] = self.fib._curr_folder
         fibdict['File'] = self.fib._file_name
         fibdict['Sigma angle'] = self.fib.sigma_btn.text()
-        #fibdict['Transpose'] = self.fib.transp_btn.isChecked()
+        fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
         if self.fib.ops._orig_points is not None:
             fibdict['Original points'] = self.fib.ops._orig_points.tolist()
