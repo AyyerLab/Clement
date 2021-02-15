@@ -673,27 +673,18 @@ class FM_ops(Peak_finding):
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
 
-    def update_fm_sem_matrix(self, tr_matrix, flips):
+    def update_fm_sem_matrix(self, tr_matrix):
         points = np.copy(self._tf_points)
-        transp, rot, fliph, flipv = self.transp, self.rot, self.fliph, self.flipv
-        if 0 in flips:
-            transp = not self.transp
-        if 1 in flips:
-            rot = not self.rot
-        if 2 in flips:
-            fliph = not self.fliph
-        if 3 in flips:
-            flipv = not self.flipv
 
-        if transp:
+        if self.transp:
             points = np.array([np.flip(point) for point in points])
-        if rot:
+        if self.rot:
             temp = self.data.shape[0] - 1 - points[:, 1]
             points[:, 1] = points[:, 0]
             points[:, 0] = temp
-        if fliph:
+        if self.fliph:
             points[:, 0] = self.data.shape[0] - points[:, 0]
-        if flipv:
+        if self.flipv:
             points[:, 1] = self.data.shape[1] - points[:, 1]
 
         rot_matrix = np.linalg.inv(tf.estimate_transform('affine', points, self.points).params)

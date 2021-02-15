@@ -81,7 +81,6 @@ class BaseControls(QtWidgets.QWidget):
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
         self._size_history = []
-        self._fib_flips = []
 
         self.pois = []
         self.pois_sizes = []
@@ -322,7 +321,7 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
             if self.other.ops is not None and self.other.tab_index == 1:
-                self.fm_sem_corr = self.ops.update_fm_sem_matrix(self.orig_fm_sem_corr, self._fib_flips)
+                self.fm_sem_corr = self.ops.update_fm_sem_matrix(self.orig_fm_sem_corr)
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             if self.other.ops is not None:
                 if self.ops.points is not None and self.other.ops.points is not None:
@@ -621,7 +620,7 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         if self.tab_index == 1 and self.tr_matrices is None:
-            self.other.fm_sem_corr = self.other.ops.update_fm_sem_matrix(self.other.orig_fm_sem_corr, self.other._fib_flips)
+            self.other.fm_sem_corr = self.other.ops.update_fm_sem_matrix(self.other.orig_fm_sem_corr)
             if not self.ops._transformed:
                 self.print('You have to transform the SEM image first!')
                 self.show_peaks_btn.setChecked(False)
@@ -1043,12 +1042,6 @@ class BaseControls(QtWidgets.QWidget):
         for i in range(len(self.pois)):
             self._remove_pois(self.pois[0], remove_base=False)
         self.fixed_orientation = False
-
-    def _store_fib_flips(self, idx):
-        if idx in self._fib_flips:
-            del self._fib_flips[self._fib_flips == idx]
-        else:
-            self._fib_flips.append(idx)
 
     def _define_grid_toggled(self, checked):
         if self.ops is None:

@@ -493,22 +493,16 @@ class EM_ops():
         self.print('Refine matrix: \n', self._refine_matrix)
 
     def apply_refinement(self, points=None):
-        update_points = False
-        # if points is None:
-        #    points = np.copy(self.points)
-        #    update_points = True
-        # else:
         if self.assembled:
             points = np.copy(self._tf_points)
         else:
             points = np.copy(self._tf_points_region)
-        update_points = True
         self.log(points)
         for i in range(points.shape[0]):
             point = np.array([points[i, 0], points[i, 1], 1])
             points[i] = (self._refine_matrix @ point)[:2]
-        if update_points:
-            self.points = points
+
+        self.points = points
 
     def undo_refinement(self):
         if len(self._refine_history) > 1:

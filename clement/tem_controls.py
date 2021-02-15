@@ -302,7 +302,6 @@ class TEMControls(BaseControls):
         self._orig_points_corr_history = []
         self._fib_vs_sem_history = []
         self._size_history = []
-        self._fib_flips = []
 
         self.flips = [False, False, False, False]
         self.tr_matrices = None

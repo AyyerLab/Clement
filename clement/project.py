@@ -108,23 +108,13 @@ class Project(QtWidgets.QWidget):
                 self.fm.ops._tf_points = np.array(fmdict['Transformed grid points'])
                 self.fm._affine_transform(toggle_orig=False)
 
-                self.fm._fib_flips = copy.copy(fmdict['FIB flips'])
-                counter = 0
-                if (fmdict['Transpose'] and 0 not in self.fm._fib_flips) or (
-                        not fmdict['Transpose'] and 0 in self.fm._fib_flips):
+                if fmdict['Transpose']:
                     self.fm.transpose.setChecked(True)
-                    counter+=1
-                if (fmdict['Rotate'] and 1 not in self.fm._fib_flips) or (
-                        not fmdict['Rotate'] and 1 in self.fm._fib_flips):
+                if fmdict['Rotate']:
                     self.fm.rotate.setChecked(True)
-                    counter += 1
-                if (fmdict['Fliph'] and 2 not in self.fm._fib_flips) or (
-                        not fmdict['Fliph'] and 2 in self.fm._fib_flips):
+                if fmdict['Fliph']:
                     self.fm.fliph.setChecked(True)
-                    counter += 1
-                if (fmdict['Flipv'] and 3 not in self.fm._fib_flips) or (
-                        not fmdict['Flipv'] and 3 in self.fm._fib_flips):
-                    counter+=1
+                if fmdict['Flipv']:
                     self.fm.flipv.setChecked(True)
             except KeyError:
                 pass
