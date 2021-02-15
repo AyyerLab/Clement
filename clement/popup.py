@@ -555,7 +555,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.flood_steps = self.flood_steps.value()
         self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
-                                 curr_slice=None, roi_pos= self.roi_pos, background_correction=False)
+                                 roi_pos= self.roi_pos, background_correction=False)
 
         peaks_2d = copy.copy(self.fm.ops.peaks)
         if peaks_2d is None:

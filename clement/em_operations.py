@@ -673,7 +673,6 @@ class EM_ops():
 
         p0 = np.array([0, 0, 0, 1])
         p1 = np.array([0, 0, 1, 1])
-        #p1 = np.array([0, 0, voxel_size[2]/voxel_size[0], 1])
         self.z_shift = (self.fib_matrix @ p1)[:2] - (self.fib_matrix @ p0)[:2]
         self.log('z_shift: ', self.z_shift)
 

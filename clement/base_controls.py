@@ -322,7 +322,6 @@ class BaseControls(QtWidgets.QWidget):
                 self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
                                flips=self.flips, shape=self.ops.data.shape[:-1])
             if self.other.ops is not None and self.other.tab_index == 1:
-                #self.fm_sem_corr = self.ops.update_tr_matrix(self.orig_fm_sem_corr, self._fib_flips)
                 self.fm_sem_corr = self.ops.update_fm_sem_matrix(self.orig_fm_sem_corr, self._fib_flips)
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             if self.other.ops is not None:

@@ -29,7 +29,7 @@ class Peak_finding():
         self.my_counter = None
 
 
-    def peak_finding(self, im, transformed, roi=False, curr_slice=None, roi_pos=None, background_correction=None):
+    def peak_finding(self, im, transformed, roi=False, roi_pos=None, background_correction=None):
         start = time.time()
         img = np.copy(im)
         if background_correction is None and self.background_correction:
@@ -182,7 +182,7 @@ class Peak_finding():
         inv_point = (np.linalg.inv(tf_mat) @ point)[:2]
         return inv_point
 
-    def fit_z(self, data, transformed, curr_slice=None, tf_matrix=None, flips=None, shape=None, local=False,
+    def fit_z(self, data, transformed, tf_matrix=None, flips=None, shape=None, local=False,
               point=None):
         '''
         calculates the z profile along the beads and fits a gaussian
@@ -202,11 +202,6 @@ class Peak_finding():
                 peaks_2d = np.copy(self.peaks)
         else:
             peaks_2d = point
-            x_min = int(np.round(peaks_2d[0][0]) - 10)
-            x_max = int(np.round(peaks_2d[0][0]) + 10)
-            y_min = int(np.round(peaks_2d[0][1]) - 10)
-            y_max = int(np.round(peaks_2d[0][1]) + 10)
-            roi = data[x_min:x_max, y_min:y_max]
 
         if peaks_2d is None:
             if local:
