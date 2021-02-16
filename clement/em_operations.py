@@ -366,7 +366,7 @@ class EM_ops():
 
         # Rotate SEM image according to sigma angles
         self.fib_angle = delta_sigma + 52
-        total_angle = -self.fib_angle * np.pi / 180 #right-hand rule, clockwise rotation
+        total_angle = self.fib_angle * np.pi / 180 #right-hand rule, clockwise rotation (looking from origin)
 
         #Rx
         self.fib_matrix = np.array([[1, 0, 0, 0],
@@ -393,7 +393,7 @@ class EM_ops():
         src = np.zeros((points.shape[0], 4))
         dst = np.zeros_like(src)
         for i in range(points.shape[0]):
-            src[i, :] = [points[i, 0], points[i, 1], 0, 1] #z == 10 is an estimate for the z position of the sem grid square
+            src[i, :] = [points[i, 0], points[i, 1], 20, 1] #z == 20 is an estimate for the z position of the sem grid square
             dst[i, :] = self.fib_matrix @ src[i, :]
             if self._refine_matrix is not None:
                 dst[i, :3] = self._refine_matrix @ np.array([dst[i, 0], dst[i, 1], 1])

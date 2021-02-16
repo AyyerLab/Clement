@@ -336,6 +336,9 @@ class Peak_finding():
         if self.my_counter is None:
             self.my_counter = 0
         self.my_counter += 1
+
+        #np.save('point{}.npy'.format(self.my_counter), peaks_2d)
+
         offset = np.mean(data)
         max_proj = np.max(data, axis=-1)
         max_int = np.max(max_proj)
@@ -378,6 +381,7 @@ class Peak_finding():
 
         z = popt[2]
         print('Gauss fit: ', z)
+        #np.save('z_values{}.npy'.format(self.my_counter), z)
         init = np.array([point[0], point[1], z])
         self.log('Model fit: ', r2)
 
