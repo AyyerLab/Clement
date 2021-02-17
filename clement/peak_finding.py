@@ -311,6 +311,7 @@ class Peak_finding():
         else:
             point = np.linalg.inv(self._color_matrices[channel]) @ np.array([point[0], point[1], 1])
 
+
         if point[0] < 0 or point[1] < 0 or point[0] > self.orig_data.shape[0] or point[1] > self.orig_data.shape[1]:
             self.print('You have to select a point within the bounds of the image!')
             return None, None, None
@@ -337,7 +338,7 @@ class Peak_finding():
             self.my_counter = 0
         self.my_counter += 1
 
-        #np.save('point{}.npy'.format(self.my_counter), peaks_2d)
+        #np.save('point{}_flipped.npy'.format(self.my_counter), peaks_2d)
 
         offset = np.mean(data)
         max_proj = np.max(data, axis=-1)
@@ -372,6 +373,7 @@ class Peak_finding():
         ss_tot = np.sum((data - data.mean()) ** 2)
         r2 = 1 - (ss_res / ss_tot)
 
+        #print('peak finding raw: ', popt[:3] + np.array([x_min, y_min, 0]))
         perr = np.sqrt(np.diag(pcov))
         if transformed:
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
@@ -380,9 +382,10 @@ class Peak_finding():
             point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
         z = popt[2]
-        print('Gauss fit: ', z)
-        #np.save('z_values{}.npy'.format(self.my_counter), z)
+        #print('Gauss fit: ', z)
+        #np.save('z_values{}_flipped.npy'.format(self.my_counter), z)
         init = np.array([point[0], point[1], z])
+        #print('peak finding: ', init)
         self.log('Model fit: ', r2)
 
         if r2 < 0.2:

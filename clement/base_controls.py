@@ -366,6 +366,7 @@ class BaseControls(QtWidgets.QWidget):
     def _draw_pois(self, pos, item):
         point = np.copy(np.array([pos.x(), pos.y()]))
         init = self._fit_poi(point)
+
         if init is None:
             return
         init_base = copy.copy(init)
