@@ -396,31 +396,30 @@ class Peak_finding():
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
 
-        z_profile = self.channel[np.round(peaks_2d[0]).astype(int), np.round(peaks_2d[1]).astype(int)]
-        z_profile = np.expand_dims(z_profile, axis=0)
-        mean_int = np.median(np.max(z_profile, axis=1), axis=0)
-        max_int = np.max(z_profile)
-        x = np.arange(len(z_profile[0]))
-        gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
+        #z_profile = self.channel[np.round(peaks_2d[0]).astype(int), np.round(peaks_2d[1]).astype(int)]
+        #z_profile = np.expand_dims(z_profile, axis=0)
+        #mean_int = np.median(np.max(z_profile, axis=1), axis=0)
+        #max_int = np.max(z_profile)
+        #x = np.arange(len(z_profile[0]))
+        #gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
 
-        sigma_list = []
-        for i in range(len(z_profile)):
-            try:
-                z_peak = x[z_profile[i] > np.exp(-0.5) * z_profile[i].max()]
-                sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
-                if sigma_guess == 0:
-                    sigma_guess = 2
-                offset = z_profile[i].min()
-                mask = np.zeros_like(z_profile[i]).astype(int)
-                mask[z_profile[i] == max_int] = 1
-                x_masked = np.ma.masked_array(x, mask)
-                z_masked = np.ma.masked_array(z_profile[i], mask)
-                popt_z, pcov_z = curve_fit(gauss, x_masked, z_masked, p0=[np.argmax(z_profile[i]), sigma_guess, offset])
-                if popt_z[0] > 0 and popt_z[0] < z_profile.shape[1]:
-                    sigma_list.append(popt_z[1])
-                print('z fit: ', popt_z[0])
-            except RuntimeError:
-                pass
+        #sigma_list = []
+        #for i in range(len(z_profile)):
+        #    try:
+        #        z_peak = x[z_profile[i] > np.exp(-0.5) * z_profile[i].max()]
+        #        sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
+        #        if sigma_guess == 0:
+        #            sigma_guess = 2
+        #        offset = z_profile[i].min()
+        #        mask = np.zeros_like(z_profile[i]).astype(int)
+        #        mask[z_profile[i] == max_int] = 1
+        #        x_masked = np.ma.masked_array(x, mask)
+        #        z_masked = np.ma.masked_array(z_profile[i], mask)
+        #        popt_z, pcov_z = curve_fit(gauss, x_masked, z_masked, p0=[np.argmax(z_profile[i]), sigma_guess, offset])
+        #        if popt_z[0] > 0 and popt_z[0] < z_profile.shape[1]:
+        #            sigma_list.append(popt_z[1])
+        #    except RuntimeError:
+        #        pass
 
         return init, perr[:3], pcov[:3,:3]
 

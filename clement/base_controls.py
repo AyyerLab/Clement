@@ -266,7 +266,6 @@ class BaseControls(QtWidgets.QWidget):
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
             self.point_ref_btn.setEnabled(False)
-
             self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
             self.print('Select points of interest on %s image' % self.tag)
         else:
@@ -366,7 +365,6 @@ class BaseControls(QtWidgets.QWidget):
     def _draw_pois(self, pos, item):
         point = np.copy(np.array([pos.x(), pos.y()]))
         init = self._fit_poi(point)
-
         if init is None:
             return
         init_base = copy.copy(init)
@@ -381,8 +379,8 @@ class BaseControls(QtWidgets.QWidget):
         #if len(self.pois_z) > 0:
         #    self._draw_correlated_points(QtCore.QPointF(init[0]-self.size/2, init[1]-self.size/2), self.imview.getImageItem(), skip=True)
 
-        if self.other.show_merge:
-            self.other.popup._update_poi(pos)
+        #if self.other.show_merge:
+        #    self.other.popup._update_poi(pos)
 
     def _calc_ellipses(self, counter):
         cov_matrix = np.copy(self.pois_cov[counter])
@@ -439,7 +437,7 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         size = (lambda_1, lambda_2)
-        pos = QtCore.QPointF(init[0]-size[0]/2, init[1]-size[1]/2)
+        pos = QtCore.QPointF(init[0] - lambda_1/2 + 0.5, init[1] - lambda_2/2 + 0.5)
         point_obj = pg.EllipseROI(img_center, size=[size[0], size[1]], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 

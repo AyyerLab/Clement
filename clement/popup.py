@@ -835,7 +835,7 @@ class Merge(QtGui.QMainWindow):
             for i in range(len(points)):
                 pos = points[i]
                 size = sizes[i]
-                point = np.array([pos.x() + size[0] // 2, pos.y() + size[1] // 2, z_values[i], 1])
+                point = np.array([pos.x() + size[0] // 2 - 0.5, pos.y() + size[1] // 2 - 0.5, z_values[i], 1]) #0.5 pixel correction for drawing ellipse
                 transf = tot_matrix @ point
                 transf_points.append(transf[:2])
                 cov_i = np.insert(np.insert(np.array(covs[i]), 3, 0, axis=0), 3, 0, axis=1)
@@ -846,7 +846,7 @@ class Merge(QtGui.QMainWindow):
             for i in range(len(points)):
                 pos = points[i]
                 size = sizes[i]
-                point = np.array([pos.x() + size[0] // 2, pos.y() + size[1] // 2, 1])
+                point = np.array([pos.x() + size[0] // 2 - 0.5, pos.y() + size[1] // 2 - 0.5, 1])
                 transf = tot_matrix @ point
                 transf_points.append(transf[:2] / self.downsampling)
                 cov_i = np.array(covs[i])
@@ -891,7 +891,7 @@ class Merge(QtGui.QMainWindow):
         point = pg.EllipseROI(img_center, size=[lambda_1, lambda_2], angle=0, parent=item,
                               movable=False, removable=True, resizable=False, rotatable=False)
 
-        pos = [pos.x() - lambda_1 / 2, pos.y() - lambda_2 / 2]
+        pos = [pos.x() - lambda_1 / 2 + 0.5, pos.y() - lambda_2 / 2 + 0.5]
         self.print('Total error estimate: ', lambda_1/2, lambda_2/2)
         point.setTransformOriginPoint(QtCore.QPointF(lambda_1/2, lambda_2/2))
         point.setRotation(theta)
@@ -1000,8 +1000,8 @@ class Merge(QtGui.QMainWindow):
         else:
             coordinates = []
             for i in range(len(self._clicked_points_popup)):
-                coordinates.append(self.downsampling * np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2,
-                                                                 self._clicked_points_popup[i].pos().y() + self.lambda_list[i][1] / 2]))
+                coordinates.append(self.downsampling * np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2 - 0.5,
+                                                                 self._clicked_points_popup[i].pos().y() + self.lambda_list[i][1] / 2] - 0.5))
             self.coordinates = np.array(coordinates)
             self.coordinates[:,1] = self.data_popup.shape[1] - self.coordinates[:,1]
 
@@ -1106,7 +1106,7 @@ class Merge(QtGui.QMainWindow):
         point = np.array([pos.x(), pos.y()])
         idx = None
         for i in range(len(self.lambda_list)):
-            poi = np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2 ,
+            poi = np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2,
                             self._clicked_points_popup[i].y() + self.lambda_list[i][1] / 2])
             diff = point - poi
             dist = np.sqrt(diff[0]**2 + diff[1]**2)
@@ -1187,6 +1187,7 @@ class Merge(QtGui.QMainWindow):
         if self.parent is not None:
             if self.parent.fm_controls.other == self.other:
                 self.parent.fm_controls.progress_bar.setValue(0)
+                self.parent.fm_controls.poi_btn.setEnabled(True)
             self.other.progress = 0
             self.parent.project.merged = [False, False, False]
             self.other.show_merge = False

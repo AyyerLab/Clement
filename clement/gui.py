@@ -305,6 +305,7 @@ class GUI(QtWidgets.QMainWindow):
                     condition = controls.merge()
                     if condition:
                         if popup is not None:
+                            self.fm_controls.poi_btn.setEnabled(True)
                             popup.close()
                         popup = Merge(self, self.print, self.log)
                         controls.popup = popup
@@ -313,6 +314,8 @@ class GUI(QtWidgets.QMainWindow):
                         if self.project.load_merge:
                             self.project._load_merge(project)
                             self.project.load_merge = False
+                        self.fm_controls.poi_btn.setChecked(False)
+                        self.fm_controls.poi_btn.setEnabled(False)
                         popup.show()
                 else:
                     self.print('You have to transform the FM and the TEM/SEM images first!')
