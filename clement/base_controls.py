@@ -914,6 +914,7 @@ class BaseControls(QtWidgets.QWidget):
         self.imview.removeItem(self.poi_anno_list[idx])
         self.pois.remove(self.pois[idx])
         self.poi_anno_list.remove(self.poi_anno_list[idx])
+        self._pois_channel_indices.remove(self._pois_channel_indices[idx])
         if remove_base:
             self.pois_z.remove(self.pois_z[idx])
             self.pois_sizes.remove(self.pois_sizes[idx])
@@ -1111,6 +1112,8 @@ class BaseControls(QtWidgets.QWidget):
         if self.ops.points is None:
             return
 
+        print('now')
+        print(self.ops.points)
         if self.show_btn.isChecked():
             pos = list(self.ops.points)
             poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
@@ -1338,6 +1341,7 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor('print')
     def _refine(self, state=None):
+        print(self.other.ops.points)
         if self.select_btn.isChecked():
             self.print('Confirm point selection! (Uncheck Select points of interest)')
             return
@@ -1371,6 +1375,7 @@ class BaseControls(QtWidgets.QWidget):
         self.other.ops.calc_refine_matrix(src, dst)
         self.other.ops.apply_refinement()
         self.other._refined = True
+        self.other._recalc_grid()
         if self.other.show_grid_btn.isChecked():
             self.other._show_grid()
         self._estimate_precision(self.other.tab_index, refine_matrix_old)
@@ -1404,6 +1409,9 @@ class BaseControls(QtWidgets.QWidget):
         self.other.points_raw = []
         self.points_base = []
         self.other.points_base = []
+
+        print(self.other.ops.points)
+
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()
@@ -1460,7 +1468,9 @@ class BaseControls(QtWidgets.QWidget):
             self._estimate_precision(idx, self.other.ops._refine_matrix)
             self.other.size = copy.copy(self.size)
 
-
+        if self.other.show_peaks_btn.isChecked():
+            self.other.show_peaks_btn.setChecked(False)
+            self.other.show_peaks_btn.setChecked(True)
 
     @utils.wait_cursor('print')
     def _estimate_precision(self, idx, refine_matrix_old):
