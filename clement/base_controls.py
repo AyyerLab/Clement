@@ -9,7 +9,6 @@ from . import utils
 
 class PeakROI(pg.CircleROI):
     def __init__(self, pos, size, parent, movable=False, removable=False, resizable=False, color=None):
-        print('hi')
         super(PeakROI, self).__init__(pos, size, parent=parent,
                                       movable=movable, removable=removable, resizable=resizable)
         self.original_color = (255, 0, 0)
