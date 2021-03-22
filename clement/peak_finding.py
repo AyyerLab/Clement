@@ -295,7 +295,7 @@ class Peak_finding():
         else:
             return ind_arr[0]
 
-    def gauss_3d(self, point, transformed, channel=None):
+    def gauss_3d(self, point, transformed, channel=None, slice=None):
         def fit_func(mesh, mu_x, mu_y, mu_z, sigma_x, sigma_y, sigma_z, intens, offset):
             x, y, z = mesh
             return (intens * np.exp(-(x - mu_x) ** 2 / (2 * sigma_x **2)) * np.exp(-(y - mu_y) ** 2 / (2 * sigma_y ** 2)) *
@@ -332,21 +332,26 @@ class Peak_finding():
         x_max = np.round(point[0] + roi_size/2).astype(int)
         y_min = np.round(point[1] - roi_size/2).astype(int)
         y_max = np.round(point[1] + roi_size/2).astype(int)
+
+        x0, y0 = (roi_size/2, roi_size/2)
         data = self.channel[x_min:x_max, y_min:y_max, :]
+        if slice is None:
+            z0 = np.argmax(data[np.round(x0).astype(int), np.round(y0).astype(int), :])
+        else:
+            z0 = slice
+
+        #np.save('virus{}.npy'.format(self.my_counter), data)
 
         if self.my_counter is None:
             self.my_counter = 0
         self.my_counter += 1
 
-        #np.save('point{}_flipped.npy'.format(self.my_counter), peaks_2d)
+        #np.save('point{}.npy'.format(self.my_counter), peaks_2d)
 
         offset = np.mean(data)
         max_proj = np.max(data, axis=-1)
         max_int = np.max(max_proj)
         max_shape = np.array(data.shape).max()
-
-        x0, y0 = (data.shape[0]/2, data.shape[1]/2)
-        z0 = np.argmax(data[np.round(x0).astype(int), np.round(y0).astype(int), :])
 
         #bounds for fitting params: x0, y0, z0, sigma_x, sigma_y, sigma_z, intensity, offset
         if bead:
@@ -373,7 +378,6 @@ class Peak_finding():
         ss_tot = np.sum((data - data.mean()) ** 2)
         r2 = 1 - (ss_res / ss_tot)
 
-        #print('peak finding raw: ', popt[:3] + np.array([x_min, y_min, 0]))
         perr = np.sqrt(np.diag(pcov))
         if transformed:
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
@@ -382,17 +386,15 @@ class Peak_finding():
             point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
         z = popt[2]
-        #print('Gauss fit: ', z)
-        #np.save('z_values{}_flipped.npy'.format(self.my_counter), z)
+        #np.save('z_values{}.npy'.format(self.my_counter), z)
         init = np.array([point[0], point[1], z])
-        #print('peak finding: ', init)
         self.log('Model fit: ', r2)
 
-        if r2 < 0.2:
+        if r2 < 0.2 and r2 > 0:
             self.print('Model does not fit well to the data. You should consider selecting a different virus!',
                        ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
-        #    return None, None, None
-        #
+        elif r2 < 0:
+            return None, None, None
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
 

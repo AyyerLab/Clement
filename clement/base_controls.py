@@ -64,6 +64,7 @@ class BaseControls(QtWidgets.QWidget):
 
         self._pois_raw = []
         self._pois_channel_indices = []
+        self._pois_slices = []
 
         self._points_corr = []
         self._orig_points_corr = []
@@ -382,6 +383,11 @@ class BaseControls(QtWidgets.QWidget):
         #if self.other.show_merge:
         #    self.other.popup._update_poi(pos)
 
+        if self.max_proj_btn.isChecked():
+            self._pois_slices.append(None)
+        else:
+            self._pois_slices.append(self._current_slice)
+
     def _calc_ellipses(self, counter):
         cov_matrix = np.copy(self.pois_cov[counter])
         if self.ops._transformed:
@@ -451,6 +457,7 @@ class BaseControls(QtWidgets.QWidget):
 
         self.pois.append(point_obj)
         self._pois_channel_indices.append(self.point_ref_btn.currentIndex())
+
         self.pois_sizes.append(size)
         self.poi_counter += 1
         annotation_obj = pg.TextItem(str(self.poi_counter), color=color, anchor=(0, 0))
@@ -482,7 +489,11 @@ class BaseControls(QtWidgets.QWidget):
     def _fit_poi(self, point):
         #Dont use decorator here because of return value!
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.point_ref_btn.currentIndex())
+        if self.max_proj_btn.isChecked():
+            init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.point_ref_btn.currentIndex())
+        else:
+            init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.point_ref_btn.currentIndex(), slice=self._current_slice)
+
         if init is None:
             QtWidgets.QApplication.restoreOverrideCursor()
             return None
@@ -916,6 +927,7 @@ class BaseControls(QtWidgets.QWidget):
         self.poi_anno_list.remove(self.poi_anno_list[idx])
         self._pois_channel_indices.remove(self._pois_channel_indices[idx])
         if remove_base:
+            self._pois_slices.remove(self._pois_slices[idx])
             self.pois_z.remove(self.pois_z[idx])
             self.pois_sizes.remove(self.pois_sizes[idx])
             self.pois_err.remove(self.pois_err[idx])
@@ -1112,8 +1124,6 @@ class BaseControls(QtWidgets.QWidget):
         if self.ops.points is None:
             return
 
-        print('now')
-        print(self.ops.points)
         if self.show_btn.isChecked():
             pos = list(self.ops.points)
             poly_line = pg.PolyLineROI(pos, closed=True, movable=False)
@@ -1341,7 +1351,6 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor('print')
     def _refine(self, state=None):
-        print(self.other.ops.points)
         if self.select_btn.isChecked():
             self.print('Confirm point selection! (Uncheck Select points of interest)')
             return
@@ -1409,9 +1418,6 @@ class BaseControls(QtWidgets.QWidget):
         self.other.points_raw = []
         self.points_base = []
         self.other.points_base = []
-
-        print(self.other.ops.points)
-
 
     def _undo_refinement(self):
         self.other.ops.undo_refinement()

@@ -43,6 +43,7 @@ class GUI(QtWidgets.QMainWindow):
         else:
             self.setGeometry(geom)
 
+        self.setWindowTitle('Clement')
         widget = QtWidgets.QWidget()
         self.setCentralWidget(widget)
         layout = QtWidgets.QVBoxLayout()

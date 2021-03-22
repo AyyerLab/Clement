@@ -84,16 +84,26 @@ class Project(QtWidgets.QWidget):
         try:
             pois_raw = fmdict['Pois raw']
             qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(pois_raw)]
-            self.fm._pois_channel_indices = fmdict['Poi channel indices']
+            #self.fm._pois_channel_indices = fmdict['Poi channel indices']
 
-            for i in range(len(self.fm._pois_channel_indices)):
-                if self.fm._pois_channel_indices[i] != self.fm.point_ref_btn.currentIndex():
-                    self.fm.point_ref_btn.setCurrentIndex(self.fm._pois_channel_indices[i])
+            poi_slices = fmdict['Poi slices']
+            poi_channels = fmdict['Poi channel indices']
+            for i in range(len(poi_channels)):
+                if poi_slices[i] is not None:
+                    self.fm.max_proj_btn.setEnabled(True)
+                    self.fm.max_proj_btn.setChecked(False)
+                    self.fm.slice_select_btn.setValue(int(poi_slices[i]))
+                    self.fm._slice_changed()
+                else:
+                    self.fm.max_proj_btn.setChecked(True)
+                if poi_channels[i] != self.fm.point_ref_btn.currentIndex():
+                    self.fm.point_ref_btn.setCurrentIndex(poi_channels[i])
                 self.fm.poi_btn.setChecked(True)
-                if self.fm._pois_channel_indices[i] != self.fm.point_ref_btn.currentIndex():
-                    self.fm.point_ref_btn.setCurrentIndex(self.fm._pois_channel_indices[i])
+                if poi_channels[i] != self.fm.point_ref_btn.currentIndex():
+                    self.fm.point_ref_btn.setCurrentIndex(poi_channels[i])
                 self.fm._draw_pois(qpoints[i], self.fm.imview.getImageItem())
                 self.fm.poi_btn.setChecked(False)
+
         except KeyError:
             pass
         try:
@@ -506,6 +516,7 @@ class Project(QtWidgets.QWidget):
         pois_raw = [[p.x(), p.y()] for p in self.fm._pois_raw]
         fmdict['Pois raw'] = pois_raw
         fmdict['Poi channel indices'] = self.fm._pois_channel_indices
+        fmdict['Poi slices'] = self.fm._pois_slices
 
     def _save_em(self, project, sem):
         emdict = {}
