@@ -11,7 +11,6 @@ class PeakROI(pg.CircleROI):
     def __init__(self, pos, size, parent, movable=False, removable=False, resizable=False, color=None):
         super(PeakROI, self).__init__(pos, size, parent=parent,
                                       movable=movable, removable=removable, resizable=resizable)
-        print('hi')
         self.original_color = (255, 0, 0)
         self.moved_color = (0, 255, 255)
         self.original_pos = copy.copy(np.array([pos.x(), pos.y()]))
