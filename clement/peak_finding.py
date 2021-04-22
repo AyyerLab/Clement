@@ -103,7 +103,8 @@ class Peak_finding():
             except IndexError:
                 return None
         else:
-            peaks_2d = np.round(coor)
+            #peaks_2d = np.round(coor)
+            peaks_2d = coor
             if roi_pos is not None and peaks_2d is not None:
                 peaks_2d += roi_pos
             if self.aligning:
