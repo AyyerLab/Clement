@@ -913,7 +913,7 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 self._points_corr.append(point)
             self.imview.addItem(point)
-        self.size = circle_size_em
+        self.size = circle_sizeem
 
     def _remove_pois(self, point, remove_base=True):
         idx = None

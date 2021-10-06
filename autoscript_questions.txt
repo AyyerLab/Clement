@@ -1,0 +1,42 @@
+1. What is stream patterning?
+
+2. What is 'set_default_application_file('Si')'?
+
+3. Why is the gas_type to be set for each pattern? Does this make sense at all?
+
+4. Why does the field width need to be adjusted? microscope.beams.ion_beam.horizontal_field_width.value = 20e-6
+
+5. Is drift corrected patterning (DCP) needed when fiducial is milled?
+
+
+
+Other open questions:
+
+- What is the orientation of the y axis?
+- Is the metadata bar of the FIB image part of the actual image at the FIB? This is crucial for calculating the image center!
+- What does  <!-- When ReferenceDistanceFromLamela would be set to zero you will be probably happy.  --> mean?
+- Lamella position is defined twice in ProjectData.dat file:
+	
+          <!-- Lamela position in image start -->
+          <!-- Position in meters from image center. Image center is [0, 0] -->
+          <Position>
+            <X>-12.451110892 μm</X>
+            <Y>8.425659029 μm</Y>
+          </Position>
+          <!-- Lamela position in image end -->
+          <GridPosition>
+            <X>0 m</X>
+            <Y>0 m</Y>
+          </GridPosition>
+          <ElectronGridPosition>
+            <X>0 m</X>
+            <Y>0 m</Y>
+          </ElectronGridPosition>
+          <!-- MPI -->
+          <!-- Lamela position in image start -->
+          <!-- Position in meters from image center. Image center is [0, 0] -->
+          <ThinningPosition>
+            <X>-12.451110892 μm</X>
+            <Y>8.425659029 μm</Y>
+          </ThinningPosition>
+          <!-- Lamela position in image end --> 

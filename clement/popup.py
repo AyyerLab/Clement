@@ -690,6 +690,14 @@ class Merge(QtGui.QMainWindow):
         options = QtWidgets.QHBoxLayout()
         options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options)
+
+        print_layout = QtWidgets.QHBoxLayout()
+        print_layout.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(print_layout)
+        self.print_line = QtWidgets.QLabel('')
+        print_layout.addWidget(self.print_line)
+        print_layout.addStretch(1)
+
         self._init_options_popup(options)
         self._calc_color_channels_popup()
         if self.overlay_btn_popup.isChecked():
@@ -1097,10 +1105,12 @@ class Merge(QtGui.QMainWindow):
         k = self.lamella_size / self.pixel_size[1]
         if i == 0:
             self.lines[1].setPos(pos-k)
-            self.lamella_pos = pos - k / 2
+            self.lamella_pos[1] = pos - k / 2
         else:
             self.lines[0].setPos(pos+k)
-            self.lamella_pos = pos + k / 2
+            self.lamella_pos[1] = pos + k / 2
+
+        self.print_lamella_pos()
 
     def _check_ellipse_index(self, pos):
         point = np.array([pos.x(), pos.y()])
@@ -1127,12 +1137,12 @@ class Merge(QtGui.QMainWindow):
     @utils.wait_cursor('print')
     def _draw_lines(self, idx):
         point = self._clicked_points_popup[idx].pos()
-        self.lamella_pos = point.y() + self.lambda_list[idx][1] / 2
+        self.lamella_pos = [point.x() + self.lambda_list[idx][0] / 2, point.y() + self.lambda_list[idx][1] / 2]
 
         k = self.lamella_size / self.pixel_size[1] / 2
-        line = pg.InfiniteLine(pos=self.lamella_pos + k, angle=0, pen='r', hoverPen='c', movable=True,
+        line = pg.InfiniteLine(pos=self.lamella_pos[1] + k, angle=0, pen='r', hoverPen='c', movable=True,
                                bounds=[0, self.data_popup.shape[0]])
-        line2 = pg.InfiniteLine(pos=self.lamella_pos - k, angle=0, pen='r', hoverPen='c', movable=True,
+        line2 = pg.InfiniteLine(pos=self.lamella_pos[1] - k, angle=0, pen='r', hoverPen='c', movable=True,
                                 bounds=[0, self.data_popup.shape[0]])
 
         line.sigPositionChanged.connect(lambda : self._update_lines(0))
@@ -1144,6 +1154,13 @@ class Merge(QtGui.QMainWindow):
         self.lines.append(line2)
         for i in range(len(self.lines)):
             self.imview_popup.addItem(self.lines[i])
+
+        self.print_lamella_pos()
+
+    def print_lamella_pos(self):
+        center = np.array(self.data_popup[:,:,-1].shape) / 2  #y-axis showing upwards
+        coor = (np.array(self.lamella_pos) - center) * self.pixel_size[:2] * np.array([1, -1]) * 1e-3 #coor in microns
+        self.print_line.setText('Lamella position [\u03BCm]: [{}, {}]'.format(coor[0], coor[1]))
 
     @utils.wait_cursor('print')
     def _set_theme_popup(self, name):
