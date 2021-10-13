@@ -124,9 +124,10 @@ class BaseControls(QtWidgets.QWidget):
     def _init_ui(self):
         self.log('This message should not be seen. Please override _init_ui')
 
-    def select_tab(self, idx, semcontrols, fibcontrols, temcontrols):
+    def select_tab(self, idx, semcontrols, fibcontrols, giscontrols, temcontrols):
         semcontrols.tab_index = idx
         fibcontrols.tab_index = idx
+        giscontrols.tab_index = idx
         temcontrols.tab_index = idx
         if idx == 0:
             fibcontrols.show_grid_btn.setChecked(False)
@@ -142,9 +143,11 @@ class BaseControls(QtWidgets.QWidget):
                 if semcontrols.ops is not None and self.ops is not None:
                     if self.ops.points is not None and semcontrols.ops.points is not None:
                         self._calc_tr_matrices(em_points=semcontrols.ops.points)
+            show_grid = False
+            if self.other.show_grid_btn.isChecked():
+                show_grid = semcontrols.show_grid_btn.isChecked()
             self.other = fibcontrols
             if fibcontrols.ops is not None:
-                show_grid = semcontrols.show_grid_btn.isChecked()
                 fibcontrols.show_grid_btn.setChecked(show_grid)
             if fibcontrols._refined:
                 self.undo_refine_btn.setEnabled(True)
@@ -159,6 +162,16 @@ class BaseControls(QtWidgets.QWidget):
                     fibcontrols.enable_buttons(enable=False)
                 if fibcontrols.ops is not None and semcontrols.ops._tf_points is not None:
                     fibcontrols.ops._transformed = True
+        elif idx == 2:
+            giscontrols.sem_ops = semcontrols.ops
+            giscontrols.fib_ops = fibcontrols.ops
+            if fibcontrols.ops is not None:
+                giscontrols.enable_buttons(overlay=True)
+            if fibcontrols.show_grid_btn.isChecked():
+                giscontrols.show_grid_btn.setChecked(True)
+            self.other = giscontrols
+            giscontrols._update_imview()
+
         else:
             fibcontrols.show_grid_btn.setChecked(False)
             temcontrols._update_imview()
@@ -610,11 +623,12 @@ class BaseControls(QtWidgets.QWidget):
         if not self.show_peaks_btn.isChecked():
             # Remove already shown peaks
             [self.imview.removeItem(point) for point in self.peaks]
-            self.translate_peaks_btn.setChecked(False)
-            self.translate_peaks_btn.setEnabled(False)
-            self.refine_peaks_btn.setChecked(False)
-            self.refine_peaks_btn.setEnabled(False)
             self.peaks = []
+            if hasattr(self, 'translate_peaks_btn'):
+                self.translate_peaks_btn.setChecked(False)
+                self.translate_peaks_btn.setEnabled(False)
+                self.refine_peaks_btn.setChecked(False)
+                self.refine_peaks_btn.setEnabled(False)
             return
 
         if self.other.ops is None:
@@ -668,6 +682,12 @@ class BaseControls(QtWidgets.QWidget):
                 for i in range(len(self._orig_points_corr)):
                     if np.allclose(transf[:2], self._orig_points_corr[i]):
                         self.imview.removeItem(point)
+        elif self.tab_index == 2:
+            if self.other.fib_controls.peaks is not None:
+                self.peaks = copy.copy(self.other.fib_controls.peaks)
+                [self.imview.addItem(peak) for peak in self.peaks]
+            else:
+                print('You have to correlate FM and FIB first!')
         else:
             for peak in self.other.ops.tf_peaks:
                 init = np.array([peak[0], peak[1], 1])

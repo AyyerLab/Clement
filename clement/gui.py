@@ -10,6 +10,7 @@ from .sem_controls import SEMControls
 from .tem_controls import TEMControls
 from .fm_controls import FMControls
 from .fib_controls import FIBControls
+from .gis_controls import GISControls
 from .project import Project
 from .popup import Merge, Scatter, Convergence, Peak_Params
 from . import utils
@@ -72,11 +73,15 @@ class GUI(QtWidgets.QMainWindow):
         self.fib_imview = pg.ImageView()
         self.fib_imview.ui.roiBtn.hide()
         self.fib_imview.ui.menuBtn.hide()
+        self.gis_imview = pg.ImageView()
+        self.gis_imview.ui.roiBtn.hide()
+        self.gis_imview.ui.menuBtn.hide()
         self.tem_imview = pg.ImageView()
         self.tem_imview.ui.roiBtn.hide()
         self.tem_imview.ui.menuBtn.hide()
         self.em_imview.addWidget(self.sem_imview)
         self.em_imview.addWidget(self.fib_imview)
+        self.em_imview.addWidget(self.gis_imview)
         self.em_imview.addWidget(self.tem_imview)
         splitter_images.addWidget(self.em_imview)
 
@@ -84,6 +89,10 @@ class GUI(QtWidgets.QMainWindow):
         options = QtWidgets.QHBoxLayout()
         options.setContentsMargins(4, 0, 4, 4)
         layout.addLayout(options)
+
+        refine_options = QtWidgets.QHBoxLayout()
+        refine_options.setContentsMargins(4, 0, 4, 4)
+        layout.addLayout(refine_options)
 
         merge_options = QtWidgets.QHBoxLayout()
         merge_options.setContentsMargins(4, 0, 4, 4)
@@ -108,34 +117,40 @@ class GUI(QtWidgets.QMainWindow):
         tab_sem = QtWidgets.QWidget()
         tab_fib = QtWidgets.QWidget()
         tab_tem = QtWidgets.QWidget()
+        tab_gis = QtWidgets.QWidget()
         self.tabs.resize(300, 200)
         self.tabs.addTab(tab_sem, 'SEM')
         self.tabs.addTab(tab_fib, 'FIB')
+        self.tabs.addTab(tab_gis, 'FIB-GIS')
         self.tabs.addTab(tab_tem, 'TEM')
         vbox.addWidget(self.tabs)
 
         self.vbox_sem = QtWidgets.QVBoxLayout()
         self.vbox_fib = QtWidgets.QVBoxLayout()
+        self.vbox_gis = QtWidgets.QVBoxLayout()
         self.vbox_tem = QtWidgets.QVBoxLayout()
         tab_sem.setLayout(self.vbox_sem)
         tab_fib.setLayout(self.vbox_fib)
+        tab_gis.setLayout(self.vbox_gis)
         tab_tem.setLayout(self.vbox_tem)
 
-        self.sem_controls = SEMControls(self.sem_imview, self.vbox_sem, merge_options, self.print, self.log)
+        self.sem_controls = SEMControls(self.sem_imview, self.vbox_sem, self.print, self.log)
         self.sem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.sem_controls._couple_views)
         self.sem_controls.curr_folder = self.settings.value('sem_folder', defaultValue=os.getcwd())
         self.vbox_sem.addWidget(self.sem_controls)
-        self.fib_controls = FIBControls(self.fib_imview, self.vbox_fib, self.sem_controls.ops, merge_options, self.print, self.log)
+        self.fib_controls = FIBControls(self.fib_imview, self.vbox_fib, self.sem_controls.ops, self.print, self.log)
         self.fib_controls.curr_folder = self.settings.value('fib_folder', defaultValue=os.getcwd())
         self.vbox_fib.addWidget(self.fib_controls)
-        self.tem_controls = TEMControls(self.tem_imview, self.vbox_tem, merge_options, self.print, self.log)
+        self.gis_controls = GISControls(self.gis_imview, self.vbox_gis, self.sem_controls.ops, self.fib_controls.ops, self.print, self.log)
+        self.gis_controls.curr_folder = self.settings.value('fib_folder', defaultValue=os.getcwd())
+        self.vbox_gis.addWidget(self.gis_controls)
+        self.tem_controls = TEMControls(self.tem_imview, self.vbox_tem, self.print, self.log)
         self.tem_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.tem_controls._couple_views)
         self.tem_controls.curr_folder = self.settings.value('tem_folder', defaultValue=os.getcwd())
         self.vbox_tem.addWidget(self.tem_controls)
 
-
-        self.fm_controls = FMControls(self.fm_imview, self.colors, merge_options, self.sem_controls, self.fib_controls,
-                                      self.tem_controls, self.print, self.log)
+        self.fm_controls = FMControls(self.fm_imview, self.colors, refine_options, merge_options, self.sem_controls, self.fib_controls,
+                                      self.gis_controls, self.tem_controls, self.print, self.log)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
         self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fm_controls)
@@ -148,6 +163,7 @@ class GUI(QtWidgets.QMainWindow):
         self.fm_controls.set_params_btn.clicked.connect(lambda: self._show_peak_params())
         self.sem_controls.other = self.fm_controls
         self.fib_controls.other = self.fm_controls
+        self.gis_controls.other = self.fm_controls
         self.tem_controls.other = self.fm_controls
         self.fm_controls.other = self.sem_controls
         self.fm_controls.merge_btn.clicked.connect(self.merge)
@@ -185,8 +201,11 @@ class GUI(QtWidgets.QMainWindow):
         action = QtWidgets.QAction('Load FIB', self)
         action.triggered.connect(lambda idx: self.load_and_select_tab(idx=1))
         filemenu.addAction(action)
-        action = QtWidgets.QAction('Load TEM', self)
+        action = QtWidgets.QAction('Load FIB-GIS', self)
         action.triggered.connect(lambda idx: self.load_and_select_tab(idx=2))
+        filemenu.addAction(action)
+        action = QtWidgets.QAction('Load TEM', self)
+        action.triggered.connect(lambda idx: self.load_and_select_tab(idx=3))
         filemenu.addAction(action)
         action = QtWidgets.QAction('Load project', self)
         action.triggered.connect(self._load_p)
@@ -229,6 +248,8 @@ class GUI(QtWidgets.QMainWindow):
             self.sem_controls._load_mrc()
         elif idx == 1:
             self.fib_controls._load_mrc()
+        elif idx == 2:
+            self.gis_controls._load_mrc()
         else:
             self.tem_controls._load_mrc()
         self.tabs.setCurrentIndex(idx)
@@ -236,7 +257,7 @@ class GUI(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def change_tab(self, idx):
         self.em_imview.setCurrentIndex(idx)
-        self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.tem_controls)
+        self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.gis_controls, self.tem_controls)
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):

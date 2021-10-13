@@ -24,12 +24,15 @@ microscope.patterning.set_default_beam_type(BeamType.ION)
 
 #?????
 microscope.patterning.set_default_application_file('Si')
+microscope.beams.ion_beam.beam_current.value = 1e-10
 
-circles = []
+#PatterningMode
+
+microscope.patterning.clear_patterns()
 for i in range(3):
     for j in range(3):
-        circ = microscope.patterning.create_circle(i*5e-6, j*5e-6, 1e-6, 0.8e-6, 1e-6)
-        circ.gas_type = 'Pt dep' #???
+	microscope.patterning.create_circle(i*1.5e-6+15e-6, j*1.5e-6, 0.3e-6, 0, 0.5e-6)
+microscope.patterning.run()
 
 microscope.beams.ion_beam.turn_on()
 

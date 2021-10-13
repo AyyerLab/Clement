@@ -8,14 +8,13 @@ from .em_operations import EM_ops
 from . import utils
 
 class TEMControls(BaseControls):
-    def __init__(self, imview, vbox, merge_layout, printer, logger):
+    def __init__(self, imview, vbox, printer, logger):
         super(TEMControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
         self.tab_index = 0
         self.popup = None
-        self.merge_layout = merge_layout
         self.show_merge = False
 
         self.show_boxes = False

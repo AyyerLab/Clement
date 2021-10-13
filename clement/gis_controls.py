@@ -7,14 +7,22 @@ from .base_controls import BaseControls
 from .em_operations import EM_ops
 from . import utils
 
-class FIBControls(BaseControls):
-    def __init__(self, imview, vbox, sem_ops, printer, logger):
-        super(FIBControls, self).__init__()
+class GISControls(BaseControls):
+    def __init__(self, imview, vbox, sem_ops, fib_ops, printer, logger):
+        super(GISControls, self).__init__()
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
         self.sem_ops = sem_ops
+        self.fib_ops = fib_ops
         self.tab_index = 0
+        self.opacity = 1
+        self.img_pre = None
+        self.img_post = None
+        self.roi_pos = None
+        self.roi_size = None
+        self.roi_pre = None
+        self.roi_post = None
         self.num_slices = None
         self.popup = None
         self.show_merge = False
@@ -37,39 +45,58 @@ class FIBControls(BaseControls):
         self._init_ui(vbox)
 
     def _init_ui(self, vbox):
-        utils.add_montage_line(self, vbox, 'FIB', downsampling=False)
-
-        # ---- Specify FIB orientation
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('Angles:', self)
-        line.addWidget(label)
-
-        label = QtWidgets.QLabel('\u03c3_SEM - \u03c3_FIB:', self)
-        line.addWidget(label)
-        self.sigma_btn = QtWidgets.QLineEdit(self)
-        self.sigma_btn.setMaximumWidth(30)
-        self.sigma_btn.setText('0')
-        self._sigma_angle = int(self.sigma_btn.text())
-        self.sigma_btn.textChanged.connect(self._recalc_sigma)
-        self.sigma_btn.setEnabled(False)
-        line.addWidget(self.sigma_btn)
-
-        line.addStretch(1)
+        utils.add_montage_line(self, vbox, 'GIS', downsampling=False)
 
         # ---- Calculate grid square
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
-        label = QtWidgets.QLabel('Grid:')
+        label = QtWidgets.QLabel('Overlay pre- and post-GIS:')
         line.addWidget(label)
         self.show_grid_btn = QtWidgets.QCheckBox('Show grid square', self)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
         self.show_grid_btn.stateChanged.connect(self._show_grid)
         line.addWidget(self.show_grid_btn)
+        #utils.add_fmpeaks_line(self, vbox)
+        self.show_peaks_btn = QtWidgets.QCheckBox('Show FM peaks', self)
+        self.show_peaks_btn.setEnabled(True)
+        self.show_peaks_btn.setChecked(False)
+        self.show_peaks_btn.toggled.connect(self._show_FM_peaks)
+        self.show_peaks_btn.setEnabled(False)
+        line.addWidget(self.show_peaks_btn)
+
+        line.addStretch(0.5)
+        label = QtWidgets.QLabel('Overlay pre-/post-GIS:')
+        line.addWidget(label)
+
+        self.slider = QtWidgets.QSlider(self)
+        self.slider.setOrientation(QtCore.Qt.Horizontal)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(100)
+        self.slider.setValue(0)
+        self.slider.setSingleStep(5)
+        self.slider.valueChanged.connect(self._update_opacity)
+        self.slider.sliderReleased.connect(self._overlay_images)
+        self.slider.setEnabled(False)
+        line.addWidget(self.slider)
+
+        self.overlay_label = QtWidgets.QLabel('Opacity: 100 %')
+        line.addWidget(self.overlay_label)
         line.addStretch(1)
 
-        utils.add_fmpeaks_line(self, vbox)
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Correlate pre- and post-GIS:')
+        line.addWidget(label)
+
+        self.select_btn = QtWidgets.QPushButton('Select Fiducial ROI')
+        self.select_btn.setCheckable(True)
+        self.select_btn.toggled.connect(self._draw_roi)
+        self.select_btn.setEnabled(False)
+        line.addWidget(self.select_btn)
+
+        line.addStretch(1)
+        vbox.addStretch(1)
 
         self.show()
 
@@ -79,7 +106,7 @@ class FIBControls(BaseControls):
             if self._curr_folder is None:
                 self._curr_folder = os.getcwd()
             self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                                       'Select FIB data',
+                                                                       'Select GIS data',
                                                                        self._curr_folder,
                                                                        '*.tif;;*tiff;;*.mrc')
             self._curr_folder = os.path.dirname(self._file_name)
@@ -92,29 +119,66 @@ class FIBControls(BaseControls):
 
             self.ops = EM_ops(self.print, self.log)
             self.ops.parse_2d(self._file_name)
-            self.imview.setImage(self.ops.data)
+            self._update_imview()
+            #self.imview.setImage(self.ops.data)
             self.grid_box = None
             self.transp_btn.setEnabled(True)
-            self.sigma_btn.setEnabled(True)
-            if self.sem_ops is not None and self.sem_ops._orig_points is not None:
-                self.show_grid_btn.setEnabled(True)
-            if self.sem_ops is not None and self.sem_ops._tf_points is not None:
-                self.ops._transformed = True
+            if self.fib_ops is not None:
+                if self.fib_ops.points is not None:
+                    self.show_grid_btn.setEnabled(True)
+                if self.fib_ops._transformed is not None:
+                    self.ops._transformed = True
+                if self.fib_ops.data is not None:
+                    self.slider.setEnabled(True)
+                    self.select_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
         else:
             self.print('You have to choose a file first!')
 
     @utils.wait_cursor('print')
     def _update_imview(self, state=None):
+        if self.img_post is not None:
+            self.imview.removeItem(self.img_post)
+        if self.img_pre is not None:
+            self.imview.removeItem(self.img_pre)
         if self.ops is not None and self.ops.data is not None:
-            old_shape = self.imview.image.shape
-            new_shape = self.ops.data.shape
-            if old_shape == new_shape:
-                vr = self.imview.getImageItem().getViewBox().targetRect()
-            levels = self.imview.getHistogramWidget().item.getLevels()
-            self.imview.setImage(self.ops.data, levels=levels)
-            if old_shape == new_shape:
-                self.imview.getImageItem().getViewBox().setRange(vr, padding=0)
+            self.img_post = pg.ImageItem(self.ops.data)
+            if self.fib_ops is not None and self.fib_ops.data is not None:
+                self.img_pre = pg.ImageItem(self.fib_ops.data)
+            else:
+                self.img_pre = pg.ImageItem(np.zeros_like(self.ops.data))
+
+            self.imview.addItem(self.img_pre)
+            self.imview.addItem(self.img_post)
+            self.img_post.setZValue(10)
+            self.img_post.setOpacity(self.opacity)
+
+    def _update_opacity(self):
+        self.opacity = (100 - self.slider.value()) / 100
+        self.overlay_label.setText('Opacity: {}'.format(self.opacity))
+
+    def _overlay_images(self):
+        self._update_imview()
+
+    def _draw_roi(self, checked):
+        if checked:
+            pos = np.array([self.ops.data.shape[0] // 2, self.ops.data.shape[1] //2])
+            size = np.array([200, 200])
+            qrect = None
+            self.roi = pg.ROI(pos=pos, size=size, maxBounds=qrect, resizable=True, rotatable=False, removable=False)
+            self.roi.addScaleHandle(pos=[1, 1], center=[0.5, 0.5])
+            self.imview.addItem(self.roi)
+        else:
+            self.imview.removeItem(self.roi)
+            self.roi_pos = np.rint(np.array([self.roi.pos().x(), self.roi.pos().y()])).astype(int)
+            self.roi_size = np.rint(np.array([self.roi.size().x(), self.roi.size().y()])).astype(int)
+            self.roi_pre = self.fib_ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
+            self.roi_post = self.ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
+
+            #self.imview.removeItem(self.img_pre)
+            #self.imview.removeItem(self.img_post)
+            #self.imview.setImage(self.roi_post)
+
 
     @utils.wait_cursor('print')
     def _transpose(self, state=None):
@@ -122,10 +186,14 @@ class FIBControls(BaseControls):
         self._recalc_grid(recalc_matrix=False)
         self._update_imview()
 
-    def enable_buttons(self, enable=False):
+    def enable_buttons(self, overlay=False, enable=False):
         if self.ops is not None and self.ops.data is not None:
-            self.show_grid_btn.setEnabled(enable)
-
+            if enable:
+                self.show_grid_btn.setEnabled(True)
+                self.show_peaks_btn.setEnabled(True)
+            if self.fib_ops.data is not None and self.ops.data is not None:
+                self.slider.setEnabled(overlay)
+                self.select_btn.setEnabled(overlay)
 
     @utils.wait_cursor('print')
     def _show_grid(self, state=2):
@@ -136,15 +204,6 @@ class FIBControls(BaseControls):
             self.show_grid_box = False
             if self.grid_box is not None:
                 self.imview.removeItem(self.grid_box)
-
-    @utils.wait_cursor('print')
-    def _recalc_sigma(self, state=None):
-        if self.sigma_btn.text() is not '':
-            self._sigma_angle = int(self.sigma_btn.text())
-            self.box_shift = None
-            self.ops.box_shift = None
-            self._recalc_grid()
-
 
     @utils.wait_cursor('print')
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):

@@ -37,18 +37,20 @@ class SeriesPicker(QtWidgets.QDialog):
         event.accept()
 
 class FMControls(BaseControls):
-    def __init__(self, imview, colors, merge_layout, semcontrols, fibcontrols, temcontrols, printer, logger):
+    def __init__(self, imview, colors, refine_layout, merge_layout, semcontrols, fibcontrols, giscontrols, temcontrols, printer, logger):
         super(FMControls, self).__init__()
         self.tag = 'FM'
         self.imview = imview
         self.ops = None
         self.imview.scene.sigMouseClicked.connect(self._imview_clicked)
         self.merge_layout = merge_layout
+        self.refine_layout = refine_layout
         self.num_slices = None
         self.peak_controls = None
         self.picker = None
         self.semcontrols = semcontrols
         self.fibcontrols = fibcontrols
+        self.giscontrols = giscontrols
         self.temcontrols = temcontrols
 
         self._colors = colors
@@ -225,11 +227,10 @@ class FMControls(BaseControls):
         line.addWidget(self.poi_btn)
         line.addStretch(1)
 
-
         line = QtWidgets.QHBoxLayout()
-        self.merge_layout.addLayout(line)
+        self.refine_layout.addLayout(line)
         line.addStretch(1)
-        label = QtWidgets.QLabel('Refinement & Merging:', self)
+        label = QtWidgets.QLabel('Refinement:', self)
         line.addWidget(label)
 
         self.refine_btn = QtWidgets.QPushButton('Refine')
@@ -238,25 +239,13 @@ class FMControls(BaseControls):
         self.undo_refine_btn = QtWidgets.QPushButton('Undo last refinement')
         self.undo_refine_btn.clicked.connect(self._undo_refinement)
         self.undo_refine_btn.setEnabled(False)
-
         self.err_plt_btn = QtWidgets.QPushButton('Show error distribution')
         self.err_plt_btn.setEnabled(False)
-
         self.convergence_btn = QtWidgets.QPushButton('Show RMS convergence')
         self.convergence_btn.setEnabled(False)
 
-        self.merge_btn = QtWidgets.QPushButton('Merge', self)
-        self.merge_btn.setEnabled(False)
-        label = QtWidgets.QLabel('Progress:')
-        self.progress_bar = QtWidgets.QProgressBar(self)
-        self.progress_bar.setMaximum(100)
         line.addWidget(self.refine_btn)
         line.addWidget(self.undo_refine_btn)
-
-        line.addWidget(self.merge_btn)
-        line.addWidget(label)
-        line.addWidget(self.progress_bar)
-
         line.addStretch(0.5)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)
         line.addWidget(label)
@@ -265,6 +254,24 @@ class FMControls(BaseControls):
         line.addWidget(self.err_plt_btn)
         line.addWidget(self.convergence_btn)
         line.addStretch(1)
+
+        line = QtWidgets.QHBoxLayout()
+        self.merge_layout.addLayout(line)
+        line.addStretch(1)
+        label = QtWidgets.QLabel('Merging:', self)
+        line.addWidget(label)
+
+        self.merge_btn = QtWidgets.QPushButton('Merge', self)
+        self.merge_btn.setEnabled(False)
+        label = QtWidgets.QLabel('Progress:')
+        self.progress_bar = QtWidgets.QProgressBar(self)
+        self.progress_bar.setMaximum(100)
+
+        line.addWidget(self.merge_btn)
+        line.addWidget(label)
+        line.addWidget(self.progress_bar)
+        line.addStretch(1)
+
         vbox.addStretch(1)
 
         self.show()

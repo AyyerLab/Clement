@@ -9,6 +9,8 @@ __pycache__/
 *.npy
 *.h5
 data
+.idea
+clement/.idea
 old
 images
 log
