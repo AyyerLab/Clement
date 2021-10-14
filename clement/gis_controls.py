@@ -167,6 +167,7 @@ class GISControls(BaseControls):
             self.roi = pg.ROI(pos=pos, size=size, maxBounds=qrect, resizable=True, rotatable=False, removable=False)
             self.roi.addScaleHandle(pos=[1, 1], center=[0.5, 0.5])
             self.imview.addItem(self.roi)
+            self.roi.setZValue(20)
         else:
             self.imview.removeItem(self.roi)
             self.roi_pos = np.rint(np.array([self.roi.pos().x(), self.roi.pos().y()])).astype(int)
@@ -174,6 +175,8 @@ class GISControls(BaseControls):
             self.roi_pre = self.fib_ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
             self.roi_post = self.ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
 
+            np.save('roi_pre', self.roi_pre)
+            np.save('roi_post', self.roi_post)
             #self.imview.removeItem(self.img_pre)
             #self.imview.removeItem(self.img_post)
             #self.imview.setImage(self.roi_post)
@@ -206,58 +209,8 @@ class GISControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):
-        if self.sem_ops is not None and self.sem_ops.points is not None and recalc_matrix:
-            if self.box_shift is None:
-                shift = np.zeros(2)
-                redo = True
-            else:
-                shift = self.box_shift
-                redo = False
-
-            sigma_angle = float(self.sigma_btn.text())
-            #is_transposed = not self.transp_btn.isChecked()
-
-            self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
-                                        self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=False)
-            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
-
-        if self.ops.points is not None:
-            pos = list(self.ops.points)
-            if self.show_grid_box and self.grid_box is not None:
-                self.imview.removeItem(self.grid_box)
-            self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False, rotatable=False)
-            if self.old_pos0 is None:
-                self.old_pos0 = [0, 0]
-            self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
-            if redo:
-                self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape, self.other.ops.voxel_size,
-                                            self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=False)
-                self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
-                pos = list(self.ops.points)
-                self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False,
+        self.grid_box = pg.PolyLineROI(self.fib_ops.points, closed=True, movable=not self._refined, resizable=False,
                                                rotatable=False)
-                self.old_pos0 = self.grid_box.pos()
-                self.box_shift = np.zeros(2)
-                self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
-            self.print('Box origin at:', self.old_pos0)
-
-        if self.grid_box is not None:
-            if self.show_grid_box:
-                self.imview.addItem(self.grid_box)
-            self.show_peaks_btn.setEnabled(True)
-            self.auto_opt_btn.setEnabled(True)
-            self.size_box.setEnabled(True)
-            if self.show_peaks_btn.isChecked():
-                self.show_peaks_btn.setChecked(False)
-                self.show_peaks_btn.setChecked(True)
-
-    @utils.wait_cursor('print')
-    def _update_shifts(self, state):
-        new_pos = self.grid_box.pos() + self.old_pos0
-        self.box_shift = np.array(new_pos)
-        self.ops.points = np.copy([point + self.box_shift for point in self.ops.points])
-        self.old_pos0 = new_pos
-        self._recalc_grid()
 
     @utils.wait_cursor('print')
     def _save_mrc_montage(self, state=None):

@@ -521,6 +521,12 @@ class EM_ops():
         else:
             self.print('Data not refined!')
 
+    def find_fiducial(self, roi):
+        pass
+
+    def align_fiducial(self, pre, post)
+        pass
+
     def fit_circles(self, points, bead_size):
         points_model = []
         successfull = False

@@ -426,6 +426,7 @@ class Peak_finding():
 
         return init, perr[:3], pcov[:3,:3]
 
+
     def reset_peaks(self):
         self.peaks = None
         self.tf_peaks = None
