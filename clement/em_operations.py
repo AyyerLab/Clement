@@ -1,18 +1,14 @@
 import sys
-import glob
-import os
 import numpy as np
 import copy
 import mrcfile as mrc
 from scipy import ndimage as ndi
-from scipy import signal as sc
-from scipy.interpolate import RegularGridInterpolator
 from skimage import transform as tf
 from skimage import io, measure, feature
 from sklearn import cluster, mixture
 import tifffile
+import xmltodict
 from .ransac import Ransac
-import time
 import random
 
 
@@ -92,8 +88,19 @@ class EM_ops():
             try:
                 md = tifffile.TiffFile(fname).fei_metadata
                 self.pixel_size = np.array([md['Scan']['PixelWidth'], md['Scan']['PixelHeight']]) * 1e9
-            except KeyError:
+            except (KeyError, TypeError):
                 self.print('No pixel size found! This might cause the program to crash at some point...')
+            if self.pixel_size is None:
+                md = None
+                with tifffile.TiffFile(fname) as f:
+                    for tag in f.pages[0].tags.values():
+                        if tag.name == 'FEI_TITAN':
+                            md = xmltodict.parse(tag.value)
+
+                if md is not None:
+                    self.pixel_size = np.array([float(md['Metadata']['BinaryResult']['PixelSize']['X']['#text']),
+                                                float(md['Metadata']['BinaryResult']['PixelSize']['Y']['#text'])]) * 1e9
+
         else:
             f = mrc.open(fname, 'r', permissive=True)
             if f.data is None:

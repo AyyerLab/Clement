@@ -9,12 +9,13 @@ import copy
 
 
 class Project(QtWidgets.QWidget):
-    def __init__(self, fm, sem, fib, tem, parent, printer, logger):
+    def __init__(self, fm, sem, fib, gis, tem, parent, printer, logger):
         super(Project, self).__init__()
         self._project_folder = os.getcwd()
         self.fm = fm
         self.sem = sem
         self.fib = fib
+        self.gis = gis
         self.tem = tem
         self.show_fib = False
         self.merged = [False, False, False]
@@ -36,6 +37,8 @@ class Project(QtWidgets.QWidget):
             self.fm.reset_init()
             self.sem.reset_init()
             self.fib.reset_init()
+            self.gis.reset_init()
+            self.tem.reset_init()
             self.parent.tabs.setCurrentIndex(0)
             self._project_folder = os.path.dirname(file_name)
             with open(file_name, 'r') as f:
@@ -45,6 +48,7 @@ class Project(QtWidgets.QWidget):
             self._load_fm(project)
             self._load_em(project, sem=True)
             self._load_fib(project)
+            self._load_gis(project)
             self._load_em(project, sem=False)
             #self._load_base(project)
 
@@ -246,7 +250,7 @@ class Project(QtWidgets.QWidget):
             if sem:
                 idx = 0
             else:
-                idx = 2
+                idx = 3
             self._load_base(project, idx)
 
         em.show_assembled_btn.setChecked(emdict['Show assembled'])
@@ -268,7 +272,7 @@ class Project(QtWidgets.QWidget):
         self.fib.sigma_btn.setText(fibdict['Sigma angle'])
         self.fib.sem_ops = self.sem.ops
 
-        if self.fib.sem_ops._orig_points is not None:
+        if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
             self.fib.enable_buttons(True)
 
         try:
@@ -295,6 +299,27 @@ class Project(QtWidgets.QWidget):
         if fibdict['Refined']:
             self._load_base(project, idx=1)
 
+    def _load_gis(self, project):
+        if 'GIS' not in project:
+            return
+        gisdict = project['GIS']
+        self.gis._curr_folder = gisdict['Directory']
+        self.gis._file_name = gisdict['File']
+        self.gis.mrc_fname.setText(self.gis._file_name)
+        self.gis._load_mrc(jump=True)
+        if gisdict['Transpose']:
+            self.gis.transp_btn.setEnabled(True)
+            self.gis.transp_btn.setChecked(True)
+            self.gis._transpose()  # Why has this function to be called expilicitely???
+
+        self.gis.sem_ops = self.sem.ops
+        self.gis.fib_ops = self.fib.ops
+
+        if self.gis.fib_ops is not None:
+            self.gis.enable_buttons(overlay=True)
+        if self.fib.show_grid_btn.isChecked():
+            self.gis.show_grid_btn.setChecked(True)
+
     def _load_base(self, project, idx):
         fmdict = project['FM']
         fib_vs_sem_history = copy.copy(fmdict['FIB vs SEM history'])
@@ -307,7 +332,7 @@ class Project(QtWidgets.QWidget):
             emdict = project['FIB']
             em = self.fib
             em.fib = True
-        else:
+        elif idx == 3:
             emdict = project['TEM']
             em = self.tem
             em.fib = False
@@ -424,7 +449,7 @@ class Project(QtWidgets.QWidget):
         #            self.popup._draw_correlated_points_popup(qpoint, self.popup.imview_popup.getImageItem())
 
     def _save_project(self):
-        if self.fm.ops is not None or self.sem.ops is not None or self.tem.ops is not None:
+        if self.fm.ops is not None or self.sem.ops is not None or self.fib.ops is not None or self.gis.ops is not None or self.tem.ops is not None:
             if self.fm.select_btn.isChecked():
                 buttonReply = QtWidgets.QMessageBox.question(self, 'Warning',
                                                              'Selected points have not been confirmed and will be lost during saving! \r Continue?',
@@ -453,6 +478,8 @@ class Project(QtWidgets.QWidget):
                 self._save_em(project, sem=True)
             if self.fib.ops is not None:
                 self._save_fib(project)
+            if self.gis.ops is not None:
+                self._save_gis(project)
             if self.tem.ops is not None:
                 self._save_em(project, sem=False)
             project['MERGE'] = {}
@@ -595,6 +622,15 @@ class Project(QtWidgets.QWidget):
         fibdict['Size history'] = np.array(self.fib._size_history).tolist()
         fibdict['Refined'] = self.fib._refined
         fibdict['Refinement history'] = np.array(self.fib.ops._refine_history).tolist()
+
+    def _save_gis(self, project):
+        gisdict = {}
+        project['GIS'] = gisdict
+        gisdict['Tab index'] = self.parent.em_imview.currentIndex()
+        gisdict['Directory'] = self.gis._curr_folder
+        gisdict['File'] = self.gis._file_name
+        gisdict['Transpose'] = self.gis.transp_btn.isChecked()
+        gisdict['Show grid'] = self.gis.show_grid_btn.isChecked()
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]

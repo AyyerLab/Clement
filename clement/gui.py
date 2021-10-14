@@ -174,7 +174,7 @@ class GUI(QtWidgets.QMainWindow):
         self.scatter = None
         self.convergence = None
         self.peak_params = None
-        self.project = Project(self.fm_controls, self.sem_controls, self.fib_controls, self.tem_controls, self, self.print, self.log)
+        self.project = Project(self.fm_controls, self.sem_controls, self.fib_controls, self.gis_controls, self.tem_controls, self, self.print, self.log)
         self.project._project_folder = self.settings.value('project_folder', defaultValue=os.getcwd())
         # Menu Bar
         self._init_menubar()

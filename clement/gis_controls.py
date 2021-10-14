@@ -36,7 +36,6 @@ class GISControls(BaseControls):
 
         self._curr_folder = None
         self._file_name = None
-        self._sigma_angle = None
         self._refined = False
 
         self.print = printer
@@ -312,12 +311,8 @@ class GISControls(BaseControls):
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
-        self.size = 10
-        self.orig_size = 10
-        self.fixed_orientation = False
         self.peaks = []
         self.num_slices = None
-        self.min_conv_points = 10
         self.tab_index = 0
 
         self.show_grid_box = False
@@ -326,12 +321,5 @@ class GISControls(BaseControls):
         self.transp_btn.setChecked(False)
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
-
-        self.translate_peaks_btn.setChecked(False)
-        self.translate_peaks_btn.setEnabled(False)
-        self.refine_peaks_btn.setChecked(False)
-        self.refine_peaks_btn.setEnabled(False)
-        self.size_box.setEnabled(False)
-        self.auto_opt_btn.setEnabled(False)
 
         self.ops.__init__(self.print, self.log)
