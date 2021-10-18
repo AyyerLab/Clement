@@ -59,6 +59,8 @@ class EM_ops():
         self.rot_angle = None
         self.first_rotation = False
         self.tf_prev = np.identity(3)
+        self.gis_corrected = None
+        self.gis_transf = None
 
         self.stage_origin = None
 
@@ -168,8 +170,8 @@ class EM_ops():
         self.transposed = True
         self.data = self.data.T
         self.print('TRANSPOSE')
-        self.log(self.points)
         if self.points is not None:
+            self.log(self.points)
             self.points = np.array([np.flip(point) for point in self.points])
         self.log(self.points)
 
@@ -521,11 +523,32 @@ class EM_ops():
         else:
             self.print('Data not refined!')
 
-    def find_fiducial(self, roi):
-        pass
+    def _find_fiducial(self, img, num_circ=9):
+        labels, num_obj = ndi.label(img)
+        sizes = np.zeros(num_obj - 1)
+        for i in range(1, num_obj):
+            sizes[i - 1] = np.bincount(labels[labels == i]).max()
 
-    def align_fiducial(self, pre, post)
-        pass
+        lab_ind = sizes.argsort()[-num_circ:] + 1
+        coor = np.array(ndi.center_of_mass(img, labels, lab_ind))
+        coor_sorted = np.array(sorted(coor, key=lambda k: [np.cos(20 * np.pi / 180) * k[0] + k[1]]))
+        return coor_sorted
+
+    def align_fiducial(self, img_pre, roi_pos, roi_pre, roi_post, align):
+        if align:
+            roi_pre_t = roi_pre.max() - roi_pre
+            roi_post_t = roi_post.max() - roi_post
+            roi_pre_t[roi_pre_t < 0.95 * roi_pre_t.max()] = 0
+            roi_post_t[roi_post_t < 0.95 * roi_post_t.max()] = 0
+            coor_pre = self._find_fiducial(roi_pre_t) + roi_pos
+            coor_post = self._find_fiducial(roi_post_t) + roi_pos
+
+            #self.gis_transf = tf.estimate_transform('affine', coor_pre, coor_post).params
+            self.gis_transf = tf.estimate_transform('euclidean', coor_pre, coor_post).params
+            self.gis_corrected = ndi.affine_transform(img_pre, np.linalg.inv(self.gis_transf), order=1,
+                                       output_shape=self.data.shape)
+        else:
+            self.gis_corrected = None
 
     def fit_circles(self, points, bead_size):
         points_model = []

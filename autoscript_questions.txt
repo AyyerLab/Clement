@@ -1,12 +1,14 @@
-1. What is stream patterning?
+1. What is stream patterning? #no idea, not important
 
-2. What is 'set_default_application_file('Si')'?
+2. What is 'set_default_application_file('Si')'? #stands for S1, pattern pre-sets parameters
 
-3. Why is the gas_type to be set for each pattern? Does this make sense at all?
+3. Why is the gas_type to be set for each pattern? Does this make sense at all? NO!
 
-4. Why does the field width need to be adjusted? microscope.beams.ion_beam.horizontal_field_width.value = 20e-6
+4. Why does the field width need to be adjusted? microscope.beams.ion_beam.horizontal_field_width.value = 20e-6 #48e-6 seems good
 
-5. Is drift corrected patterning (DCP) needed when fiducial is milled?
+5. Is drift corrected patterning (DCP) needed when fiducial is milled? #so far not
+
+6. How can you set PatterningMode to 'Parallel'? 
 
 
 

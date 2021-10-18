@@ -75,7 +75,7 @@ class GISControls(BaseControls):
         self.slider.setValue(0)
         self.slider.setSingleStep(5)
         self.slider.valueChanged.connect(self._update_opacity)
-        self.slider.sliderReleased.connect(self._overlay_images)
+        self.slider.sliderReleased.connect(self._update_imview)
         self.slider.setEnabled(False)
         line.addWidget(self.slider)
 
@@ -88,11 +88,16 @@ class GISControls(BaseControls):
         label = QtWidgets.QLabel('Correlate pre- and post-GIS:')
         line.addWidget(label)
 
-        self.select_btn = QtWidgets.QPushButton('Select Fiducial ROI')
-        self.select_btn.setCheckable(True)
-        self.select_btn.toggled.connect(self._draw_roi)
-        self.select_btn.setEnabled(False)
-        line.addWidget(self.select_btn)
+        self.select_fiducial_btn = QtWidgets.QPushButton('Select Fiducial ROI')
+        self.select_fiducial_btn.setCheckable(True)
+        self.select_fiducial_btn.toggled.connect(self._draw_roi)
+        self.select_fiducial_btn.setEnabled(False)
+        line.addWidget(self.select_fiducial_btn)
+
+        self.correct_btn = QtWidgets.QCheckBox('Align pre- and post-GIS images')
+        self.correct_btn.toggled.connect(self._align_gis)
+        self.correct_btn.setEnabled(False)
+        line.addWidget(self.correct_btn)
 
         line.addStretch(1)
         vbox.addStretch(1)
@@ -129,7 +134,7 @@ class GISControls(BaseControls):
                     self.ops._transformed = True
                 if self.fib_ops.data is not None:
                     self.slider.setEnabled(True)
-                    self.select_btn.setEnabled(True)
+                    self.select_fiducial_btn.setEnabled(True)
             self.show_grid_btn.setChecked(False)
         else:
             self.print('You have to choose a file first!')
@@ -143,7 +148,10 @@ class GISControls(BaseControls):
         if self.ops is not None and self.ops.data is not None:
             self.img_post = pg.ImageItem(self.ops.data)
             if self.fib_ops is not None and self.fib_ops.data is not None:
-                self.img_pre = pg.ImageItem(self.fib_ops.data)
+                if self.correct_btn.isChecked():
+                    self.img_pre = pg.ImageItem(self.ops.gis_corrected)
+                else:
+                    self.img_pre = pg.ImageItem(self.fib_ops.data)
             else:
                 self.img_pre = pg.ImageItem(np.zeros_like(self.ops.data))
 
@@ -155,9 +163,6 @@ class GISControls(BaseControls):
     def _update_opacity(self):
         self.opacity = (100 - self.slider.value()) / 100
         self.overlay_label.setText('Opacity: {}'.format(self.opacity))
-
-    def _overlay_images(self):
-        self._update_imview()
 
     def _draw_roi(self, checked):
         if checked:
@@ -175,11 +180,24 @@ class GISControls(BaseControls):
             self.roi_pre = self.fib_ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
             self.roi_post = self.ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
 
-            np.save('roi_pre', self.roi_pre)
-            np.save('roi_post', self.roi_post)
+            print(self.roi_pos)
+            #np.save('roi_pre', self.roi_pre)
+            #np.save('roi_post', self.roi_post)
             #self.imview.removeItem(self.img_pre)
             #self.imview.removeItem(self.img_post)
             #self.imview.setImage(self.roi_post)
+
+    @utils.wait_cursor('print')
+    def _align_gis(self, state):
+        if self.select_fiducial_btn.isChecked() or self.roi_post is None:
+            self.correct_btn.setChecked(False)
+            self.print('You have to specify the ROI of the fiducial first!')
+        else:
+            if state:
+                self.ops.align_fiducial(self.fib_ops.data, self.roi_pos, self.roi_pre, self.roi_post, state)
+            else:
+                self.ops.align_fiducial(None, None, None, state)
+            self._update_imview()
 
 
     @utils.wait_cursor('print')
@@ -195,7 +213,8 @@ class GISControls(BaseControls):
                 self.show_peaks_btn.setEnabled(True)
             if self.fib_ops.data is not None and self.ops.data is not None:
                 self.slider.setEnabled(overlay)
-                self.select_btn.setEnabled(overlay)
+                self.select_fiducial_btn.setEnabled(overlay)
+                self.correct_btn.setEnabled(overlay)
 
     @utils.wait_cursor('print')
     def _show_grid(self, state=2):
