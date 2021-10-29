@@ -677,9 +677,9 @@ class FMControls(BaseControls):
         self._orig_points_corr = []
         self._points_corr_indices = []
         self._refined = False
-        self._err = [None, None]
-        self._std = [[None, None], [None, None]]
-        self._conv = [None, None]
+        self._err = [None, None, None]
+        self._std = [[None, None], [None, None], [None, None], [None, None]]
+        self._conv = [None, None, None]
         self._dist = None
 
         self._points_corr_history = []

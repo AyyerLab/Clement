@@ -6,6 +6,8 @@ import pyqtgraph as pg
 from .base_controls import BaseControls
 from .em_operations import EM_ops
 from . import utils
+import time
+import copy
 
 class GISControls(BaseControls):
     def __init__(self, imview, vbox, sem_ops, fib_ops, printer, logger):
@@ -42,6 +44,7 @@ class GISControls(BaseControls):
         self.log = logger
 
         self._init_ui(vbox)
+        self._init_fib_params()
 
     def _init_ui(self, vbox):
         utils.add_montage_line(self, vbox, 'GIS', downsampling=False)
@@ -74,6 +77,8 @@ class GISControls(BaseControls):
         self.slider.setMaximum(100)
         self.slider.setValue(0)
         self.slider.setSingleStep(5)
+        self.time = time.time()
+
         self.slider.valueChanged.connect(self._update_opacity)
         self.slider.sliderReleased.connect(self._update_imview)
         self.slider.setEnabled(False)
@@ -104,6 +109,29 @@ class GISControls(BaseControls):
 
         self.show()
 
+    def _init_fib_params(self, fibcontrols=None):
+        if fibcontrols is None:
+            return
+
+        if fibcontrols.ops is not None:
+            self.enable_buttons(overlay=True, enable=(fibcontrols.ops.points is not None))
+            if self.ops is not None and fibcontrols.ops is not None:
+                self.ops._tranformed = fibcontrols.ops._transformed
+            self._refined = fibcontrols._refined
+            self.tr_matrices = fibcontrols.tr_matrices
+            self.cov_matrix = fibcontrols.cov_matrix
+
+        if fibcontrols.show_grid_btn.isChecked():
+            self.show_grid_btn.setChecked(True)
+
+        if self.ops is None or np.array_equal(self.ops.gis_transf, np.identity(3)):
+            self._err = copy.copy(self.other.fibcontrols._err)
+            self._std = copy.copy(self.other.fibcontrols._std)
+            self._conv = copy.copy(self.other.fibcontrols._conv)
+            self._dist = copy.copy(self.other.fibcontrols._dist)
+
+            print(self._dist.shape)
+
     #@utils.wait_cursor('print')
     def _load_mrc(self, jump=False):
         if not jump:
@@ -127,15 +155,7 @@ class GISControls(BaseControls):
             #self.imview.setImage(self.ops.data)
             self.grid_box = None
             self.transp_btn.setEnabled(True)
-            if self.fib_ops is not None:
-                if self.fib_ops.points is not None:
-                    self.show_grid_btn.setEnabled(True)
-                if self.fib_ops._transformed is not None:
-                    self.ops._transformed = True
-                if self.fib_ops.data is not None:
-                    self.slider.setEnabled(True)
-                    self.select_fiducial_btn.setEnabled(True)
-            self.show_grid_btn.setChecked(False)
+            self._init_fib_params(self.other.fibcontrols)
         else:
             self.print('You have to choose a file first!')
 
@@ -163,6 +183,10 @@ class GISControls(BaseControls):
     def _update_opacity(self):
         self.opacity = (100 - self.slider.value()) / 100
         self.overlay_label.setText('Opacity: {}'.format(self.opacity))
+        now = time.time()
+        if (now - self.time) > 0.4:
+            self._update_imview()
+        self.time = now
 
     def _draw_roi(self, checked):
         if checked:
@@ -180,7 +204,6 @@ class GISControls(BaseControls):
             self.roi_pre = self.fib_ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
             self.roi_post = self.ops.data[self.roi_pos[0]:self.roi_pos[0]+self.roi_size[0], self.roi_pos[1]:self.roi_pos[1]+self.roi_size[1]]
 
-            print(self.roi_pos)
             #np.save('roi_pre', self.roi_pre)
             #np.save('roi_post', self.roi_post)
             #self.imview.removeItem(self.img_pre)
@@ -196,7 +219,7 @@ class GISControls(BaseControls):
             if state:
                 self.ops.align_fiducial(self.fib_ops.data, self.roi_pos, self.roi_pre, self.roi_post, state)
             else:
-                self.ops.align_fiducial(None, None, None, state)
+                self.ops.align_fiducial(None, None, None, None, state)
             self._update_imview()
 
 
@@ -257,9 +280,9 @@ class GISControls(BaseControls):
         self._orig_points_corr = []
         self._points_corr_indices = []
         self._refined = False
-        self._err = [None, None]
-        self._std = [[None, None], [None, None]]
-        self._conv = [None, None]
+        self._err = None
+        self._std = [None, None]
+        self._conv = None
         self._dist = None
 
         self.popup = None

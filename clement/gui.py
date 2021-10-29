@@ -262,12 +262,14 @@ class GUI(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):
         self.scatter = None
-        if self.fm_controls.other._err[idx] is None:
+        if self.fm_controls.other._err is None:
             return
         if idx == 0:
             controls = self.sem_controls
         elif idx == 1:
             controls = self.fib_controls
+        elif idx == 2:
+            controls = self.gis_controls
         else:
             controls = self.tem_controls
 
@@ -277,13 +279,15 @@ class GUI(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _show_convergence(self, idx):
         self.convergence = None
-        if self.fm_controls.other._conv[idx] is None:
+        if self.fm_controls.other._conv is None:
             return
-        if len(self.fm_controls.other._conv[idx]) == 3:
+        if len(self.fm_controls.other._conv) == 3:
             if idx == 0:
                 controls = self.sem_controls
             elif idx == 1:
                 controls = self.fib_controls
+            elif idx == 2:
+                controls = self.gis_controls
             else:
                 controls = self.tem_controls
 
@@ -313,6 +317,10 @@ class GUI(QtWidgets.QMainWindow):
             ops = self.fib_controls.sem_ops
             popup = self.fib_popup
             controls = self.fib_controls
+        elif self.tabs.currentIndex() == 2:
+            ops = self.gis_controls.sem_ops
+            popup = self.fib_popup
+            controls = self.gis_controls
         else:
             ops = self.tem_controls.ops
             popup = self.tem_popup

@@ -60,7 +60,7 @@ class EM_ops():
         self.first_rotation = False
         self.tf_prev = np.identity(3)
         self.gis_corrected = None
-        self.gis_transf = None
+        self.gis_transf = np.identity(3)
 
         self.stage_origin = None
 
@@ -75,7 +75,7 @@ class EM_ops():
         self.box_shift = None
         self.transposed = False
 
-        self.merged = [None, None, None]
+        self.merged = [None, None, None, None]
         self.merge_shift = None
         self.merge_matrix = None
         self.z_shift = None
@@ -534,7 +534,7 @@ class EM_ops():
         coor_sorted = np.array(sorted(coor, key=lambda k: [np.cos(20 * np.pi / 180) * k[0] + k[1]]))
         return coor_sorted
 
-    def align_fiducial(self, img_pre, roi_pos, roi_pre, roi_post, align):
+    def align_fiducial(self, img_pre, roi_pos, roi_pre, roi_post, align=False):
         if align:
             roi_pre_t = roi_pre.max() - roi_pre
             roi_post_t = roi_post.max() - roi_post
@@ -543,8 +543,8 @@ class EM_ops():
             coor_pre = self._find_fiducial(roi_pre_t) + roi_pos
             coor_post = self._find_fiducial(roi_post_t) + roi_pos
 
-            #self.gis_transf = tf.estimate_transform('affine', coor_pre, coor_post).params
-            self.gis_transf = tf.estimate_transform('euclidean', coor_pre, coor_post).params
+            self.gis_transf = tf.estimate_transform('affine', coor_pre, coor_post).params
+            #self.gis_transf = tf.estimate_transform('euclidean', coor_pre, coor_post).params
             self.gis_corrected = ndi.affine_transform(img_pre, np.linalg.inv(self.gis_transf), order=1,
                                        output_shape=self.data.shape)
         else:
@@ -688,7 +688,13 @@ class EM_ops():
     #                   corr_points_fib, channel):
     def apply_merge_3d(self, fm_data_orig, corr_matrix, tf_matrix_fm, tf_corners_fm, color_matrices, flip_list,
                        corr_points_fm, orig_points, fm_z_values, corr_points_fib, channel, voxel_size,
-                       num_slices, num_channels, norm_factor, idx):
+                       num_slices, num_channels, norm_factor, idx, fibcontrols):
+
+        #copy values from fib correlation if gis is selected
+        if idx == 2:
+            self.fib_matrix = fibcontrols.ops.fib_matrix
+            self._refine_matrix = fibcontrols.ops._refine_matrix
+
         rot_matrix = np.identity(3)
         if flip_list[0]: #transp
             rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -713,7 +719,7 @@ class EM_ops():
         tf_matrix = np.copy(tf_matrix_fm)
         tf_matrix[:2, 2] += tf_corners_fm.min(1)[:2]
 
-        total_matrix = self._refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
+        total_matrix = self.gis_transf @ self._refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
 
         nx, ny = fm_data_orig.shape[:2]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -729,7 +735,7 @@ class EM_ops():
                 z = fm_z_values[i]
                 fib_new = np.copy(fib_2d)
                 fib_new[:2, 2] += z * self.z_shift
-                shift_matrix = self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[0]
+                shift_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[0]
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
                                                output_shape=tf_shape)
@@ -756,7 +762,7 @@ class EM_ops():
         #for z in range(data_interp.shape[-1]):
             fib_new = np.copy(fib_2d)
             fib_new[:2, 2] += z * self.z_shift
-            total_matrix = self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[channel]
+            total_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[channel]
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 

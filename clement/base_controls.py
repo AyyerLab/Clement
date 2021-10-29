@@ -72,9 +72,9 @@ class BaseControls(QtWidgets.QWidget):
 
         self._refined = False
         self.diff = None
-        self._err = [None, None, None]
-        self._std = [[None, None], [None, None], [None, None]]
-        self._conv = [None, None, None]
+        self._err = None
+        self._std = [None, None]
+        self._conv = None
         self._dist = None
 
         self._points_corr_history = []
@@ -165,10 +165,8 @@ class BaseControls(QtWidgets.QWidget):
         elif idx == 2:
             giscontrols.sem_ops = semcontrols.ops
             giscontrols.fib_ops = fibcontrols.ops
-            if fibcontrols.ops is not None:
-                giscontrols.enable_buttons(overlay=True)
-            if fibcontrols.show_grid_btn.isChecked():
-                giscontrols.show_grid_btn.setChecked(True)
+            giscontrols._init_fib_params(fibcontrols)
+
             self.other = giscontrols
             giscontrols._update_imview()
 
@@ -187,8 +185,10 @@ class BaseControls(QtWidgets.QWidget):
         else:
             self.progress_bar.setValue(0)
         if self.other._refined:
-            self.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0],
-                                                                           self.other._std[idx][1]))
+            print(idx)
+            print(self.other._std)
+            self.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[0],
+                                                                           self.other._std[1]))
         else:
             self.err_btn.setText('0')
 
@@ -683,8 +683,8 @@ class BaseControls(QtWidgets.QWidget):
                     if np.allclose(transf[:2], self._orig_points_corr[i]):
                         self.imview.removeItem(point)
         elif self.tab_index == 2:
-            if self.other.fib_controls.peaks is not None:
-                self.peaks = copy.copy(self.other.fib_controls.peaks)
+            if self.other.fibcontrols.peaks is not None:
+                self.peaks = copy.copy(self.other.fibcontrols.peaks)
                 [self.imview.addItem(peak) for peak in self.peaks]
             else:
                 print('You have to correlate FM and FIB first!')
@@ -1530,18 +1530,18 @@ class BaseControls(QtWidgets.QWidget):
         self.diff = np.array(sel_points) - np.array(self.refined_points)
         self.log(self.diff.shape)
         self.diff *= self.other.ops.pixel_size[0]
-        self.other.cov_matrix, self.other._std[idx][0], self.other._std[idx][1], self.other._dist = self.other.ops.calc_error(self.diff)
+        self.other.cov_matrix, self.other._std[0], self.other._std[1], self.other._dist = self.other.ops.calc_error(self.diff)
 
-        self.other._err[idx] = self.diff
+        self.other._err = self.diff
         self.err_btn.setText(
-            'x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[idx][0], self.other._std[idx][1]))
+            'x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[0], self.other._std[1]))
 
         if len(corr_points) >= self.min_conv_points:
             min_points = self.min_conv_points - 4
             convergence = self.other.ops.calc_convergence(corr_points, sel_points, min_points, refine_matrix_old)
-            self.other._conv[idx] = convergence
+            self.other._conv = convergence
         else:
-            self.other._conv[idx] = []
+            self.other._conv = None
 
     def correct_grid_z(self):
         self.ops.fib_matrix = None
@@ -1563,13 +1563,19 @@ class BaseControls(QtWidgets.QWidget):
                 self.print('Merge only allowed with transformed data. Uncheck show original data buttons on both sides!')
                 return
 
-        size_em = copy.copy(self._size_history[-1])
-        dst = np.array([[point.x() + size_em / 2, point.y() + size_em / 2] for point in
+        if self.tab_index == 2:
+            size_em = copy.copy(self.other.fibcontrols._size_history[-1])
+            dst = np.array([[point.x() + size_em / 2, point.y() + size_em / 2] for point in
+                        self.other.fibcontrols._points_corr_history[-1]])
+        else:
+            size_em = copy.copy(self._size_history[-1])
+            dst = np.array([[point.x() + size_em / 2, point.y() + size_em / 2] for point in
                         self._points_corr_history[-1]])
+
         src = np.array([[point.x() + self.other.size / 2, point.y() + self.other.size / 2]
                         for point in self.other._points_corr_history[-1]])
 
-        if self.tab_index != 1:
+        if self.tab_index == 0 or self.tab_index == 3:
             if self.ops.merged[self.tab_index] is None:
                 for i in range(self.other.ops.num_channels):
                     if self.show_assembled_btn.isChecked():
@@ -1589,7 +1595,7 @@ class BaseControls(QtWidgets.QWidget):
             return True
         else:
             if self.ops.merged[self.tab_index] is None:
-                if self._refined:
+                if self.other.fibcontrols._refined:
                     src_z = copy.copy(self.other._points_corr_z_history[-1])
                     flip_list = [self.other.ops.transp, self.other.ops.rot, self.other.ops.fliph, self.other.ops.flipv]
                     for i in range(self.other.ops.num_channels):
@@ -1600,11 +1606,12 @@ class BaseControls(QtWidgets.QWidget):
                             orig_pt = self.other.ops.calc_original_coordinates(src[k], tf_aligned_orig_shift,
                                                                                flip_list, self.other.ops.data.shape[:2])
                             orig_coor.append(orig_pt)
-                        self.ops.apply_merge_3d(self.other.ops.channel, self.tr_matrices, self.other.ops.tf_matrix,
+
+                        self.ops.apply_merge_3d(self.other.ops.channel, self.other.fibcontrols.tr_matrices, self.other.ops.tf_matrix,
                                                 self.other.ops.tf_corners, self.other.ops._color_matrices, flip_list,
                                                 src, orig_coor, src_z, dst, i, self.other.ops.voxel_size,
                                                 self.other.num_slices, self.other.ops.num_channels,
-                                                self.other.ops.norm_factor, self.tab_index)
+                                                self.other.ops.norm_factor, self.tab_index, self.other.fibcontrols)
                         self.other.progress_bar.setValue((i + 1) / self.other.ops.num_channels * 100)
                     self.progress = 100
                 else:
@@ -1619,7 +1626,8 @@ class BaseControls(QtWidgets.QWidget):
 
     def _couple_views(self):
         if (self.ops is None or self.other.ops is None or
-                not self.ops._transformed or not self.other.ops._transformed):
+                not self.ops._transformed or not self.other.ops._transformed or self.ops.points is None
+                or self.other.ops.points is None):
             return
 
         vrange = self.imview.getImageItem().getViewBox().targetRect()

@@ -45,8 +45,7 @@ class Scatter_Plot(MplCanvas):
 
     @utils.wait_cursor('print')
     def _scatter_plot(self):
-        idx = self.base.tab_index
-        diff = self.base._err[idx]
+        diff = self.base._err
         max = np.max(np.abs(diff))
         x = np.linspace(-max, max)
         y = np.linspace(-max, max)
@@ -79,8 +78,7 @@ class Convergence_Plot(MplCanvas):
 
     @utils.wait_cursor('print')
     def _convergence_plot(self, state=None):
-        idx = self.base.tab_index
-        refined, free, all = self.base._conv[idx]
+        refined, free, all = self.base._conv
         final = all[-1]
         x = np.arange(self.min_points - 4, self.min_points - 4 + len(refined))
         self.axes.plot(x, refined, label='Refined beads')
@@ -113,6 +111,7 @@ class Scatter(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
+
         sc = Scatter_Plot(base, printer)
         layout.addWidget(sc)
 
@@ -833,11 +832,11 @@ class Merge(QtGui.QMainWindow):
             sizes = [self.parent.fm_controls.pois_sizes[-1]]
         transf_points = []
         transf_covs = []
-        if self.other.tab_index == 1:
+        if self.other.tab_index == 1 or self.other.tab_index == 2:
             tr_matrix = np.copy(self.other.tr_matrices)
             tr_matrix = np.insert(np.insert(tr_matrix, 2, 0, axis=0), 2, 0, axis=1)
             tr_matrix[2, 2] = 1
-            refine_matrix = np.insert(np.insert(self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
+            refine_matrix = np.insert(np.insert(self.other.ops.gis_transf @ self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
             refine_matrix[2, 2] = 1
             tot_matrix = refine_matrix @ self.other.ops.fib_matrix @ tr_matrix
             for i in range(len(points)):
