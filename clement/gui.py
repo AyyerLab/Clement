@@ -256,8 +256,10 @@ class GUI(QtWidgets.QMainWindow):
 
     @utils.wait_cursor('print')
     def change_tab(self, idx):
+        show_grid = self.fm_controls.other.show_grid_btn.isChecked()
+        self.fm_controls.other.show_grid_btn.setChecked(False)
         self.em_imview.setCurrentIndex(idx)
-        self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.gis_controls, self.tem_controls)
+        self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.gis_controls, self.tem_controls, show_grid)
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):

@@ -836,7 +836,10 @@ class Merge(QtGui.QMainWindow):
             tr_matrix = np.copy(self.other.tr_matrices)
             tr_matrix = np.insert(np.insert(tr_matrix, 2, 0, axis=0), 2, 0, axis=1)
             tr_matrix[2, 2] = 1
-            refine_matrix = np.insert(np.insert(self.other.ops.gis_transf @ self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
+            if self.other.tab_index == 1:
+                refine_matrix = np.insert(np.insert(self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
+            else:
+                refine_matrix = np.insert(np.insert(self.other.ops.gis_transf @ self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
             refine_matrix[2, 2] = 1
             tot_matrix = refine_matrix @ self.other.ops.fib_matrix @ tr_matrix
             for i in range(len(points)):
@@ -1205,7 +1208,7 @@ class Merge(QtGui.QMainWindow):
                 self.parent.fm_controls.progress_bar.setValue(0)
                 self.parent.fm_controls.poi_btn.setEnabled(True)
             self.other.progress = 0
-            self.parent.project.merged = [False, False, False]
+            self.parent.project.merged = [False, False, False, False]
             self.other.show_merge = False
         self._reset_init()
         event.accept()

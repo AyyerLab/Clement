@@ -115,6 +115,7 @@ class BaseControls(QtWidgets.QWidget):
         self.size = 10
         self.orig_size = 10
         self.peaks = []
+        self.peak_colors = []
         self.num_slices = None
         self.min_conv_points = 10
         self.show_merge = False
@@ -124,13 +125,13 @@ class BaseControls(QtWidgets.QWidget):
     def _init_ui(self):
         self.log('This message should not be seen. Please override _init_ui')
 
-    def select_tab(self, idx, semcontrols, fibcontrols, giscontrols, temcontrols):
+    def select_tab(self, idx, semcontrols, fibcontrols, giscontrols, temcontrols, show_grid=False):
         semcontrols.tab_index = idx
         fibcontrols.tab_index = idx
         giscontrols.tab_index = idx
         temcontrols.tab_index = idx
+
         if idx == 0:
-            fibcontrols.show_grid_btn.setChecked(False)
             semcontrols._update_imview()
             self.other = semcontrols
             if semcontrols._refined:
@@ -143,12 +144,12 @@ class BaseControls(QtWidgets.QWidget):
                 if semcontrols.ops is not None and self.ops is not None:
                     if self.ops.points is not None and semcontrols.ops.points is not None:
                         self._calc_tr_matrices(em_points=semcontrols.ops.points)
-            show_grid = False
-            if self.other.show_grid_btn.isChecked():
-                show_grid = semcontrols.show_grid_btn.isChecked()
+            #show_grid = False
+            #if self.other.show_grid_btn.isChecked():
+            #    show_grid = semcontrols.show_grid_btn.isChecked()
             self.other = fibcontrols
-            if fibcontrols.ops is not None:
-                fibcontrols.show_grid_btn.setChecked(show_grid)
+            #if fibcontrols.ops is not None:
+            #    fibcontrols.show_grid_btn.setChecked(show_grid)
             if fibcontrols._refined:
                 self.undo_refine_btn.setEnabled(True)
             else:
@@ -171,7 +172,6 @@ class BaseControls(QtWidgets.QWidget):
             giscontrols._update_imview()
 
         else:
-            fibcontrols.show_grid_btn.setChecked(False)
             temcontrols._update_imview()
             self.other = temcontrols
             if temcontrols._refined:
@@ -179,14 +179,14 @@ class BaseControls(QtWidgets.QWidget):
             else:
                 self.undo_refine_btn.setEnabled(False)
 
+        if show_grid:
+            self.show_grid_btn.setChecked(True)
 
         if self.other.show_merge:
             self.progress_bar.setValue(100)
         else:
             self.progress_bar.setValue(0)
         if self.other._refined:
-            print(idx)
-            print(self.other._std)
             self.err_btn.setText('x: \u00B1{:.2f}, y: \u00B1{:.2f}'.format(self.other._std[0],
                                                                            self.other._std[1]))
         else:
@@ -651,6 +651,7 @@ class BaseControls(QtWidgets.QWidget):
                 return
         if len(self.peaks) != 0:
             self.peaks = []
+            self.peak_colors = []
 
         if self.ops._transformed:
             self.other._update_tr_matrices()
@@ -679,12 +680,24 @@ class BaseControls(QtWidgets.QWidget):
                         color = matplotlib.colors.to_hex(color)
                 point = PeakROI(pos, self.size, self.imview.getImageItem(), color=color)
                 self.peaks.append(point)
+                self.peak_colors.append(color)
                 for i in range(len(self._orig_points_corr)):
                     if np.allclose(transf[:2], self._orig_points_corr[i]):
                         self.imview.removeItem(point)
         elif self.tab_index == 2:
             if self.other.fibcontrols.peaks is not None:
-                self.peaks = copy.copy(self.other.fibcontrols.peaks)
+                peaks = self.other.fibcontrols.peaks
+                if self.ops.gis_corrected is not None:
+                    print('heeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeere')
+                    print('he: ', peaks[0].pos())
+                    for i in range(len(peaks)):
+                        size = peaks[i].size()[0]
+                        point = np.array([peaks[i].pos().x() + size/2, peaks[i].pos().y()+size/2])
+                        point = self.ops._update_gis_points(point)
+                        pos = QtCore.QPointF(point[0]-size/2, point[1]-size/2)
+                        self.peaks.append(PeakROI(pos, size, self.imview.getImageItem(), color=self.other.fibcontrols.peak_colors[i]))
+                    print('ho: ', self.peaks[0].pos())
+                    print('hi: ', self.other.fibcontrols.peaks[0].pos())
                 [self.imview.addItem(peak) for peak in self.peaks]
             else:
                 print('You have to correlate FM and FIB first!')
@@ -712,8 +725,9 @@ class BaseControls(QtWidgets.QWidget):
                         self.imview.removeItem(point)
 
         self.peaks = np.array(self.peaks)
-        self.translate_peaks_btn.setEnabled(True)
-        self.refine_peaks_btn.setEnabled(True)
+        if hasattr(self, 'translate_peaks_btn'):
+            self.translate_peaks_btn.setEnabled(True)
+            self.refine_peaks_btn.setEnabled(True)
 
     def _translate_peaks(self, active):
         if active:

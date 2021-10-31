@@ -534,17 +534,23 @@ class EM_ops():
         coor_sorted = np.array(sorted(coor, key=lambda k: [np.cos(20 * np.pi / 180) * k[0] + k[1]]))
         return coor_sorted
 
-    def align_fiducial(self, img_pre, roi_pos, roi_pre, roi_post, align=False):
-        if align:
-            roi_pre_t = roi_pre.max() - roi_pre
-            roi_post_t = roi_post.max() - roi_post
-            roi_pre_t[roi_pre_t < 0.95 * roi_pre_t.max()] = 0
-            roi_post_t[roi_post_t < 0.95 * roi_post_t.max()] = 0
-            coor_pre = self._find_fiducial(roi_pre_t) + roi_pos
-            coor_post = self._find_fiducial(roi_post_t) + roi_pos
+    def _update_gis_points(self, point):
+        point = self.gis_transf @ np.array([point[0], point[1], 1])
+        return point[:2]
 
-            self.gis_transf = tf.estimate_transform('affine', coor_pre, coor_post).params
-            #self.gis_transf = tf.estimate_transform('euclidean', coor_pre, coor_post).params
+    def estimate_gis_transf(self, roi_pos, roi_pre, roi_post):
+        roi_pre_t = roi_pre.max() - roi_pre
+        roi_post_t = roi_post.max() - roi_post
+        roi_pre_t[roi_pre_t < 0.95 * roi_pre_t.max()] = 0
+        roi_post_t[roi_post_t < 0.95 * roi_post_t.max()] = 0
+        coor_pre = self._find_fiducial(roi_pre_t) + roi_pos
+        coor_post = self._find_fiducial(roi_post_t) + roi_pos
+
+        self.gis_transf = tf.estimate_transform('affine', coor_pre, coor_post).params
+        # self.gis_transf = tf.estimate_transform('euclidean', coor_pre, coor_post).params
+
+    def align_fiducial(self, img_pre, align=False):
+        if align:
             self.gis_corrected = ndi.affine_transform(img_pre, np.linalg.inv(self.gis_transf), order=1,
                                        output_shape=self.data.shape)
         else:

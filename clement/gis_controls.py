@@ -130,8 +130,6 @@ class GISControls(BaseControls):
             self._conv = copy.copy(self.other.fibcontrols._conv)
             self._dist = copy.copy(self.other.fibcontrols._dist)
 
-            print(self._dist.shape)
-
     #@utils.wait_cursor('print')
     def _load_mrc(self, jump=False):
         if not jump:
@@ -217,10 +215,15 @@ class GISControls(BaseControls):
             self.print('You have to specify the ROI of the fiducial first!')
         else:
             if state:
-                self.ops.align_fiducial(self.fib_ops.data, self.roi_pos, self.roi_pre, self.roi_post, state)
+                self.ops.estimate_gis_transf(self.roi_pos, self.roi_pre, self.roi_post)
+                self.ops.align_fiducial(self.fib_ops.data, state)
             else:
-                self.ops.align_fiducial(None, None, None, None, state)
+                self.ops.align_fiducial(None, state)
             self._update_imview()
+            self._show_grid()
+            if self.show_peaks_btn.isChecked():
+                self.show_peaks_btn.setChecked(False)
+                self.show_peaks_btn.setChecked(True)
 
 
     @utils.wait_cursor('print')
@@ -241,18 +244,26 @@ class GISControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _show_grid(self, state=2):
+        if self.grid_box is not None:
+            self.imview.removeItem(self.grid_box)
         if state > 0:
             self.show_grid_box = True
             self._recalc_grid()
+            self.imview.addItem(self.grid_box)
         else:
             self.show_grid_box = False
-            if self.grid_box is not None:
-                self.imview.removeItem(self.grid_box)
 
     @utils.wait_cursor('print')
     def _recalc_grid(self, state=None, recalc_matrix=True, scaling=1, shift=np.array([0,0])):
-        self.grid_box = pg.PolyLineROI(self.fib_ops.points, closed=True, movable=not self._refined, resizable=False,
+        print('recalc grid')
+        if self.ops is None or self.ops.gis_corrected is None:
+            self.grid_box = pg.PolyLineROI(self.fib_ops.points, closed=True, movable=not self._refined, resizable=False,
                                                rotatable=False)
+        else:
+            print('yes sir')
+            points = [self.ops._update_gis_points(p) for p in self.fib_ops.points]
+            self.grid_box = pg.PolyLineROI(points, closed=True, movable=not self._refined, resizable=False,
+                                           rotatable=False)
 
     @utils.wait_cursor('print')
     def _save_mrc_montage(self, state=None):

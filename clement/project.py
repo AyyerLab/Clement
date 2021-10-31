@@ -18,12 +18,13 @@ class Project(QtWidgets.QWidget):
         self.gis = gis
         self.tem = tem
         self.show_fib = False
-        self.merged = [False, False, False]
+        self.merged = [False, False, False, False]
         self.popup = None
         self.parent = parent
         self.load_merge = False
         self.print = printer
         self.logger = logger
+        self.tab_index = 0
 
     def _load_project(self, file_name=None):
         if file_name is None:
@@ -51,6 +52,7 @@ class Project(QtWidgets.QWidget):
             self._load_gis(project)
             self._load_em(project, sem=False)
             #self._load_base(project)
+            self.parent.tabs.setCurrentIndex(self.tab_index)
 
     def _load_fm(self, project):
         if 'FM' not in project:
@@ -139,7 +141,7 @@ class Project(QtWidgets.QWidget):
             if not fmdict['Show peaks']:
                 self.fm.peak_btn.setChecked(False)
         self.fm.show_btn.setChecked(fmdict['Show original'])
-        self.fm.show_grid_btn.setChecked(fmdict['Show grid box'])
+        self.fm.show_grid_btn.setChecked(fmdict['Show grid'])
         self.fm.map_btn.setChecked(fmdict['Show z map'])
         self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
 
@@ -155,11 +157,15 @@ class Project(QtWidgets.QWidget):
                 return
             emdict = project['SEM']
             em = self.sem
+            tab_index = 0
         else:
             if 'TEM' not in project:
                 return
             emdict = project['TEM']
             em = self.tem
+            tab_index = 3
+
+        self.parent.tabs.setCurrentIndex(tab_index)
 
         em._curr_folder = emdict['Directory']
         em._file_name = emdict['File']
@@ -181,7 +187,7 @@ class Project(QtWidgets.QWidget):
                 em.ops.points = np.copy(em.ops._orig_points)
                 em.show_grid_btn.setEnabled(True)
                 em._recalc_grid()
-                em.show_grid_btn.setChecked(emdict['Show grid box'])
+                em.show_grid_btn.setChecked(emdict['Show grid'])
                 em.transform_btn.setEnabled(True)
                 #em.rot_transform_btn.setChecked(emdict['Rotation only'])
             except KeyError:
@@ -194,7 +200,7 @@ class Project(QtWidgets.QWidget):
                 em.ops.points = np.copy(em.ops._orig_points_region)
                 em._recalc_grid()
                 em.show_grid_btn.setEnabled(True)
-                em.show_grid_btn.setChecked(emdict['Show grid box'])
+                em.show_grid_btn.setChecked(emdict['Show grid'])
                 #em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
                     em.show_grid_btn.setChecked(False)
@@ -218,7 +224,7 @@ class Project(QtWidgets.QWidget):
                 em.ops.points = np.copy(em.ops._orig_points)
                 em.show_grid_btn.setEnabled(True)
                 em._recalc_grid()
-                em.show_grid_btn.setChecked(emdict['Show grid box'])
+                em.show_grid_btn.setChecked(emdict['Show grid'])
                 em.transform_btn.setEnabled(True)
                 #em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
@@ -235,7 +241,7 @@ class Project(QtWidgets.QWidget):
                 em.ops._orig_points_region = np.array(emdict['Orginal points subregion'])
                 em.ops.points = np.copy(em.ops._orig_points_region)
                 em._recalc_grid()
-                em.show_grid_btn.setChecked(emdict['Show grid box'])
+                em.show_grid_btn.setChecked(emdict['Show grid'])
                 #em.rot_transform_btn.setChecked(emdict['Rotation only'])
                 try:
                     em.ops._tf_points_region = np.array(emdict['Transformed points subregion'])
@@ -255,11 +261,13 @@ class Project(QtWidgets.QWidget):
 
         em.show_assembled_btn.setChecked(emdict['Show assembled'])
         em.show_btn.setChecked(emdict['Show original'])
+        self.tab_index = emdict['Tab index']
 
     def _load_fib(self, project):
         if 'FIB' not in project:
             return
         fibdict = project['FIB']
+        self.parent.tabs.setCurrentIndex(1)
         self.fib._curr_folder = fibdict['Directory']
         self.fib._file_name = fibdict['File']
         self.fib.mrc_fname.setText(self.fib._file_name)
@@ -288,11 +296,11 @@ class Project(QtWidgets.QWidget):
         except KeyError:
             pass
 
-        self.parent.tabs.setCurrentIndex(fibdict['Tab index'])
+        self.tab_index = fibdict['Tab index']
         if fibdict['Tab index'] == 1:
             self.show_fib = True
 
-        if self.fib.ops.data is not None and fibdict['Tab index'] == 1:
+        if self.fib.ops.data is not None:
             if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
                 self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
 
@@ -302,7 +310,11 @@ class Project(QtWidgets.QWidget):
     def _load_gis(self, project):
         if 'GIS' not in project:
             return
+
         gisdict = project['GIS']
+        self.tab_index = gisdict['Tab index']
+        self.parent.tabs.setCurrentIndex(2)
+
         self.gis._curr_folder = gisdict['Directory']
         self.gis._file_name = gisdict['File']
         self.gis.mrc_fname.setText(self.gis._file_name)
@@ -317,8 +329,22 @@ class Project(QtWidgets.QWidget):
 
         if self.gis.fib_ops is not None:
             self.gis.enable_buttons(overlay=True)
-        if self.fib.show_grid_btn.isChecked():
+        if gisdict['Show grid']:
             self.gis.show_grid_btn.setChecked(True)
+        if gisdict['Show FM peaks']:
+            self.gis.show_peaks_btn.setChecked(True)
+        self.gis.ops.gis_transf = np.array(gisdict['GIS transform'])
+        if gisdict['Corrected']:
+            self.gis.roi_pos = np.array(gisdict['ROI pos'])
+            self.gis.roi_size = np.array(gisdict['ROI size'])
+            self.gis.roi = pg.ROI(pos=self.gis.roi_pos, size=self.gis.roi_size, maxBounds=None, resizable=True, rotatable=False, removable=False)
+            self.gis.roi.addScaleHandle(pos=[1, 1], center=[0.5, 0.5])
+            self.gis.roi_pre = self.gis.fib_ops.data[self.gis.roi_pos[0]:self.gis.roi_pos[0]+self.gis.roi_size[0], self.gis.roi_pos[1]:self.gis.roi_pos[1]+self.gis.roi_size[1]]
+            self.gis.roi_post = self.gis.ops.data[self.gis.roi_pos[0]:self.gis.roi_pos[0]+self.gis.roi_size[0], self.gis.roi_pos[1]:self.gis.roi_pos[1]+self.gis.roi_size[1]]
+            self.gis.correct_btn.setChecked(True)
+
+        self._load_base(project, 2)
+
 
     def _load_base(self, project, idx):
         fmdict = project['FM']
@@ -517,7 +543,7 @@ class Project(QtWidgets.QWidget):
 
         fmdict['Max projection'] = self.fm.max_proj_btn.isChecked()
 
-        fmdict['Show grid box'] = self.fm.show_grid_btn.isChecked()
+        fmdict['Show grid'] = self.fm.show_grid_btn.isChecked()
         #fmdict['Rotation only'] = self.fm.rot_transform_btn.isChecked()
         if self.fm.ops._orig_points is not None:
             fmdict['Original grid points'] = self.fm.ops._orig_points.tolist()
@@ -559,7 +585,7 @@ class Project(QtWidgets.QWidget):
         emdict['File'] = em._file_name
         emdict['Transpose'] = em.transp_btn.isChecked()
         emdict['Downsampling'] = em._downsampling
-        emdict['Show grid box'] = em.show_grid_btn.isChecked()
+        emdict['Show grid'] = em.show_grid_btn.isChecked()
         #emdict['Rotation only'] = em.rot_transform_btn.isChecked()
         if em.ops._orig_points is not None:
             emdict['Original grid points'] = em.ops._orig_points.tolist()
@@ -631,6 +657,11 @@ class Project(QtWidgets.QWidget):
         gisdict['File'] = self.gis._file_name
         gisdict['Transpose'] = self.gis.transp_btn.isChecked()
         gisdict['Show grid'] = self.gis.show_grid_btn.isChecked()
+        gisdict['Show FM peaks'] = self.gis.show_peaks_btn.isChecked()
+        gisdict['GIS transform'] = self.gis.ops.gis_transf.tolist()
+        gisdict['Corrected'] = self.gis.correct_btn.isChecked()
+        gisdict['ROI pos'] = np.rint(np.array([self.gis.roi.pos().x(), self.gis.roi.pos().y()])).astype(int).tolist()
+        gisdict['ROI size'] = np.rint(np.array([self.gis.roi.size().x(), self.gis.roi.size().y()])).astype(int).tolist()
 
     def _save_merge(self, mdict):
         mdict['Colors'] = [str(c) for c in self.popup._colors_popup]
