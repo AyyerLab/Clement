@@ -9,6 +9,7 @@ import copy
 class Peak_finding():
     def __init__(self, threshold=0, plt=10, put=200):
         self.num_slices = None
+        self.peaks_orig = None
         self.peaks = None
         self.tf_peaks = None
         self.orig_tf_peaks = None
@@ -118,10 +119,19 @@ class Peak_finding():
                     if self.orig_tf_peaks is None:
                         self.orig_tf_peaks = np.copy(self.tf_peaks)
                 else:
-                    self.peaks = np.copy(peaks_2d)
+                    self.peaks_orig = np.copy(peaks_2d)
+                    self.peaks = np.copy(self.peaks_orig)
         end = time.time()
         self.log('duration: ', end - start)
         self.print('Number of peaks found: ', peaks_2d.shape[0])
+
+    def update_peaks(self, tf_matrix, transformed):
+        if transformed:
+            for i in range(len(self.peaks)):
+                self.peaks[i][:2] = (tf_matrix @ np.array([self.peaks_orig[i, 0], self.peaks_orig[i, 1], 1]))[:2]
+            self.tf_peaks = np.copy(self.peaks)
+        else:
+            self.peaks = np.copy(self.peaks_orig)
 
     def subtract_background(self, img, sigma=None):
         if sigma is None:
@@ -132,75 +142,23 @@ class Peak_finding():
         diff /= diff.max()
         return diff*norm
 
-    def calc_transformed_coordinates(self, points, tf_matrix, roi_shape, roi_pos=None, slice=None, store=True):
-        tf_matrix = np.copy(tf_matrix)
-        if roi_pos is not None:
-            nx, ny = roi_shape[:-1]
-            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
-            roi_tf_corners = np.dot(tf_matrix, corners)
-            _roi_tf_shape = tuple([int(i) for i in (roi_tf_corners.max(1) - roi_tf_corners.min(1))[:2]])
-
-            pos = np.array([roi_pos[0], roi_pos[1], 1])
-            origin = np.array([0, 0, 1])
-            tf_pos = tf_matrix @ pos
-            tf_pos_roi = tf_matrix @ origin
-            shift = (tf_pos - tf_pos_roi)[:2]
-            tf_matrix[:2,2] += shift
-
-        if roi_pos is None:
-            roi_pos = np.zeros(2)
-        tf_points = []
-        for i in range(len(points)):
-            init = np.array([points[i,0], points[i,1], 1])
-            init[:2] -= roi_pos[:2]
-            tf_pt = tf_matrix @ init
-            tf_points.append(tf_pt[:2])
-
-        if store:
-            if self.tf_peaks is None:
-                self.tf_peaks = np.copy(tf_points)
-            if self.orig_tf_peaks is None:
-                self.orig_tf_peaks = np.copy(self.tf_peaks)
-        else:
-            return tf_points[0]
-
-    def calc_original_coordinates(self, point, tf_mat, flip, tf_shape):
-        if len(point) == 2:
-            point = np.array([point[0], point[1], 1])
-        if flip is None:
-            flip = [False, False, False, False]  # transp, rot, fliph, flipv
-        transp, rot, fliph, flipv = flip
-        if flipv:
-            point[1] = tf_shape[1] - point[1]
-        if fliph:
-            point[0] = tf_shape[0] - point[0]
-        if rot:
-            temp = tf_shape[0] - 1 - point[0]
-            point[0] = point[1]
-            point[1] = temp
-        if transp:
+    def calc_original_coordinates(self, tf_mat, point=None):
+        if point is None:
             point = np.array([point[1], point[0], 1])
-        inv_point = (np.linalg.inv(tf_mat) @ point)[:2]
-        return inv_point
+            return (np.linalg.inv(tf_mat) @ point)[:2]
+        else:
+            inv_points = []
+            for i in range(len(self.points)):
+                inv_points.append((np.linalg.inv(tf_mat) @ np.array([self.points[i,0], self.points[i,1], 1]))[:2])
+            return inv_points
 
-    def fit_z(self, data, transformed, tf_matrix=None, flips=None, shape=None, local=False,
-              point=None):
+
+    def fit_z(self, data, local=False, point=None):
         '''
         calculates the z profile along the beads and fits a gaussian
         '''
         if not local:
-            if transformed:
-                if tf_matrix is None:
-                    self.print('You have to parse the tf_matrix!')
-                    return
-                tf_peaks = np.copy(self.tf_peaks)
-                peaks_2d = np.zeros_like(tf_peaks)
-                for k in range(tf_peaks.shape[0]):
-                    point = np.array([tf_peaks[k, 0], tf_peaks[k, 1], 1])
-                    orig_point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
-                    peaks_2d[k] = orig_point
-            else:
-                peaks_2d = np.copy(self.peaks)
+            peaks_2d = self.peaks_orig
         else:
             peaks_2d = point
 
@@ -259,34 +217,24 @@ class Peak_finding():
                     mean_values.append(np.argmax(z_profile[i]))
                 mean_values.append(popt[0])
 
-            if transformed:
-                self.tf_peaks_z = np.copy(mean_values)
-            else:
-                self.peaks_z = np.copy(mean_values)
+            self.peaks_z = np.copy(mean_values)
 
-    def calc_local_z(self, data, point, transformed, tf_matrix=None, flips=None, shape=None):
+    def calc_local_z(self, data, point, transformed=True, tf_matrix=None):
         if transformed:
-            point = self.calc_original_coordinates(point, tf_matrix, flips, shape)
+            point = self.calc_original_coordinates(point, tf_matrix)
         z = None
         try:
             if point[0] < 0 or point[1] < 0:
                 raise IndexError
             point = np.expand_dims(point, axis=0)
-            z = self.fit_z(data, transformed=transformed, local=True, point=point)
+            z = self.fit_z(data,  local=True, point=point)
         except IndexError:
             self.print('You should select a point within the bounds of the image!')
         #finally:
         return z
 
-    def check_peak_index(self, point, size, transformed):
-        if transformed:
-            if self.tf_peaks is not None:
-                peaks_2d = self.tf_peaks
-        else:
-            if self.peaks is not None:
-                peaks_2d = self.peaks
-
-        diff = peaks_2d - point
+    def check_peak_index(self, point, size):
+        diff = self.peaks - point
         diff_err = np.sqrt(diff[:, 0] ** 2 + diff[:, 1] ** 2)
         ind_arr = np.where(diff_err < size / 2)[0]
         if len(ind_arr) == 0:
@@ -308,7 +256,7 @@ class Peak_finding():
         if transformed:
             flip_list = [self.transp, self.rot, self.fliph, self.flipv]
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
-            point = self.calc_original_coordinates(point, tf_aligned, flip_list, self.data.shape[:-1])
+            point = self.calc_original_coordinates(point, tf_aligned)
         else:
             point = np.linalg.inv(self._color_matrices[channel]) @ np.array([point[0], point[1], 1])
 

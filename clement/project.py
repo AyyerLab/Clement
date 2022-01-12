@@ -142,8 +142,8 @@ class Project(QtWidgets.QWidget):
                 self.fm.peak_btn.setChecked(False)
         self.fm.show_btn.setChecked(fmdict['Show original'])
         self.fm.show_grid_btn.setChecked(fmdict['Show grid'])
-        self.fm.map_btn.setChecked(fmdict['Show z map'])
-        self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
+        #self.fm.map_btn.setChecked(fmdict['Show z map'])
+        #self.fm.remove_tilt_btn.setChecked(fmdict['Remove tilt'])
 
         if undo_max_proj:
             self.fm.slice_select_btn.setValue(fmdict['Slice'])
@@ -538,8 +538,8 @@ class Project(QtWidgets.QWidget):
             fmdict['Align reference'] = self.fm.peak_controls.ref_btn.currentIndex()
         fmdict['Aligned channels'] = self.fm.ops._aligned_channels
         fmdict['Show peaks'] = self.fm.peak_btn.isChecked()
-        fmdict['Show z map'] = self.fm.map_btn.isChecked()
-        fmdict['Remove tilt'] = self.fm.remove_tilt_btn.isChecked()
+        #fmdict['Show z map'] = self.fm.map_btn.isChecked()
+        #fmdict['Remove tilt'] = self.fm.remove_tilt_btn.isChecked()
 
         fmdict['Max projection'] = self.fm.max_proj_btn.isChecked()
 

@@ -120,21 +120,21 @@ class FMControls(BaseControls):
         line.addStretch(1)
 
         # 3D mapping
-        line = QtWidgets.QHBoxLayout()
-        vbox.addLayout(line)
-        label = QtWidgets.QLabel('3D mapping: ', self)
-        line.addWidget(label)
-        self.map_btn = QtWidgets.QPushButton('Z mapping', self)
-        self.map_btn.setCheckable(True)
-        self.map_btn.toggled.connect(self._mapping)
-        self.map_btn.setEnabled(False)
-        self.remove_tilt_btn = QtWidgets.QCheckBox('Remove tilt effect', self)
-        self.remove_tilt_btn.setEnabled(False)
-        self.remove_tilt_btn.setChecked(False)
-        self.remove_tilt_btn.stateChanged.connect(self._remove_tilt)
-        line.addWidget(self.map_btn)
-        line.addWidget(self.remove_tilt_btn)
-        line.addStretch(1)
+        #line = QtWidgets.QHBoxLayout()
+        #vbox.addLayout(line)
+        #label = QtWidgets.QLabel('3D mapping: ', self)
+        #line.addWidget(label)
+        #self.map_btn = QtWidgets.QPushButton('Z mapping', self)
+        #self.map_btn.setCheckable(True)
+        #self.map_btn.toggled.connect(self._mapping)
+        #self.map_btn.setEnabled(False)
+        #self.remove_tilt_btn = QtWidgets.QCheckBox('Remove tilt effect', self)
+        #self.remove_tilt_btn.setEnabled(False)
+        #self.remove_tilt_btn.setChecked(False)
+        #self.remove_tilt_btn.stateChanged.connect(self._remove_tilt)
+        #line.addWidget(self.map_btn)
+        #line.addWidget(self.remove_tilt_btn)
+        #line.addStretch(1)
 
         utils.add_define_grid_line(self, vbox)
         line = utils.add_transform_grid_line(self, vbox, show_original=False)
@@ -190,6 +190,12 @@ class FMControls(BaseControls):
         self.rotate.toggled.connect(self._rot)
         line.addWidget(self.rotate)
         self.rotate.setEnabled(False)
+
+        self.confirm_btn = QtWidgets.QCheckBox('Confirm orientation', self)
+        self.confirm_btn.setEnabled(False)
+        self.confirm_btn.setChecked(False)
+        self.confirm_btn.stateChanged.connect(self._confirm_transf)
+        line.addWidget(self.confirm_btn)
         line.addStretch(1)
 
         self.show_btn = QtWidgets.QCheckBox('Show original data', self)
@@ -287,6 +293,10 @@ class FMControls(BaseControls):
         if self.peak_btn.isChecked():
             self.peak_btn.setChecked(False)
             self.peak_btn.setChecked(True)
+        if self.semcontrols.show_peaks_btn.isChecked():
+            self.semcontrols.show_peaks_btn.setChecked(False)
+            self.semcontrols.show_peaks_btn.setChecked(True)
+
         if self.ops._show_mapping:
             self.imview.setImage(hsv2rgb(self.ops.data))
             vr = self.imview.getImageItem().getViewBox().targetRect()
@@ -382,8 +392,8 @@ class FMControls(BaseControls):
             self.define_btn.setEnabled(True)
             self.set_params_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
-            self.map_btn.setEnabled(True)
-            self.remove_tilt_btn.setEnabled(True)
+            #self.map_btn.setEnabled(True)
+            #self.remove_tilt_btn.setEnabled(True)
             self.point_ref_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
             self.poi_btn.setEnabled(True)
@@ -500,6 +510,45 @@ class FMControls(BaseControls):
         self._update_pois_and_points()
 
     @utils.wait_cursor('print')
+    def _confirm_transf(self, state):
+        self.show_grid_btn.setChecked(False)
+        if state:
+            self.ops.sem_transform = self.semcontrols.ops.tf_matrix
+            self.ops.fixed_orientation = True
+            self.fixed_orientation = True
+            self.other.fixed_orientation = True
+            self.ops.orig_tf_peaks = None
+            self.flipv.setEnabled(False)
+            self.fliph.setEnabled(False)
+            self.transpose.setEnabled(False)
+            self.rotate.setEnabled(False)
+            self.show_btn.setEnabled(False)
+            self.semcontrols.show_btn.setChecked(True)
+            self.semcontrols.show_btn.setEnabled(False)
+            self.semcontrols.define_btn.setEnabled(False)
+            self.semcontrols.transform_btn.setEnabled(False)
+        else:
+            self.fixed_orientation = False
+            self.ops.fixed_orientation = False
+            self.other.fixed_orientation = False
+            self.ops._update_data()
+            self.ops.orig_tf_peaks = None
+            self.flipv.setEnabled(True)
+            self.fliph.setEnabled(True)
+            self.transpose.setEnabled(True)
+            self.rotate.setEnabled(True)
+            self.show_btn.setEnabled(True)
+            self.semcontrols.show_btn.setChecked(False)
+            self.semcontrols.show_btn.setEnabled(True)
+
+        self.ops._update_data()
+        self._recalc_grid()
+        self._calc_tr_matrices(self.ops.points, self.semcontrols.ops.points)
+        self.show_grid_btn.setChecked(True)
+        self._update_imview()
+
+
+    @utils.wait_cursor('print')
     def _slice_changed(self, state=None):
         if self.ops is None:
             self.print('Pick FM image first')
@@ -532,49 +581,26 @@ class FMControls(BaseControls):
             self._peaks = []
             return
 
-        flip = False
-        if self.ops._transformed and self.ops.orig_tf_peaks is None:
-            fliph, flipv, transp, rot = self.ops.fliph, self.ops.flipv, self.ops.transp, self.ops.rot
-            self.ops.fliph = False
-            self.ops.flipv = False
-            self.ops.rot = False
-            self.ops.transp = False
-            self.ops._update_data()
-            flip = True
-
         channel = self.peak_controls.peak_channel_btn.currentIndex()
         self.print('Perform peak finding on channel: ', channel+1)
-        if self.ops._transformed:
-            if self.ops.orig_tf_peaks is None:
-                peaks_2d = self.ops.peaks
-                self.ops.calc_transformed_coordinates(peaks_2d, self.ops.tf_matrix, self.peak_controls.data_roi.shape,
-                                                      self.peak_controls.roi_pos)
-            peaks_2d = self.ops.tf_peaks
-        else:
-            peaks_2d = self.ops.peaks
+        print('wtf now: ', self.ops._transformed)
+        self.ops.update_peaks(self.ops.tf_matrix, self.ops._transformed)
 
-        if peaks_2d is not None:
-            for i in range(peaks_2d.shape[0]):
-                pos = QtCore.QPointF(peaks_2d[i,0] - self.size / 2, peaks_2d[i,1] - self.size / 2)
+        if self.ops.peaks is not None:
+            for i in range(self.ops.peaks.shape[0]):
+                pos = QtCore.QPointF(self.ops.peaks[i,0] - self.size / 2, self.ops.peaks[i,1] - self.size / 2)
                 point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=True)
                 point_obj.removeHandle(0)
                 self.imview.addItem(point_obj)
                 self._peaks.append(point_obj)
-            if flip:
-                self.ops.fliph = fliph
-                self.ops.flipv = flipv
-                self.ops.rot = rot
-                self.ops.transp = transp
-                self.ops._update_data()
-                self._update_imview()
 
-            if self.ops.tf_peaks_z is None:
+            if self.ops._transformed and self.ops.tf_peaks_z is None:
                 if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
                     self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
                 color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
-                self.ops.fit_z(self.ops.channel, transformed=self.ops._transformed, tf_matrix=color_matrix,
-                               flips=self.flips, shape=self.ops.data.shape[:-1])
+                print('seriously?: ', self.ops._transformed, self.ops.data.shape)
+                self.ops.fit_z(self.ops.channel)
 
     @utils.wait_cursor('print')
     def _align_colors(self, idx, state):
@@ -747,10 +773,10 @@ class FMControls(BaseControls):
 
         self.merge_btn.setEnabled(False)
 
-        self.map_btn.setEnabled(False)
-        self.map_btn.setChecked(False)
-        self.remove_tilt_btn.setEnabled(False)
-        self.remove_tilt_btn.setChecked(False)
+        #self.map_btn.setEnabled(False)
+        #self.map_btn.setChecked(False)
+        #self.remove_tilt_btn.setEnabled(False)
+        #self.remove_tilt_btn.setChecked(False)
 
         self.err_btn.setText('0')
         self.err_plt_btn.setEnabled(False)

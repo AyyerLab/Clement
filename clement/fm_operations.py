@@ -39,6 +39,8 @@ class FM_ops(Peak_finding):
         self.fliph = False
         self.transp = False
         self.rot = False
+        self.fixed_orientation = False
+        self.sem_transform = np.identity(3)
         self.flipv_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
         self.fliph_matrix = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 1]])
         self.transp_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
@@ -54,6 +56,7 @@ class FM_ops(Peak_finding):
         self.shift = []
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
+        self.tf_matrix_orig = np.identity(3)
         self.tf_max_proj_data = None
         self.cmap = None
         self.hsv_map = None
@@ -119,104 +122,48 @@ class FM_ops(Peak_finding):
             [self._aligned_channels.append(False) for i in range(self.num_channels)]
             [self._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
 
-        if self._transformed:
-            self.apply_transform(shift_points=False)
-            self._update_data()
+        self._update_data()
 
-    def _update_data(self, update=True, update_points=True):
-        if self._transformed and (
-                self.tf_data is not None or self.tf_max_proj_data is not None or self.tf_hsv_map is not None or self.tf_hsv_map_no_tilt is not None):
-            if self._show_mapping:
-                if self._show_no_tilt:
-                    self.data = np.copy(self.tf_hsv_map_no_tilt)
-                else:
-                    self.data = np.copy(self.tf_hsv_map)
-            elif self._show_max_proj:
-                self.data = np.copy(self.tf_max_proj_data)
+    def _update_data(self):
+        if self._show_mapping and self.hsv_map is not None:
+            if self._show_no_tilt:
+                self.data = np.copy(self.hsv_map_no_tilt)
             else:
-                self.data = np.copy(self.tf_data)
-            self.points = np.copy(self._tf_points)
+                self.data = np.copy(self.hsv_map)
+        elif self._show_max_proj and self.max_proj_data is not None:
+            self.data = np.copy(self.max_proj_data)
         else:
-            if self._show_mapping and self.hsv_map is not None:
-                if self._show_no_tilt:
-                    self.data = np.copy(self.hsv_map_no_tilt)
-                else:
-                    self.data = np.copy(self.hsv_map)
-            elif self._show_max_proj and self.max_proj_data is not None:
-                self.data = np.copy(self.max_proj_data)
-            else:
-                self.data = np.copy(self.orig_data)
-            self.points = np.copy(self._orig_points) if self._orig_points is not None else None
+            self.data = np.copy(self.orig_data)
+        self.points = np.copy(self._orig_points) if self._orig_points is not None else None
 
         if True in self._aligned_channels and not self._show_mapping:
             self.apply_alignment()
 
-        if update:
-            if self._transformed:
-                fliph = self.fliph
-                flipv = self.flipv
-                transp = self.transp
-                rot = self.rot
-            else:
-                fliph = False
-                flipv = False
-                transp = False
-                rot = False
-
-            if transp:
-                self.data = np.transpose(self.data, (1, 0, 2))
-            if rot:
-                self.data = np.rot90(self.data, axes=(0, 1))
-            if fliph:
-                self.data = np.flip(self.data, axis=0)
-            if flipv:
-                self.data = np.flip(self.data, axis=1)
-            if self.points is not None:
-                if update_points:
-                    self.points = self.update_points(self.points)
-
-    def update_points(self, points):
-        peaks = None
         if self._transformed:
-            if self.orig_tf_peaks is not None:
-                peaks = np.copy(self.orig_tf_peaks)
-            else:
-                peaks = None
-            fliph = self.fliph
-            flipv = self.flipv
-            transp = self.transp
-            rot = self.rot
+            self._update_tf_matrix()
+            self.apply_transform()
+
+    def _update_tf_matrix(self):
+        rot_matrix = np.identity(3)
+        if self.transp:
+            rot_matrix = self.transp_matrix @ rot_matrix
+        if self.rot:
+            rot_matrix = self.rot_matrix @ rot_matrix
+        if self.fliph:
+            rot_matrix = self.fliph_matrix @ rot_matrix
+        if self.flipv:
+            rot_matrix = self.flipv_matrix @ rot_matrix
+
+        if self.fixed_orientation:
+            self.tf_matrix = self.sem_transform @ rot_matrix @ self.tf_matrix_orig
         else:
-            fliph = False
-            flipv = False
-            transp = False
-            rot = False
-
-        if transp:
-            points = np.array([np.flip(point) for point in points])
-        if rot:
-            temp = self.data.shape[0] - points[:, 1]
-            points[:, 1] = points[:, 0]
-            points[:, 0] = temp
-        if fliph:
-            points[:, 0] = self.data.shape[0] - points[:, 0]
-        if flipv:
-            points[:, 1] = self.data.shape[1] - points[:, 1]
-
-        if peaks is not None and self._transformed:
-            if transp:
-                peaks = np.array([np.flip(point) for point in peaks])
-            if rot:
-                temp = self.data.shape[0] - 1 - peaks[:, 1]
-                peaks[:, 1] = peaks[:, 0]
-                peaks[:, 0] = temp
-            if fliph:
-                peaks[:, 0] = self.data.shape[0] - peaks[:, 0]
-            if flipv:
-                peaks[:, 1] = self.data.shape[1] - peaks[:, 1]
-
-            self.tf_peaks = np.copy(peaks)
-        return points
+            self.tf_matrix = rot_matrix @ self.tf_matrix_orig
+        nx, ny = self.data.shape[:-1]
+        corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+        self.corners = np.copy(corners)
+        self.tf_corners = np.dot(self.tf_matrix, corners)
+        self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
+        self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip
@@ -234,8 +181,8 @@ class FM_ops(Peak_finding):
         self.rot = do_rot
         self._update_data()
 
-    def toggle_original(self, update=True):
-        self._update_data(update=update)
+    def toggle_original(self):
+        self._update_data()
 
     def calc_max_projection(self):
         self._show_max_proj = not self._show_max_proj
@@ -321,26 +268,16 @@ class FM_ops(Peak_finding):
 
         self._update_data()
 
-    def calc_z(self, ind, pos, transformed, channel=None):
+    def calc_z(self, ind, pos, transformed=True, channel=None):
         z = None
         if channel is None:
             channel = self._channel_idx
 
-        if transformed:
-            if ind is not None:
-                z = self.tf_peaks_z[ind]
-            else:
-                self.print('Index not found. Calculate local z position!')
-                flip_list = [self.transp, self.rot, self.fliph, self.flipv]
-                point = np.array((pos[0], pos[1]))
-                tf_aligned = self.tf_matrix @ self._color_matrices[channel]
-                z = self.calc_local_z(self.channel, point, transformed, tf_aligned, flip_list, self.data.shape[:-1])
+        if ind is not None:
+            z = self.peaks_z[ind]
         else:
-            if ind is not None:
-                z = self.peaks_z[ind]
-            else:
-                point = np.linalg.inv(self._color_matrices[channel]) @ np.array([pos[0], pos[1], 1])
-                z = self.calc_local_z(self.channel, point, transformed)
+            point = np.linalg.inv(self._color_matrices[channel]) @ np.array([pos[0], pos[1], 1])
+            z = self.calc_local_z(self.channel, point, transformed=transformed, tf_matrix=self.tf_matrix)
         if z is None:
             self.print('Oops, something went wrong. Try somewhere else!')
             return None
@@ -421,8 +358,10 @@ class FM_ops(Peak_finding):
                     color_matrix = self._color_matrices[i]
                 self.log(color_matrix)
                 self.data[:,:,i] = np.copy(ndi.affine_transform(self.data[:, :, i], np.linalg.inv(color_matrix), order=1))
+
     def calc_affine_transform(self, my_points):
         my_points = self.calc_orientation(my_points)
+        self._orig_points = np.copy(my_points)
         self.log('Input points:\n', my_points)
 
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
@@ -446,14 +385,13 @@ class FM_ops(Peak_finding):
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+        self.tf_matrix_orig = np.copy(self.tf_matrix)
         self.print('Transform matrix:\n', self.tf_matrix)
         self.print('Tf shape: ', self._tf_shape)
-
         self.apply_transform()
-        self.points = np.copy(self._tf_points)
-        self.log('New points: \n', self._tf_points)
 
     def calc_rot_transform(self, my_points):
+        self._orig_points = np.copy(my_points)
         side_list = np.linalg.norm(np.diff(my_points, axis=0), axis=1)
         side_list = np.append(side_list, np.linalg.norm(my_points[0] - my_points[-1]))
         self.side_length = np.mean(side_list)
@@ -472,11 +410,9 @@ class FM_ops(Peak_finding):
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] += -self.tf_corners.min(1)[:2]
+        self.tf_matrix_orig = np.copy(self.tf_matrix)
         self.print('Transform matrix: ', self.tf_matrix)
-        if not self._transformed:
-            self._orig_points = np.copy(my_points)
         self.apply_transform()
-        self.points = np.copy(self._tf_points)
 
     def calc_rot_matrix(self, pts):
         angles = []
@@ -515,88 +451,17 @@ class FM_ops(Peak_finding):
             order = [0, 3, 2, 1]
             return points[order]
 
-    def apply_transform(self, shift_points=True):
-        if not self._transformed:
-            self.fliph = False
-            self.transp = False
-            self.rot = False
-            self.flipv = False
-
-        if self.tf_matrix is None:
-            self.print('Calculate transform matrix first')
-            return
-
-        # Calculate transform_shift for point transforms
-        self.transform_shift = -self.tf_corners.min(1)[:2]
-
-        if self._show_mapping:
-            if self._show_no_tilt:
-                self.tf_hsv_map_no_tilt = np.empty(self._tf_shape + (self.hsv_map_no_tilt.shape[-1],))
-                for i in range(self.tf_hsv_map_no_tilt.shape[-1]):
-                    self.tf_hsv_map_no_tilt[:, :, i] = ndi.affine_transform(self.hsv_map_no_tilt[:, :, i],
-                                                                            np.linalg.inv(self.tf_matrix), order=1,
-                                                                            output_shape=self._tf_shape)
-                    sys.stderr.write('\r%d' % i)
-                self._update_data(update_points=False)
-                self.log(self.tf_hsv_map_no_tilt.shape)
-
-            else:
-                self.tf_hsv_map = np.empty(self._tf_shape + (self.hsv_map.shape[-1],))
-                for i in range(self.tf_hsv_map.shape[-1]):
-                    self.tf_hsv_map[:, :, i] = ndi.affine_transform(self.hsv_map[:, :, i],
-                                                                    np.linalg.inv(self.tf_matrix), order=1,
-                                                                    output_shape=self._tf_shape)
-                    sys.stderr.write('\r%d' % i)
-                self._update_data(update_points=False)
-            if shift_points and not self._transformed:
-                self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
-        else:
-            if not self._show_max_proj and self.max_proj_data is None:
-                # If max_projection has not yet been selected
-                self.tf_data = np.empty(self._tf_shape + (self.data.shape[-1],))
-                for i in range(self.data.shape[-1]):
-                    self.tf_data[:, :, i] = ndi.affine_transform(self.orig_data[:, :, i], np.linalg.inv(self.tf_matrix),
-                                                                 order=1, output_shape=self._tf_shape)
-                    sys.stderr.write('\r%d' % i)
-                self.log('\n', self.tf_data.shape)
-                if shift_points:
-                    self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
-            elif self._show_max_proj and self._transformed:
-                # If showing max_projection with image already transformed (???)
-                self.tf_max_proj_data = np.empty(self._tf_shape + (self.data.shape[-1],))
-                for i in range(self.data.shape[-1]):
-                    self.tf_max_proj_data[:, :, i] = ndi.affine_transform(self.max_proj_data[:, :, i],
-                                                                          np.linalg.inv(self.tf_matrix), order=1,
-                                                                          output_shape=self._tf_shape)
-                    sys.stderr.write('\r%d' % i)
-                self._update_data(update_points=False)
-            else:
-                self.tf_data = np.empty(self._tf_shape + (self.data.shape[-1],))
-                self.tf_max_proj_data = np.empty(self._tf_shape + (self.data.shape[-1],))
-                for i in range(self.data.shape[-1]):
-                    self.tf_data[:, :, i] = ndi.affine_transform(self.orig_data[:, :, i], np.linalg.inv(self.tf_matrix),
-                                                                 order=1, output_shape=self._tf_shape)
-                    self.tf_max_proj_data[:, :, i] = ndi.affine_transform(self.max_proj_data[:, :, i],
-                                                                          np.linalg.inv(self.tf_matrix), order=1,
-                                                                          output_shape=self._tf_shape)
-                    sys.stderr.write('\r%d' % i)
-                self.log('\n', self.tf_data.shape)
-                self.log(self.max_proj_data.shape)
-                if shift_points:
-                    self._tf_points = np.array([point + self.transform_shift for point in self._tf_points])
-
-#        if self._show_mapping:
-#            if self._show_no_tilt:
-#                self.data = np.copy(self.tf_hsv_map_no_tilt)
-#            else:
-#                self.data = np.copy(self.tf_hsv_map)
-#        elif self._show_max_proj:
-#            self.data = np.copy(self.tf_max_proj_data)
-#        else:
-#            self.data = np.copy(self.tf_data)
+    def apply_transform(self):
+        data = np.empty(self._tf_shape + (self.data.shape[-1],))
+        for i in range(self.data.shape[-1]):
+            data[:,:,i] = ndi.affine_transform(self.data[:,:,i], np.linalg.inv(self.tf_matrix), order=1,
+                                                    output_shape=self._tf_shape)
+        self.data = np.copy(data)
+        for i in range(len(self.points)):
+            self.points[i] = (self.tf_matrix @ np.array([self._orig_points[i,0], self._orig_points[i,1], 1]))[:2]
+        self._tf_points = np.copy(self.points)
 
         self._transformed = True
-        self._update_data()
 
     def optimize(self, fm_max, em_img, fm_points, em_points):
         def preprocessing(img, points, size=15, em=False):
@@ -672,23 +537,6 @@ class FM_ops(Peak_finding):
                 self.print('Unable to fit bead #{}! Used original coordinate instead!'.format(i))
                 points_model.append(np.array([x, y]))
         return np.array(points_model)
-
-    def update_fm_sem_matrix(self, tr_matrix):
-        points = np.copy(self._tf_points)
-
-        if self.transp:
-            points = np.array([np.flip(point) for point in points])
-        if self.rot:
-            temp = self.data.shape[0] - 1 - points[:, 1]
-            points[:, 1] = points[:, 0]
-            points[:, 0] = temp
-        if self.fliph:
-            points[:, 0] = self.data.shape[0] - points[:, 0]
-        if self.flipv:
-            points[:, 1] = self.data.shape[1] - points[:, 1]
-
-        rot_matrix = np.linalg.inv(tf.estimate_transform('affine', points, self.points).params)
-        return tr_matrix @ rot_matrix
 
     def get_transform(self, source, dest):
         if len(source) != len(dest):
