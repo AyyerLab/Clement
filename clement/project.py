@@ -285,7 +285,7 @@ class Project(QtWidgets.QWidget):
             self.fib.transp_btn.setChecked(True)
             self.fib._transpose()  # Why has this function to be called expilicitely???
 
-        self.fib.sigma_btn.setText(fibdict['Sigma angle'])
+        self.fib.angle_btn.setText(fibdict['Milling angle'])
         self.fib.sem_ops = self.sem.ops
 
         if self.fib.sem_ops is not None and self.fib.sem_ops._orig_points is not None:
@@ -632,7 +632,7 @@ class Project(QtWidgets.QWidget):
         fibdict['Tab index'] = self.parent.em_imview.currentIndex()
         fibdict['Directory'] = self.fib._curr_folder
         fibdict['File'] = self.fib._file_name
-        fibdict['Sigma angle'] = self.fib.sigma_btn.text()
+        fibdict['Milling angle'] = self.fib.angle_btn.text()
         fibdict['Transpose'] = self.fib.transp_btn.isChecked()
         fibdict['Show grid'] = self.fib.show_grid_btn.isChecked()
         if self.fib.ops._orig_points is not None:

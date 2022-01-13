@@ -28,7 +28,7 @@ class FIBControls(BaseControls):
 
         self._curr_folder = None
         self._file_name = None
-        self._sigma_angle = None
+        self._fib_angle = None
         self._refined = False
 
         self.print = printer
@@ -45,15 +45,15 @@ class FIBControls(BaseControls):
         label = QtWidgets.QLabel('Angles:', self)
         line.addWidget(label)
 
-        label = QtWidgets.QLabel('\u03c3_SEM - \u03c3_FIB:', self)
+        label = QtWidgets.QLabel('Milling angle:', self)
         line.addWidget(label)
-        self.sigma_btn = QtWidgets.QLineEdit(self)
-        self.sigma_btn.setMaximumWidth(30)
-        self.sigma_btn.setText('0')
-        self._sigma_angle = int(self.sigma_btn.text())
-        self.sigma_btn.textChanged.connect(self._recalc_sigma)
-        self.sigma_btn.setEnabled(False)
-        line.addWidget(self.sigma_btn)
+        self.angle_btn = QtWidgets.QLineEdit(self)
+        self.angle_btn.setMaximumWidth(30)
+        self.angle_btn.setText('0')
+        self._fib_angle = int(self.angle_btn.text())
+        self.angle_btn.textChanged.connect(self._recalc_sigma)
+        self.angle_btn.setEnabled(False)
+        line.addWidget(self.angle_btn)
 
         line.addStretch(1)
 
@@ -95,7 +95,7 @@ class FIBControls(BaseControls):
             self.imview.setImage(self.ops.data)
             self.grid_box = None
             self.transp_btn.setEnabled(True)
-            self.sigma_btn.setEnabled(True)
+            self.angle_btn.setEnabled(True)
             if self.sem_ops is not None and self.sem_ops._orig_points is not None:
                 self.show_grid_btn.setEnabled(True)
             if self.sem_ops is not None and self.sem_ops._tf_points is not None:
@@ -139,8 +139,8 @@ class FIBControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _recalc_sigma(self, state=None):
-        if self.sigma_btn.text() is not '':
-            self._sigma_angle = int(self.sigma_btn.text())
+        if self.angle_btn.text() is not '':
+            self._fib_angle = int(self.angle_btn.text())
             self.box_shift = None
             self.ops.box_shift = None
             self._recalc_grid()
@@ -156,10 +156,10 @@ class FIBControls(BaseControls):
                 shift = self.box_shift
                 redo = False
 
-            sigma_angle = float(self.sigma_btn.text())
+            fib_angle = float(self.angle_btn.text())
             #is_transposed = not self.transp_btn.isChecked()
 
-            self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape,
+            self.ops.calc_fib_transform(fib_angle, self.sem_ops.data.shape,
                                         self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=False)
             self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
 
@@ -172,7 +172,7 @@ class FIBControls(BaseControls):
                 self.old_pos0 = [0, 0]
             self.grid_box.sigRegionChangeFinished.connect(self._update_shifts)
             if redo:
-                self.ops.calc_fib_transform(sigma_angle, self.sem_ops.data.shape, self.other.ops.voxel_size,
+                self.ops.calc_fib_transform(fib_angle, self.sem_ops.data.shape, self.other.ops.voxel_size,
                                             self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=False)
                 self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
                 pos = list(self.ops.points)

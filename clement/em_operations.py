@@ -354,7 +354,8 @@ class EM_ops():
             self._tf_points_region = np.copy(pts)
         self.toggle_original()
 
-    def calc_fib_transform(self, delta_sigma, sem_shape, fm_voxel, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
+    def calc_fib_transform(self, fib_angle, sem_shape, fm_voxel, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
+        self.fib_angle = 90 - fib_angle
         if self.box_shift is not None:
             shift = self.box_shift - shift
 
@@ -374,7 +375,6 @@ class EM_ops():
                                     [0, 0, 0, 1]]) @ self.fib_matrix
 
         # Rotate SEM image according to sigma angles
-        self.fib_angle = delta_sigma + 52
         total_angle = self.fib_angle * np.pi / 180 #right-hand rule, clockwise rotation (looking from origin)
 
         #Rx
