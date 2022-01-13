@@ -468,6 +468,7 @@ class BaseControls(QtWidgets.QWidget):
         point_obj.sigRemoveRequested.connect(lambda: self._remove_pois(point_obj))
 
     def _draw_correlated_points(self, pos, item, skip=False):
+        '''self is FM, other is SEM/FIB etc.'''
         point = np.array([pos.x() + self.size / 2, pos.y() + self.size / 2])
         if not skip:
             init, pos, z = self._calc_optimized_position(point, pos)
@@ -533,6 +534,7 @@ class BaseControls(QtWidgets.QWidget):
         return init, pos, z
 
     def _draw_fm_points(self, pos, item):
+        '''self is FM, other is SEM/FIB etc.'''
         point_obj = pg.CircleROI(pos, self.size, parent=item, movable=True, removable=True)
         point_obj.setPen(0, 255, 0)
         point_obj.removeHandle(0)
@@ -550,6 +552,7 @@ class BaseControls(QtWidgets.QWidget):
         point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj, remove_raw=True))
 
     def _draw_em_points(self, init, z):
+        '''self is FM, other is SEM/FIB etc.'''
         if self.other.ops is None:
             return
         condition = False
@@ -571,13 +574,13 @@ class BaseControls(QtWidgets.QWidget):
         self.log('Other class:', self.other, self.other.ops)
         self.log('tr_matrices:\n', self.other.tr_matrices)
         if self.other.tab_index == 1:
-            transf = np.dot(self.other.tr_matrices, init)
+            transf = np.dot(self.tr_matrices, init)
             transf = self.other.ops.fib_matrix @ np.array([transf[0], transf[1], z, 1])
             self.other.points_corr_z.append(transf[2])
             if self.other._refined:
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
         else:
-            transf = np.dot(self.other.tr_matrices, init)
+            transf = np.dot(self.tr_matrices, init)
 
         self.print('Transformed point: ', transf)
         pos = QtCore.QPointF(transf[0] - self.other.size / 2, transf[1] - self.other.size / 2)
@@ -762,8 +765,6 @@ class BaseControls(QtWidgets.QWidget):
 
     def _peak_to_point(self, peak):
         idx = self._check_point_idx(peak)
-        print('index: ', idx)
-        print(self)
         if idx is None:
             self.imview.removeItem(peak)
             peak.peakMoved(None)
@@ -1373,6 +1374,7 @@ class BaseControls(QtWidgets.QWidget):
 
     @utils.wait_cursor('print')
     def _refine(self, state=None):
+        ''' self is FM, other is SEM/FIB etc.'''
         if self.select_btn.isChecked():
             self.print('Confirm point selection! (Uncheck Select points of interest)')
             return
@@ -1404,14 +1406,12 @@ class BaseControls(QtWidgets.QWidget):
 
         refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
         self.other.ops.calc_refine_matrix(src, dst)
-        print('other points: \n', self.other.ops.points)
-        print('tr_matrix: \n', self.tr_matrices)
+
         self.other.ops.apply_refinement()
         self.other._refined = True
         self.other._recalc_grid()
         if self.other.show_grid_btn.isChecked():
             self.other._show_grid()
-        print('other points: \n', self.other.ops.points)
         self._estimate_precision(self.other.tab_index, refine_matrix_old)
         self.other.size = self.other.orig_size
 
@@ -1444,7 +1444,13 @@ class BaseControls(QtWidgets.QWidget):
         self.points_base = []
         self.other.points_base = []
 
+        if self.other.tab_index == 0 or self.other.tab_index == 3:
+            self._calc_tr_matrices()
+
+        print('tr matrices after refinement: \n', self.tr_matrices)
+
     def _undo_refinement(self):
+        ''' self is FM, other is SEM/FIB etc.'''
         self.other.ops.undo_refinement()
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
@@ -1466,19 +1472,25 @@ class BaseControls(QtWidgets.QWidget):
             self.other._recalc_grid()
             self.other._points_corr_indices = np.arange(len(self.other._points_corr)).tolist()
 
-        self._calc_tr_matrices()
+        if self.other.tab_index == 0 or self.other.tab_index == 3:
+            self._calc_tr_matrices()
+        print('tr matrices after undo refinement: \n', self.tr_matrices)
         self.other.size = copy.copy(self.other._size_history[-1])
-        for i in range(len(self._points_corr_history[-1])):
-            point = self._points_corr_history[-1][i]
-            self._draw_correlated_points(point.pos(), self.imview.getImageItem())
-            point_other = self.other._points_corr_history[-1][i]
-            self.other._points_corr[i].setPos(point_other.pos())
-            self.other.anno_list[i].setPos(point_other.pos().x()+5, point_other.pos().y()+5)
+        #self.other._orig_points_corr = self.other._orig_points_corr_history[-1]
+        #self.other._points_corr = []
+        #self.other._orig_points_corr = []
+        #for i in range(len(self._points_corr_history[-1])):
+        #    point = self._points_corr_history[-1][i]
+        #    self._draw_correlated_points(point.pos(), self.imview.getImageItem())
+        #    point_other = self.other._points_corr_history[-1][i]
+        #    self.other._points_corr[i].setPos(point_other.pos())
+        #    #self._peak_to_point(self.other._points_corr[i])
+        #    self.other.anno_list[i].setPos(point_other.pos().x()+5, point_other.pos().y()+5)
 
-        if self.other.show_peaks_btn.isChecked():
-            self.other.size = self.size
-            self.other.show_peaks_btn.setChecked(False)
-            self.other.show_peaks_btn.setChecked(True)
+        #if self.other.show_peaks_btn.isChecked():
+        #    self.other.size = self.size
+        #    self.other.show_peaks_btn.setChecked(False)
+        #    self.other.show_peaks_btn.setChecked(True)
 
         self.other.ops.merged[self.other.tab_index] = None
 
@@ -1512,14 +1524,12 @@ class BaseControls(QtWidgets.QWidget):
         self.refined_points = []
         corr_points = []
         self._calc_tr_matrices()
-        print('tr_matrix: \n', self.tr_matrices)
         if idx != 1:
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])
                 init = np.array([orig_point[0] + self.size // 2, orig_point[1] + self.size // 2, 1])
                 corr_points.append(np.copy((self.tr_matrices @ init)[:2]))
                 transf = self.tr_matrices @ init
-                print('transf: ', transf)
                 self.refined_points.append(transf[:2])
         else:
             #orig_fm_points_z = np.copy(self.points_corr_z)

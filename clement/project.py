@@ -25,6 +25,7 @@ class Project(QtWidgets.QWidget):
         self.print = printer
         self.logger = logger
         self.tab_index = 0
+        self.confirm_orientation = False
 
     def _load_project(self, file_name=None):
         if file_name is None:
@@ -132,6 +133,9 @@ class Project(QtWidgets.QWidget):
                     self.fm.fliph.setChecked(True)
                 if fmdict['Flipv']:
                     self.fm.flipv.setChecked(True)
+                if fmdict['Confirm orientation']:
+                    self.confirm_orientation = True
+
             except KeyError:
                 pass
         except KeyError:
@@ -252,6 +256,9 @@ class Project(QtWidgets.QWidget):
                 if em.select_region_btn.isChecked():
                     em.select_region_btn.setChecked(False)
 
+        if self.confirm_orientation:
+            self.fm.confirm_btn.setChecked(True)
+
         if emdict['Refined']:
             if sem:
                 idx = 0
@@ -260,7 +267,8 @@ class Project(QtWidgets.QWidget):
             self._load_base(project, idx)
 
         em.show_assembled_btn.setChecked(emdict['Show assembled'])
-        em.show_btn.setChecked(emdict['Show original'])
+        if not self.confirm_orientation:
+            em.show_btn.setChecked(emdict['Show original'])
         self.tab_index = emdict['Tab index']
 
     def _load_fib(self, project):
@@ -401,6 +409,7 @@ class Project(QtWidgets.QWidget):
                 self.fm.counter = len(self.fm._points_corr)
                 self.fm.other.counter = len(self.fm.other._points_corr)
                 self.fm._refine()
+                print('Refine matrix after loading: \n', self.sem.ops._refine_matrix)
 
                 em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
                 counter[idx] += 1
@@ -554,6 +563,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Fliph'] = self.fm.fliph.isChecked()
         fmdict['Transpose'] = self.fm.transpose.isChecked()
         fmdict['Rotate'] = self.fm.rotate.isChecked()
+        fmdict['Confirm orientation'] = self.fm.confirm_btn.isChecked()
 
         points = [[p.pos().x(), p.pos().y()] for p in self.fm._points_corr]
         fmdict['Correlated points'] = points
