@@ -68,6 +68,15 @@ class FMControls(BaseControls):
         self._peaks = []
         self._bead_size = None
 
+        self.pois = []
+        self._pois_orig = []
+        self.pois_sizes = []
+        self.pois_z = []
+        self.pois_err = []
+        self.pois_cov = []
+        self._pois_channel_indices = []
+        self._pois_slices = []
+
         self.print = printer
         self.log = logger
 
@@ -305,6 +314,7 @@ class FMControls(BaseControls):
         if self.peak_btn.isChecked():
             self.peak_btn.setChecked(False)
             self.peak_btn.setChecked(True)
+
         if self.semcontrols.show_peaks_btn.isChecked():
             self.semcontrols.show_peaks_btn.setChecked(False)
             self.semcontrols.show_peaks_btn.setChecked(True)
@@ -477,7 +487,7 @@ class FMControls(BaseControls):
         self.ops.flip_horizontal(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois_and_points()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _flipv(self, state):
@@ -491,7 +501,7 @@ class FMControls(BaseControls):
         self.ops.flip_vertical(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois_and_points()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _trans(self, state):
@@ -505,7 +515,7 @@ class FMControls(BaseControls):
         self.ops.transpose(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois_and_points()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _rot(self, state):
@@ -519,10 +529,15 @@ class FMControls(BaseControls):
         self.ops.rotate_clockwise(state)
         self._recalc_grid()
         self._update_imview()
-        self._update_pois_and_points()
+        self._update_pois()
 
     @utils.wait_cursor('print')
     def _confirm_transf(self, state):
+        if self.other.ops is None:
+            print('You have to load and transform an SEM ')
+            self.confirm_btn.setChecked(False)
+            return
+
         self.show_grid_btn.setChecked(False)
         if state:
             self.ops.sem_transform = self.semcontrols.ops.tf_matrix_no_shift
@@ -557,6 +572,7 @@ class FMControls(BaseControls):
             self.merge_btn.setEnabled(False)
 
         self.ops._update_data()
+        self._update_pois()
         self._recalc_grid()
         self._calc_tr_matrices()
         self.show_grid_btn.setChecked(True)
@@ -701,7 +717,7 @@ class FMControls(BaseControls):
             if self.ops.channel is not None:
                 self.ops.clear_channel()
             self.print('Done selecting points of interest on %s image' % self.tag)
-            if not self.other._refined:
+            if not self.other._refined or not self.confirm_btn.isChecked():
                 self.fliph.setEnabled(True)
                 self.flipv.setEnabled(True)
                 self.transpose.setEnabled(True)
@@ -758,20 +774,22 @@ class FMControls(BaseControls):
             sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
         self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
 
-    def _draw_pois(self, pos, item):
-        point = np.copy(np.array([pos.x(), pos.y()]))
-        init = self._fit_poi(point)
-        if init is None:
-            return
-        init_base = copy.copy(init)
-        if self.ops._transformed:
-            self._calc_base_points(init[:2], poi=True)
-            init_base[:2] = [self.pois_base[-1].x(), self.pois_base[-1].y()]
-        self._calc_raw_points(init_base[:2], poi=True)
-        if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
-            self._transform_pois(init[:2], poi=True)
+    def _calc_pois(self, pos=None):
+        if pos is None:
+            pass
+        else:
+            point = np.copy(np.array([pos.x(), pos.y()]))
+            self.ops.load_channel(self.poi_ref_btn.currentIndex())
+            init = self._fit_poi(point)
+            if init is None:
+                return
 
-        self._draw_fm_pois(init[:2], item)
+        self._pois_orig.append(init)
+        if not self.ops._transformed:
+            self._draw_pois(init)
+        else:
+            self._transform_pois(init[:2])
+
         # if len(self.pois_z) > 0:
         #    self._draw_correlated_points(QtCore.QPointF(init[0]-self.size/2, init[1]-self.size/2), self.imview.getImageItem(), skip=True)
 
@@ -818,49 +836,53 @@ class FMControls(BaseControls):
             pass
         return tf_cov
 
-    def _draw_fm_pois(self, init, item):
-        cmap = matplotlib.cm.get_cmap('cool')
-        lin = np.linspace(0, 1, 100)
-        colors = cmap(lin)
-        idx = np.argmin(np.abs(lin - self.pois_err[-1][-1]))
-        color = colors[idx]
-        color = matplotlib.colors.to_hex(color)
+    def _draw_pois(self, point=None):
+        if point is None:
+            points = self._pois_orig
+        else:
+            points = [point]
 
-        img_center = np.array(self.ops.data.shape) / 2
-        lambda_1, lambda_2, theta = self._calc_ellipses(self.poi_counter)
-        if math.isnan(lambda_1) or math.isnan(lambda_2):
-            del self.pois_err[-1]
-            del self.pois_cov[-1]
-            del self._pois_raw[-1]
-            del self.pois_base[-1]
-            del self.pois_z[-1]
-            QtWidgets.QApplication.restoreOverrideCursor()
-            return
+        for point in points:
+            img_center = np.array(self.ops.data.shape) / 2
+            lambda_1, lambda_2, theta = self._calc_ellipses(self.poi_counter)
+            if math.isnan(lambda_1) or math.isnan(lambda_2):
+                del self.pois_err[-1]
+                del self.pois_cov[-1]
+                del self.pois_z[-1]
+                QtWidgets.QApplication.restoreOverrideCursor()
+                return
 
-        size = (lambda_1, lambda_2)
-        pos = QtCore.QPointF(init[0] - lambda_1 / 2 + 0.5, init[1] - lambda_2 / 2 + 0.5)
-        point_obj = pg.EllipseROI(img_center, size=[size[0], size[1]], angle=0, parent=item,
-                                  movable=False, removable=True, resizable=False, rotatable=False)
+            cmap = matplotlib.cm.get_cmap('cool')
+            lin = np.linspace(0, 1, 100)
+            colors = cmap(lin)
+            #idx = np.argmin(np.abs(lin - self.pois_err[-1][-1]))
+            idx = np.argmin(np.abs(lin - self.pois_err[self.poi_counter][-1]))
+            color = colors[idx]
+            color = matplotlib.colors.to_hex(color)
 
-        point_obj.setTransformOriginPoint(QtCore.QPointF(lambda_1 / 2, lambda_2 / 2))
-        point_obj.setRotation(theta)
-        point_obj.setPos([pos.x(), pos.y()])
-        point_obj.setPen(color)
-        point_obj.removeHandle(0)
-        point_obj.removeHandle(0)
-        self.imview.addItem(point_obj)
+            size = (lambda_1, lambda_2)
+            pos = QtCore.QPointF(point[0] - lambda_1 / 2 + 0.5, point[1] - lambda_2 / 2 + 0.5)
+            point_obj = pg.EllipseROI(img_center, size=[size[0], size[1]], angle=0, parent=self.imview.getImageItem(),
+                                      movable=False, removable=True, resizable=False, rotatable=False)
 
-        self.pois.append(point_obj)
-        self._pois_channel_indices.append(self.poi_ref_btn.currentIndex())
+            point_obj.setTransformOriginPoint(QtCore.QPointF(lambda_1 / 2, lambda_2 / 2))
+            point_obj.setRotation(theta)
+            point_obj.setPos([pos.x(), pos.y()])
+            point_obj.setPen(color)
+            point_obj.removeHandle(0)
+            point_obj.removeHandle(0)
 
-        self.pois_sizes.append(size)
-        self.poi_counter += 1
-        annotation_obj = pg.TextItem(str(self.poi_counter), color=color, anchor=(0, 0))
-        annotation_obj.setPos(pos.x() + 1, pos.y() + 1)
-        self.imview.addItem(annotation_obj)
-        self.poi_anno_list.append(annotation_obj)
+            self._pois_channel_indices.append(self.poi_ref_btn.currentIndex())
+            self.pois_sizes.append(size)
+            self.poi_counter += 1
+            annotation_obj = pg.TextItem(str(self.poi_counter), color=color, anchor=(0, 0))
+            annotation_obj.setPos(pos.x() + 1, pos.y() + 1)
+            self.poi_anno_list.append(annotation_obj)
+            point_obj.sigRemoveRequested.connect(lambda: self._remove_pois(point_obj))
+            self.pois.append(point_obj)
 
-        point_obj.sigRemoveRequested.connect(lambda: self._remove_pois(point_obj))
+            self.imview.addItem(point_obj)
+            self.imview.addItem(annotation_obj)
 
     def _fit_poi(self, point):
         # Dont use decorator here because of return value!
@@ -870,15 +892,12 @@ class FMControls(BaseControls):
         else:
             init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.poi_ref_btn.currentIndex(),
                                                slice=self._current_slice, size=self.size)
+        init[:2] = (self.ops._color_matrices[self.poi_ref_btn.currentIndex()] @ np.array([init[0], init[1], 1]))[:2]
 
         if init is None:
             QtWidgets.QApplication.restoreOverrideCursor()
             return None
         self.pois_z.append(init[-1])
-        if self.ops._transformed:
-            tf_aligned = self.ops.tf_matrix @ self.ops._color_matrices[self.poi_ref_btn.currentIndex()]
-            init[:2] = self.ops.update_pois(tf_aligned, init[:2])
-
         self.pois_err.append(err.tolist())
         self.pois_cov.append(cov.tolist())
         QtWidgets.QApplication.restoreOverrideCursor()
@@ -919,13 +938,6 @@ class FMControls(BaseControls):
             z = self.pois_z[-1]
         if init is None:
             return
-        init_base = copy.copy(init)
-        if self.ops._transformed:
-            self._calc_base_points(init[:2])
-            init_base[:2] = [self.points_base[-1].x() + self.size / 2, self.points_base[-1].y() + self.size / 2]
-        self._calc_raw_points(init_base[:2])
-        if not self.ops._transformed and not np.array_equal(np.identity(3), self.ops.tf_matrix):
-            self._transform_pois(init[:2])
         self._draw_fm_points(pos, item)
         self._draw_em_points(init, z)
 
@@ -944,7 +956,7 @@ class FMControls(BaseControls):
         self.anno_list.append(annotation_obj)
 
         self._points_corr_indices.append(self.counter - 1)
-        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj, remove_raw=True))
+        point_obj.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_obj))
 
     def _draw_em_points(self, init, z):
         if self.other.ops is None:
@@ -992,7 +1004,7 @@ class FMControls(BaseControls):
         self.other.imview.addItem(annotation_other)
         self.other.anno_list.append(annotation_other)
 
-        point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other, remove_raw=True))
+        point_other.sigRemoveRequested.connect(lambda: self._remove_correlated_points(point_other))
         point_other.sigRegionChangeFinished.connect(lambda: self._update_annotations(point_other))
 
         self.other._points_corr_indices.append(self.counter - 1)
@@ -1001,106 +1013,23 @@ class FMControls(BaseControls):
             if self.other.peaks[i].pos() == self.other._points_corr[-1].pos():
                 self.other.imview.removeItem(self.other.peaks[i])
 
-    def _transform_pois(self, point=None, poi=False):
+    def _transform_pois(self, point=None):
         '''
         Transform POIs if they were defined before aligning the FM image
         '''
-        if poi:
-            if point is None:
-                points_tf = []
-                for i in range(len(self._pois_raw)):
-                    pos = self._pois_raw[i]
-                    point = np.array([pos.x(), pos.y()])
-                    point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
-                    points_tf.append(point_tf[:2])
-                    pos = QtCore.QPointF(points_tf[i][0], points_tf[i][1])
-                    self._draw_fm_pois(np.array([points_tf[i][0], points_tf[i][1]]), self.imview.getImageItem())
-                    self.pois_base.append(pos)
-            else:
+        if point is None:
+            #[self.imview.removeItem(p) for p in self.pois]
+            #[self.imview.removeItem(a) for a in self.poi_anno_list]
+            points_tf = []
+            for i in range(len(self._pois_orig)):
+                point = self._pois_orig[i]
+                self._remove_pois(point, remove_base=False, transformed=False)
                 point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
-                pos = QtCore.QPointF(point_tf[0], point_tf[1])
-                self.pois_base.append(pos)
+                points_tf.append(point_tf[:2])
+                self._draw_pois(np.array([points_tf[i][0], points_tf[i][1]]))
         else:
-            if point is None:
-                points_tf = []
-                for i in range(len(self.points_raw)):
-                    pos = self.points_raw[i]
-                    point = np.array([pos.x() + self.size/2, pos.y() + self.size/2])
-                    point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
-                    points_tf.append(point_tf[:2])
-                    pos = QtCore.QPointF(points_tf[i][0] - self.size / 2, points_tf[i][1] - self.size / 2)
-                    self._draw_fm_points(pos, self.imview.getImageItem())
-                    self.points_base.append(pos)
-            else:
-                point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
-                pos = QtCore.QPointF(point_tf[0] - self.size / 2, point_tf[1] - self.size / 2)
-                self.points_base.append(pos)
-
-    def _calc_base_points(self, point, poi=False):
-        '''
-        Calculate the points and POIs for the transformed FM image only,
-        without applying any flips and without confirming the orientation w.r.t. the SEM
-        '''
-        point = np.copy(point)
-        tf_shape = self.ops.data.shape[:-1]
-        transp, rot, fliph, flipv = self.flips
-        if flipv:
-            point[1] = tf_shape[1] - point[1]
-        if fliph:
-            point[0] = tf_shape[0] - point[0]
-        if rot:
-            temp = tf_shape[0] - 1 - point[0]
-            point[0] = point[1]
-            point[1] = temp
-        if transp:
-            point = np.array([point[1], point[0], 1])
-
-        if poi:
-            pos = QtCore.QPointF(point[0], point[1])
-            self.pois_base.append(pos)
-        else:
-            pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
-            self.points_base.append(pos)
-
-    def _calc_raw_points(self, point, poi=False):
-        '''
-        Calculate points and POIs in the original FM orientation
-        '''
-        point = np.copy(point)
-        if poi:
-           if self.ops._transformed:
-               pos_raw = np.linalg.inv(self.ops.tf_matrix) @ np.array([point[0], point[1], 1])
-               pos = QtCore.QPointF(pos_raw[0], pos_raw[1])
-           else:
-               pos = QtCore.QPointF(point[0], point[1])
-           self._pois_raw.append(pos)
-        else:
-            if self.ops._transformed:
-                pos_raw = np.linalg.inv(self.ops.tf_matrix) @ np.array([point[0], point[1], 1])
-                pos = QtCore.QPointF(pos_raw[0] - self.size / 2, pos_raw[1] - self.size / 2)
-            else:
-                pos = QtCore.QPointF(point[0] - self.size / 2, point[1] - self.size / 2)
-            self.points_raw.append(pos)
-
-    def _update_pois_and_points(self):
-        points_base = []
-        for i in range(len(self.points_base)):
-            pos = self.points_base[i]
-            points_base.append(np.array([pos.x() + self.size/2, pos.y() + self.size/2]))
-        if len(points_base) > 0:
-            points_updated = self.ops.update_points(np.array(points_base))
-            for i in range(len(points_updated)):
-                pos = QtCore.QPointF(points_updated[i][0] - self.size / 2, points_updated[i][1] - self.size / 2)
-                self._draw_fm_points(pos, self.imview.getImageItem())
-        pois_base = []
-        for i in range(len(self.pois_base)):
-            pos = self.pois_base[i]
-            pois_base.append(np.array([pos.x(), pos.y()]))
-        if len(pois_base) > 0:
-            pois_updated = self.ops.update_points(np.array(pois_base))
-            for i in range(len(pois_updated)):
-                init = np.array([pois_updated[i][0], pois_updated[i][1]])
-                self._draw_fm_pois(init, self.imview.getImageItem())
+            point_tf = self.ops.tf_matrix @ np.array([point[0], point[1], 1])
+            self._draw_pois(np.array([point_tf[0], point_tf[1]]))
 
     def _update_annotations(self, point):
         idx = None
@@ -1115,12 +1044,26 @@ class FMControls(BaseControls):
         anno.setPos(point.x() + 5, point.y() + 5)
         self.other.imview.addItem(anno)
 
-    def _remove_pois(self, point, remove_base=True):
+    def _update_pois(self, point=None):
+        for _ in range(len(self.pois)):
+            self._remove_pois(self.pois[0], remove_base=False)
+        for i in range(len(self._pois_orig)):
+            self._transform_pois(self._pois_orig[i])
+
+    def _remove_pois(self, point, remove_base=True, transformed=True):
         idx = None
-        for i in range(len(self.pois)):
-            if self.pois[i] == point:
-                idx = i
-                break
+        if transformed:
+            for i in range(len(self.pois)):
+                if self.pois[i] == point:
+                    idx = i
+                    break
+        else:
+            for i in range(len(self._pois_orig)):
+                if np.allclose(self._pois_orig[i], point):
+                    idx = i
+                    break
+        if idx is None:
+            return
         self.imview.removeItem(self.pois[idx])
         self.imview.removeItem(self.poi_anno_list[idx])
         self.pois.remove(self.pois[idx])
@@ -1132,20 +1075,16 @@ class FMControls(BaseControls):
             self.pois_sizes.remove(self.pois_sizes[idx])
             self.pois_err.remove(self.pois_err[idx])
             self.pois_cov.remove(self.pois_cov[idx])
-            self._pois_raw.remove(self._pois_raw[idx])
-            if len(self.pois_base) > 0:
-                self.pois_base.remove(self.pois_base[idx])
+            self._pois_orig.remove(self._pois_orig[idx])
 
         for i in range(idx, len(self.pois)):
             self.poi_anno_list[i].setText(str(i + 1))
 
         self.poi_counter -= 1
 
-    def _remove_correlated_points(self, point, remove_base=True, remove_raw=False):
+    def _remove_correlated_points(self, point):
         idx = self._check_point_idx(point)
         num_beads = len(self._points_corr)
-        if remove_raw:
-            self.points_raw.remove(self.points_raw[idx])
 
         #Remove FM beads information
         for i in range(len(self.peaks)):
@@ -1162,8 +1101,6 @@ class FMControls(BaseControls):
 
         self.imview.removeItem(self._points_corr[idx])
         self._points_corr.remove(self._points_corr[idx])
-        if remove_base and len(self.points_base) > 0:
-            self.points_base.remove(self.points_base[idx])
         self._orig_points_corr.remove(self._orig_points_corr[idx])
         if len(self.anno_list) > 0:
             self.imview.removeItem(self.anno_list[idx])
@@ -1217,15 +1154,6 @@ class FMControls(BaseControls):
         self.semcontrols._orig_points_corr = []
         self.temcontrols._orig_points_corr = []
 
-        #Remove base point
-        self.points_base = []
-        self.fibcontrols.points_base = []
-        self.semcontrols.points_base = []
-        self.temcontrols.points_base = []
-
-        #Remove raw_points
-        self.points_raw = []
-
         # Remove annotation
         if len(self.anno_list) > 0:
             [self.imview.removeItem(anno) for anno in self.anno_list]
@@ -1255,7 +1183,7 @@ class FMControls(BaseControls):
 
     def _remove_points_flip(self):
         for i in range(len(self._points_corr)):
-            self._remove_correlated_points(self._points_corr[0], remove_base=False)
+            self._remove_correlated_points(self._points_corr[0])
         for i in range(len(self.pois)):
             self._remove_pois(self.pois[0], remove_base=False)
 
@@ -1326,10 +1254,6 @@ class FMControls(BaseControls):
         self.other._points_corr = []
         self.other.points_corr_z = []
         self.other._orig_points_corr = []
-        self.points_raw = []
-        self.other.points_raw = []
-        self.points_base = []
-        self.other.points_base = []
 
         if self.tab_index == 0 or self.tab_index == 3:
             self._calc_tr_matrices()

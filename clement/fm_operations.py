@@ -56,7 +56,6 @@ class FM_ops(Peak_finding):
         self.shift = []
         self.transform_shift = 0
         self.tf_matrix = np.identity(3)
-        self.tf_matrix_no_shift = np.identity(3)
         self.tf_matrix_orig = np.identity(3)
         self.tf_max_proj_data = None
         self.cmap = None
@@ -156,10 +155,8 @@ class FM_ops(Peak_finding):
 
         if self.fixed_orientation:
             self.tf_matrix = self.sem_transform @ rot_matrix @ self.tf_matrix_orig
-            self.tf_matrix_no_shift = self.sem_transform @ rot_matrix @ self.tf_matrix_no_shift
         else:
             self.tf_matrix = rot_matrix @ self.tf_matrix_orig
-            self.tf_matrix_no_shift = rot_matrix @ self.tf_matrix_no_shift
 
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
@@ -381,7 +378,6 @@ class FM_ops(Peak_finding):
         self._tf_points[3] = cen + (0, self.side_length)
 
         self.tf_matrix = tf.estimate_transform('affine', my_points, self._tf_points).params
-        self.tf_matrix_no_shift = np.copy(self.tf_matrix)
         nx, ny = self.data.shape[:-1]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.corners = np.copy(corners)

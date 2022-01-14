@@ -88,13 +88,13 @@ class Project(QtWidgets.QWidget):
             self.fm.peak_controls.save_btn.click()
 
         try:
-            pois_raw = fmdict['Pois raw']
-            qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(pois_raw)]
+            pois_orig = fmdict['Pois orig']
+            qpoints = [QtCore.QPointF(p[0], p[1]) for p in np.array(pois_orig)]
             #self.fm._pois_channel_indices = fmdict['Poi channel indices']
 
             poi_slices = fmdict['Poi slices']
             poi_channels = fmdict['Poi channel indices']
-            for i in range(len(poi_channels)):
+            for i in range(len(pois_orig)):
                 if poi_slices[i] is not None:
                     self.fm.max_proj_btn.setEnabled(True)
                     self.fm.max_proj_btn.setChecked(False)
@@ -102,12 +102,12 @@ class Project(QtWidgets.QWidget):
                     self.fm._slice_changed()
                 else:
                     self.fm.max_proj_btn.setChecked(True)
-                if poi_channels[i] != self.fm.point_ref_btn.currentIndex():
-                    self.fm.point_ref_btn.setCurrentIndex(poi_channels[i])
+                if poi_channels[i] != self.fm.poi_ref_btn.currentIndex():
+                    self.fm.poi_ref_btn.setCurrentIndex(poi_channels[i])
                 self.fm.poi_btn.setChecked(True)
-                if poi_channels[i] != self.fm.point_ref_btn.currentIndex():
-                    self.fm.point_ref_btn.setCurrentIndex(poi_channels[i])
-                self.fm._draw_pois(qpoints[i], self.fm.imview.getImageItem())
+                if poi_channels[i] != self.fm.poi_ref_btn.currentIndex():
+                    self.fm.poi_ref_btn.setCurrentIndex(poi_channels[i])
+                self.fm._calc_pois(qpoints[i])
                 self.fm.poi_btn.setChecked(False)
 
         except KeyError:
@@ -571,8 +571,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Original correlated points history'] = np.array(self.fm._orig_points_corr_history, dtype='object').tolist()
         fmdict['FIB vs SEM history'] = self.fm._fib_vs_sem_history
 
-        pois_raw = [[p.x(), p.y()] for p in self.fm._pois_raw]
-        fmdict['Pois raw'] = pois_raw
+        fmdict['Pois orig'] = np.array(self.fm._pois_orig).tolist()
         fmdict['Poi channel indices'] = self.fm._pois_channel_indices
         fmdict['Poi slices'] = self.fm._pois_slices
         fmdict['Tab index'] = self.fm.tab_index

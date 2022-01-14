@@ -61,10 +61,6 @@ class BaseControls(QtWidgets.QWidget):
 
         self._box_coordinate = None
 
-        self._pois_raw = []
-        self._pois_channel_indices = []
-        self._pois_slices = []
-
         self._points_corr = []
         self._orig_points_corr = []
         self._points_corr_indices = []
@@ -82,15 +78,7 @@ class BaseControls(QtWidgets.QWidget):
         self._fib_vs_sem_history = []
         self._size_history = []
 
-        self.pois = []
-        self.pois_sizes = []
-        self.pois_base = []
-        self.pois_z = []
-        self.pois_err = []
-        self.pois_cov = []
 
-        self.points_raw = []
-        self.points_base = []
         self.points_corr_z = []
 
         self.flips = [False, False, False, False]
@@ -228,7 +216,7 @@ class BaseControls(QtWidgets.QWidget):
             self.imview.addItem(roi)
             self.clicked_points.append(roi)
         elif hasattr(self, 'poi_btn') and self.poi_btn.isChecked(): #FM
-            self._draw_pois(pos, item)
+            self._calc_pois(pos)
         elif hasattr(self, 'select_btn') and self.select_btn.isChecked(): #FM
             pos.setX(pos.x() - self.size // 2)
             pos.setY(pos.y() - self.size // 2)
@@ -661,14 +649,8 @@ class BaseControls(QtWidgets.QWidget):
         #self.rot_transform_btn.setEnabled(False)
         self.define_btn.setEnabled(False)
 
-        for i in range(len(self._points_corr)):
-            self._remove_correlated_points(self._points_corr[0], remove_base=False)
-        for i in range(len(self.pois)):
-            self._remove_pois(self.pois[0], remove_base=False)
         if hasattr(self, 'select_btn'):
-            self.poi_ref_btn.setEnabled(True)
-            self._transform_pois(poi=True)
-            self._transform_pois(poi=False)
+            self._transform_pois()
 
         if self.ops is not None and self.other.ops is not None:
             if self.ops._transformed and self.other.ops._transformed:
@@ -685,11 +667,12 @@ class BaseControls(QtWidgets.QWidget):
     def _show_original(self, state=None):
         if self.ops is None:
             return
-        [self.imview.removeItem(poi) for poi in self.pois]
-        [self.imview.removeItem(anno) for anno in self.poi_anno_list]
-        self.pois = []
-        self.poi_anno_list = []
-        self.poi_counter = 0
+        if hasattr(self, 'poi_btn'):
+            [self.imview.removeItem(poi) for poi in self.pois]
+            [self.imview.removeItem(anno) for anno in self.poi_anno_list]
+            self.pois = []
+            self.poi_anno_list = []
+            self.poi_counter = 0
 
         [self.imview.removeItem(point) for point in self._points_corr]
         [self.imview.removeItem(anno) for anno in self.anno_list]
@@ -763,13 +746,9 @@ class BaseControls(QtWidgets.QWidget):
 
         if hasattr(self, 'select_btn'):
             if self.ops._transformed:
-                self._update_pois_and_points()
+                self._update_pois()
             else:
-                for i in range(len(self.points_raw)):
-                    self._draw_fm_points(self.points_raw[i], self.imview.getImageItem())
-                for i in range(len(self._pois_raw)):
-                    init = np.array([self._pois_raw[i].x(), self._pois_raw[i].y()])
-                    self._draw_fm_pois(init, self.imview.getImageItem())
+                self._draw_pois()
 
 
     def correct_grid_z(self):

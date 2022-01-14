@@ -133,10 +133,6 @@ class Peak_finding():
         else:
             self.peaks = np.copy(self.peaks_orig)
 
-    def update_pois(self, tf_matrix, point):
-        point = np.array([point[0], point[1], 1])
-        return (tf_matrix @ point)[:2]
-
     def subtract_background(self, img, sigma=None):
         if sigma is None:
             sigma = self.sigma_background
@@ -148,13 +144,16 @@ class Peak_finding():
 
     def calc_original_coordinates(self, tf_mat, point=None):
         if point is not None:
-            point = np.array([point[1], point[0], 1])
+            point = np.array([point[0], point[1], 1])
             nx, ny = self.orig_data.shape[:-1]
             corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
             tf_corners = np.dot(tf_mat, corners)
             tf_matrix = np.copy(tf_mat)
             tf_matrix[:2,2] += tf_corners.min(1)[:2]
-            return (np.linalg.inv(tf_matrix) @ point)[:2]
+            print('tf point: ', point)
+            print('orig point: ', (np.linalg.inv(tf_mat) @ point)[:2])
+
+            return (np.linalg.inv(tf_mat) @ point)[:2]
         else:
             inv_points = []
             for i in range(len(self.points)):
@@ -336,11 +335,7 @@ class Peak_finding():
         r2 = 1 - (ss_res / ss_tot)
 
         perr = np.sqrt(np.diag(pcov))
-        if transformed:
-            tf_aligned = self.tf_matrix @ self._color_matrices[channel]
-            point = tf_aligned @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
-        else:
-            point = self._color_matrices[channel] @ np.array([popt[0]+x_min, popt[1]+y_min, 1])
+        point =  np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
         z = popt[2]
         #np.save('z_values{}.npy'.format(self.my_counter), z)
@@ -354,31 +349,6 @@ class Peak_finding():
             return None, None, None
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
-
-        #z_profile = self.channel[np.round(peaks_2d[0]).astype(int), np.round(peaks_2d[1]).astype(int)]
-        #z_profile = np.expand_dims(z_profile, axis=0)
-        #mean_int = np.median(np.max(z_profile, axis=1), axis=0)
-        #max_int = np.max(z_profile)
-        #x = np.arange(len(z_profile[0]))
-        #gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
-
-        #sigma_list = []
-        #for i in range(len(z_profile)):
-        #    try:
-        #        z_peak = x[z_profile[i] > np.exp(-0.5) * z_profile[i].max()]
-        #        sigma_guess = 0.5 * (z_peak.max() - z_peak.min())
-        #        if sigma_guess == 0:
-        #            sigma_guess = 2
-        #        offset = z_profile[i].min()
-        #        mask = np.zeros_like(z_profile[i]).astype(int)
-        #        mask[z_profile[i] == max_int] = 1
-        #        x_masked = np.ma.masked_array(x, mask)
-        #        z_masked = np.ma.masked_array(z_profile[i], mask)
-        #        popt_z, pcov_z = curve_fit(gauss, x_masked, z_masked, p0=[np.argmax(z_profile[i]), sigma_guess, offset])
-        #        if popt_z[0] > 0 and popt_z[0] < z_profile.shape[1]:
-        #            sigma_list.append(popt_z[1])
-        #    except RuntimeError:
-        #        pass
 
         return init, perr[:3], pcov[:3,:3]
 
