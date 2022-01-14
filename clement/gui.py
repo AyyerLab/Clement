@@ -150,7 +150,7 @@ class GUI(QtWidgets.QMainWindow):
         self.vbox_tem.addWidget(self.tem_controls)
 
         self.fm_controls = FMControls(self.fm_imview, self.colors, refine_options, merge_options, self.sem_controls, self.fib_controls,
-                                      self.gis_controls, self.tem_controls, self.print, self.log)
+                                      self.gis_controls, self.tem_controls, self.tabs.currentIndex(), self.print, self.log)
         self.fm_imview.getImageItem().getViewBox().sigRangeChanged.connect(self.fm_controls._couple_views)
         self.fm_controls.curr_folder = self.settings.value('fm_folder', defaultValue=os.getcwd())
         options.addWidget(self.fm_controls)
@@ -259,7 +259,7 @@ class GUI(QtWidgets.QMainWindow):
         show_grid = self.fm_controls.other.show_grid_btn.isChecked()
         self.fm_controls.other.show_grid_btn.setChecked(False)
         self.em_imview.setCurrentIndex(idx)
-        self.fm_controls.select_tab(idx, self.sem_controls, self.fib_controls, self.gis_controls, self.tem_controls, show_grid)
+        self.fm_controls.select_tab(idx, show_grid)
 
     @utils.wait_cursor('print')
     def _show_scatter(self, idx):
@@ -329,12 +329,12 @@ class GUI(QtWidgets.QMainWindow):
             controls = self.tem_controls
 
         if self.fm is not None and self.em is not None:
-            if self.fib_controls.tab_index == 1 and self.fib_controls.sem_ops.data is None:
+            if self.fm_controls.tab_index == 1 and self.fib_controls.sem_ops.data is None:
                 self.print('You have to calculate the FM to TEM/SEM correlation first!')
             else:
                 if self.fm._tf_points is not None and (ops._tf_points is not None or ops._tf_points_region is not None):
-                    #condition = self.fm_controls.merge()
-                    condition = controls.merge()
+                    condition = self.fm_controls.perform_merge()
+                    #condition = controls.merge()
                     if condition:
                         if popup is not None:
                             self.fm_controls.poi_btn.setEnabled(True)

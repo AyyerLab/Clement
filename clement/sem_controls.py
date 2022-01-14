@@ -13,7 +13,6 @@ class SEMControls(BaseControls):
         self.tag = 'EM'
         self.imview = imview
         self.ops = None
-        self.tab_index = 0
         self.popup = None
         self.show_merge = False
 
@@ -324,8 +323,6 @@ class SEMControls(BaseControls):
 
         self.show_boxes = False
         self._downsampling = None
-
-        self.tab_index = 0
 
         self.step_box.setEnabled(False)
         self.assemble_btn.setEnabled(False)

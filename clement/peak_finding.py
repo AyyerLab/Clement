@@ -143,9 +143,15 @@ class Peak_finding():
         return diff*norm
 
     def calc_original_coordinates(self, tf_mat, point=None):
-        if point is None:
+        if point is not None:
             point = np.array([point[1], point[0], 1])
-            return (np.linalg.inv(tf_mat) @ point)[:2]
+            nx, ny = self.orig_data.shape[:-1]
+            corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
+            tf_corners = np.dot(tf_mat, corners)
+            tf_matrix = np.copy(tf_mat)
+            tf_matrix[:2,2] += tf_corners.min(1)[:2]
+            print('orig point: ',(np.linalg.inv(tf_matrix) @ point)[:2])
+            return (np.linalg.inv(tf_matrix) @ point)[:2]
         else:
             inv_points = []
             for i in range(len(self.points)):

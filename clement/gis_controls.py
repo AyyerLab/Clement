@@ -17,7 +17,6 @@ class GISControls(BaseControls):
         self.ops = None
         self.sem_ops = sem_ops
         self.fib_ops = fib_ops
-        self.tab_index = 0
         self.opacity = 1
         self.img_pre = None
         self.img_post = None
@@ -144,7 +143,7 @@ class GISControls(BaseControls):
         if self._file_name != '':
             if self.ops is not None:
                 self.reset_init()
-                self.tab_index = 1
+                self.other.tab_index = 2
             self.mrc_fname.setText(os.path.basename(self._file_name))
 
             self.ops = EM_ops(self.print, self.log)
@@ -319,7 +318,6 @@ class GISControls(BaseControls):
         self.anno_list = []
         self.peaks = []
         self.num_slices = None
-        self.tab_index = 0
 
         self.show_grid_box = False
         self.grid_box = None

@@ -52,6 +52,7 @@ class EM_ops():
         self.tf_matrix = np.identity(3)
         self.tf_matrix_orig = np.identity(3)
         self.tf_matrix_orig_region = np.identity(3)
+        self.tf_matrix_no_shift = np.identity(3)
         self.tf_shape = None
         self.tf_shape_orig = None
         self.tf_shape_orig_region = None
@@ -230,7 +231,7 @@ class EM_ops():
         points_tmp[3] = cen + (0, self.side_length)
 
         self.tf_matrix = tf.estimate_transform('affine', my_points, points_tmp).params
-
+        self.tf_matrix_no_shift = np.copy(self.tf_matrix)
         nx, ny = self.data.shape
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         self.tf_corners = np.dot(self.tf_matrix, corners)
@@ -669,46 +670,23 @@ class EM_ops():
         self.print('RMS error: ', precision_all[-1])
         return [precision_refined, precision_free, precision_all]
 
-    def apply_merge_2d(self, fm_data, fm_points, channel, show_region, num_channels, idx):
+    def apply_merge_2d(self, fm_data, channel, tr_matrix, num_channels, idx):
         if channel == 0:
-            src = np.array(sorted(fm_points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
-            dst = np.array(sorted(self.points, key=lambda k: [np.cos(30 * np.pi / 180) * k[0] + k[1]]))
-            self.merge_matrix = tf.estimate_transform('affine', src, dst).params
-            if show_region:
-                em_data = self.orig_region
-            else:
-                em_data = self.orig_data
-            self.merged[idx] = np.zeros(em_data.shape + (num_channels + 1,))
-            self.merged[idx][:, :, -1] = em_data / em_data.max() * 100
+            self.merge_matrix = tr_matrix
+            self.merged[idx] = np.zeros(self.data.shape + (num_channels + 1,))
+            self.merged[idx][:, :, -1] = self.data / self.data.max() * 100
 
-        tf_data = ndi.affine_transform(fm_data, np.linalg.inv(self.merge_matrix), order=1, output_shape=self.tf_shape)
-        orig_orientation = ndi.affine_transform(tf_data, self.tf_matrix, order=1, output_shape=self.merged[idx].shape[:2])
-
-        self.merged[idx][:, :, channel] = orig_orientation
+        self.merged[idx][:, :, channel] = ndi.affine_transform(fm_data, np.linalg.inv(self.merge_matrix), order=1, output_shape=self.data.shape)
         self.print('Merged.shape: ', self.merged[idx].shape)
 
-    #def apply_merge_3d(self, corr_matrix, fib_matrix, refine_matrix, fib_data, corr_points_fm, fm_z_values,
-    #                   corr_points_fib, channel):
-    def apply_merge_3d(self, fm_data_orig, corr_matrix, tf_matrix_fm, tf_corners_fm, color_matrices, flip_list,
-                       corr_points_fm, orig_points, fm_z_values, corr_points_fib, channel, voxel_size,
+    def apply_merge_3d(self, fm_data_orig, tf_matrix_fm, tf_corners_fm, tr_matrices, color_matrices, orig_points, fm_z_values, corr_points_fib, channel,
                        num_slices, num_channels, norm_factor, idx, fibcontrols):
 
+        [print('orig point: ', p) for p in orig_points]
         #copy values from fib correlation if gis is selected
         if idx == 2:
             self.fib_matrix = fibcontrols.ops.fib_matrix
             self._refine_matrix = fibcontrols.ops._refine_matrix
-
-        rot_matrix = np.identity(3)
-        if flip_list[0]: #transp
-            rot_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-        if flip_list[1]: #rot
-            rot_matrix = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
-        if flip_list[2]: #fliph
-            rot_matrix = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]]) @ np.array(
-                [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
-        if flip_list[3]: #flipv
-            rot_matrix = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]]) @ np.array(
-                [[0, 1, 0], [1, 0, 0], [0, 0, 1]]) @ rot_matrix
 
         p0 = np.array([0, 0, 0, 1])
         p1 = np.array([0, 0, 1, 1])
@@ -719,15 +697,17 @@ class EM_ops():
         fib_2d[:2, :2] = self.fib_matrix[:2, :2]
         fib_2d[2, 2] = 1
 
-        tf_matrix = np.copy(tf_matrix_fm)
-        tf_matrix[:2, 2] += tf_corners_fm.min(1)[:2]
+        #tf_matrix = np.copy(tf_matrix_fm)
+        #tf_matrix[:2, 2] += tf_corners_fm.min(1)[:2]
 
-        total_matrix = self.gis_transf @ self._refine_matrix @ fib_2d @ corr_matrix @ rot_matrix @ tf_matrix
+        total_matrix = self.gis_transf @ self._refine_matrix @ fib_2d @ tr_matrices @ tf_matrix_fm @ color_matrices[0]
+        print('tot matrix: \n', total_matrix)
 
         nx, ny = fm_data_orig.shape[:2]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         tf_corners = total_matrix @ corners
         tf_shape = tuple([int(i) for i in (tf_corners.max(1) - tf_corners.min(1))[:2]])
+        print('tf shape: ', tf_shape)
 
         if channel == 0:
             tf_points = []
@@ -738,10 +718,11 @@ class EM_ops():
                 z = fm_z_values[i]
                 fib_new = np.copy(fib_2d)
                 fib_new[:2, 2] += z * self.z_shift
-                shift_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[0]
+                shift_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ tr_matrices @ tf_matrix_fm @ color_matrices[0]
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
                                                output_shape=tf_shape)
+                print('refined max: ', refined.max())
                 if refined.max() != 0:
                     tf_point = np.where(refined == refined.max())
                     tf_points.append([tf_point[0][0], tf_point[1][0]])
@@ -752,25 +733,16 @@ class EM_ops():
 
         z_data = []
 
-        #x = np.arange(fm_data_orig.shape[0])
-        #y = np.arange(fm_data_orig.shape[1])
-        #interp_function = RegularGridInterpolator((x, y, np.arange(fm_data_orig.shape[2])), fm_data_orig)
-        #z = np.linspace(0, fm_data_orig.shape[2]-1, 4*fm_data_orig.shape[2])
-        #print(z)
-        #X, Y, Z = np.meshgrid(x,y,z, indexing='ij', sparse=True)
-        #data_interp = interp_function((X,Y,Z))
-        #print(data_interp.shape)
-        #print(data_interp.max())
         for z in range(num_slices):
-        #for z in range(data_interp.shape[-1]):
             fib_new = np.copy(fib_2d)
             fib_new[:2, 2] += z * self.z_shift
-            total_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ corr_matrix @ rot_matrix @ tf_matrix @ color_matrices[channel]
+            total_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ tr_matrices @ tf_matrix_fm @ color_matrices[channel]
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 
+            if z == 0:
+                print('total matrix again: \n', total_matrix)
             refined = np.copy(ndi.affine_transform(fm_data_orig[:, :, z], np.linalg.inv(total_matrix), order=1,
-            #refined = np.copy(ndi.affine_transform(data_interp[:, :, z], np.linalg.inv(total_matrix), order=1,
                                            output_shape=self.data.shape))
             z_data.append(refined)
 
@@ -795,13 +767,6 @@ class EM_ops():
             fib_img /= fib_img.max()
             fib_img *= norm_factor
             self.merged[idx] = np.concatenate((self.merged[idx], np.expand_dims(fib_img, axis=2)), axis=2)
-
-    @classmethod
-    def get_transform(self, source, dest):
-        if len(source) != len(dest):
-            self.print('Point length do not match')
-            return
-        return tf.estimate_transform('affine', source, dest).params
 
     def get_fib_transform(self, sem_transform):
         inv_tf_sem = np.linalg.inv(sem_transform)

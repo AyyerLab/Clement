@@ -14,7 +14,6 @@ class FIBControls(BaseControls):
         self.imview = imview
         self.ops = None
         self.sem_ops = sem_ops
-        self.tab_index = 0
         self.num_slices = None
         self.popup = None
         self.show_merge = False
@@ -87,7 +86,7 @@ class FIBControls(BaseControls):
         if self._file_name != '':
             if self.ops is not None:
                 self.reset_init()
-                self.tab_index = 1
+                self.other.tab_index = 1
             self.mrc_fname.setText(os.path.basename(self._file_name))
 
             self.ops = EM_ops(self.print, self.log)
@@ -259,7 +258,6 @@ class FIBControls(BaseControls):
         self.peaks = []
         self.num_slices = None
         self.min_conv_points = 10
-        self.tab_index = 0
 
         self.show_grid_box = False
         self.grid_box = None

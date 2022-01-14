@@ -154,6 +154,7 @@ class Project(QtWidgets.QWidget):
             self.fm._slice_changed()
 
         self.fm._update_imview()
+        self.tab_index = fmdict['Tab index']
 
     def _load_em(self, project, sem):
         if sem:
@@ -269,7 +270,6 @@ class Project(QtWidgets.QWidget):
         em.show_assembled_btn.setChecked(emdict['Show assembled'])
         if not self.confirm_orientation:
             em.show_btn.setChecked(emdict['Show original'])
-        self.tab_index = emdict['Tab index']
 
     def _load_fib(self, project):
         if 'FIB' not in project:
@@ -304,8 +304,7 @@ class Project(QtWidgets.QWidget):
         except KeyError:
             pass
 
-        self.tab_index = fibdict['Tab index']
-        if fibdict['Tab index'] == 1:
+        if self.tab_index == 1:
             self.show_fib = True
 
         if self.fib.ops.data is not None:
@@ -320,7 +319,6 @@ class Project(QtWidgets.QWidget):
             return
 
         gisdict = project['GIS']
-        self.tab_index = gisdict['Tab index']
         self.parent.tabs.setCurrentIndex(2)
 
         self.gis._curr_folder = gisdict['Directory']
@@ -409,16 +407,15 @@ class Project(QtWidgets.QWidget):
                 self.fm.counter = len(self.fm._points_corr)
                 self.fm.other.counter = len(self.fm.other._points_corr)
                 self.fm._refine()
-                print('Refine matrix after loading: \n', self.sem.ops._refine_matrix)
 
                 em.show_peaks_btn.setChecked(emdict['Show FM peaks'])
                 counter[idx] += 1
         try:
-            if self.fib.tab_index == 1:
+            if self.tab_index == 1:
                 emdict = project['FIB']
                 em = self.fib
             else:
-                if project['SEM']['Tab index'] == 0:
+                if self.tab_index == 0:
                     emdict = project['SEM']
                     em = self.sem
                 else:
@@ -580,6 +577,7 @@ class Project(QtWidgets.QWidget):
         fmdict['Pois raw'] = pois_raw
         fmdict['Poi channel indices'] = self.fm._pois_channel_indices
         fmdict['Poi slices'] = self.fm._pois_slices
+        fmdict['Tab index'] = self.fm.tab_index
 
     def _save_em(self, project, sem):
         emdict = {}

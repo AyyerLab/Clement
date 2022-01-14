@@ -53,7 +53,7 @@ class Scatter_Plot(MplCanvas):
         levels = np.array([0.5, 0.75, 0.95])
         cset = self.axes.contour(X, Y, 1 - self.base._dist, colors='k', levels=levels)
         self.axes.clabel(cset, fmt='%1.2f', inline=1, fontsize=10)
-        if self.base.tab_index == 1:
+        if self.base.other.tab_index == 1:
             scatter = self.axes.scatter(diff[:, 0], diff[:, 1], c=self.base.other._points_corr_z_history[-1])
             cbar = self.fig.colorbar(scatter)
             cbar.set_label('z position of beads in FM')
@@ -634,8 +634,8 @@ class Merge(QtGui.QMainWindow):
         self._clicked_points_popup = []
         self._clicked_points_popup_base_indices = []
 
-        merged_data = self.parent.em.merged[self.parent.fib_controls.tab_index]
-        if self.parent.fib_controls.tab_index == 1:
+        merged_data = self.parent.em.merged[self.parent.fm_controls.tab_index]
+        if self.parent.fm_controls.tab_index == 1:
             self.fib = True
             self.downsampling = 1
         else:
@@ -782,10 +782,11 @@ class Merge(QtGui.QMainWindow):
         self.draw_lines_btn.setEnabled(self.fib)
         self.draw_lines_btn.stateChanged.connect(self._toggle_lines)
         self.lamella_btn.setText('300')
-        line.addWidget(label)
-        line.addWidget(self.lamella_btn)
-        line.addWidget(self.draw_lines_btn)
-        line.addStretch(1)
+        if self.parent.fm_controls.tab_index == 1 or self.parent.fm_controls.tab_index == 2:
+            line.addWidget(label)
+            line.addWidget(self.lamella_btn)
+            line.addWidget(self.draw_lines_btn)
+            line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
@@ -830,13 +831,17 @@ class Merge(QtGui.QMainWindow):
             z_values = [self.parent.fm_controls.pois_z[-1]]
             covs = [self.parent.fm_controls.pois_cov[-1]]
             sizes = [self.parent.fm_controls.pois_sizes[-1]]
+
+        if points is None or len(points) == 0:
+            return [], []
+
         transf_points = []
         transf_covs = []
-        if self.other.tab_index == 1 or self.other.tab_index == 2:
-            tr_matrix = np.copy(self.other.tr_matrices)
+        if self.parent.fm_controls.tab_index == 1 or self.parent.fm_controls.tab_index == 2:
+            tr_matrix = np.copy(self.parent.fm_controls.tr_matrices)
             tr_matrix = np.insert(np.insert(tr_matrix, 2, 0, axis=0), 2, 0, axis=1)
             tr_matrix[2, 2] = 1
-            if self.other.tab_index == 1:
+            if self.parent.fm_controls.tab_index == 1:
                 refine_matrix = np.insert(np.insert(self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
             else:
                 refine_matrix = np.insert(np.insert(self.other.ops.gis_transf @ self.other.ops._refine_matrix, 2, 0, axis=0), 2, 0, axis=1)
@@ -852,7 +857,7 @@ class Merge(QtGui.QMainWindow):
                 tf_cov = tot_matrix @ np.array(cov_i) @ tot_matrix.T
                 transf_covs.append(tf_cov)
         else:
-            tot_matrix = np.linalg.inv(self.other.ops.tf_matrix) @ self.other.tr_matrices
+            tot_matrix = self.parent.fm_controls.tr_matrices
             for i in range(len(points)):
                 pos = points[i]
                 size = sizes[i]
