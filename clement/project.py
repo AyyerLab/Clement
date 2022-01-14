@@ -81,7 +81,6 @@ class Project(QtWidgets.QWidget):
             self.fm.peak_controls.put_label.setValue(fmdict['Max pixels threshold'])
             self.fm.peak_controls.flood_steps_label.setValue(fmdict['Flood fill steps'])
             self.fm.peak_controls.peak_btn.setChecked(True)
-            self.fm.peak_controls.ref_btn.setCurrentIndex(fmdict['Align reference'])
             self.fm.ops._aligned_channels = fmdict['Aligned channels']
             for i in range(self.fm.ops.num_channels):
                 if self.fm.ops._aligned_channels[i]:
@@ -541,7 +540,6 @@ class Project(QtWidgets.QWidget):
             fmdict['Min pixels threshold'] = self.fm.peak_controls.plt_label.value()
             fmdict['Max pixels threshold'] = self.fm.peak_controls.put_label.value()
             fmdict['Flood fill steps'] = self.fm.peak_controls.flood_steps_label.value()
-            fmdict['Align reference'] = self.fm.peak_controls.ref_btn.currentIndex()
         fmdict['Aligned channels'] = self.fm.ops._aligned_channels
         fmdict['Show peaks'] = self.fm.peak_btn.isChecked()
         #fmdict['Show z map'] = self.fm.map_btn.isChecked()

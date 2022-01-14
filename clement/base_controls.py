@@ -666,7 +666,7 @@ class BaseControls(QtWidgets.QWidget):
         for i in range(len(self.pois)):
             self._remove_pois(self.pois[0], remove_base=False)
         if hasattr(self, 'select_btn'):
-            self.point_ref_btn.setEnabled(True)
+            self.poi_ref_btn.setEnabled(True)
             self._transform_pois(poi=True)
             self._transform_pois(poi=False)
 
@@ -709,14 +709,14 @@ class BaseControls(QtWidgets.QWidget):
             self.fliph.setEnabled(False)
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
-            #self.point_ref_btn.setEnabled(False)
+            #self.poi_ref_btn.setEnabled(False)
             #self.clear_btn.setEnabled(False)
             self.merge_btn.setEnabled(False)
             self.refine_btn.setEnabled(False)
         elif hasattr(self.ops, 'flipv') and self.ops._transformed:
-            self.point_ref_btn.setEnabled(True)
+            #self.poi_ref_btn.setEnabled(True)
             self.confirm_btn.setEnabled(True)
-            self.clear_btn.setEnabled(True)
+            #self.clear_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
             self.refine_btn.setEnabled(True)
             if not self.fixed_orientation:

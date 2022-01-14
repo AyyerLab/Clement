@@ -679,10 +679,9 @@ class EM_ops():
         self.merged[idx][:, :, channel] = ndi.affine_transform(fm_data, np.linalg.inv(self.merge_matrix), order=1, output_shape=self.data.shape)
         self.print('Merged.shape: ', self.merged[idx].shape)
 
-    def apply_merge_3d(self, fm_data_orig, tf_matrix_fm, tf_corners_fm, tr_matrices, color_matrices, orig_points, fm_z_values, corr_points_fib, channel,
+    def apply_merge_3d(self, fm_data_orig, tf_matrix_aligned, tr_matrices, orig_points, fm_z_values, corr_points_fib, channel,
                        num_slices, num_channels, norm_factor, idx, fibcontrols):
 
-        [print('orig point: ', p) for p in orig_points]
         #copy values from fib correlation if gis is selected
         if idx == 2:
             self.fib_matrix = fibcontrols.ops.fib_matrix
@@ -697,17 +696,12 @@ class EM_ops():
         fib_2d[:2, :2] = self.fib_matrix[:2, :2]
         fib_2d[2, 2] = 1
 
-        #tf_matrix = np.copy(tf_matrix_fm)
-        #tf_matrix[:2, 2] += tf_corners_fm.min(1)[:2]
-
-        total_matrix = self.gis_transf @ self._refine_matrix @ fib_2d @ tr_matrices @ tf_matrix_fm @ color_matrices[0]
-        print('tot matrix: \n', total_matrix)
+        total_matrix = self.gis_transf @ self._refine_matrix @ fib_2d @ tr_matrices @ tf_matrix_aligned
 
         nx, ny = fm_data_orig.shape[:2]
         corners = np.array([[0, 0, 1], [nx, 0, 1], [nx, ny, 1], [0, ny, 1]]).T
         tf_corners = total_matrix @ corners
         tf_shape = tuple([int(i) for i in (tf_corners.max(1) - tf_corners.min(1))[:2]])
-        print('tf shape: ', tf_shape)
 
         if channel == 0:
             tf_points = []
@@ -718,11 +712,10 @@ class EM_ops():
                 z = fm_z_values[i]
                 fib_new = np.copy(fib_2d)
                 fib_new[:2, 2] += z * self.z_shift
-                shift_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ tr_matrices @ tf_matrix_fm @ color_matrices[0]
+                shift_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ tr_matrices @ tf_matrix_aligned
                 shift_matrix[:2, 2] -= tf_corners.min(1)[:2]
                 refined = ndi.affine_transform(img_tmp, np.linalg.inv(shift_matrix), order=1,
                                                output_shape=tf_shape)
-                print('refined max: ', refined.max())
                 if refined.max() != 0:
                     tf_point = np.where(refined == refined.max())
                     tf_points.append([tf_point[0][0], tf_point[1][0]])
@@ -736,7 +729,7 @@ class EM_ops():
         for z in range(num_slices):
             fib_new = np.copy(fib_2d)
             fib_new[:2, 2] += z * self.z_shift
-            total_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ tr_matrices @ tf_matrix_fm @ color_matrices[channel]
+            total_matrix = self.gis_transf @ self._refine_matrix @ fib_new @ tr_matrices @ tf_matrix_aligned
             total_matrix[:2, 2] -= tf_corners.min(1)[:2]
             total_matrix[:2, 2] -= self.merge_shift.T
 
@@ -768,6 +761,3 @@ class EM_ops():
             fib_img *= norm_factor
             self.merged[idx] = np.concatenate((self.merged[idx], np.expand_dims(fib_img, axis=2)), axis=2)
 
-    def get_fib_transform(self, sem_transform):
-        inv_tf_sem = np.linalg.inv(sem_transform)
-        return inv_tf_sem

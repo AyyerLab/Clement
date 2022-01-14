@@ -133,6 +133,10 @@ class Peak_finding():
         else:
             self.peaks = np.copy(self.peaks_orig)
 
+    def update_pois(self, tf_matrix, point):
+        point = np.array([point[0], point[1], 1])
+        return (tf_matrix @ point)[:2]
+
     def subtract_background(self, img, sigma=None):
         if sigma is None:
             sigma = self.sigma_background
@@ -150,7 +154,6 @@ class Peak_finding():
             tf_corners = np.dot(tf_mat, corners)
             tf_matrix = np.copy(tf_mat)
             tf_matrix[:2,2] += tf_corners.min(1)[:2]
-            print('orig point: ',(np.linalg.inv(tf_matrix) @ point)[:2])
             return (np.linalg.inv(tf_matrix) @ point)[:2]
         else:
             inv_points = []
@@ -250,7 +253,7 @@ class Peak_finding():
         else:
             return ind_arr[0]
 
-    def gauss_3d(self, point, transformed, channel=None, slice=None):
+    def gauss_3d(self, point, transformed, channel=None, slice=None, size=10):
         def fit_func(mesh, mu_x, mu_y, mu_z, sigma_x, sigma_y, sigma_z, intens, offset):
             x, y, z = mesh
             return (intens * np.exp(-(x - mu_x) ** 2 / (2 * sigma_x **2)) * np.exp(-(y - mu_y) ** 2 / (2 * sigma_y ** 2)) *
@@ -260,9 +263,8 @@ class Peak_finding():
             channel = self._channel_idx
 
         if transformed:
-            flip_list = [self.transp, self.rot, self.fliph, self.flipv]
             tf_aligned = self.tf_matrix @ self._color_matrices[channel]
-            point = self.calc_original_coordinates(point, tf_aligned)
+            point = self.calc_original_coordinates(tf_aligned, point)
         else:
             point = np.linalg.inv(self._color_matrices[channel]) @ np.array([point[0], point[1], 1])
 
@@ -273,7 +275,7 @@ class Peak_finding():
 
         idx = None
         if self.peaks is not None:
-            idx = self.check_peak_index(point[:2], 10, False)
+            idx = self.check_peak_index(point[:2], size)
         point_tmp = np.copy(point)
         if idx is not None:
             peaks_2d = self.peaks[idx]
@@ -388,3 +390,4 @@ class Peak_finding():
         self.tf_peaks_z = None
         self.peaks_z = None
         self.mu = []
+        self.adjusted_params = False

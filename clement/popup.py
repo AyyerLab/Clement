@@ -311,16 +311,17 @@ class Peak_Params(QtWidgets.QMainWindow):
 
         line = QtWidgets.QHBoxLayout()
         align_options.addLayout(line)
-        label = QtWidgets.QLabel('Select reference channel:', self)
+        label = QtWidgets.QLabel('Reference channel:', self)
         line.addWidget(label)
-        self.ref_btn = QtWidgets.QComboBox()
-        listview = QtWidgets.QListView(self)
-        self.ref_btn.setView(listview)
-        for i in range(self.num_channels):
-            self.ref_btn.addItem('Channel ' + str(i+1))
-        self.ref_btn.setCurrentIndex(self.num_channels - 1)
-        self.ref_btn.currentIndexChanged.connect(self._change_ref)
-        self.ref_btn.setMinimumWidth(100)
+        self.ref_btn = QtWidgets.QLabel('')
+        #listview = QtWidgets.QListView(self)
+        #self.ref_btn.setView(listview)
+        #for i in range(self.num_channels):
+        #    self.ref_btn.addItem('Channel ' + str(i+1))
+        #self.ref_btn.setCurrentIndex(self.num_channels - 1)
+        #self.ref_btn.currentIndexChanged.connect(self._change_ref)
+        #self.ref_btn.setMinimumWidth(100)
+        self.ref_btn.setText('Channel {}'.format(self.peak_channel_btn.currentIndex()+1))
         line.addWidget(self.ref_btn)
         line.addStretch(1)
 
@@ -339,6 +340,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.align_menu.addAction(self.action_btns[i])
             self.action_btns[i].toggled.connect(lambda state, i=i: self._align_channel(i, state))
 
+        self.align_btn.setEnabled(False)
         line.addWidget(self.align_btn)
         line.addStretch(1)
         align_options.setAlignment(QtCore.Qt.AlignTop)
@@ -420,13 +422,13 @@ class Peak_Params(QtWidgets.QMainWindow):
     @utils.wait_cursor('print')
     def _change_peak_ref(self, state=None):
         self.peak_btn.setChecked(False)
-        self._update_data()
-
-    @utils.wait_cursor('print')
-    def _change_ref(self, state=None):
+        self._reset_peaks()
+        self.ref_btn.setText('Channel {}'.format(self.peak_channel_btn.currentIndex()+1))
         [btn.setChecked(False) for btn in self.action_btns]
-        self.fm.ops._color_matrices = []
+        [btn.setEnabled(True) for btn in self.action_btns]
+        self.action_btns[self.peak_channel_btn.currentIndex()].setEnabled(False)
         [self.fm.ops._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
+        self._update_data()
 
     def _align_channel(self, idx, state):
         recalc_peaks = False
@@ -544,7 +546,13 @@ class Peak_Params(QtWidgets.QMainWindow):
             return
         if not self.peak_btn.isChecked():
             [self.peak_imview.removeItem(point) for point in self.peaks]
-            self.peaks = []
+            self.align_btn.setEnabled(False)
+            return
+
+        if len(self.peaks) > 0:
+            [self.peak_imview.addItem(p) for p in self.peaks]
+            self.fm.ops.adjusted_params = True
+            self.align_btn.setEnabled(True)
             return
 
         self._reset_peaks()
@@ -575,14 +583,17 @@ class Peak_Params(QtWidgets.QMainWindow):
                     self.fm.ops.peaks[i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
 
         self.fm.ops.adjusted_params = True
+        self.align_btn.setEnabled(True)
+
 
     @utils.wait_cursor('print')
     def _reset_peaks(self, state=None):
+        self.peaks = []
         self.fm.ops.reset_peaks()
 
     @utils.wait_cursor('print')
     def _save(self, state=None):
-        if self.fm.ops is not None:
+        if self.fm.ops is not None and len(self.peaks) > 0:
             self.fm.ops.adjusted_params = True
             self.fm.ops.background_correction = self.background_correction
             self.fm.ops.sigma_background = self.sigma_btn.value()
@@ -590,7 +601,7 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.fm.ops.pixel_lower_threshold = self.plt.value()
             self.fm.ops.pixel_upper_threshold = self.put.value()
             self.fm.ops.flood_steps = self.flood_steps.value()
-            self.fm.point_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
+            self.fm.poi_ref_btn.setCurrentIndex(self.peak_channel_btn.currentIndex())
             self.fm.peak_btn.setChecked(True)
             if self.recover_transformed:
                 self.fm.show_btn.setChecked(False)

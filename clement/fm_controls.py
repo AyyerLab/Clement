@@ -215,12 +215,6 @@ class FMControls(BaseControls):
         label = QtWidgets.QLabel('Point transform reference:', self)
         line.addWidget(label)
 
-        self.point_ref_btn = QtWidgets.QComboBox()
-        listview = QtWidgets.QListView(self)
-        self.point_ref_btn.setView(listview)
-        #self.point_ref_btn.currentIndexChanged.connect(self._change_point_ref)
-        self.point_ref_btn.setMinimumWidth(100)
-        self.point_ref_btn.setEnabled(False)
         self.select_btn = QtWidgets.QPushButton('Select references', self)
         self.select_btn.setCheckable(True)
         self.select_btn.toggled.connect(self._define_corr_toggled)
@@ -228,13 +222,26 @@ class FMControls(BaseControls):
         self.clear_btn = QtWidgets.QPushButton('Remove references')
         self.clear_btn.clicked.connect(self._clear_points)
         self.clear_btn.setEnabled(False)
+        line.addWidget(self.select_btn)
+        line.addWidget(self.clear_btn)
+        line.addStretch(1)
+
+        # Select POIs
+        line = QtWidgets.QHBoxLayout()
+        vbox.addLayout(line)
+        label = QtWidgets.QLabel('Points of Interest:', self)
+        line.addWidget(label)
+        self.poi_ref_btn = QtWidgets.QComboBox()
+        listview = QtWidgets.QListView(self)
+        self.poi_ref_btn.setView(listview)
+        self.poi_ref_btn.setMinimumWidth(100)
+        self.poi_ref_btn.setEnabled(False)
         self.poi_btn = QtWidgets.QPushButton('Select POIs', self)
         self.poi_btn.setCheckable(True)
         self.poi_btn.toggled.connect(self._define_poi_toggled)
         self.poi_btn.setEnabled(False)
-        line.addWidget(self.point_ref_btn)
-        line.addWidget(self.select_btn)
-        line.addWidget(self.clear_btn)
+
+        line.addWidget(self.poi_ref_btn)
         line.addWidget(self.poi_btn)
         line.addStretch(1)
 
@@ -381,9 +388,9 @@ class FMControls(BaseControls):
                 self.color_btns.append(color_btn)
                 self.channel_line.addWidget(color_btn)
                 self.channel_line.addWidget(channel_btn)
-                self.point_ref_btn.addItem('Channel ' + str(i))
+                self.poi_ref_btn.addItem('Channel ' + str(i))
 
-            self.point_ref_btn.setCurrentIndex(self.ops.num_channels-1)
+            self.poi_ref_btn.setCurrentIndex(self.ops.num_channels-1)
             self.overlay_btn = QtWidgets.QCheckBox('Overlay', self)
             self.overlay_btn.stateChanged.connect(self._show_overlay)
             self.channel_line.addWidget(self.overlay_btn)
@@ -399,7 +406,7 @@ class FMControls(BaseControls):
             self.peak_btn.setEnabled(True)
             #self.map_btn.setEnabled(True)
             #self.remove_tilt_btn.setEnabled(True)
-            self.point_ref_btn.setEnabled(True)
+            self.poi_ref_btn.setEnabled(True)
             self.select_btn.setEnabled(True)
             self.poi_btn.setEnabled(True)
             self.clear_btn.setEnabled(True)
@@ -538,7 +545,6 @@ class FMControls(BaseControls):
             self.fixed_orientation = False
             self.ops.fixed_orientation = False
             self.other.fixed_orientation = False
-            #self.ops._update_data()
             self.ops.orig_tf_peaks = None
             self.flipv.setEnabled(True)
             self.fliph.setEnabled(True)
@@ -592,10 +598,11 @@ class FMControls(BaseControls):
 
         channel = self.peak_controls.peak_channel_btn.currentIndex()
         self.print('Perform peak finding on channel: ', channel+1)
+
         self.ops.update_peaks(self.ops.tf_matrix, self.ops._transformed)
 
         if self.ops.peaks is not None:
-            for i in range(self.ops.peaks.shape[0]):
+            for i in range(len(self.ops.peaks)):
                 pos = QtCore.QPointF(self.ops.peaks[i,0] - self.size / 2, self.ops.peaks[i,1] - self.size / 2)
                 point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=True)
@@ -605,7 +612,6 @@ class FMControls(BaseControls):
 
             if self.ops.peaks_z is None:
                 self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                #color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[self.peak_controls.peak_channel_btn.currentIndex()]
                 self.ops.fit_z(self.ops.channel)
 
     @utils.wait_cursor('print')
@@ -626,7 +632,7 @@ class FMControls(BaseControls):
             return
 
         self.print('Align channel ', idx+1)
-        reference = self.peak_controls.ref_btn.currentIndex()
+        reference = self.peak_controls.peak_channel_btn.currentIndex()
         if idx != reference and np.array_equal(self.ops._color_matrices[idx], np.identity(3)):
             self.ops.aligning = True
             show_transformed = False
@@ -688,8 +694,8 @@ class FMControls(BaseControls):
             self.flipv.setEnabled(False)
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
-            self.point_ref_btn.setEnabled(False)
-            self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
+            self.poi_ref_btn.setEnabled(False)
+            self.ops.load_channel(ind=self.poi_ref_btn.currentIndex())
             self.print('Select points of interest on %s image' % self.tag)
         else:
             if self.ops.channel is not None:
@@ -700,7 +706,7 @@ class FMControls(BaseControls):
                 self.flipv.setEnabled(True)
                 self.transpose.setEnabled(True)
                 self.rotate.setEnabled(True)
-            self.point_ref_btn.setEnabled(True)
+            self.poi_ref_btn.setEnabled(True)
 
     @utils.wait_cursor('print')
     def _define_corr_toggled(self, checked):
@@ -727,22 +733,9 @@ class FMControls(BaseControls):
             self.flipv.setEnabled(False)
             self.transpose.setEnabled(False)
             self.rotate.setEnabled(False)
-            self.point_ref_btn.setEnabled(False)
 
-            if (self.ops._transformed and self.ops.peaks_z is None) or (
-                    not self.ops._transformed and self.ops.peaks_z is None):
-                uncheck = False
-                if self.peak_btn.isChecked == False:
-                    uncheck = True
-                self.peak_btn.setChecked(True)
-                if uncheck:
-                    self.peak_btn.setChecked(False)
-                if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
-                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                color_matrix = self.ops.tf_matrix @ self.ops._color_matrices[
-                    self.peak_controls.peak_channel_btn.currentIndex()]
-                self.ops.fit_z(self.ops.channel)
-            self.ops.load_channel(ind=self.point_ref_btn.currentIndex())
+            if self.peak_controls.peak_channel_btn.currentIndex() != self.ops._channel_idx:
+                self.ops.load_channel(ind=self.peak_controls.peak_channel_btn.currentIndex())
             if self.other.ops is not None:
                 if self.ops.points is not None and self.other.ops.points is not None:
                     self._calc_tr_matrices()
@@ -756,20 +749,13 @@ class FMControls(BaseControls):
                 self.flipv.setEnabled(True)
                 self.transpose.setEnabled(True)
                 self.rotate.setEnabled(True)
-            self.point_ref_btn.setEnabled(True)
+            self.poi_ref_btn.setEnabled(True)
 
     def _calc_tr_matrices(self):
-        #if fm_points is None:
         src_sorted = np.copy(np.array(
             sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]])))
-        #else:
-        #    src_sorted = np.array(sorted(fm_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-        #if em_points is None:
         dst_sorted = np.array(
             sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-        #else:
-        #    dst_sorted = np.array(sorted(em_points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-
         self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
 
     def _draw_pois(self, pos, item):
@@ -865,7 +851,7 @@ class FMControls(BaseControls):
         self.imview.addItem(point_obj)
 
         self.pois.append(point_obj)
-        self._pois_channel_indices.append(self.point_ref_btn.currentIndex())
+        self._pois_channel_indices.append(self.poi_ref_btn.currentIndex())
 
         self.pois_sizes.append(size)
         self.poi_counter += 1
@@ -880,17 +866,18 @@ class FMControls(BaseControls):
         # Dont use decorator here because of return value!
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self.max_proj_btn.isChecked():
-            init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.point_ref_btn.currentIndex())
+            init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.poi_ref_btn.currentIndex(), size=self.size)
         else:
-            init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.point_ref_btn.currentIndex(),
-                                               slice=self._current_slice)
+            init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.poi_ref_btn.currentIndex(),
+                                               slice=self._current_slice, size=self.size)
 
         if init is None:
             QtWidgets.QApplication.restoreOverrideCursor()
             return None
         self.pois_z.append(init[-1])
         if self.ops._transformed:
-            init = self.ops.update_points(np.expand_dims(init[:2], axis=0))[0]
+            tf_aligned = self.ops.tf_matrix @ self.ops._color_matrices[self.poi_ref_btn.currentIndex()]
+            init[:2] = self.ops.update_pois(tf_aligned, init[:2])
 
         self.pois_err.append(err.tolist())
         self.pois_cov.append(cov.tolist())
@@ -907,7 +894,7 @@ class FMControls(BaseControls):
             peaks = self.ops.peaks
             z = self.ops.peaks_z[ind]
         else:
-            z = self.ops.calc_z(ind, point, self.ops._transformed, self.point_ref_btn.currentIndex())
+            z = self.ops.calc_z(ind, point, self.ops._transformed, self.poi_ref_btn.currentIndex())
         if z is None:
             self.print('z is None, something went wrong here... Try another bead!')
             return None, None, None
@@ -1509,7 +1496,9 @@ class FMControls(BaseControls):
                             orig_pt = self.ops.peaks_orig[idx]
                             orig_coor.append(orig_pt)
 
-                        self.other.ops.apply_merge_3d(self.ops.channel, self.ops.tf_matrix, self.ops.tf_corners, self.tr_matrices, self.ops._color_matrices,
+                        tf_matrix_aligned = self.ops.tf_matrix @ self.ops._color_matrices[i]
+
+                        self.other.ops.apply_merge_3d(self.ops.channel, tf_matrix_aligned, self.tr_matrices,
                                                     orig_coor, src_z, dst, i, self.num_slices, self.ops.num_channels,
                                                     self.ops.norm_factor, self.tab_index, self.fibcontrols)
                         self.progress_bar.setValue((i + 1) / self.ops.num_channels * 100)
@@ -1593,7 +1582,7 @@ class FMControls(BaseControls):
 
         for i in range(len(self.channel_btns)):
         #    self.align_menu.removeAction(self.action_btns[i])
-            self.point_ref_btn.removeItem(0)
+            self.poi_ref_btn.removeItem(0)
 
         self.channel_btns = []
         self.color_btns = []
@@ -1608,7 +1597,7 @@ class FMControls(BaseControls):
         self.show_grid_btn.setEnabled(False)
         self.show_grid_btn.setChecked(False)
 
-        self.point_ref_btn.setEnabled(False)
+        self.poi_ref_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
         self.clear_btn.setEnabled(False)
         self.refine_btn.setEnabled(False)
