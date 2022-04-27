@@ -375,12 +375,12 @@ class BaseControls(QtWidgets.QWidget):
     def _translate_peaks_slot(self, item):
         ind = np.where(item == self.peaks)[0][0]
         shift = item.pos() - self._old_peak_pos[ind]
-        self.grid_box.setPos(self.grid_box.pos().x()+shift[0], self.grid_box.pos().y()+shift[1])
+        #self.grid_box.setPos(self.grid_box.pos().x()+shift[0], self.grid_box.pos().y()+shift[1])
         self.log(ind, shift)
         for i in range(len(self.peaks)):
-            self._old_peak_pos[i][0] += shift.x()
-            self._old_peak_pos[i][1] += shift.y()
             if i != ind and not self.peaks[i].has_moved:
+                self._old_peak_pos[i][0] += shift.x()
+                self._old_peak_pos[i][1] += shift.y()
                 self.peaks[i].setPos(self._old_peak_pos[i], finish=False)
 
     def _refine_peaks(self, active):
@@ -407,7 +407,7 @@ class BaseControls(QtWidgets.QWidget):
             self.imview.removeItem(peak)
             peak.peakMoved(None)
             ref_ind = [i for i in range(len(self.peaks)) if self.peaks[i] == peak]
-            pos = self.other.ops.peaks[ref_ind[0]]
+            pos = copy.copy(self.other.ops.peaks[ref_ind[0]])
             point = QtCore.QPointF(pos[0] - self.other.size / 2, pos[1] - self.other.size / 2)
             self.other._draw_correlated_points(point, self.imview.getImageItem())
             self._points_corr[-1].setPos(peak.pos())
