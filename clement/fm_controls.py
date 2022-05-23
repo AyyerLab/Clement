@@ -768,11 +768,35 @@ class FMControls(BaseControls):
             self.poi_ref_btn.setEnabled(True)
 
     def _calc_tr_matrices(self):
-        src_sorted = np.copy(np.array(
-            sorted(self.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]])))
-        dst_sorted = np.array(
-            sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(60 * np.pi / 180) * k[0] + k[1]]))
-        self.tr_matrices = self.ops.get_transform(src_sorted, dst_sorted)
+        #angles = [0, 15, 30, 45, 60, 75]
+        #for angle in angles:
+        #    src_init = np.copy(np.array(
+        #        sorted(self.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]])))
+        #    dst_init = np.array(
+        #        sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]]))
+        #    src_tmp = []
+        #    dst_tmp = []
+        #    for i in range(1, len(src_init)):
+        #        src_tmp.append((src_init[i][0] - src_init[i - 1][0]) * (src_init[i][1] + src_init[i - 1][1]))
+        #        dst_tmp.append((dst_init[i][0] - dst_init[i - 1][0]) * (dst_init[i][1] + dst_init[i - 1][1]))
+        #    src_tmp.append((src_init[0][0] - src_init[-1][0]) * (src_init[0][1] + src_init[-1][1]))
+        #    dst_tmp.append((dst_init[0][0] - dst_init[-1][0]) * (dst_init[0][1] + dst_init[-1][1]))
+        #    src_sum = np.sum(my_list)
+        #    src_sum = np.sum(my_list)
+        #    if my_sum > 0:
+        #        self.log('counter-clockwise')
+        #        return points
+
+        #if self.ops._transformed:
+        #    angle = 60
+        #else:
+        #    angle = 15
+        angle = 15
+        src_init = np.copy(np.array(
+            sorted(self.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]])))
+        dst_init = np.array(
+            sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]]))
+        self.tr_matrices = self.ops.get_transform(src_init, dst_init)
 
     def _calc_pois(self, pos=None):
         if pos is None:
@@ -892,11 +916,11 @@ class FMControls(BaseControls):
         else:
             init, err, cov = self.ops.gauss_3d(point, self.ops._transformed, self.poi_ref_btn.currentIndex(),
                                                slice=self._current_slice, size=self.size)
-        init[:2] = (self.ops._color_matrices[self.poi_ref_btn.currentIndex()] @ np.array([init[0], init[1], 1]))[:2]
-
         if init is None:
             QtWidgets.QApplication.restoreOverrideCursor()
             return None
+        init[:2] = (self.ops._color_matrices[self.poi_ref_btn.currentIndex()] @ np.array([init[0], init[1], 1]))[:2]
+
         self.pois_z.append(init[-1])
         self.pois_err.append(err.tolist())
         self.pois_cov.append(cov.tolist())
@@ -1258,7 +1282,7 @@ class FMControls(BaseControls):
         if self.tab_index == 0 or self.tab_index == 3:
             self._calc_tr_matrices()
 
-        print('tr matrices after refinement: \n', self.tr_matrices)
+       #print('tr matrices after refinement: \n', self.tr_matrices)
 
     def _undo_refinement(self):
         ''' self is FM, other is SEM/FIB etc.'''
@@ -1285,7 +1309,7 @@ class FMControls(BaseControls):
 
         if self.tab_index == 0 or self.tab_index == 3:
             self._calc_tr_matrices()
-        print('tr matrices after undo refinement: \n', self.tr_matrices)
+        #print('tr matrices after undo refinement: \n', self.tr_matrices)
         self.other.size = copy.copy(self.other._size_history[-1])
         # self.other._orig_points_corr = self.other._orig_points_corr_history[-1]
         # self.other._points_corr = []
@@ -1354,7 +1378,7 @@ class FMControls(BaseControls):
                 corr_points.append(np.copy(transf[:2]))
                 transf[:2] = (self.other.ops._refine_matrix @ np.array([transf[0], transf[1], 1]))[:2]
                 self.refined_points.append(transf[:2])
-        print('sel points: \n', sel_points)
+        #print('sel points: \n', sel_points)
 
         self.diff = np.array(sel_points) - np.array(self.refined_points)
         self.log(self.diff.shape)

@@ -338,6 +338,8 @@ class Peak_finding():
         point =  np.array([popt[0]+x_min, popt[1]+y_min, 1])
 
         z = popt[2]
+        self.print(z*self.voxel_size*1e9)
+        print(z*self.voxel_size*1e9)
         #np.save('z_values{}.npy'.format(self.my_counter), z)
         init = np.array([point[0], point[1], z])
         self.log('Model fit: ', r2)
@@ -345,8 +347,8 @@ class Peak_finding():
         if r2 < 0.2 and r2 > 0:
             self.print('Model does not fit well to the data. You should consider selecting a different virus!',
                        ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
-        elif r2 < 0:
-            return None, None, None
+        #elif r2 < 0:
+        #    self.print('Unable to fit virus! Select another one!')
         else:
             self.print('Fitting succesful: ', init, ' Uncertainty: ', perr[:3]*self.voxel_size*1e9)
 

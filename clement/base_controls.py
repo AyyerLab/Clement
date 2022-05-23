@@ -220,7 +220,7 @@ class BaseControls(QtWidgets.QWidget):
         elif hasattr(self, 'select_btn') and self.select_btn.isChecked(): #FM
             pos.setX(pos.x() - self.size // 2)
             pos.setY(pos.y() - self.size // 2)
-            print('pos: ', pos)
+            #print('pos: ', pos)
             self._draw_correlated_points(pos, item)
         elif hasattr(self, 'select_region_btn') and self.select_region_btn.isChecked(): #SEM
             '''EM only: Select individual image from montage'''

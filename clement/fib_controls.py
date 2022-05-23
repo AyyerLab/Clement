@@ -49,7 +49,7 @@ class FIBControls(BaseControls):
         self.angle_btn = QtWidgets.QLineEdit(self)
         self.angle_btn.setMaximumWidth(30)
         self.angle_btn.setText('0')
-        self._fib_angle = int(self.angle_btn.text())
+        self._fib_angle = float(self.angle_btn.text())
         self.angle_btn.textChanged.connect(self._recalc_sigma)
         self.angle_btn.setEnabled(False)
         line.addWidget(self.angle_btn)
@@ -139,7 +139,7 @@ class FIBControls(BaseControls):
     @utils.wait_cursor('print')
     def _recalc_sigma(self, state=None):
         if self.angle_btn.text() is not '':
-            self._fib_angle = int(self.angle_btn.text())
+            self._fib_angle = float(self.angle_btn.text())
             self.box_shift = None
             self.ops.box_shift = None
             self._recalc_grid()
