@@ -366,6 +366,10 @@ class BaseControls(QtWidgets.QWidget):
             self.refine_peaks_btn.setEnabled(True)
 
     def _translate_peaks(self, active):
+        if not self.other.fixed_orientation:
+            self.print('You have to confirm the FM orientation first!')
+            return
+
         if active:
             self.show_grid_btn.setChecked(False)
             self.refine_peaks_btn.setChecked(False)
