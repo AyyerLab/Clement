@@ -77,6 +77,7 @@ class FMControls(BaseControls):
         self._pois_channel_indices = []
         self._pois_slices = []
 
+
         self.print = printer
         self.log = logger
 
@@ -572,9 +573,9 @@ class FMControls(BaseControls):
             self.merge_btn.setEnabled(False)
 
         self.ops._update_data()
+        self._calc_tr_matrices()
         self._update_pois()
         self._recalc_grid()
-        self._calc_tr_matrices()
         self.show_grid_btn.setChecked(True)
         self._update_imview()
 
@@ -768,35 +769,17 @@ class FMControls(BaseControls):
             self.poi_ref_btn.setEnabled(True)
 
     def _calc_tr_matrices(self):
-        #angles = [0, 15, 30, 45, 60, 75]
-        #for angle in angles:
-        #    src_init = np.copy(np.array(
-        #        sorted(self.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]])))
-        #    dst_init = np.array(
-        #        sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]]))
-        #    src_tmp = []
-        #    dst_tmp = []
-        #    for i in range(1, len(src_init)):
-        #        src_tmp.append((src_init[i][0] - src_init[i - 1][0]) * (src_init[i][1] + src_init[i - 1][1]))
-        #        dst_tmp.append((dst_init[i][0] - dst_init[i - 1][0]) * (dst_init[i][1] + dst_init[i - 1][1]))
-        #    src_tmp.append((src_init[0][0] - src_init[-1][0]) * (src_init[0][1] + src_init[-1][1]))
-        #    dst_tmp.append((dst_init[0][0] - dst_init[-1][0]) * (dst_init[0][1] + dst_init[-1][1]))
-        #    src_sum = np.sum(my_list)
-        #    src_sum = np.sum(my_list)
-        #    if my_sum > 0:
-        #        self.log('counter-clockwise')
-        #        return points
-
-        #if self.ops._transformed:
-        #    angle = 60
-        #else:
-        #    angle = 15
-        angle = 15
-        src_init = np.copy(np.array(
-            sorted(self.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]])))
-        dst_init = np.array(
-            sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(angle * np.pi / 180) * k[0] + k[1]]))
-        self.tr_matrices = self.ops.get_transform(src_init, dst_init)
+        if not self.fixed_orientation:
+            src_init = np.copy(np.array(sorted(self.ops.points, key=lambda k: [np.cos(35 * np.pi / 180) * (k[0]) + k[1]])))
+            self.tf_points_indices = [i for i,v in sorted(enumerate(self.ops.points), key=lambda k: [np.cos(35 * np.pi / 180) * (k[1][0]) + k[1][1]])]
+            dst_init = np.array(
+                sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(35 * np.pi / 180) * k[0] + k[1]]))
+            self.other.tf_points_indices = [i for i,v in sorted(enumerate(self.semcontrols.ops.points), key=lambda k: [np.cos(35 * np.pi / 180) * (k[1][0]) + k[1][1]])]
+            self.tr_matrices = self.ops.get_transform(src_init, dst_init)
+        else:
+            src_init = np.copy(self.ops.points[self.tf_points_indices])
+            dst_init = np.copy(self.other.ops.points[self.other.tf_points_indices])
+            self.tr_matrices = self.ops.get_transform(src_init, dst_init)
 
     def _calc_pois(self, pos=None):
         if pos is None:
@@ -1213,6 +1196,7 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _refine(self, state=None):
+        print('tr matrices before refinement: \n', self.tr_matrices)
         ''' self is FM, other is SEM/FIB etc.'''
         if self.select_btn.isChecked():
             self.print('Confirm point selection! (Uncheck Select points of interest)')
@@ -1244,7 +1228,7 @@ class FMControls(BaseControls):
         self.other.ops.merged[self.tab_index] = None
 
         refine_matrix_old = copy.copy(self.other.ops._refine_matrix)
-        self.other.ops.calc_refine_matrix(src, dst)
+        self.other.ops.calc_refine_matrix(src, dst, ind=self.tab_index)
 
         self.other.ops.apply_refinement()
         self.other._refined = True
@@ -1282,7 +1266,7 @@ class FMControls(BaseControls):
         if self.tab_index == 0 or self.tab_index == 3:
             self._calc_tr_matrices()
 
-       #print('tr matrices after refinement: \n', self.tr_matrices)
+        print('tr matrices after refinement: \n', self.tr_matrices)
 
     def _undo_refinement(self):
         ''' self is FM, other is SEM/FIB etc.'''
@@ -1358,7 +1342,8 @@ class FMControls(BaseControls):
 
         self.refined_points = []
         corr_points = []
-        self._calc_tr_matrices()
+        if self.tab_index == 0 or self.tab_index == 3:
+            self._calc_tr_matrices()
         if idx != 1:
             for i in range(len(orig_fm_points)):
                 orig_point = np.array([orig_fm_points[i].x(), orig_fm_points[i].y()])

@@ -359,6 +359,9 @@ class EM_ops():
 
     def calc_fib_transform(self, fib_angle, sem_shape, fm_voxel, sem_pixel_size, shift=np.zeros(2), sem_transpose=False):
         self.fib_angle = 90 - fib_angle
+        print('shifts:')
+        print(self.box_shift)
+        print(shift)
         if self.box_shift is not None:
             shift = self.box_shift - shift
 
@@ -494,9 +497,9 @@ class EM_ops():
         self._orig_points = np.copy(self.points)
         self.fib_matrix[:2, 3] = shift
 
-    def calc_refine_matrix(self, src, dst):
+    def calc_refine_matrix(self, src, dst, ind=None):
         refine_matrix = tf.estimate_transform('affine', src, dst).params
-        if self._refine_matrix is None:
+        if self._refine_matrix is None or ind == 0 or ind == 3:
             self._refine_matrix = refine_matrix
         else:
             self._refine_matrix = refine_matrix @ self._refine_matrix

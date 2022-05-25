@@ -13,6 +13,7 @@ class PeakROI(pg.CircleROI):
         self.original_color = (255, 0, 0)
         self.moved_color = (0, 255, 255)
         self.original_pos = copy.copy(np.array([pos.x(), pos.y()]))
+        self._old_peak_pos = copy.copy(self.original_pos)
         self.has_moved = False
 
         if color is None:
@@ -106,6 +107,8 @@ class BaseControls(QtWidgets.QWidget):
         self.show_merge = False
         self.progress = 0
         self.cov_matrix = None
+
+        self.tf_points_indices = []
 
     def _init_ui(self):
         self.log('This message should not be seen. Please override _init_ui')
@@ -283,7 +286,7 @@ class BaseControls(QtWidgets.QWidget):
             return
 
         #self.other._calc_tr_matrices(self.other.ops.points, self.other.semcontrols.ops.points)
-        self.other._calc_tr_matrices()
+        #self.other._calc_tr_matrices()
 
         if len(self.peaks) != 0:
             self.peaks = []
@@ -303,7 +306,9 @@ class BaseControls(QtWidgets.QWidget):
         if self.other.tab_index == 1:
             for i in range(len(transf)):
                 z = self.other.ops.peaks_z[i]
-                if self.other.semcontrols.ops._transformed:
+                #if self.other.semcontrols.ops._transformed:
+                if not self.other.fixed_orientation:
+                    print('weird!')
                     transf[i] = (np.linalg.inv(self.other.semcontrols.ops.tf_matrix) @ np.array([transf[i,0], transf[i,1], 1]))[:2]
                 transf_i = self.ops.fib_matrix @ np.array([transf[i,0], transf[i,1], z, 1])
                 if self._refined:
@@ -336,7 +341,8 @@ class BaseControls(QtWidgets.QWidget):
                 [self.imview.addItem(peak) for peak in self.peaks]
             else:
                 print('You have to correlate FM and FIB first!')
-        else:
+        else: #SEM or TEM
+            print('recalc peaks on SEM')
             for i in range(len(transf)):
                 pos = QtCore.QPointF(transf[i,0] - self.orig_size / 2, transf[i,1] - self.orig_size / 2)
                 color = None
@@ -366,7 +372,7 @@ class BaseControls(QtWidgets.QWidget):
             for p in self.peaks:
                 p.translatable = True
                 p.sigRegionChangeFinished.connect(self._translate_peaks_slot)
-            self._old_peak_pos = [[p.pos().x(), p.pos().y()] for p in self.peaks]
+            #self._old_peak_pos = [[p.pos().x(), p.pos().y()] for p in self.peaks]
         else:
             for p in self.peaks:
                 p.sigRegionChangeFinished.disconnect()
@@ -374,19 +380,23 @@ class BaseControls(QtWidgets.QWidget):
 
     def _translate_peaks_slot(self, item):
         ind = np.where(item == self.peaks)[0][0]
-        shift = item.pos() - self._old_peak_pos[ind]
+        shift = item.pos() - self.peaks[ind]._old_peak_pos
         #self.grid_box.setPos(self.grid_box.pos().x()+shift[0], self.grid_box.pos().y()+shift[1])
         self.log(ind, shift)
         for i in range(len(self.peaks)):
+            self.peaks[i]._old_peak_pos[0] += shift.x()
+            self.peaks[i]._old_peak_pos[1] += shift.y()
             if i != ind and not self.peaks[i].has_moved:
-                self._old_peak_pos[i][0] += shift.x()
-                self._old_peak_pos[i][1] += shift.y()
-                self.peaks[i].setPos(self._old_peak_pos[i], finish=False)
+                pass
+            else:
+                self.peaks[i].has_moved = False
+            self.peaks[i].setPos(self.peaks[i]._old_peak_pos, finish=False)
+                #self.peaks[i].setPos(self._old_peak_pos[i], finish=False)
 
     def _refine_peaks(self, active):
         if active:
-            if not self.other.fixed_orientation and not( self.other.ops._transformed and self.other.semcontrols.ops._transformed):
-                self.print('You have to put both FM and SEM in transformed orientation or confirm correct orientation first!')
+            if not self.other.fixed_orientation: #and not( self.other.ops._transformed and self.other.semcontrols.ops._transformed):
+                self.print('You have confirm correct orientation first!')
                 self.refine_peaks_btn.setChecked(False)
                 return
             self.show_grid_btn.setChecked(False)
@@ -395,7 +405,7 @@ class BaseControls(QtWidgets.QWidget):
                 p.translatable = True
                 p.sigRegionChangeFinished.connect(lambda pt=p: self._peak_to_point(pt))
         else:
-            if not self.other.fixed_orientation and not( self.other.ops._transformed and self.other.semcontrols.ops._transformed):
+            if not self.other.fixed_orientation: #and not( self.other.ops._transformed and self.other.semcontrols.ops._transformed):
                 return
             for p in self.peaks:
                 p.sigRegionChangeFinished.disconnect()

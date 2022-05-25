@@ -46,6 +46,7 @@ class FM_ops(Peak_finding):
         self.transp_matrix = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
         self.rot_matrix = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         self.flip_matrix = np.identity(3)
+        self.flip_z = False
         self.threshold = 0
         self.max_shift = 10
         self.matches = []
@@ -103,8 +104,13 @@ class FM_ops(Peak_finding):
                 self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
                 self.print('Voxel size: ', self.voxel_size)
                 self.old_fname = fname
-
-            #z = self.num_slices - 1 - z #flip z axis, now z=0 is the most upper slice
+            print('voxel size: ', self.voxel_size)
+            if self.voxel_size[-1] < 0:
+                z = self.num_slices - 1 - z #flip z axis, now z=0 is the most upper slice
+                self.print('Flip z axis!')
+                print('Flip z axis!')
+                self.flip_z = True
+                self.voxel_size = np.abs(self.voxel_size)
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
             self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z, :, :].astype('f4')
@@ -135,12 +141,11 @@ class FM_ops(Peak_finding):
             self.data = np.copy(self.orig_data)
         self.points = np.copy(self._orig_points) if self._orig_points is not None else None
 
-        if True in self._aligned_channels and not self._show_mapping:
-            self.apply_alignment()
-
         if self._transformed:
             self._update_tf_matrix()
             self.apply_transform()
+        if True in self._aligned_channels and not self._show_mapping:
+            self.apply_alignment()
 
     def _update_tf_matrix(self):
         rot_matrix = np.identity(3)
@@ -154,7 +159,7 @@ class FM_ops(Peak_finding):
             rot_matrix = self.flipv_matrix @ rot_matrix
 
         if self.fixed_orientation:
-            self.tf_matrix = self.sem_transform @ rot_matrix @ self.tf_matrix_orig
+            self.tf_matrix = np.linalg.inv(self.sem_transform) @ rot_matrix @ self.tf_matrix_orig
         else:
             self.tf_matrix = rot_matrix @ self.tf_matrix_orig
 
@@ -285,7 +290,8 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
-        #self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
+        if self.flip_z:
+            self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
         self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
         self.channel *= self.norm_factor
         self._channel_idx = ind

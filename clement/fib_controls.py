@@ -160,7 +160,14 @@ class FIBControls(BaseControls):
 
             self.ops.calc_fib_transform(fib_angle, self.sem_ops.data.shape,
                                         self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=False)
-            self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
+
+            tf_points = []
+            for i in range(len(self.other.ops.points)):
+                p = self.other.ops.points[i]
+                tf_points.append((self.other.tr_matrices @ np.array([p[0], p[1], 1]))[:2])
+
+            #self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
+            self.ops.apply_fib_transform(np.array(tf_points), self.num_slices, scaling)
 
         if self.ops.points is not None:
             pos = list(self.ops.points)
@@ -173,7 +180,8 @@ class FIBControls(BaseControls):
             if redo:
                 self.ops.calc_fib_transform(fib_angle, self.sem_ops.data.shape, self.other.ops.voxel_size,
                                             self.sem_ops.pixel_size, shift=np.zeros(2), sem_transpose=False)
-                self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
+                #self.ops.apply_fib_transform(self.sem_ops._orig_points, self.num_slices, scaling)
+                self.ops.apply_fib_transform(self.sem_ops.points, self.num_slices, scaling)
                 pos = list(self.ops.points)
                 self.grid_box = pg.PolyLineROI(pos, closed=True, movable=not self._refined, resizable=False,
                                                rotatable=False)
