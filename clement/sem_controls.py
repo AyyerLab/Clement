@@ -24,6 +24,8 @@ class SEMControls(BaseControls):
         self._file_name = None
         self._downsampling = None
         self._select_region_original = True
+        self.orig_size = 10
+        self.size = self.orig_size
 
         self.print = printer
         self.log = logger

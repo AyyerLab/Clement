@@ -68,6 +68,8 @@ class FMControls(BaseControls):
         self._peaks = []
         self._bead_size = None
 
+        self.orig_size = 10
+        self.size = 10
         self.pois = []
         self._pois_orig = []
         self.pois_sizes = []
@@ -535,7 +537,7 @@ class FMControls(BaseControls):
     @utils.wait_cursor('print')
     def _confirm_transf(self, state):
         if self.other.ops is None:
-            print('You have to load and transform an SEM ')
+            self.print('You have to load and transform an SEM ')
             self.confirm_btn.setChecked(False)
             return
 
@@ -587,6 +589,8 @@ class FMControls(BaseControls):
             return
 
         num = self.slice_select_btn.value()
+        if self.ops.flip_z:
+            num = self.ops.num_slices - 1 - num
         if num == self._current_slice:
             return
         self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
@@ -755,7 +759,8 @@ class FMControls(BaseControls):
                 self.ops.load_channel(ind=self.peak_controls.peak_channel_btn.currentIndex())
             if self.other.ops is not None:
                 if self.ops.points is not None and self.other.ops.points is not None:
-                    self._calc_tr_matrices()
+                    if self.tab_index != 1:
+                            self._calc_tr_matrices()
             self.print('Select reference points on %s image' % self.tag)
         else:
             if self.ops.channel is not None:
@@ -775,6 +780,7 @@ class FMControls(BaseControls):
             dst_init = np.array(
                 sorted(self.semcontrols.ops.points, key=lambda k: [np.cos(35 * np.pi / 180) * k[0] + k[1]]))
             self.other.tf_points_indices = [i for i,v in sorted(enumerate(self.semcontrols.ops.points), key=lambda k: [np.cos(35 * np.pi / 180) * (k[1][0]) + k[1][1]])]
+
             self.tr_matrices = self.ops.get_transform(src_init, dst_init)
         else:
             src_init = np.copy(self.ops.points[self.tf_points_indices])
@@ -1196,7 +1202,6 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _refine(self, state=None):
-        print('tr matrices before refinement: \n', self.tr_matrices)
         ''' self is FM, other is SEM/FIB etc.'''
         if self.select_btn.isChecked():
             self.print('Confirm point selection! (Uncheck Select points of interest)')
@@ -1250,7 +1255,6 @@ class FMControls(BaseControls):
         for i in range(len(self._points_corr)):
             self._remove_correlated_points(self._points_corr[0])
 
-        self.other.size = copy.copy(self.size)
         self._update_imview()
         if self.other.show_peaks_btn.isChecked():
             self.other.show_peaks_btn.setChecked(False)
@@ -1265,8 +1269,6 @@ class FMControls(BaseControls):
 
         if self.tab_index == 0 or self.tab_index == 3:
             self._calc_tr_matrices()
-
-        print('tr matrices after refinement: \n', self.tr_matrices)
 
     def _undo_refinement(self):
         ''' self is FM, other is SEM/FIB etc.'''
@@ -1294,7 +1296,7 @@ class FMControls(BaseControls):
         if self.tab_index == 0 or self.tab_index == 3:
             self._calc_tr_matrices()
         #print('tr matrices after undo refinement: \n', self.tr_matrices)
-        self.other.size = copy.copy(self.other._size_history[-1])
+        #self.other.size = copy.copy(self.other._size_history[-1])
         # self.other._orig_points_corr = self.other._orig_points_corr_history[-1]
         # self.other._points_corr = []
         # self.other._orig_points_corr = []
@@ -1328,7 +1330,7 @@ class FMControls(BaseControls):
         if len(self.other.ops._refine_history) > 1:
             idx = self.tab_index
             self._estimate_precision(idx, self.other.ops._refine_matrix)
-            self.other.size = copy.copy(self.size)
+            #self.other.size = copy.copy(self.size)
 
         if self.other.show_peaks_btn.isChecked():
             self.other.show_peaks_btn.setChecked(False)

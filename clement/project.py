@@ -273,6 +273,7 @@ class Project(QtWidgets.QWidget):
     def _load_fib(self, project):
         if 'FIB' not in project:
             return
+
         fibdict = project['FIB']
         self.parent.tabs.setCurrentIndex(1)
         self.fib._curr_folder = fibdict['Directory']
@@ -299,7 +300,6 @@ class Project(QtWidgets.QWidget):
                 new_pos = [pos.x() + shift[0], pos.y() + shift[1]]
                 self.fib.grid_box.setPos(QtCore.QPointF(new_pos[0], new_pos[1]))
             self.fib.show_grid_btn.setChecked(fibdict['Show grid'])
-            #self.fib._recalc_grid()
         except KeyError:
             pass
 

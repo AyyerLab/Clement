@@ -493,7 +493,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.t_noise.setValue(10*float_value)
             self.t_noise.blockSignals(False)
             self.t_noise_label.clearFocus()
-
+        self.peak_btn.setChecked(False)
+        self._reset_peaks()
         #self._update_data()
 
     @utils.wait_cursor('print')
@@ -509,6 +510,8 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.plt.setValue(value)
             self.plt.blockSignals(False)
             self.plt_label.clearFocus()
+
+
 
     @utils.wait_cursor('print')
     def _set_put_threshold(self, param, state=None):
@@ -585,7 +588,6 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm.ops.adjusted_params = True
         self.align_btn.setEnabled(True)
 
-
     @utils.wait_cursor('print')
     def _reset_peaks(self, state=None):
         self.peaks = []
@@ -606,7 +608,6 @@ class Peak_Params(QtWidgets.QMainWindow):
             if self.recover_transformed:
                 self.fm.show_btn.setChecked(False)
         self.close()
-
 
 class Merge(QtGui.QMainWindow):
     def __init__(self, parent, printer, logger):

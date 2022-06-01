@@ -30,6 +30,8 @@ class FIBControls(BaseControls):
         self._fib_angle = None
         self._refined = False
 
+        self.orig_size = None
+        self.size = self.orig_size
         self.print = printer
         self.log = logger
 
@@ -70,6 +72,7 @@ class FIBControls(BaseControls):
 
         utils.add_fmpeaks_line(self, vbox)
 
+        self.size = self.orig_size
         self.show()
 
     #@utils.wait_cursor('print')
@@ -91,6 +94,9 @@ class FIBControls(BaseControls):
 
             self.ops = EM_ops(self.print, self.log)
             self.ops.parse_2d(self._file_name)
+
+            self.orig_size = float(self.size_box.text()) * 1e3 / self.ops.pixel_size[0]
+            self.size = self.orig_size
             self.imview.setImage(self.ops.data)
             self.grid_box = None
             self.transp_btn.setEnabled(True)
@@ -160,6 +166,7 @@ class FIBControls(BaseControls):
 
             self.ops.calc_fib_transform(fib_angle, self.sem_ops.data.shape,
                                         self.other.ops.voxel_size, self.sem_ops.pixel_size, shift=shift, sem_transpose=False)
+
 
             tf_points = []
             for i in range(len(self.other.ops.points)):
@@ -248,7 +255,6 @@ class FIBControls(BaseControls):
         self._size_history = []
 
         self.flips = [False, False, False, False]
-        self.tr_matrices = None
         self.show_grid_box = False
         self.show_tr_grid_box = False
         self.clicked_points = []
@@ -260,8 +266,8 @@ class FIBControls(BaseControls):
         self.setContentsMargins(0, 0, 0, 0)
         self.counter = 0
         self.anno_list = []
-        self.size = 10
-        self.orig_size = 10
+        self.orig_size = None
+        self.size = self.orig_size
         self.fixed_orientation = False
         self.peaks = []
         self.num_slices = None

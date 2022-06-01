@@ -98,8 +98,6 @@ class BaseControls(QtWidgets.QWidget):
         self.counter = 0
         self.anno_list = []
         self.poi_anno_list = []
-        self.size = 10
-        self.orig_size = 10
         self.peaks = []
         self.peak_colors = []
         self.num_slices = None
@@ -281,7 +279,7 @@ class BaseControls(QtWidgets.QWidget):
                 return
 
         if not self.other.fixed_orientation and not (self.other.semcontrols.ops._transformed and self.other.ops._transformed):
-            print('You have to transform both FM and SEM images or confirm correct orientation first!')
+            self.print('You have to transform both FM and SEM images or confirm correct orientation first!')
             self.show_peaks_btn.setChecked(False)
             return
 
@@ -308,7 +306,6 @@ class BaseControls(QtWidgets.QWidget):
                 z = self.other.ops.peaks_z[i]
                 #if self.other.semcontrols.ops._transformed:
                 if not self.other.fixed_orientation:
-                    print('weird!')
                     transf[i] = (np.linalg.inv(self.other.semcontrols.ops.tf_matrix) @ np.array([transf[i,0], transf[i,1], 1]))[:2]
                 transf_i = self.ops.fib_matrix @ np.array([transf[i,0], transf[i,1], z, 1])
                 if self._refined:
@@ -340,9 +337,8 @@ class BaseControls(QtWidgets.QWidget):
                         self.peaks.append(PeakROI(pos, size, self.imview.getImageItem(), color=self.other.fibcontrols.peak_colors[i]))
                 [self.imview.addItem(peak) for peak in self.peaks]
             else:
-                print('You have to correlate FM and FIB first!')
+                self.print('You have to correlate FM and FIB first!')
         else: #SEM or TEM
-            print('recalc peaks on SEM')
             for i in range(len(transf)):
                 pos = QtCore.QPointF(transf[i,0] - self.orig_size / 2, transf[i,1] - self.orig_size / 2)
                 color = None
@@ -682,6 +678,7 @@ class BaseControls(QtWidgets.QWidget):
 
         self._recalc_grid(toggle_orig=toggle_orig)
         self._update_imview()
+
 
     @utils.wait_cursor('print')
     def _show_original(self, state=None):

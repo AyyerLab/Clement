@@ -150,9 +150,6 @@ class Peak_finding():
             tf_corners = np.dot(tf_mat, corners)
             tf_matrix = np.copy(tf_mat)
             tf_matrix[:2,2] += tf_corners.min(1)[:2]
-            print('tf point: ', point)
-            print('orig point: ', (np.linalg.inv(tf_mat) @ point)[:2])
-
             return (np.linalg.inv(tf_mat) @ point)[:2]
         else:
             inv_points = []
@@ -296,8 +293,6 @@ class Peak_finding():
         else:
             z0 = slice
 
-        #np.save('virus{}.npy'.format(self.my_counter), data)
-
         if self.my_counter is None:
             self.my_counter = 0
         self.my_counter += 1
@@ -339,9 +334,10 @@ class Peak_finding():
 
         z = popt[2]
         self.print(z*self.voxel_size*1e9)
-        print(z*self.voxel_size*1e9)
         #np.save('z_values{}.npy'.format(self.my_counter), z)
         init = np.array([point[0], point[1], z])
+
+        #np.save('poi{}_tb.npy'.format(self.my_counter), self.channel[np.rint(init[0]).astype(int), np.rint(init[1]).astype(int), :])
         self.log('Model fit: ', r2)
 
         if r2 < 0.2 and r2 > 0:
