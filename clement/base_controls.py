@@ -576,6 +576,12 @@ class BaseControls(QtWidgets.QWidget):
             self.print('Recalculating transformed grid...')
             self.tr_grid_box = poly_line
         self._show_grid()
+        if self.ops is not None and self.other.ops is not None:
+            if self.ops.points is not None and self.other.ops.points is not None:
+                if hasattr(self, 'tab_index') and self.tab_index != 1:
+                    self._calc_tr_matrices()
+                elif hasattr(self.other, 'tab_index') and self.other.tab_index != 1:
+                    self.other._calc_tr_matrices()
 
     def store_grid_box_points(self):
         points_obj = self.grid_box.getState()['points']
