@@ -40,6 +40,7 @@ class FM_ops(Peak_finding):
         self.transp = False
         self.rot = False
         self.fixed_orientation = False
+        self.flip_z = False
         self.sem_transform = np.identity(3)
         self.flipv_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
         self.fliph_matrix = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 1]])
@@ -105,13 +106,11 @@ class FM_ops(Peak_finding):
                 self.flip_z = True
                 self.print('Flip z axis!')
                 z = self.num_slices - 1 - z #flip z axis, now z=0 is the most upper slice
-                self.print('Voxel size: ', self.voxel_size)
-                print('Voxel size: ', self.voxel_size)
                 self.old_fname = fname
             if self.voxel_size[-1] < 0:
                 self.voxel_size = np.abs(self.voxel_size)
-                self.print('Voxel size: ', self.voxel_size)
-                print('voxel size: ', self.voxel_size)
+            self.print('Voxel size: ', self.voxel_size)
+
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
             self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z, :, :].astype('f4')
@@ -291,6 +290,10 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
+<<<<<<< HEAD
+=======
+
+>>>>>>> 181d4ddc00aa1437a359626d06275d920bda5dc1
         if self.flip_z:
             self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
         self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
