@@ -420,9 +420,9 @@ class FMControls(BaseControls):
             #self.map_btn.setEnabled(True)
             #self.remove_tilt_btn.setEnabled(True)
             self.poi_ref_btn.setEnabled(True)
-            self.select_btn.setEnabled(True)
+            #self.select_btn.setEnabled(True)
             self.poi_btn.setEnabled(True)
-            self.clear_btn.setEnabled(True)
+            #self.clear_btn.setEnabled(True)
 
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
@@ -559,6 +559,8 @@ class FMControls(BaseControls):
             self.semcontrols.transform_btn.setEnabled(False)
             self.refine_btn.setEnabled(True)
             self.merge_btn.setEnabled(True)
+            self.select_btn.setEnabled(True)
+            self.clear_btn.setEnabled(True)
         else:
             self.fixed_orientation = False
             self.ops.fixed_orientation = False
@@ -572,7 +574,10 @@ class FMControls(BaseControls):
             self.semcontrols.show_btn.setChecked(False)
             self.semcontrols.show_btn.setEnabled(True)
             self.refine_btn.setEnabled(False)
+            self.select_btn.setEnabled(False)
+            self.clear_btn.setEnabled(False)
             self.merge_btn.setEnabled(False)
+
 
         self.ops._update_data()
         self._calc_tr_matrices()

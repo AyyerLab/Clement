@@ -357,7 +357,7 @@ class BaseControls(QtWidgets.QWidget):
                         self.imview.removeItem(point)
 
         self.peaks = np.array(self.peaks)
-        if hasattr(self, 'translate_peaks_btn'):
+        if hasattr(self, 'translate_peaks_btn') and self.other.fixed_orientation:
             self.translate_peaks_btn.setEnabled(True)
             self.refine_peaks_btn.setEnabled(True)
 
