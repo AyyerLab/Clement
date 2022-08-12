@@ -290,10 +290,6 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
-<<<<<<< HEAD
-=======
-
->>>>>>> 181d4ddc00aa1437a359626d06275d920bda5dc1
         if self.flip_z:
             self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
         self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
