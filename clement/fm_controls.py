@@ -384,6 +384,7 @@ class FMControls(BaseControls):
                 self.fm_fname.setText('File: ' + os.path.basename(file_name) + '; Slice ' + '[0/%d]' % self.num_slices)
             self.slice_select_btn.setRange(0, self.num_slices - 1)
 
+            self._colors = self._colors[:self.ops.num_channels]
             for i in range(1, self.ops.num_channels + 1):
                 self._channels.append(True)
                 channel_btn = QtWidgets.QCheckBox(' ', self)
@@ -397,6 +398,7 @@ class FMControls(BaseControls):
                 color_btn.setMaximumHeight(width)
                 if i > (len(self._colors)-1):
                     self._colors.append('#808080')
+
                 color_btn.setStyleSheet('background-color: {}'.format(self._colors[i-1]))
                 self.color_btns.append(color_btn)
                 self.channel_line.addWidget(color_btn)

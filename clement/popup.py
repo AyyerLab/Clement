@@ -1224,6 +1224,10 @@ class Merge(QtGui.QMainWindow):
             if self.parent.fm_controls.other == self.other:
                 self.parent.fm_controls.progress_bar.setValue(0)
                 self.parent.fm_controls.poi_btn.setEnabled(True)
+                print('heere')
+                print(self._colors_popup)
+                print(self.parent.fm_controls._colors)
+                self.parent.fm_controls._colors[-1] = self._colors_popup[-1]
             self.other.progress = 0
             self.parent.project.merged = [False, False, False, False]
             self.other.show_merge = False

@@ -32,7 +32,9 @@ class GUI(QtWidgets.QMainWindow):
             self.settings = QtCore.QSettings('MPSD-CNI', 'CLEMGui', self)
         else:
             self.settings = QtCore.QSettings()
-        self.colors = self.settings.value('channel_colors', defaultValue=['#ff0000', '#00ff00', '#0000ff', '#808080', '#808080'])
+
+        self.colors_tmp = ['#ff-0001', '#00ff00', '#0000ff', '#808080', '#808080']
+        self.colors = self.settings.value('channel_colors', defaultValue=self.colors_tmp)
         #self.colors = ['#ff0000', '#00ff00', '#0000ff', '#808080', '#808080', '#808080']
         self._init_ui()
         if project_fname is not None:
