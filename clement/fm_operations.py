@@ -103,11 +103,12 @@ class FM_ops(Peak_finding):
                 self.num_channels = len(self.reader.getChannels())
                 md = self.reader.getMetadata()
                 self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
+            if self.voxel_size[-1] > 0:
                 self.flip_z = True
                 self.print('Flip z axis!')
                 z = self.num_slices - 1 - z #flip z axis, now z=0 is the most upper slice
                 self.old_fname = fname
-            if self.voxel_size[-1] < 0:
+            else:
                 self.voxel_size = np.abs(self.voxel_size)
             self.print('Voxel size: ', self.voxel_size)
 
