@@ -103,14 +103,13 @@ class FM_ops(Peak_finding):
                 self.num_channels = len(self.reader.getChannels())
                 md = self.reader.getMetadata()
                 self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
-            if self.voxel_size[-1] > 0:
-                self.flip_z = True
-                self.print('Flip z axis!')
-                z = self.num_slices - 1 - z #flip z axis, now z=0 is the most upper slice
-                self.old_fname = fname
-            else:
-                self.voxel_size = np.abs(self.voxel_size)
+            #if self.voxel_size[-1] > 0:
+            #    self.flip_z = True
+            #    self.print('Flip z axis!')
+            #else:
+            #    self.voxel_size = np.abs(self.voxel_size)
             self.print('Voxel size: ', self.voxel_size)
+            self.old_fname = fname
 
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
@@ -170,6 +169,13 @@ class FM_ops(Peak_finding):
         self.tf_corners = np.dot(self.tf_matrix, corners)
         self._tf_shape = tuple([int(i) for i in (self.tf_corners.max(1) - self.tf_corners.min(1))[:2]])
         self.tf_matrix[:2, 2] -= self.tf_corners.min(1)[:2]
+
+    def toggle_flip_z(self, state):
+        self.data = np.flip(self.data, axis=-1)
+        self.flip_z = state
+        if self.peaks_z is not None:
+            self.peaks_z = [self.num_slices - 1 - z for z in self.peaks_z]
+
 
     def flip_horizontal(self, do_flip):
         self.fliph = do_flip

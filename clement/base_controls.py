@@ -113,7 +113,6 @@ class BaseControls(QtWidgets.QWidget):
 
     def select_tab(self, idx, show_grid=False):
         self.tab_index = idx
-
         if idx == 0:
             self.semcontrols._update_imview()
             self.other = self.semcontrols

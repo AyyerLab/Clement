@@ -101,6 +101,10 @@ class FMControls(BaseControls):
         self.max_proj_btn.stateChanged.connect(self._show_max_projection)
         self.max_proj_btn.setEnabled(False)
         line.addWidget(self.max_proj_btn)
+        self.flip_z_btn = QtWidgets.QCheckBox('Flip z')
+        self.flip_z_btn.stateChanged.connect(self._flip_z)
+        self.flip_z_btn.setEnabled(False)
+        line.addWidget(self.flip_z_btn)
         self.slice_select_btn = QtWidgets.QSpinBox(self)
         self.slice_select_btn.setRange(0, 0)
         self.slice_select_btn.setEnabled(False)
@@ -415,6 +419,7 @@ class FMControls(BaseControls):
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.max_proj_btn.setChecked(True)
+            self.flip_z_btn.setEnabled(True)
             self.slice_select_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
             self.set_params_btn.setEnabled(True)
@@ -439,6 +444,17 @@ class FMControls(BaseControls):
         if self.ops is not None:
             self.ops.calc_max_projection()
             self._update_imview()
+
+    @utils.wait_cursor('print')
+    def _flip_z(self, state=None):
+        if self.ops is not None:
+            self.ops.toggle_flip_z(self.flip_z_btn.isChecked())
+        if not self.max_proj_btn.isChecked():
+            self._slice_changed(None)
+        if self.tab_index == 1:
+            if self.other.show_peaks_btn.isChecked():
+                self.other.show_peaks_btn.setChecked(False)
+                self.other.show_peaks_btn.setChecked(True)
 
     @utils.wait_cursor('print')
     def _calc_color_channels(self, state=None):

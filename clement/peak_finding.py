@@ -124,6 +124,13 @@ class Peak_finding():
         end = time.time()
         self.log('duration: ', end - start)
         self.print('Number of peaks found: ', peaks_2d.shape[0])
+        #self.load_channel(0)
+        #self.peaks_z = []
+        #for i in range(len(self.peaks_orig)):
+        #    a, b, c = self.gauss_3d(self.peaks_orig[i], False, channel=0, slice=None, size=10)
+        #    self.peaks_orig[i] = a[:2]
+        #    self.peaks_z.append(a[-1])
+        #self.peaks = np.copy(self.peaks_orig)
 
     def update_peaks(self, tf_matrix, transformed):
         if transformed:
@@ -139,8 +146,8 @@ class Peak_finding():
         norm = img.max()
         img_blurred = ndi.gaussian_filter(img, sigma=sigma)
         diff = img-img_blurred
-        diff /= diff.max()
-        return diff*norm
+        diff /= diff.max()/norm
+        return diff - np.median(diff)
 
     def calc_original_coordinates(self, tf_mat, point=None):
         if point is not None:

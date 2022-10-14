@@ -583,7 +583,7 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peaks.append(point_obj)
             if self.coor is not None:
                 for i in range(len(self.fm.ops.peaks)):
-                    self.fm.ops.peaks[i] = self.coor[:,peaks_2d[i][0].astype(np.int), peaks_2d[i][1].astype(np.int)]
+                    self.fm.ops.peaks[i] = self.coor[:,np.round(peaks_2d[i][0]).astype(np.int), np.round(peaks_2d[i][1]).astype(np.int)]
 
         self.fm.ops.adjusted_params = True
         self.align_btn.setEnabled(True)
