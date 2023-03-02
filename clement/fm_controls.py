@@ -642,7 +642,6 @@ class FMControls(BaseControls):
 
         if self.ops.peaks is not None:
             for i in range(len(self.ops.peaks)):
-                print(self.ops.peaks)
                 pos = QtCore.QPointF(self.ops.peaks[i,0] - self.size / 2, self.ops.peaks[i,1] - self.size / 2)
                 point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=True)

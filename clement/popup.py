@@ -392,8 +392,8 @@ class Peak_Params(QtWidgets.QMainWindow):
         if self.invert:
             self.data_roi = self.data_roi.max() - self.data_roi
 
-        #self.data_roi = (self.data_roi - self.data_roi.min()) / (self.data_roi.max() - self.data_roi.min()) \
-        #                * self.fm.ops.norm_factor
+        self.data_roi = (self.data_roi - self.data_roi.min()) / (self.data_roi.max() - self.data_roi.min()) \
+                        * self.fm.ops.norm_factor
 
         #self.data_roi[self.data_roi < self.t_noise_label.value()] = 0
         self._update_imview()

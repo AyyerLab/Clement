@@ -82,6 +82,8 @@ def add_montage_line(parent, vbox, type_str, downsampling=False):
     line.addWidget(parent.transp_btn)
 
 def _set_filter(parent, param, state=None):
+    if parent.tag is not 'SEM':
+        return
     if param == 0:
         value = parent.sl_filter.value()
         parent.sl_box.blockSignals(True)

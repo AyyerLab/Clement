@@ -10,7 +10,7 @@ from . import utils
 class TEMControls(BaseControls):
     def __init__(self, imview, vbox, printer, logger):
         super(TEMControls, self).__init__()
-        self.tag = 'EM'
+        self.tag = 'TEM'
         self.imview = imview
         self.ops = None
         self.popup = None

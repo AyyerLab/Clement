@@ -96,7 +96,16 @@ class FM_ops(Peak_finding):
             self.old_fname = fname
             self.selected_slice = z
             md_raw = tifffile.TiffFile(fname).imagej_metadata
-            labels = str(md_raw['Labels']).split(' ')
+            chapter = None
+            if 'Labels' in md_raw:
+                chapter = 'Labels'
+            elif 'Info' in md_raw:
+                chapter = 'Info'
+            else:
+                self.print('Unable to find metadata! Contact developers!')
+                print('Unable to find metadata! Contact developers!')
+                return
+            labels = str(md_raw[chapter]).split(' ')
             md = {}
             for l in labels:
                 i = l.split('=')
@@ -136,7 +145,6 @@ class FM_ops(Peak_finding):
             [self._aligned_channels.append(False) for i in range(self.num_channels)]
             [self._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
 
-        print('data.shape: ', self.data.shape, self.orig_data.shape, self.tif_data.shape)
         self._update_data()
 
     def _update_data(self):

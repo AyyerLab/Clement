@@ -121,9 +121,6 @@ class EM_ops():
 
         self.orig_data = np.copy(self.data)
         self.print('Pixel size: ', self.pixel_size)
-        #print('pixel size: ', self.pixel_size)
-        #print('res: ', self.data.shape)
-        self._update_data()
 
     def parse_3d(self, step, fname):
         f = mrc.open(fname, 'r', permissive=True)

@@ -10,7 +10,7 @@ from . import utils
 class SEMControls(BaseControls):
     def __init__(self, imview, vbox, printer, logger):
         super(SEMControls, self).__init__()
-        self.tag = 'EM'
+        self.tag = 'SEM'
         self.imview = imview
         self.ops = None
         self.popup = None
@@ -80,6 +80,8 @@ class SEMControls(BaseControls):
                 self.step_box.setText('1')
                 self._assemble_mrc()
                 self.assemble_btn.setEnabled(False)
+
+        self.ops._update_data()
 
     @utils.wait_cursor('print')
     def _update_imview(self, state=None):

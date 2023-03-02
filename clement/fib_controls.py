@@ -10,7 +10,7 @@ from . import utils
 class FIBControls(BaseControls):
     def __init__(self, imview, vbox, sem_ops, printer, logger):
         super(FIBControls, self).__init__()
-        self.tag = 'EM'
+        self.tag = 'FIB'
         self.imview = imview
         self.ops = None
         self.sem_ops = sem_ops
@@ -83,7 +83,7 @@ class FIBControls(BaseControls):
             self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                                        'Select FIB data',
                                                                        self._curr_folder,
-                                                                       '*.tif;;*tiff;;*.mrc')
+                                                                       'All (*.tif *.tiff *.mrc);;*.mrc;;*.tif;;*tiff')
             self._curr_folder = os.path.dirname(self._file_name)
 
         if self._file_name != '':
