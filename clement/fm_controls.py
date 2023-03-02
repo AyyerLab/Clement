@@ -419,21 +419,16 @@ class FMControls(BaseControls):
             self._update_imview()
             self.max_proj_btn.setEnabled(True)
             self.max_proj_btn.setChecked(True)
-            self.flip_z_btn.setEnabled(True)
-            self.slice_select_btn.setEnabled(True)
             self.define_btn.setEnabled(True)
             self.set_params_btn.setEnabled(True)
             self.peak_btn.setEnabled(True)
-            #self.map_btn.setEnabled(True)
-            #self.remove_tilt_btn.setEnabled(True)
             self.poi_ref_btn.setEnabled(True)
-            #self.select_btn.setEnabled(True)
             self.poi_btn.setEnabled(True)
-            #self.clear_btn.setEnabled(True)
-
             self.overlay_btn.setChecked(True)
             self.overlay_btn.setEnabled(True)
-
+            if self.num_slices > 1:
+                self.flip_z_btn.setEnabled(True)
+                self.slice_select_btn.setEnabled(True)
     @utils.wait_cursor('print')
     def _show_max_projection(self, state=None):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
@@ -458,7 +453,6 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _calc_color_channels(self, state=None):
-        print('now', len(self._channels))
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
         self.print('Num channels: ', len(self._channels))
         for i in range(len(self._channels)):
@@ -614,7 +608,7 @@ class FMControls(BaseControls):
 
         num = self.slice_select_btn.value()
         if self.ops.flip_z:
-            num = self.ops.num_slices - 1 - num
+            num = self.num_slices - 1 - num
         if num == self._current_slice:
             return
         self.ops.parse(fname=self.ops.old_fname, z=num, reopen=False)
@@ -647,7 +641,6 @@ class FMControls(BaseControls):
         self.ops.update_peaks(self.ops.tf_matrix, self.ops._transformed)
 
         if self.ops.peaks is not None:
-            print('peaks parent: \n')
             for i in range(len(self.ops.peaks)):
                 print(self.ops.peaks)
                 pos = QtCore.QPointF(self.ops.peaks[i,0] - self.size / 2, self.ops.peaks[i,1] - self.size / 2)
@@ -657,9 +650,10 @@ class FMControls(BaseControls):
                 self.imview.addItem(point_obj)
                 self._peaks.append(point_obj)
 
-            if self.ops.peaks_z is None:
-                self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
-                self.ops.fit_z(self.ops.channel)
+            if self.num_slices > 1:
+                if self.ops.peaks_z is None:
+                    self.ops.load_channel(self.peak_controls.peak_channel_btn.currentIndex())
+                    self.ops.fit_z(self.ops.channel)
 
     @utils.wait_cursor('print')
     def _align_colors(self, idx, state):

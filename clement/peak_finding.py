@@ -141,13 +141,15 @@ class Peak_finding():
             self.peaks = np.copy(self.peaks_orig)
 
     def subtract_background(self, img, sigma=None):
-        if sigma is None:
-            sigma = self.sigma_background
-        norm = img.max()
-        img_blurred = ndi.gaussian_filter(img, sigma=sigma)
-        diff = img-img_blurred
-        diff /= diff.max()/norm
-        return diff - np.median(diff)
+        #if sigma is None:
+        #    sigma = self.sigma_background
+        #norm = img.max()
+        #img_blurred = ndi.gaussian_filter(img, sigma=sigma)
+        #diff = img-img_blurred
+        #diff /= diff.max()/norm
+        img_sub = img - np.median(img)
+        #return diff - np.median(diff)
+        return img_sub
 
     def calc_original_coordinates(self, tf_mat, point=None):
         if point is not None:
@@ -184,7 +186,7 @@ class Peak_finding():
         z_profile = data[np.round(peaks_2d[:, 0]).astype(int), np.round(peaks_2d[:, 1]).astype(int)]
         mean_int = np.median(np.max(z_profile, axis=1), axis=0)
         max_int = np.max(z_profile)
-        x = np.arange(len(z_profile[0]))
+        x = np.arange(z_profile.shape[1])
 
         gauss = lambda x, mu, sigma, offset: mean_int * np.exp(-(x - mu) ** 2 / (2 * sigma ** 2)) + offset
 

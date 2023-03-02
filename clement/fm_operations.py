@@ -78,10 +78,10 @@ class FM_ops(Peak_finding):
         self.data is the array to be displayed
         '''
         if '.tif' in fname or '.tiff' in fname:
-            self.tif_data = np.array(io.imread(fname)).astype('f4').transpose(0,2,1)
-            self.num_slices = self.tif_data.shape[0]
+            self.tif_data = np.array(io.imread(fname)).astype('f4').transpose(2,1,0)
+            self.num_slices = self.tif_data.shape[2]
 
-            self.orig_data = self.tif_data[z]
+            self.orig_data = self.tif_data[:,:,z]
             if self.orig_data.ndim == 2:
                 self.orig_data = np.expand_dims(self.orig_data, axis=-1)
                 self.tif_data = np.expand_dims(self.tif_data, axis=-1)
@@ -93,7 +93,6 @@ class FM_ops(Peak_finding):
                 self.orig_data[:,:,i] *= self.norm_factor
                 self.log(self.orig_data.shape)
             self.data = np.copy(self.orig_data)
-            print('heeere:', self.data.shape)
             self.old_fname = fname
             self.selected_slice = z
             md_raw = tifffile.TiffFile(fname).imagej_metadata
@@ -118,11 +117,6 @@ class FM_ops(Peak_finding):
                 self.num_channels = len(self.reader.getChannels())
                 md = self.reader.getMetadata()
                 self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
-            #if self.voxel_size[-1] > 0:
-            #    self.flip_z = True
-            #    self.print('Flip z axis!')
-            #else:
-            #    self.voxel_size = np.abs(self.voxel_size)
             self.print('Voxel size: ', self.voxel_size)
             self.old_fname = fname
 
@@ -142,6 +136,7 @@ class FM_ops(Peak_finding):
             [self._aligned_channels.append(False) for i in range(self.num_channels)]
             [self._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
 
+        print('data.shape: ', self.data.shape, self.orig_data.shape, self.tif_data.shape)
         self._update_data()
 
     def _update_data(self):
@@ -222,7 +217,7 @@ class FM_ops(Peak_finding):
 
     def calc_max_proj_data(self):
         if self.reader is None:
-            self.max_proj_data = self.tif_data.max(0)
+            self.max_proj_data = self.tif_data.max(2)
         else:
             self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
                                            for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
@@ -312,7 +307,7 @@ class FM_ops(Peak_finding):
 
     def load_channel(self, ind):
         if self.reader is None:
-            self.channel = np.copy(self.orig_data)
+            self.channel = np.copy(self.tif_data[:,:,:,0])
         else:
             self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
             if self.flip_z:

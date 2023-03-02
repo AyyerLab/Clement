@@ -23,6 +23,7 @@ class EM_ops():
         self._refine_matrix = None
         self._total_shift = None
         self._refine_history = [np.identity(3)]
+        self._filter = 3
 
         self.print = printer
         self.log = logger
@@ -85,7 +86,6 @@ class EM_ops():
         if '.tif' in fname or '.tiff' in fname:
             # Transposing tif images by default
             self.data = np.array(io.imread(fname).T)
-
             self.dimensions = self.data.shape
             self.old_fname = fname
             try:
@@ -123,6 +123,7 @@ class EM_ops():
         self.print('Pixel size: ', self.pixel_size)
         #print('pixel size: ', self.pixel_size)
         #print('res: ', self.data.shape)
+        self._update_data()
 
     def parse_3d(self, step, fname):
         f = mrc.open(fname, 'r', permissive=True)
@@ -163,6 +164,14 @@ class EM_ops():
         f.close()
         self.print(self.data.shape)
         self.orig_data = np.copy(self.data)
+
+        self._update_data()
+    def _update_data(self, filter=None, state=None):
+        if filter is None:
+            filter = self._filter
+        else:
+            self._filter = filter
+        self.data = ndi.uniform_filter(self.orig_data, filter)
 
     def save_merge(self, fname):
         with mrc.new(fname, overwrite=True) as f:

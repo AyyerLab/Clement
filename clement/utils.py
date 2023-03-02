@@ -44,8 +44,11 @@ def add_montage_line(parent, vbox, type_str, downsampling=False):
     if downsampling:
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
+
+        label = QtWidgets.QLabel('Filtering:')
+        line.addWidget(label)
         step_label = QtWidgets.QLabel(parent)
-        step_label.setText('Downsampling factor:')
+        step_label.setText('Downsampling:')
         parent.step_box = QtWidgets.QLineEdit(parent)
         parent.step_box.setMaximumWidth(30)
         parent.step_box.setText('10')
@@ -53,6 +56,21 @@ def add_montage_line(parent, vbox, type_str, downsampling=False):
         parent._downsampling = parent.step_box.text()
         line.addWidget(step_label)
         line.addWidget(parent.step_box)
+
+        filter_label = QtWidgets.QLabel(parent)
+        filter_label.setText('Filter:')
+        parent.sl_filter = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        parent.sl_filter.setRange(1,10)
+        parent.sl_filter.setFocusPolicy(QtCore.Qt.NoFocus)
+        parent.sl_filter.valueChanged.connect(lambda state, param=0: _set_filter(parent, param))
+        parent.sl_box = QtWidgets.QSpinBox(parent)
+        parent.sl_box.setRange(1,10)
+        parent.sl_box.editingFinished.connect(lambda param=1: _set_filter(parent, param))
+        parent.sl_box.setValue(3)
+        line.addWidget(filter_label)
+        line.addWidget(parent.sl_filter)
+        line.addWidget(parent.sl_box)
+
         line.addStretch(1)
         parent.assemble_btn = QtWidgets.QPushButton('Assemble', parent)
         parent.assemble_btn.clicked.connect(parent._assemble_mrc)
@@ -62,6 +80,21 @@ def add_montage_line(parent, vbox, type_str, downsampling=False):
     parent.transp_btn.clicked.connect(parent._transpose)
     parent.transp_btn.setEnabled(False)
     line.addWidget(parent.transp_btn)
+
+def _set_filter(parent, param, state=None):
+    if param == 0:
+        value = parent.sl_filter.value()
+        parent.sl_box.blockSignals(True)
+        parent.sl_box.setValue(value)
+        parent.sl_box.blockSignals(False)
+    else:
+        value = parent.sl_box.value()
+        parent.sl_filter.blockSignals(True)
+        parent.sl_filter.setValue(value)
+        parent.sl_filter.blockSignals(False)
+        parent.sl_box.clearFocus()
+    parent.ops._update_data(filter=value)
+    parent._update_imview()
 
 def add_fmpeaks_line(parent, vbox):
     line = QtWidgets.QHBoxLayout()
