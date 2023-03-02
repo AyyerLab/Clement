@@ -5,8 +5,10 @@ from scipy import interpolate
 from skimage import transform as tf
 from skimage import measure, morphology, io, feature
 import read_lif
+import tifffile
 from .ransac import Ransac
 from .peak_finding import Peak_finding
+
 
 
 class FM_ops(Peak_finding):
@@ -76,19 +78,32 @@ class FM_ops(Peak_finding):
         self.data is the array to be displayed
         '''
         if '.tif' in fname or '.tiff' in fname:
-            self.tif_data = np.array(io.imread(fname)).astype('f4')
+            self.tif_data = np.array(io.imread(fname)).astype('f4').transpose(0,2,1)
             self.num_slices = self.tif_data.shape[0]
 
-            self.orig_data = self.tif_data[z, :, :, :]
+            self.orig_data = self.tif_data[z]
+            if self.orig_data.ndim == 2:
+                self.orig_data = np.expand_dims(self.orig_data, axis=-1)
+                self.tif_data = np.expand_dims(self.tif_data, axis=-1)
+
             self.num_channels = self.orig_data.shape[-1]
             for i in range(self.num_channels):
-                self.orig_data[:,:,:,i] = (self.orig_data[:,:,:,i] - self.orig_data[:,:,:,i].min()) / \
-                                          (self.orig_data[:,:,:,i].max() - self.orig_data[:,:,:,i].min())
-                self.orig_data[:,:,:,i] *= self.norm_factor
+                self.orig_data[:,:,i] = (self.orig_data[:,:,i] - self.orig_data[:,:,i].min()) / \
+                                          (self.orig_data[:,:,i].max() - self.orig_data[:,:,i].min())
+                self.orig_data[:,:,i] *= self.norm_factor
                 self.log(self.orig_data.shape)
             self.data = np.copy(self.orig_data)
+            print('heeere:', self.data.shape)
             self.old_fname = fname
             self.selected_slice = z
+            md_raw = tifffile.TiffFile(fname).imagej_metadata
+            labels = str(md_raw['Labels']).split(' ')
+            md = {}
+            for l in labels:
+                i = l.split('=')
+                if len(i) > 1:
+                    md[i[0]] = i[1].strip('\"')
+            self.voxel_size = np.array([float(md['PhysicalSizeX']), float(md['PhysicalSizeY']), float(md['PhysicalSizeZ'])]) * 1e-6
         else:
             if reopen:
                 self.base_reader = read_lif.Reader(fname)
@@ -211,10 +226,10 @@ class FM_ops(Peak_finding):
         else:
             self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
                                            for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
-            for i in range(self.num_channels):
-                self.max_proj_data[:,:,i] = (self.max_proj_data[:,:,i] - self.max_proj_data[:,:,i].min()) / \
-                                            (self.max_proj_data[:,:,i].max() - self.max_proj_data[:,:,i].min())
-                self.max_proj_data[:,:,i] *= self.norm_factor
+        for i in range(self.num_channels):
+            self.max_proj_data[:,:,i] = (self.max_proj_data[:,:,i] - self.max_proj_data[:,:,i].min()) / \
+                                        (self.max_proj_data[:,:,i].max() - self.max_proj_data[:,:,i].min())
+            self.max_proj_data[:,:,i] *= self.norm_factor
 
     def colorize2d(self, brightness, zvals, cmap_funcs):
         hfunc, sfunc, vfunc = cmap_funcs
@@ -296,13 +311,16 @@ class FM_ops(Peak_finding):
         return z
 
     def load_channel(self, ind):
-        self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
-        if self.flip_z:
-            self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
-        self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
-        self.channel *= self.norm_factor
-        self._channel_idx = ind
-        self.print('Load channel {}'.format(ind+1))
+        if self.reader is None:
+            self.channel = np.copy(self.orig_data)
+        else:
+            self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
+            if self.flip_z:
+                self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
+            self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
+            self.channel *= self.norm_factor
+            self._channel_idx = ind
+            self.print('Load channel {}'.format(ind+1))
 
     def clear_channel(self):
         self._channel_idx = None

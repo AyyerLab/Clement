@@ -353,7 +353,7 @@ class FMControls(BaseControls):
         self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                                    'Select FM file',
                                                                    self._curr_folder,
-                                                                   '*.lif;;*.tif;;*.tiff')
+                                                                   'All(*.lif *.tif *.tiff);;*.lif;;*.tif;;*.tiff')
         if self._file_name != '':
             self.reset_init()
             self._curr_folder = os.path.dirname(self._file_name)
@@ -458,6 +458,7 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _calc_color_channels(self, state=None):
+        print('now', len(self._channels))
         self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
         self.print('Num channels: ', len(self._channels))
         for i in range(len(self._channels)):
@@ -646,7 +647,9 @@ class FMControls(BaseControls):
         self.ops.update_peaks(self.ops.tf_matrix, self.ops._transformed)
 
         if self.ops.peaks is not None:
+            print('peaks parent: \n')
             for i in range(len(self.ops.peaks)):
+                print(self.ops.peaks)
                 pos = QtCore.QPointF(self.ops.peaks[i,0] - self.size / 2, self.ops.peaks[i,1] - self.size / 2)
                 point_obj = pg.CircleROI(pos, self.size, parent=self.imview.getImageItem(), movable=False,
                                          removable=True)

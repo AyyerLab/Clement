@@ -8,6 +8,7 @@ import csv
 import mrcfile as mrc
 import copy
 from skimage.color import hsv2rgb
+from scipy import ndimage as ndi
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, FormatStrFormatter
@@ -143,6 +144,7 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.background_correction = False
         self.invert = False
         self.color_data = None
+        self.levels = None
         self.coor = None
         self.peaks = []
         self.num_channels = self.fm.ops.num_channels
@@ -361,9 +363,11 @@ class Peak_Params(QtWidgets.QMainWindow):
         else:
             old_shape = None
         new_shape = self.color_data.shape
+        if self.levels is None:
+            self.levels = self.parent.fm_controls.imview.getHistogramWidget().item.getLevels()
         if old_shape == new_shape:
             vr = self.peak_imview.getImageItem().getViewBox().targetRect()
-        self.peak_imview.setImage(self.color_data)
+        self.peak_imview.setImage(self.color_data, levels=self.levels)
         if old_shape == new_shape:
             self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
@@ -381,7 +385,7 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peak_imview.addItem(self.roi)
                 self.data_roi, self.coor = self.roi.getArrayRegion(self.data_roi, self.peak_imview.getImageItem(), returnMappedCoords=True)
                 self.peak_imview.removeItem(self.roi)
-                self._update_imview()
+                #self._update_imview()
 
         if self.background_correction:
             self.data_roi = self.fm.ops.subtract_background(self.data_roi, sigma=self.sigma_btn.value())
@@ -461,12 +465,12 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.draw_btn.setEnabled(False)
             self.roi.movable = False
             self.roi.resizable = False
-            self.transf = self.roi.getGlobalTransform()
-
             self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
             self.log(self.data_roi.shape)
             self.print('Done drawing ROI at position ', self.roi_pos)
             self.peak_imview.removeItem(self.roi)
+            if len(self.peaks) > 0:
+                self._reset_peaks()
             self._update_data()
 
     @utils.wait_cursor('print')
@@ -475,9 +479,12 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.draw_btn.setEnabled(True)
         self.reset_btn.setEnabled(False)
         self.data_roi = None
+        self.orig_data_roi = None
         self.roi = None
         self.coor = None
         self.roi_pos = None
+        if len(self.peaks) > 0:
+            self._reset_peaks()
         self._update_data()
 
     @utils.wait_cursor('print')
@@ -583,8 +590,8 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peaks.append(point_obj)
             if self.coor is not None:
                 for i in range(len(self.fm.ops.peaks)):
-                    self.fm.ops.peaks[i] = self.coor[:,np.round(peaks_2d[i][0]).astype(np.int), np.round(peaks_2d[i][1]).astype(np.int)]
-
+                    self.fm.ops.peaks_orig[i] = self.coor[:,np.round(peaks_2d[i][0]).astype(np.int), np.round(peaks_2d[i][1]).astype(np.int)]
+                    self.fm.ops.peaks = np.copy(self.fm.ops.peaks_orig)
         self.fm.ops.adjusted_params = True
         self.align_btn.setEnabled(True)
 

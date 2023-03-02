@@ -1,4 +1,4 @@
-name: clement-dev
+name: clem
 channels:
   - conda-forge
   - defaults
