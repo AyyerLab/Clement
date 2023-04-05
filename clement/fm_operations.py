@@ -50,7 +50,6 @@ class FM_ops(Peak_finding):
         self.rot_matrix = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
         self.flip_matrix = np.identity(3)
         self.flip_z = False
-        self.threshold = 0
         self.max_shift = 10
         self.matches = []
         self.diff_list = []
@@ -97,10 +96,10 @@ class FM_ops(Peak_finding):
             self.selected_slice = z
             md_raw = tifffile.TiffFile(fname).imagej_metadata
             chapter = None
-            if 'Labels' in md_raw:
-                chapter = 'Labels'
-            elif 'Info' in md_raw:
+            if 'Info' in md_raw:
                 chapter = 'Info'
+            elif 'Labels' in md_raw:
+                chapter = 'Labels'
             else:
                 self.print('Unable to find metadata! Contact developers!')
                 print('Unable to find metadata! Contact developers!')

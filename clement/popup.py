@@ -139,7 +139,9 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.fm = fm
         self.roi = None
         self.data_roi = None
-        self.roi_pos = None
+        self._roi_pos = None
+        self._roi_angle = None
+        self._roi_shape = None
         self.orig_data_roi = None
         self.background_correction = False
         self.invert = False
@@ -212,41 +214,57 @@ class Peak_Params(QtWidgets.QMainWindow):
         line.addWidget(self.reset_btn)
         line.addStretch(1)
 
-        line = QtWidgets.QHBoxLayout()
-        options.addLayout(line)
-        label = QtWidgets.QLabel('Background correction:', self)
-        line.addWidget(label)
-        label = QtWidgets.QLabel('Sigma:', self)
-        line.addWidget(label)
-        self.sigma_btn = QtWidgets.QDoubleSpinBox(self)
-        self.sigma_btn.setRange(0,20)
-        self.sigma_btn.setDecimals(1)
-        self.sigma_btn.setValue(10)
-        self.background_btn = QtWidgets.QCheckBox('Subtract background', self)
-        self.background_btn.stateChanged.connect(self._subtract_background)
-        self.invert_btn = QtWidgets.QCheckBox('Invert', self)
-        self.invert_btn.stateChanged.connect(self._invert_channel)
-        line.addWidget(self.sigma_btn)
-        line.addWidget(self.background_btn)
-        line.addWidget(self.invert_btn)
-        line.addStretch(1)
+        #line = QtWidgets.QHBoxLayout()
+        #options.addLayout(line)
+        #label = QtWidgets.QLabel('Background correction:', self)
+        #line.addWidget(label)
+        #label = QtWidgets.QLabel('Sigma:', self)
+        #line.addWidget(label)
+        #self.sigma_btn = QtWidgets.QDoubleSpinBox(self)
+        #self.sigma_btn.setRange(0,20)
+        #self.sigma_btn.setDecimals(1)
+        #self.sigma_btn.setValue(10)
+        #self.background_btn = QtWidgets.QCheckBox('Subtract background', self)
+        #self.background_btn.stateChanged.connect(self._subtract_background)
+        #self.invert_btn = QtWidgets.QCheckBox('Invert', self)
+        #self.invert_btn.stateChanged.connect(self._invert_channel)
+        #line.addWidget(self.sigma_btn)
+        #line.addWidget(self.background_btn)
+        #line.addWidget(self.invert_btn)
+        #line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
         options.addLayout(line)
-        label = QtWidgets.QLabel('Noise threshold:')
+        label = QtWidgets.QLabel('Thresholds:')
         line.addWidget(label)
-        self.t_noise = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.t_noise.setRange(0,1000) # 10 times the actual value to allow floats
-        self.t_noise.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.t_noise.setValue(100)
-        self.t_noise.valueChanged.connect(lambda state, param=0: self._set_noise_threshold(param, state))
-        self.t_noise_label = QtWidgets.QDoubleSpinBox(self)
-        self.t_noise_label.setRange(0,100)
-        self.t_noise_label.setDecimals(1)
-        self.t_noise_label.editingFinished.connect(lambda param=1: self._set_noise_threshold(param))
-        self.t_noise_label.setValue(10)
-        line.addWidget(self.t_noise)
-        line.addWidget(self.t_noise_label)
+        label = QtWidgets.QLabel('Low:')
+        line.addWidget(label)
+        self.t_low = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.t_low.setRange(0,1000)
+        self.t_low.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.t_low.valueChanged.connect(lambda state, b=1, param=0: self._set_thresholds(param, b, state))
+        self.t_low_label = QtWidgets.QDoubleSpinBox(self)
+        self.t_low_label.setRange(0,100)
+        self.t_low_label.setDecimals(1)
+        self.t_low_label.editingFinished.connect(lambda b=0, param=0: self._set_thresholds(param, b))
+        self.t_low.setValue(0)
+        self.t_low_label.setValue(0)
+        line.addWidget(self.t_low)
+        line.addWidget(self.t_low_label)
+        label = QtWidgets.QLabel('High:')
+        line.addWidget(label)
+        self.t_high = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.t_high.setRange(0,1000)
+        self.t_high.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.t_high.valueChanged.connect(lambda state, b=1, param=1: self._set_thresholds(param, b, state))
+        self.t_high_label = QtWidgets.QDoubleSpinBox(self)
+        self.t_high_label.setRange(0,100)
+        self.t_high_label.setDecimals(1)
+        self.t_high_label.editingFinished.connect(lambda b=0, param=1: self._set_thresholds(param, b))
+        self.t_high.setValue(1000)
+        self.t_high_label.setValue(100)
+        line.addWidget(self.t_high)
+        line.addWidget(self.t_high_label)
         line.addStretch(1)
 
         line = QtWidgets.QHBoxLayout()
@@ -364,10 +382,12 @@ class Peak_Params(QtWidgets.QMainWindow):
             old_shape = None
         new_shape = self.color_data.shape
         if self.levels is None:
-            self.levels = self.parent.fm_controls.imview.getHistogramWidget().item.getLevels()
+            levels = self.parent.fm_controls.imview.getHistogramWidget().item.getLevels()
+        else:
+            levels = self.imview.getHistogramWidget().item.getLevels()
         if old_shape == new_shape:
             vr = self.peak_imview.getImageItem().getViewBox().targetRect()
-        self.peak_imview.setImage(self.color_data, levels=self.levels)
+        self.peak_imview.setImage(self.color_data, levels=levels)
         if old_shape == new_shape:
             self.peak_imview.getImageItem().getViewBox().setRange(vr, padding=0)
 
@@ -379,6 +399,8 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.data_roi = np.copy(self.fm.ops.data)
         if self.orig_data_roi is None:
             self.orig_data_roi = np.copy(self.data_roi)
+            self.data_roi = (self.data_roi - self.data_roi.min()) / (self.data_roi.max() - self.data_roi.min()) \
+                            * self.fm.ops.norm_factor
         else:
             if self.roi is not None:
                 self._update_imview()
@@ -387,15 +409,13 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peak_imview.removeItem(self.roi)
                 #self._update_imview()
 
-        if self.background_correction:
-            self.data_roi = self.fm.ops.subtract_background(self.data_roi, sigma=self.sigma_btn.value())
-        if self.invert:
-            self.data_roi = self.data_roi.max() - self.data_roi
+        #if self.background_correction:
+        #    self.data_roi = self.fm.ops.subtract_background(self.data_roi, sigma=self.sigma_btn.value())
+        #if self.invert:
+        #    self.data_roi = self.data_roi.max() - self.data_roi
 
-        self.data_roi = (self.data_roi - self.data_roi.min()) / (self.data_roi.max() - self.data_roi.min()) \
-                        * self.fm.ops.norm_factor
-
-        #self.data_roi[self.data_roi < self.t_noise_label.value()] = 0
+        self.data_roi[self.data_roi < self.t_low_label.value()] = 0
+        self.data_roi[self.data_roi > self.t_high_label.value()] = 0
         self._update_imview()
 
     @utils.wait_cursor('print')
@@ -465,9 +485,11 @@ class Peak_Params(QtWidgets.QMainWindow):
             self.draw_btn.setEnabled(False)
             self.roi.movable = False
             self.roi.resizable = False
-            self.roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
+            self._roi_pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
+            self._roi_angle = float(self.roi.angle())
+            self._roi_shape = np.array([self.roi.size().x(), self.roi.size().y()])
             self.log(self.data_roi.shape)
-            self.print('Done drawing ROI at position ', self.roi_pos)
+            self.print('Done drawing ROI at position ', self._roi_pos)
             self.peak_imview.removeItem(self.roi)
             if len(self.peaks) > 0:
                 self._reset_peaks()
@@ -482,27 +504,41 @@ class Peak_Params(QtWidgets.QMainWindow):
         self.orig_data_roi = None
         self.roi = None
         self.coor = None
-        self.roi_pos = None
+        self._roi_pos = None
         if len(self.peaks) > 0:
             self._reset_peaks()
         self._update_data()
 
     @utils.wait_cursor('print')
-    def _set_noise_threshold(self, param, state=None):
-        if param == 0:
-            float_value = float(self.t_noise.value()) / 10
-            self.t_noise_label.blockSignals(True)
-            self.t_noise_label.setValue(float_value)
-            self.t_noise_label.blockSignals(False)
+    def _set_thresholds(self, param, b, state=None):
+        if b == 1:
+            if param == 0:
+                float_value = float(self.t_low.value())
+                self.t_low_label.blockSignals(True)
+                self.t_low_label.setValue(10*float_value)
+                self.t_low_label.blockSignals(False)
+            else:
+                float_value = float(self.t_high.value())
+                self.t_high_label.blockSignals(True)
+                self.t_high_label.setValue(10*float_value)
+                self.t_high_label.blockSignals(False)
         else:
-            float_value = float(self.t_noise_label.value())
-            self.t_noise.blockSignals(True)
-            self.t_noise.setValue(10*float_value)
-            self.t_noise.blockSignals(False)
-            self.t_noise_label.clearFocus()
+            if param == 0:
+                float_value = float(self.t_low_label.value())
+                self.t_low.blockSignals(True)
+                self.t_low.setValue(10*float_value)
+                self.t_low.blockSignals(False)
+                self.t_low_label.clearFocus()
+            else:
+                float_value = float(self.t_high_label.value())
+                self.t_high.blockSignals(True)
+                self.t_high.setValue(10*float_value)
+                self.t_high.blockSignals(False)
+                self.t_high_label.clearFocus()
         self.peak_btn.setChecked(False)
         self._reset_peaks()
-        #self._update_data()
+        self.data_roi = np.copy(self.orig_data_roi)
+        self._update_data()
 
     @utils.wait_cursor('print')
     def _set_plt_threshold(self, param, state=None):
@@ -566,20 +602,19 @@ class Peak_Params(QtWidgets.QMainWindow):
             return
 
         self._reset_peaks()
-        self.fm.ops.threshold = self.t_noise_label.value()
         self.fm.ops.pixel_lower_threshold = self.plt.value()
         self.fm.ops.pixel_upper_threshold = self.put.value()
         self.fm.ops.flood_steps = self.flood_steps.value()
         self.fm.ops._peak_reference = self.peak_channel_btn.currentIndex()
         self.fm.ops.peak_finding(self.data_roi[:,:,self.peak_channel_btn.currentIndex()], transformed=False,
-                                 roi_pos= self.roi_pos, background_correction=False)
+                                 roi_pos= self._roi_pos, background_correction=False)
 
         peaks_2d = copy.copy(self.fm.ops.peaks)
         if peaks_2d is None:
             self.print('No peaks have been found! Adjust parameters!')
             return
-        if self.roi_pos is not None:
-            peaks_2d -= self.roi_pos #correct for roi_pos bug out of range, qrect for roi not resizable
+        if self._roi_pos is not None:
+            peaks_2d -= self._roi_pos #correct for roi_pos bug out of range, qrect for roi not resizable
         if len(peaks_2d.shape) > 0:
             for i in range(len(peaks_2d)):
                 pos = QtCore.QPointF(peaks_2d[i][0] - self.fm.size / 2, peaks_2d[i][1] - self.fm.size / 2)
@@ -604,9 +639,8 @@ class Peak_Params(QtWidgets.QMainWindow):
     def _save(self, state=None):
         if self.fm.ops is not None and len(self.peaks) > 0:
             self.fm.ops.adjusted_params = True
-            self.fm.ops.background_correction = self.background_correction
-            self.fm.ops.sigma_background = self.sigma_btn.value()
-            self.fm.ops.threshold = self.t_noise_label.value()
+            #self.fm.ops.background_correction = self.background_correction
+            #self.fm.ops.sigma_background = self.sigma_btn.value()
             self.fm.ops.pixel_lower_threshold = self.plt.value()
             self.fm.ops.pixel_upper_threshold = self.put.value()
             self.fm.ops.flood_steps = self.flood_steps.value()

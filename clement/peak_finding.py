@@ -33,8 +33,8 @@ class Peak_finding():
     def peak_finding(self, im, transformed, roi=False, roi_pos=None, background_correction=None):
         start = time.time()
         img = np.copy(im)
-        if background_correction is None and self.background_correction:
-            img = self.subtract_background(img)
+        #if background_correction is None and self.background_correction:
+        #    img = self.subtract_background(img)
 
         self.log(self.threshold)
         self.log(self.pixel_upper_threshold)
@@ -42,7 +42,7 @@ class Peak_finding():
         self.log(self.flood_steps)
         self.log(img.shape)
         self.log(img.max())
-        img[img < self.threshold] = 0
+        #img[img < self.threshold] = 0
 
         labels, num_objects = ndi.label(img)
         label_size = np.bincount(labels.ravel())

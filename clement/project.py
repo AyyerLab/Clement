@@ -76,16 +76,26 @@ class Project(QtWidgets.QWidget):
         if fmdict['Adjusted peak params']:
             self.fm.set_params_btn.click()
             self.fm.peak_controls.peak_channel_btn.setCurrentIndex(fmdict['Peak reference'])
-            self.fm.peak_controls.t_noise_label.setValue(fmdict['Noise threshold'])
+            if fmdict['ROI']:
+                self.fm.peak_controls.draw_btn.setChecked(True)
+                self.fm.peak_controls.roi.setPos(np.array(fmdict['ROI pos']), update=False)
+                self.fm.peak_controls.roi.setSize(np.array(fmdict['ROI shape']), update=False)
+                self.fm.peak_controls.roi.setAngle(np.array(fmdict['ROI angle']), update=True)
+                self.fm.peak_controls.draw_btn.setChecked(False)
+
+            self.fm.peak_controls.t_low_label.setValue(fmdict['Low threshold'])
+            self.fm.peak_controls.t_high_label.setValue(fmdict['High threshold'])
             self.fm.peak_controls.plt_label.setValue(fmdict['Min pixels threshold'])
             self.fm.peak_controls.put_label.setValue(fmdict['Max pixels threshold'])
             self.fm.peak_controls.flood_steps_label.setValue(fmdict['Flood fill steps'])
-            self.fm.peak_controls.peak_btn.setChecked(True)
             self.fm.ops._aligned_channels = fmdict['Aligned channels']
-            for i in range(self.fm.ops.num_channels):
-                if self.fm.ops._aligned_channels[i]:
-                    self.fm.peak_controls.action_btns[i].setChecked(True)
+            if len(self.fm.ops._aligned_channels) > 0:
+                for i in range(self.fm.ops.num_channels):
+                    if self.fm.ops._aligned_channels[i]:
+                        self.fm.peak_controls.action_btns[i].setChecked(True)
             self.fm.peak_controls.save_btn.click()
+            self.fm.peak_controls._update_data()
+            self.fm.peak_controls.peak_btn.setChecked(True)
 
         try:
             pois_orig = fmdict['Pois orig']
@@ -536,7 +546,16 @@ class Project(QtWidgets.QWidget):
         fmdict['Adjusted peak params'] = self.fm.ops.adjusted_params
         if self.fm.peak_controls is not None:
             fmdict['Peak reference'] = self.fm.peak_controls.peak_channel_btn.currentIndex()
-            fmdict['Noise threshold'] = self.fm.peak_controls.t_noise_label.value()
+            if self.fm.peak_controls.roi is not None:
+                fmdict['ROI'] = True
+                fmdict['ROI pos'] = self.fm.peak_controls._roi_pos.tolist()
+                fmdict['ROI angle'] = self.fm.peak_controls._roi_angle
+                fmdict['ROI shape'] = self.fm.peak_controls._roi_shape.tolist()
+            else:
+                fmdict['ROI'] = False
+
+            fmdict['Low threshold'] = self.fm.peak_controls.t_low_label.value()
+            fmdict['High threshold'] = self.fm.peak_controls.t_high_label.value()
             fmdict['Min pixels threshold'] = self.fm.peak_controls.plt_label.value()
             fmdict['Max pixels threshold'] = self.fm.peak_controls.put_label.value()
             fmdict['Flood fill steps'] = self.fm.peak_controls.flood_steps_label.value()
