@@ -186,6 +186,7 @@ class PrintGUI(QtCore.QObject):
         self.string = ''
         self.log_string = None
         self.log_file = None
+        self.run()
 
     def print(self, *args):
         self.parse(*args)

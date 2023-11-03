@@ -123,15 +123,28 @@ class FM_ops(Peak_finding):
 
                 self.num_slices = self.reader.getFrameShape()[0]
                 self.num_channels = len(self.reader.getChannels())
+
                 md = self.reader.getMetadata()
-                self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
+                print('Voxel size unit: ', md['voxel_size_unit'])
+                if md['voxel_size_unit'] == 'um':
+                    self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-6
+                elif md['voxel_size_unit'] == 'nm':
+                    self.voxel_size = np.array([md['voxel_size_x'], md['voxel_size_y'], md['voxel_size_z']]) * 1e-9
+                else:
+                    print('Wrong voxel size unit. Contact developers')
+                    return
             self.print('Voxel size: ', self.voxel_size)
             self.old_fname = fname
 
             # TODO: Look into modifying read_lif to get
             # a single Z-slice with all channels rather than all slices for a single channel
-            self.orig_data = np.array([self.reader.getFrame(channel=i, dtype='u2')[z, :, :].astype('f4')
+            self.orig_data = np.array([self.reader.getFrame(channel=i)[z, :, :].astype('f4')
                                        for i in range(self.num_channels)])
+            if self.num_channels < 3:
+                # somehow tricks pyqtgraph when clement is started to be able to generate rgb when num_channels < 3,
+                for i in range(3-self.num_channels):
+                    self.orig_data = np.concatenate((self.orig_data, np.random.random(self.orig_data[0].shape)[np.newaxis,...]/1e6))
+
             self.orig_data = self.orig_data.transpose(1, 2, 0)
             #normalize to 100
             for i in range(self.orig_data.shape[-1]):
@@ -226,7 +239,7 @@ class FM_ops(Peak_finding):
         if self.reader is None:
             self.max_proj_data = self.tif_data.max(2)
         else:
-            self.max_proj_data = np.array([self.reader.getFrame(channel=i, dtype='u2').max(0)
+            self.max_proj_data = np.array([self.reader.getFrame(channel=i).max(0)
                                            for i in range(self.num_channels)]).transpose(1, 2, 0).astype('f4')
         for i in range(self.num_channels):
             self.max_proj_data[:,:,i] = (self.max_proj_data[:,:,i] - self.max_proj_data[:,:,i].min()) / \
@@ -259,7 +272,7 @@ class FM_ops(Peak_finding):
         if self.hsv_map is None:
             if self.max_proj_data is None:
                 self.calc_max_proj_data()
-            argmax_map = np.argmax(self.reader.getFrame(channel=self._channel_idx, dtype='u2'), axis=0).astype('f4').transpose((1, 0))
+            argmax_map = np.argmax(self.reader.getFrame(channel=self._channel_idx), axis=0).astype('f4').transpose((1, 0))
             self.cmap = self.create_cmaps(rot=1. / 2)
             self.hsv_map = self.colorize2d(self.max_proj_data[:, :, self._channel_idx], argmax_map, self.cmap)
 
@@ -274,7 +287,7 @@ class FM_ops(Peak_finding):
         if self.hsv_map_no_tilt is None:
             if self.peaks is None:
                 self.peak_finding(self.max_proj_data[:, :, self._channel_idx], transformed=False)
-            ref = np.array(self.reader.getFrame(channel=self._channel_idx, dtype='u2').astype('f4')).transpose((2, 1, 0))
+            ref = np.array(self.reader.getFrame(channel=self._channel_idx).astype('f4')).transpose((2, 1, 0))
             if self.peaks_z is None:
                 self.fit_z(ref, transformed=False)
             # fit plane to peaks with least squares to remove tilt
@@ -316,7 +329,7 @@ class FM_ops(Peak_finding):
         if self.reader is None:
             self.channel = np.copy(self.tif_data[:,:,:,0])
         else:
-            self.channel = np.array(self.reader.getFrame(channel=ind, dtype='u2').astype('f4')).transpose((1, 2, 0))
+            self.channel = np.array(self.reader.getFrame(channel=ind).astype('f4')).transpose((1, 2, 0))
             if self.flip_z:
                 self.channel = np.flip(self.channel, axis=2) #flip z axis, z=0 is the most upper slice
             self.channel = (self.channel - self.channel.min()) / (self.channel.max() - self.channel.min())
