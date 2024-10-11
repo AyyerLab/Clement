@@ -1,7 +1,7 @@
 import sys
 import os
 import warnings
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 import numpy as np
 import pyqtgraph as pg
 import csv
@@ -350,13 +350,13 @@ class Peak_Params(QtWidgets.QMainWindow):
         label = QtWidgets.QLabel('Select channel:', self)
         line.addWidget(label)
         self.align_btn = QtWidgets.QPushButton('---Align channels---')
-        self.align_menu = QtGui.QMenu()
+        self.align_menu = QtWidgets.QMenu()
         self.align_btn.setMenu(self.align_menu)
         self.align_btn.setMinimumWidth(150)
         self.action_btns = []
 
         for i in range(self.num_channels):
-            self.action_btns.append(QtGui.QAction('Channel ' + str(i+1), self.align_menu, checkable=True))
+            self.action_btns.append(QtWidgets.QAction('Channel ' + str(i+1), self.align_menu, checkable=True))
             self.align_menu.addAction(self.action_btns[i])
             self.action_btns[i].toggled.connect(lambda state, i=i: self._align_channel(i, state))
 
@@ -625,7 +625,7 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.peaks.append(point_obj)
             if self.coor is not None:
                 for i in range(len(self.fm.ops.peaks)):
-                    self.fm.ops.peaks_orig[i] = self.coor[:,np.round(peaks_2d[i][0]).astype(np.int), np.round(peaks_2d[i][1]).astype(np.int)]
+                    self.fm.ops.peaks_orig[i] = self.coor[:,np.round(peaks_2d[i][0]).astype(int), np.round(peaks_2d[i][1]).astype(int)]
                     self.fm.ops.peaks = np.copy(self.fm.ops.peaks_orig)
         self.fm.ops.adjusted_params = True
         self.align_btn.setEnabled(True)
