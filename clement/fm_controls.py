@@ -109,6 +109,7 @@ class FMControls(BaseControls):
         self.slice_select_btn.setRange(0, 0)
         self.slice_select_btn.setEnabled(False)
         self.slice_select_btn.editingFinished.connect(self._slice_changed)
+        self.slice_select_btn.valueChanged.connect(self._slice_changed)
         line.addWidget(self.slice_select_btn)
 
         # ---- Select channels
@@ -353,7 +354,7 @@ class FMControls(BaseControls):
         self._file_name, _ = QtWidgets.QFileDialog.getOpenFileName(self,
                                                                    'Select FM file',
                                                                    self._curr_folder,
-                                                                   'All(*.lif *.tif *.tiff);;*.lif;;*.tif;;*.tiff')
+                                                                   'All(*.lif *.tif *.tiff *.xml);;*.lif;;*.tif;;*.tiff;;*.xml')
         if self._file_name != '':
             self.reset_init()
             self._curr_folder = os.path.dirname(self._file_name)
@@ -429,6 +430,7 @@ class FMControls(BaseControls):
             if self.num_slices > 1:
                 self.flip_z_btn.setEnabled(True)
                 self.slice_select_btn.setEnabled(True)
+
     @utils.wait_cursor('print')
     def _show_max_projection(self, state=None):
         self.slice_select_btn.setEnabled(not self.max_proj_btn.isChecked())
@@ -453,8 +455,8 @@ class FMControls(BaseControls):
 
     @utils.wait_cursor('print')
     def _calc_color_channels(self, state=None):
-        self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
         self.print('Num channels: ', len(self._channels))
+        self.color_data = np.zeros((len(self._channels),) + self.ops.data[:, :, 0].shape + (3,))
         for i in range(len(self._channels)):
             self.log(self._channels[i])
             if self._channels[i]:
