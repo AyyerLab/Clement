@@ -650,7 +650,7 @@ class Peak_Params(QtWidgets.QMainWindow):
                 self.fm.show_btn.setChecked(False)
         self.close()
 
-class Merge(QtGui.QMainWindow):
+class Merge(QtWidgets.QMainWindow):
     def __init__(self, parent, printer, logger):
         super(Merge, self).__init__(parent)
         self.parent = parent
