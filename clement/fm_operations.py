@@ -1,4 +1,6 @@
 import sys
+import os.path as op
+
 import numpy as np
 from scipy import ndimage as ndi
 from scipy import interpolate
@@ -6,6 +8,8 @@ from skimage import transform as tf
 from skimage import measure, morphology, io, feature
 import read_lif
 import tifffile
+import xmltodict
+
 from .ransac import Ransac
 from .peak_finding import Peak_finding
 
@@ -77,8 +81,49 @@ class FM_ops(Peak_finding):
         Saves parsed file in self.orig_data
         self.data is the array to be displayed
         '''
-        if '.tif' in fname or '.tiff' in fname:
-            self.tif_data = np.array(io.imread(fname)).astype('f4').transpose(2,1,0)
+        if op.splitext(fname)[1] == '.xml' and fname == self.old_fname:
+            self.orig_data = self.tif_data[:,:,z]
+            self.old_fname = fname
+            self.data = np.copy(self.orig_data)
+            self.selected_slice = z
+        elif op.splitext(fname)[1] == '.xml':
+            with open(fname, 'r') as f:
+                meta = xmltodict.parse(f.read())
+
+            if list(meta.keys())[0] == 'TfsData':
+                self.print('Detected IFLM XML file')
+            else:
+                self.print('Unknown XML format: ' + list(meta.keys())[0])
+                return
+
+            images = meta['TfsData']['ImageMatrix'][0]['Images']['Image']
+            channels = meta['TfsData']['ImageMatrix'][0]['Channels']['Channel']
+
+            self.num_channels = len(channels)
+            assert len(images) % self.num_channels == 0
+            self.num_slices = len(images) // self.num_channels
+
+            imchannels = [int(imdict['Index']['Channel']) for imdict in images]
+            implanes = [int(imdict['Index']['Plane']) for imdict in images]
+            impaths = [op.join(op.dirname(fname), imdict['RelativePath']).replace('\\', '/') for imdict in images]
+            imshape = io.imread(impaths[0]).shape
+
+            self.tif_data = np.empty(imshape + (self.num_slices, self.num_channels), dtype='f4')
+            for i in range(len(images)):
+                self.tif_data[:,:,implanes[i],imchannels[i]] = io.imread(impaths[i])
+
+            self.orig_data = self.tif_data[:,:,z]
+            self.old_fname = fname
+            self.data = np.copy(self.orig_data)
+            self.selected_slice = z
+            [self._aligned_channels.append(False) for i in range(self.num_channels)]
+            [self._color_matrices.append(np.identity(3)) for i in range(self.num_channels)]
+        elif '.tif' in fname or '.tiff' in fname:
+            self.tif_data = np.array(io.imread(fname)).astype('f4')
+            if self.tif_data.ndim == 2:
+                self.print('Single FM image. Are you sure you do not want a stack?')
+                self.tif_data = self.tif_data.T[:,:,None,None]
+            #self.tif_data = np.array(io.imread(fname)).astype('f4').transpose(2,1,0)
             self.num_slices = self.tif_data.shape[2]
 
             self.orig_data = self.tif_data[:,:,z]
@@ -97,9 +142,9 @@ class FM_ops(Peak_finding):
             self.selected_slice = z
             md_raw = tifffile.TiffFile(fname).imagej_metadata
             chapter = None
-            if 'Info' in md_raw:
+            if md_raw is not None and 'Info' in md_raw:
                 chapter = 'Info'
-            elif 'Labels' in md_raw:
+            elif md_raw is not None and 'Labels' in md_raw:
                 chapter = 'Labels'
             else:
                 self.print('Unable to find metadata! Contact developers!')
