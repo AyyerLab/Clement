@@ -99,7 +99,7 @@ class FM_ops(Peak_finding):
             images = meta['TfsData']['ImageMatrix'][0]['Images']['Image']
             channels = meta['TfsData']['ImageMatrix'][0]['Channels']['Channel']
 
-            self.num_channels = len(channels)
+            self.num_channels = 1 if isinstance(channels, dict) else len(channels)
             assert len(images) % self.num_channels == 0
             self.num_slices = len(images) // self.num_channels
 
