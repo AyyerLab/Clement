@@ -66,7 +66,7 @@ class GISControls(BaseControls):
         self.show_peaks_btn.setEnabled(False)
         line.addWidget(self.show_peaks_btn)
 
-        line.addStretch(0.5)
+        line.addStretch(1)
         label = QtWidgets.QLabel('Overlay pre-/post-GIS:')
         line.addWidget(label)
 
@@ -85,7 +85,7 @@ class GISControls(BaseControls):
 
         self.overlay_label = QtWidgets.QLabel('Opacity: 100 %')
         line.addWidget(self.overlay_label)
-        line.addStretch(1)
+        line.addStretch(2)
 
         line = QtWidgets.QHBoxLayout()
         vbox.addLayout(line)
