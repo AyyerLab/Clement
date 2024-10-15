@@ -281,14 +281,14 @@ class FMControls(BaseControls):
 
         line.addWidget(self.refine_btn)
         line.addWidget(self.undo_refine_btn)
-        line.addStretch(0.5)
+        line.addStretch(1)
         label = QtWidgets.QLabel('Refinement precision [nm]:', self)
         line.addWidget(label)
         self.err_btn = QtWidgets.QLabel('0')
         line.addWidget(self.err_btn)
         line.addWidget(self.err_plt_btn)
         line.addWidget(self.convergence_btn)
-        line.addStretch(1)
+        line.addStretch(2)
 
         line = QtWidgets.QHBoxLayout()
         self.merge_layout.addLayout(line)
