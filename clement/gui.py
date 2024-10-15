@@ -33,7 +33,7 @@ class GUI(QtWidgets.QMainWindow):
         else:
             self.settings = QtCore.QSettings()
 
-        self.colors_tmp = ['#ff-0001', '#00ff00', '#0000ff', '#808080', '#808080']
+        self.colors_tmp = ['#ff0000', '#00ff00', '#0000ff', '#808080', '#808080']
         self.colors = self.settings.value('channel_colors', defaultValue=self.colors_tmp)
         #self.colors = ['#ff0000', '#00ff00', '#0000ff', '#808080', '#808080', '#808080']
         self._init_ui()
