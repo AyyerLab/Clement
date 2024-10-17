@@ -1430,7 +1430,7 @@ class FMControls(BaseControls):
                 for i in range(self.ops.num_channels):
                     self.other.ops.apply_merge_2d(self.ops.data[:,:,i], i, self.tr_matrices,
                                                 self.ops.num_channels, self.tab_index)
-                    self.progress_bar.setValue((i + 1) / self.ops.num_channels * 100)
+                    self.progress_bar.setValue(int(np.rint((i + 1) / self.ops.num_channels * 100)))
                 self.other.progress = 100
             else:
                 self.progress_bar.setValue(100)
@@ -1457,7 +1457,7 @@ class FMControls(BaseControls):
                         self.other.ops.apply_merge_3d(self.ops.channel, tf_matrix_aligned, self.tr_matrices,
                                                     orig_coor, src_z, dst, i, self.num_slices, self.ops.num_channels,
                                                     self.ops.norm_factor, self.tab_index, self.fibcontrols)
-                        self.progress_bar.setValue((i + 1) / self.ops.num_channels * 100)
+                        self.progress_bar.setValue(int(np.rint((i + 1) / self.ops.num_channels * 100)))
                     self.other.progress = 100
                 else:
                     self.print('You have to perform at least one round of refinement before you can merge the images!')
