@@ -104,13 +104,21 @@ class FM_ops(Peak_finding):
             self.num_slices = len(images) // self.num_channels
 
             imchannels = [int(imdict['Index']['Channel']) for imdict in images]
-            implanes = [int(imdict['Index']['Plane']) for imdict in images]
+            implanes = np.array([int(imdict['Index']['Plane']) for imdict in images])
             impaths = [op.join(op.dirname(fname), imdict['RelativePath']).replace('\\', '/') for imdict in images]
             imshape = io.imread(impaths[0]).shape
 
             self.tif_data = np.empty(imshape + (self.num_slices, self.num_channels), dtype='f4')
             for i in range(len(images)):
                 self.tif_data[:,:,implanes[i],imchannels[i]] = io.imread(impaths[i])
+
+            # Voxel size in um
+            imatrix = meta['TfsData']['ImageMatrix'][0]
+            vx = float(imatrix['TileWidth']) / float(imatrix['TilePixelWidth'])
+            vy = float(imatrix['TileHeight']) / float(imatrix['TilePixelHeight'])
+            vz = float(images[np.where(implanes==1)[0][0]]['Position']['sem:Position']['Focus'])
+            self.voxel_size = np.array([vx, vy, vz]) * 1e-6
+            print('Voxel size:', self.voxel_size)
 
             self.orig_data = self.tif_data[:,:,z]
             self.old_fname = fname
