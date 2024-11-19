@@ -1071,7 +1071,7 @@ class Merge(QtWidgets.QMainWindow):
                 coordinates.append(self.downsampling * np.array([self._clicked_points_popup[i].pos().x() + self.lambda_list[i][0] / 2 - 0.5,
                                                                  self._clicked_points_popup[i].pos().y() + self.lambda_list[i][1] / 2] - 0.5))
             self.coordinates = np.array(coordinates)
-            self.coordinates[:,1] = self.data_popup.shape[1] - self.coordinates[:,1]
+            #self.coordinates[:,1] = self.data_popup.shape[1] - self.coordinates[:,1]
 
             #if self.fib:
             #    self.stage_positions_popup = np.copy(coordinates)
