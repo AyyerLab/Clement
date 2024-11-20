@@ -11,7 +11,7 @@ setuptools.setup(
     description='GUI for Correlative Light and Electron Microscopy',
     long_description=long_desc,
     long_description_content_type='text/markdown',
-    url='https://github.com/kartikayyer/Clement',
+    url='https://github.com/AyyerLab/Clement',
     packages=setuptools.find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -33,9 +33,7 @@ setuptools.setup(
         'read-lif==0.4.0',
         'tifffile',
         'matplotlib',
-        #'pyqtgraph @ git+https://github.com/pyqtgraph/pyqtgraph.git@develop#egg=c715c5ac2855bc6208ef2f3b810af305969a5748',
         'pyqtgraph',
-        #'pyqtgraph==0.11.0rc0',
         'pyyaml',
         'xmltodict',
     ],
